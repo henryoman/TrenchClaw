@@ -115,10 +115,12 @@ async function executeSell(connection, wallet, state) {
     console.log(`Swap direction: ${config.swap.buyTokenMint} -> ${config.swap.sellTokenMint}`);
     console.log(`Amount to sell: ${state.lastReceivedAmount} (from previous buy)`);
     try {
-        // Try selling with the original amount
+        // Use a smaller amount in production mode to avoid insufficient SOL errors
+        const sellAmount = process.env.DEV_MODE === 'true' ? state.lastReceivedAmount : 0.001;
+        console.log(`Using ${process.env.DEV_MODE === 'true' ? 'estimated' : 'fixed small'} amount for selling: ${sellAmount}`);
         const signature = await (0, swap_1.performSwap)(connection, wallet, config.swap.sellTokenMint, // Selling what we just bought (reverse the direction)
         config.swap.buyTokenMint, // Buying what we just sold (reverse the direction)
-        state.lastReceivedAmount);
+        sellAmount);
         // Reset the received amount
         state.lastReceivedAmount = null;
         console.log(`Sell successful! Transaction: ${signature}`);
@@ -136,6 +138,14 @@ async function executeSell(connection, wallet, state) {
             // Set lastReceivedAmount to null to allow the next cycle to continue
             state.lastReceivedAmount = null;
             console.log(`Cycle #${state.cyclesCompleted + 1} completed (sell phase skipped - token retained in wallet)`);
+        }
+        else if (errorMessage.includes("Insufficient SOL balance")) {
+            console.log("⚠️ BALANCE WARNING ⚠️");
+            console.log("Not enough SOL available to complete the sell transaction.");
+            console.log("Using a smaller fixed amount for selling in future cycles.");
+            // Set lastReceivedAmount to null to allow the next cycle to continue
+            state.lastReceivedAmount = null;
+            console.log(`Cycle #${state.cyclesCompleted + 1} completed (sell phase skipped - insufficient SOL for transaction fee)`);
         }
         else {
             // For other errors, let the caller handle retry logic

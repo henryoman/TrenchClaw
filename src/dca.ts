@@ -1,4 +1,4 @@
-import { Connection, Keypair } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import strategies, { Strategy } from './config/strategies';
 import { performSwap } from './swap';
 
@@ -80,11 +80,33 @@ export async function runDCA(connection: Connection, wallet: Keypair): Promise<v
         console.log(`Swap successful! Transaction: ${signature}`);
         console.log(`Next execution scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
       } catch (error) {
-        console.error(`DCA execution failed:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`DCA execution failed: ${errorMessage}`);
         
-        // Retry in 5 minutes on failure
-        nextStrategy.nextExecutionTime = Date.now() + 5 * 60 * 1000;
-        console.log(`Will retry at ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
+        // Check for specific error types
+        if (errorMessage.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+          console.log("⚠️ LIQUIDITY WARNING ⚠️");
+          console.log(`No trading route found for ${config.swap.sellTokenMint} -> ${config.swap.buyTokenMint}.`);
+          console.log("This token pair either has low liquidity or no direct trading pair.");
+          
+          // Still count this as a completed buy for scheduling purposes
+          nextStrategy.buysCompleted++;
+          nextStrategy.nextExecutionTime = Date.now() + config.dca.intervalSeconds * 1000;
+          console.log(`Skipping this buy and moving to the next scheduled execution.`);
+          console.log(`Next execution scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
+        } else if (errorMessage.includes("Insufficient SOL balance") || 
+                  errorMessage.includes("insufficient lamports")) {
+          console.log("⚠️ BALANCE WARNING ⚠️");
+          console.log("Not enough SOL available to complete the transaction.");
+          
+          // Set a longer retry for balance issues - user needs to add funds
+          nextStrategy.nextExecutionTime = Date.now() + 15 * 60 * 1000; // 15 minutes
+          console.log(`Will retry with a longer delay: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
+        } else {
+          // For other errors, retry in 5 minutes
+          nextStrategy.nextExecutionTime = Date.now() + 5 * 60 * 1000;
+          console.log(`Will retry at ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
+        }
       }
       
       // Schedule the next buy
