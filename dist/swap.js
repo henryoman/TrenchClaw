@@ -16,7 +16,7 @@ const env_1 = __importDefault(require("./config/env"));
  * @param amount - Amount to swap (in the sell token's native units)
  * @param slippageBps - Slippage tolerance in basis points (e.g., 100 = 1%)
  */
-async function performSwap(connection, wallet, buyTokenMint, sellTokenMint, amount, slippageBps = 500 // Default 5% slippage (increased for higher chance of success)
+async function performSwap(connection, wallet, buyTokenMint, sellTokenMint, amount, slippageBps = 500 // Default 5% slippage
 ) {
     try {
         console.log(`Getting quote for swap: ${amount} ${sellTokenMint} -> ${buyTokenMint}`);

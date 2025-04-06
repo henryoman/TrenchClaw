@@ -172,8 +172,8 @@ async function executeSell(connection, wallet, state) {
             // In production, this should query the token account balance
             // This is a simplified approach - in a full implementation,
             // you would use the SPL Token program to get the exact balance
-            tokenAmount = state.lastBuyTokenAmount || 0.001;
-            console.log(`Using reference amount of ${tokenAmount} tokens (should query account in production)`);
+            tokenAmount = 0.001; // Use a fixed small amount instead of the reference amount
+            console.log(`Using fixed amount of ${tokenAmount} tokens for selling back`);
         }
         console.log(`Selling 100% of ${config.swap.buyTokenMint} back to SOL (${tokenAmount} tokens)`);
         const signature = await (0, swap_1.performSwap)(connection, wallet, config.swap.sellTokenMint, // Selling what we just bought (reverse the direction)
@@ -197,6 +197,14 @@ async function executeSell(connection, wallet, state) {
             // Set lastBuyTokenAmount to null to allow the next cycle to continue
             state.lastBuyTokenAmount = null;
             console.log(`Cycle #${state.cyclesCompleted + 1} completed (sell phase skipped - token retained in wallet)`);
+        }
+        else if (errorMessage.includes("Insufficient SOL balance")) {
+            console.log("⚠️ BALANCE WARNING ⚠️");
+            console.log("Not enough SOL available to complete the sell transaction.");
+            console.log("Using a smaller fixed amount for selling in future cycles.");
+            // Set lastBuyTokenAmount to null to allow the next cycle to continue
+            state.lastBuyTokenAmount = null;
+            console.log(`Cycle #${state.cyclesCompleted + 1} completed (sell phase skipped - insufficient SOL for transaction fee)`);
         }
         else {
             // For other errors, let the caller handle retry logic

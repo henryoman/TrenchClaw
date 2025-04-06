@@ -1,7 +1,8 @@
-import { Connection, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import percentageStrategies, { PercentageStrategy } from './config/percentage-strategies';
 import { performSwap } from './swap';
 import env from './config/env';
+import { checkSpecialToken } from './special-tokens';
 
 /**
  * Interface representing the state of a percentage-based trading strategy
@@ -129,15 +130,63 @@ export async function runPercentageTrading(connection: Connection, wallet: Keypa
           console.log(`Next cycle (#${nextStrategy.cyclesCompleted + 1}${config.percentage.totalCycles ? ` of ${config.percentage.totalCycles}` : ''}) scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
         }
       } catch (error) {
-        console.error(`Percentage-based trading operation failed:`, error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Percentage-based trading operation failed: ${errorMessage}`);
         
-        // Retry in 1 minute on failure (keep the same phase)
-        if (nextStrategy.cyclePhase === 'buy') {
-          nextStrategy.nextExecutionTime = Date.now() + 1 * 60 * 1000;
+        // Check for specific error conditions
+        if (errorMessage.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+          console.log("⚠️ LIQUIDITY WARNING ⚠️");
+          if (nextStrategy.cyclePhase === 'buy') {
+            console.log(`No trading route found for ${config.swap.sellTokenMint} -> ${config.swap.buyTokenMint}.`);
+            console.log("This token pair either has low liquidity or no direct trading pair.");
+            
+            // Move to the next cycle
+            nextStrategy.cyclesCompleted++;
+            nextStrategy.cyclePhase = 'buy';
+            nextStrategy.nextExecutionTime = Date.now() + config.percentage.cycleSeconds * 1000;
+            nextStrategy.sellExecutionTime = null;
+            console.log(`Skipping this cycle and moving to the next one.`);
+          } else {
+            // For sell phase, this is handled in executeSell
+            // But let's handle it here as well as a fallback
+            console.log(`Token ${config.swap.buyTokenMint} cannot be sold back to ${config.swap.sellTokenMint}.`);
+            console.log("Moving to the next cycle. The tokens will remain in your wallet.");
+            
+            // Move to the next cycle
+            nextStrategy.cyclesCompleted++;
+            nextStrategy.cyclePhase = 'buy';
+            nextStrategy.nextExecutionTime = Date.now() + config.percentage.cycleSeconds * 1000;
+            nextStrategy.sellExecutionTime = null;
+          }
+          console.log(`Next cycle (#${nextStrategy.cyclesCompleted + 1}${config.percentage.totalCycles ? ` of ${config.percentage.totalCycles}` : ''}) scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
+        } else if (errorMessage.includes("Insufficient SOL balance") || 
+                  errorMessage.includes("insufficient lamports")) {
+          console.log("⚠️ BALANCE WARNING ⚠️");
+          console.log("Not enough SOL available to complete the transaction.");
+          
+          // Set a longer retry for balance issues - user needs to add funds
+          if (nextStrategy.cyclePhase === 'buy') {
+            nextStrategy.nextExecutionTime = Date.now() + 15 * 60 * 1000; // 15 minutes
+            console.log(`Will retry buy with a longer delay: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
+          } else {
+            // For sell phase, move to next cycle since SOL balance is used for transaction fees only
+            nextStrategy.cyclesCompleted++;
+            nextStrategy.cyclePhase = 'buy';
+            nextStrategy.nextExecutionTime = Date.now() + config.percentage.cycleSeconds * 1000;
+            nextStrategy.sellExecutionTime = null;
+            nextStrategy.lastBuyTokenAmount = null; // Reset the buy amount
+            console.log(`Skipping sell phase due to insufficient SOL for transaction fee`);
+            console.log(`Next cycle (#${nextStrategy.cyclesCompleted + 1}${config.percentage.totalCycles ? ` of ${config.percentage.totalCycles}` : ''}) scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
+          }
         } else {
-          nextStrategy.sellExecutionTime = Date.now() + 1 * 60 * 1000;
+          // Retry in 1 minute on other failures (keep the same phase)
+          if (nextStrategy.cyclePhase === 'buy') {
+            nextStrategy.nextExecutionTime = Date.now() + 1 * 60 * 1000;
+          } else {
+            nextStrategy.sellExecutionTime = Date.now() + 1 * 60 * 1000;
+          }
+          console.log(`Will retry at ${new Date(nextStrategy.cyclePhase === 'buy' ? nextStrategy.nextExecutionTime : nextStrategy.sellExecutionTime!).toLocaleString()}`);
         }
-        console.log(`Will retry at ${new Date(nextStrategy.cyclePhase === 'buy' ? nextStrategy.nextExecutionTime : nextStrategy.sellExecutionTime!).toLocaleString()}`);
       }
       
       // Schedule the next operation
@@ -226,11 +275,34 @@ async function executeSell(
       tokenAmount = state.lastBuyTokenAmount || 0.001;
       console.log(`[DEV MODE] Using reference amount of ${tokenAmount} tokens`);
     } else {
-      // In production, this should query the token account balance
-      // This is a simplified approach - in a full implementation,
-      // you would use the SPL Token program to get the exact balance
-      tokenAmount = state.lastBuyTokenAmount || 0.001;
-      console.log(`Using reference amount of ${tokenAmount} tokens (should query account in production)`);
+      try {
+        // Query for the token account to get the actual balance
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          wallet.publicKey,
+          { mint: new PublicKey(config.swap.buyTokenMint) }
+        );
+        
+        // If we have token accounts, use the actual balance
+        if (tokenAccounts.value.length > 0) {
+          // Get the parsed token amount and divide by the appropriate power of 10 based on decimals
+          const parsedAccountInfo = tokenAccounts.value[0].account.data.parsed.info;
+          const decimals = parsedAccountInfo.tokenAmount.decimals;
+          const rawAmount = parsedAccountInfo.tokenAmount.amount;
+          
+          // Convert to a human-readable number
+          tokenAmount = parseInt(rawAmount) / Math.pow(10, decimals);
+          console.log(`Found token account with ${tokenAmount} tokens of ${config.swap.buyTokenMint}`);
+        } else {
+          // Fallback if no token account found
+          tokenAmount = state.lastBuyTokenAmount || 0.001;
+          console.log(`No token account found for ${config.swap.buyTokenMint}, using estimated amount: ${tokenAmount}`);
+        }
+      } catch (error) {
+        // If there's an error querying the token account, use the fallback
+        console.error(`Error querying token account: ${error instanceof Error ? error.message : String(error)}`);
+        tokenAmount = state.lastBuyTokenAmount || 0.001;
+        console.log(`Using fallback amount of ${tokenAmount} tokens due to error`);
+      }
     }
     
     console.log(`Selling 100% of ${config.swap.buyTokenMint} back to SOL (${tokenAmount} tokens)`);
@@ -262,6 +334,14 @@ async function executeSell(
       // Set lastBuyTokenAmount to null to allow the next cycle to continue
       state.lastBuyTokenAmount = null;
       console.log(`Cycle #${state.cyclesCompleted + 1} completed (sell phase skipped - token retained in wallet)`);
+    } else if (errorMessage.includes("Insufficient SOL balance")) {
+      console.log("⚠️ BALANCE WARNING ⚠️");
+      console.log("Not enough SOL available to complete the sell transaction.");
+      console.log("Using a smaller fixed amount for selling in future cycles.");
+      
+      // Set lastBuyTokenAmount to null to allow the next cycle to continue
+      state.lastBuyTokenAmount = null;
+      console.log(`Cycle #${state.cyclesCompleted + 1} completed (sell phase skipped - insufficient SOL for transaction fee)`);
     } else {
       // For other errors, let the caller handle retry logic
       throw error;
