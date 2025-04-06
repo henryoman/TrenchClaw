@@ -2,7 +2,7 @@ import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.j
 import percentageStrategies, { PercentageStrategy } from './config/percentage-strategies';
 import { performSwap } from './swap';
 import env from './config/env';
-import { checkSpecialToken } from './special-tokens';
+import { checkSpecialToken, getActualTokenBalance } from './special-tokens';
 
 /**
  * Interface representing the state of a percentage-based trading strategy
@@ -275,33 +275,58 @@ async function executeSell(
       tokenAmount = state.lastBuyTokenAmount || 0.001;
       console.log(`[DEV MODE] Using reference amount of ${tokenAmount} tokens`);
     } else {
-      try {
-        // Query for the token account to get the actual balance
-        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-          wallet.publicKey,
-          { mint: new PublicKey(config.swap.buyTokenMint) }
-        );
+      // Check if token requires special handling
+      const specialToken = checkSpecialToken(config.swap.buyTokenMint);
+      if (specialToken) {
+        console.log(`Special token detected: ${specialToken.name}`);
         
-        // If we have token accounts, use the actual balance
-        if (tokenAccounts.value.length > 0) {
-          // Get the parsed token amount and divide by the appropriate power of 10 based on decimals
-          const parsedAccountInfo = tokenAccounts.value[0].account.data.parsed.info;
-          const decimals = parsedAccountInfo.tokenAmount.decimals;
-          const rawAmount = parsedAccountInfo.tokenAmount.amount;
+        // For special tokens, we might need to use a minimum amount
+        if (specialToken.minAmount) {
+          console.log(`${specialToken.name} requires a minimum amount of ${specialToken.minAmount} for selling`);
           
-          // Convert to a human-readable number
-          tokenAmount = parseInt(rawAmount) / Math.pow(10, decimals);
-          console.log(`Found token account with ${tokenAmount} tokens of ${config.swap.buyTokenMint}`);
+          // Get the actual balance
+          const actualBalance = await getActualTokenBalance(connection, wallet, config.swap.buyTokenMint);
+          if (actualBalance >= specialToken.minAmount) {
+            console.log(`Using minimum required amount of ${specialToken.minAmount} tokens for selling`);
+            tokenAmount = specialToken.minAmount;
+          } else if (actualBalance > 0) {
+            console.log(`Using all available ${actualBalance} tokens for selling (less than minimum)`);
+            tokenAmount = actualBalance;
+          } else {
+            // Fallback to estimated amount if no tokens found
+            tokenAmount = state.lastBuyTokenAmount || 0.001;
+            console.log(`No ${specialToken.name} tokens found, using fixed small amount for selling: ${tokenAmount}`);
+          }
         } else {
-          // Fallback if no token account found
-          tokenAmount = state.lastBuyTokenAmount || 0.001;
-          console.log(`No token account found for ${config.swap.buyTokenMint}, using estimated amount: ${tokenAmount}`);
+          // Just get the token balance for special token without minimum
+          const actualBalance = await getActualTokenBalance(connection, wallet, config.swap.buyTokenMint);
+          if (actualBalance > 0) {
+            tokenAmount = actualBalance;
+            console.log(`Found ${tokenAmount} ${specialToken.name} tokens to sell`);
+          } else {
+            tokenAmount = state.lastBuyTokenAmount || 0.001;
+            console.log(`Using fixed small amount for selling: ${tokenAmount}`);
+          }
         }
-      } catch (error) {
-        // If there's an error querying the token account, use the fallback
-        console.error(`Error querying token account: ${error instanceof Error ? error.message : String(error)}`);
-        tokenAmount = state.lastBuyTokenAmount || 0.001;
-        console.log(`Using fallback amount of ${tokenAmount} tokens due to error`);
+      } else {
+        // For regular tokens, just get the balance
+        try {
+          // Use our helper function to get the balance
+          const actualBalance = await getActualTokenBalance(connection, wallet, config.swap.buyTokenMint);
+          if (actualBalance > 0) {
+            tokenAmount = actualBalance;
+            console.log(`Found ${tokenAmount} tokens of ${config.swap.buyTokenMint}`);
+          } else {
+            // Fallback if no token account found
+            tokenAmount = state.lastBuyTokenAmount || 0.001;
+            console.log(`No token account found for ${config.swap.buyTokenMint}, using estimated amount: ${tokenAmount}`);
+          }
+        } catch (error) {
+          // If there's an error querying the token account, use the fallback
+          console.error(`Error querying token account: ${error instanceof Error ? error.message : String(error)}`);
+          tokenAmount = state.lastBuyTokenAmount || 0.001;
+          console.log(`Using fallback amount of ${tokenAmount} tokens due to error`);
+        }
       }
     }
     
