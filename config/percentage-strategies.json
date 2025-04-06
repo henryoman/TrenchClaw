@@ -4,10 +4,10 @@
       "sellTokenMint": "So11111111111111111111111111111111111111112",
       "buyTokenMint": "PriNtiE7V98rC4Vzvns696BFjDxwGDuC2a8qinnjEYj"
     },
-    "swing": {
-      "buyAmount": 0.001,
-      "intervalSeconds": 60,
-      "sellDelaySeconds": 15,
+    "percentage": {
+      "buyPercentage": 90,
+      "sellTimePercentage": 60,
+      "cycleSeconds": 120,
       "totalCycles": 10
     }
   }

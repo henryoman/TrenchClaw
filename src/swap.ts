@@ -18,7 +18,7 @@ export async function performSwap(
   buyTokenMint: string,
   sellTokenMint: string,
   amount: number,
-  slippageBps: number = 500 // Default 5% slippage (increased for higher chance of success)
+  slippageBps: number = 1000 // Default 10% slippage (increased for higher chance of success with low liquidity tokens)
 ): Promise<string> {
   try {
     console.log(`Getting quote for swap: ${amount} ${sellTokenMint} -> ${buyTokenMint}`);

@@ -6,7 +6,6 @@ A Dollar-Cost Averaging (DCA) bot for Solana that automatically executes token s
 
 - **Multiple DCA Strategies**: Configure multiple strategies to buy different tokens at different intervals
 - **Swing Trading Strategy**: Buy tokens and automatically sell them back after a specified time delay
-- **Percentage-Based Trading**: Buy tokens with a percentage of wallet balance and sell at a specific point in the trading cycle
 - **Customizable Intervals**: Set how frequently you want to buy (in minutes)
 - **Buy Limits**: Optionally set a total number of buys after which the strategy will stop
 - **Robust Error Handling**: Built-in retry mechanism and special handling for tokens with liquidity issues
@@ -52,13 +51,13 @@ Edit `config/strategies.json` to configure your DCA strategies:
 [
   {
     "swap": {
-      "sellTokenMint": "So11111111111111111111111111111111111111112", 
-      "buyTokenMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" 
+      "sellTokenMint": "So11111111111111111111111111111111111111112", // SOL token
+      "buyTokenMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" // USDC token
     },
     "dca": {
-      "buyAmount": 0.001,
-      "intervalSeconds": 20,
-      "totalBuys": 3
+      "buyAmount": 0.001, // Amount of SOL to swap
+      "intervalSeconds": 20, // Buy every 20 seconds
+      "totalBuys": 3 // Stop after 3 purchases
     }
   }
 ]
@@ -71,34 +70,14 @@ Edit `config/swing-strategies.json` to configure your swing trading strategies:
 [
   {
     "swap": {
-      "sellTokenMint": "So11111111111111111111111111111111111111112",
-      "buyTokenMint": "PriNtiE7V98rC4Vzvns696BFjDxwGDuC2a8qinnjEYj"
+      "sellTokenMint": "So11111111111111111111111111111111111111112", // SOL token
+      "buyTokenMint": "PriNtiE7V98rC4Vzvns696BFjDxwGDuC2a8qinnjEYj" // Target token
     },
     "swing": {
-      "buyAmount": 0.001,
-      "intervalSeconds": 60,
-      "sellDelaySeconds": 15,
-      "totalCycles": 10
-    }
-  }
-]
-```
-
-#### Percentage-Based Trading Strategy
-Edit `config/percentage-strategies.json` to configure your percentage-based trading strategies:
-
-```json
-[
-  {
-    "swap": {
-      "sellTokenMint": "So11111111111111111111111111111111111111112",
-      "buyTokenMint": "PriNtiE7V98rC4Vzvns696BFjDxwGDuC2a8qinnjEYj"
-    },
-    "percentage": {
-      "buyPercentage": 90,
-      "sellTimePercentage": 60,
-      "cycleSeconds": 120,
-      "totalCycles": 10
+      "buyAmount": 0.001, // Amount of SOL to swap
+      "intervalSeconds": 60, // Start a new cycle every 60 seconds
+      "sellDelaySeconds": 15, // Sell tokens back 15 seconds after buying
+      "totalCycles": 10 // Stop after 10 complete cycles
     }
   }
 ]
