@@ -2,7 +2,7 @@ import { Connection, Keypair } from '@solana/web3.js';
 /**
  * Perform a token swap using Jupiter v6
  *
- * @param connection - Solana RPC connection
+ * @param connection - Solana RPC connection (used only for dev mode checks)
  * @param wallet - Keypair of the wallet performing the swap
  * @param buyTokenMint - Token mint address to buy
  * @param sellTokenMint - Token mint address to sell
