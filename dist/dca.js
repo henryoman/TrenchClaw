@@ -46,7 +46,7 @@ async function runDCA(connection, wallet) {
                 const signature = await (0, swap_1.performSwap)(connection, wallet, config.swap.buyTokenMint, config.swap.sellTokenMint, config.dca.amount);
                 // Update strategy state
                 nextStrategy.buysCompleted++;
-                nextStrategy.nextExecutionTime = Date.now() + config.dca.intervalMinutes * 60 * 1000;
+                nextStrategy.nextExecutionTime = Date.now() + config.dca.intervalSeconds * 1000;
                 console.log(`Swap successful! Transaction: ${signature}`);
                 console.log(`Next execution scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
             }

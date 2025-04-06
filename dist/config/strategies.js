@@ -45,7 +45,7 @@ exports.strategySchema = zod_1.z.object({
     }),
     dca: zod_1.z.object({
         amount: zod_1.z.number().positive(),
-        intervalMinutes: zod_1.z.number().int().positive(),
+        intervalSeconds: zod_1.z.number().int().positive(),
         totalBuys: zod_1.z.number().int().positive().optional(),
     }),
 });
@@ -71,7 +71,7 @@ try {
                 },
                 dca: {
                     amount: 0.1, // 0.1 USDC per buy
-                    intervalMinutes: 60, // Every hour
+                    intervalSeconds: 3600, // Every hour (3600 seconds)
                     totalBuys: 24 // 24 buys (one day)
                 }
             }

@@ -75,7 +75,7 @@ export async function runDCA(connection: Connection, wallet: Keypair): Promise<v
         
         // Update strategy state
         nextStrategy.buysCompleted++;
-        nextStrategy.nextExecutionTime = Date.now() + config.dca.intervalMinutes * 60 * 1000;
+        nextStrategy.nextExecutionTime = Date.now() + config.dca.intervalSeconds * 1000;
         
         console.log(`Swap successful! Transaction: ${signature}`);
         console.log(`Next execution scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);

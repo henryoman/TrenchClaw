@@ -12,15 +12,15 @@ export declare const strategySchema: z.ZodObject<{
     }>;
     dca: z.ZodObject<{
         amount: z.ZodNumber;
-        intervalMinutes: z.ZodNumber;
+        intervalSeconds: z.ZodNumber;
         totalBuys: z.ZodOptional<z.ZodNumber>;
     }, "strip", z.ZodTypeAny, {
         amount: number;
-        intervalMinutes: number;
+        intervalSeconds: number;
         totalBuys?: number | undefined;
     }, {
         amount: number;
-        intervalMinutes: number;
+        intervalSeconds: number;
         totalBuys?: number | undefined;
     }>;
 }, "strip", z.ZodTypeAny, {
@@ -30,7 +30,7 @@ export declare const strategySchema: z.ZodObject<{
     };
     dca: {
         amount: number;
-        intervalMinutes: number;
+        intervalSeconds: number;
         totalBuys?: number | undefined;
     };
 }, {
@@ -40,7 +40,7 @@ export declare const strategySchema: z.ZodObject<{
     };
     dca: {
         amount: number;
-        intervalMinutes: number;
+        intervalSeconds: number;
         totalBuys?: number | undefined;
     };
 }>;
