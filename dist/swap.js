@@ -54,10 +54,18 @@ async function performSwap(connection, wallet, buyTokenMint, sellTokenMint, amou
                 throw new Error(`Invalid token mint address: ${errorMessage}`);
             }
             console.log('Proceeding with swap using Jupiter REST API...');
-            // SOL has 9 decimals
-            const inputAmount = Math.floor(amount * 1_000_000_000); // Convert to lamports
+            // Determine the decimals based on the token
+            // SOL has 9 decimals, USDC has 6 decimals
+            let decimals = 9; // Default to SOL decimals
+            let tokenSymbol = 'SOL';
+            // Check if this is USDC (common token in our strategies)
+            if (sellTokenMint === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v') {
+                decimals = 6;
+                tokenSymbol = 'USDC';
+            }
+            const inputAmount = Math.floor(amount * Math.pow(10, decimals));
             console.log(`Executing swap with ${sellTokenMint} -> ${buyTokenMint}`);
-            console.log(`Amount: ${inputAmount} lamports (${amount} SOL)`);
+            console.log(`Amount: ${inputAmount} (${amount} ${tokenSymbol})`);
             console.log(`Slippage: ${slippageBps} basis points (${slippageBps / 100}%)`);
             // Step 1: Get a quote from Jupiter's REST API
             console.log('Getting quote from Jupiter REST API...');

@@ -7,12 +7,15 @@ const web3_js_1 = require("@solana/web3.js");
 const env_1 = __importDefault(require("./config/env"));
 const keys_1 = require("./utils/keys");
 const dca_1 = require("./dca");
+const swing_1 = require("./swing");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
 /**
- * Main function to initialize and start the DCA bot
+ * Main function to initialize and start the trading bots
  */
 async function main() {
     try {
-        console.log('Initializing DCA bot...');
+        console.log('Initializing trading bots...');
         // Create Solana RPC connection with Helius endpoint
         const connection = new web3_js_1.Connection(`https://rpc.helius.xyz/?api-key=${env_1.default.HELIUS_API_KEY}`, 'confirmed');
         // Get wallet keypair from private key
@@ -22,8 +25,22 @@ async function main() {
         console.log('Connection established to Solana network via Helius');
         console.log('Helius API Key loaded:', env_1.default.HELIUS_API_KEY ? 'Yes' : 'No');
         console.log('QuickNode API Key loaded:', env_1.default.QUICKNODE_API_KEY ? 'Yes' : 'No');
-        // Start the DCA bot
-        await (0, dca_1.runDCA)(connection, wallet);
+        // Check if swing-strategies.json exists
+        const swingStratPath = path_1.default.resolve(process.cwd(), 'config', 'swing-strategies.json');
+        const hasDcaStrategies = fs_1.default.existsSync(path_1.default.resolve(process.cwd(), 'config', 'strategies.json'));
+        const hasSwingStrategies = fs_1.default.existsSync(swingStratPath);
+        // Start the bots based on available strategies
+        if (hasDcaStrategies) {
+            console.log('Starting DCA bot...');
+            await (0, dca_1.runDCA)(connection, wallet);
+        }
+        if (hasSwingStrategies) {
+            console.log('Starting swing trading bot...');
+            await (0, swing_1.runSwing)(connection, wallet);
+        }
+        if (!hasDcaStrategies && !hasSwingStrategies) {
+            console.log('No trading strategies found. Please create either strategies.json or swing-strategies.json');
+        }
     }
     catch (error) {
         console.error('Bot failed to start:', error.message);
