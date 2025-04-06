@@ -77,8 +77,18 @@ export async function runSwing(connection: Connection, wallet: Keypair): Promise
           
           console.log(`Sell scheduled at: ${new Date(nextStrategy.nextExecutionTime).toLocaleString()}`);
         } else {
-          // Execute sell phase
-          await executeSell(connection, wallet, nextStrategy);
+          try {
+            // Execute sell phase
+            await executeSell(connection, wallet, nextStrategy);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            
+            // For "could not find route" errors, we still want to continue to next cycle
+            if (!errorMessage.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+              // For other errors, rethrow to be handled by outer catch
+              throw error;
+            }
+          }
           
           // Update cycle count and prepare for next buy
           nextStrategy.cyclesCompleted++;
@@ -163,20 +173,40 @@ async function executeSell(
   console.log(`Swap direction: ${config.swap.buyTokenMint} -> ${config.swap.sellTokenMint}`);
   console.log(`Amount to sell: ${state.lastReceivedAmount} (from previous buy)`);
   
-  // Perform the swap in reverse direction
-  const signature = await performSwap(
-    connection,
-    wallet,
-    config.swap.sellTokenMint,  // Selling what we just bought (reverse the direction)
-    config.swap.buyTokenMint,   // Buying what we just sold (reverse the direction)
-    state.lastReceivedAmount
-  );
-  
-  // Reset the received amount
-  state.lastReceivedAmount = null;
-  
-  console.log(`Sell successful! Transaction: ${signature}`);
-  console.log(`Cycle #${state.cyclesCompleted + 1} completed`);
+  try {
+    // Try selling with the original amount
+    const signature = await performSwap(
+      connection,
+      wallet,
+      config.swap.sellTokenMint,  // Selling what we just bought (reverse the direction)
+      config.swap.buyTokenMint,   // Buying what we just sold (reverse the direction)
+      state.lastReceivedAmount
+    );
+    
+    // Reset the received amount
+    state.lastReceivedAmount = null;
+    
+    console.log(`Sell successful! Transaction: ${signature}`);
+    console.log(`Cycle #${state.cyclesCompleted + 1} completed`);
+  } catch (error) {
+    // If we get a "could not find route" error, try with a smaller amount
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Sell attempt failed: ${errorMessage}`);
+    
+    if (errorMessage.includes("COULD_NOT_FIND_ANY_ROUTE")) {
+      console.log("⚠️ LIQUIDITY WARNING ⚠️");
+      console.log(`Token ${config.swap.buyTokenMint} cannot be sold back to SOL.`);
+      console.log("This token either has low liquidity, no direct trading pair with SOL, or selling restrictions.");
+      console.log("Marking this cycle as completed and moving to the next cycle. The tokens will remain in your wallet.");
+      
+      // Set lastReceivedAmount to null to allow the next cycle to continue
+      state.lastReceivedAmount = null;
+      console.log(`Cycle #${state.cyclesCompleted + 1} completed (sell phase skipped - token retained in wallet)`);
+    } else {
+      // For other errors, let the caller handle retry logic
+      throw error;
+    }
+  }
 }
 
 /**
