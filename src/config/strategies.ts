@@ -10,7 +10,7 @@ export const strategySchema = z.object({
   }),
   dca: z.object({
     amount: z.number().positive(),
-    intervalMinutes: z.number().int().positive(),
+    intervalSeconds: z.number().int().positive(),
     totalBuys: z.number().int().positive().optional(),
   }),
 });
@@ -42,7 +42,7 @@ try {
         },
         dca: {
           amount: 0.1,         // 0.1 USDC per buy
-          intervalMinutes: 60,  // Every hour
+          intervalSeconds: 3600,  // Every hour (3600 seconds)
           totalBuys: 24        // 24 buys (one day)
         }
       }

@@ -1,23 +1,13 @@
 [
   {
     "swap": {
-      "buyTokenMint": "So11111111111111111111111111111111111111112",
-      "sellTokenMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+      "buyTokenMint": "PriNtiE7V98rC4Vzvns696BFjDxwGDuC2a8qinnjEYj",
+      "sellTokenMint": "So11111111111111111111111111111111111111112"
     },
     "dca": {
-      "amount": 0.1,
-      "intervalMinutes": 60,
-      "totalBuys": 24
-    }
-  },
-  {
-    "swap": {
-      "buyTokenMint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
-      "sellTokenMint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
-    },
-    "dca": {
-      "amount": 0.05,
-      "intervalMinutes": 120
+      "amount": 0.001,
+      "intervalSeconds": 20,
+      "totalBuys": 3
     }
   }
 ]
