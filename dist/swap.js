@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.performSwap = performSwap;
 const web3_js_1 = require("@solana/web3.js");
-const jup_api_1 = require("jup-api");
 const env_1 = __importDefault(require("./config/env"));
 /**
  * Perform a token swap using Jupiter v6
@@ -17,7 +16,7 @@ const env_1 = __importDefault(require("./config/env"));
  * @param amount - Amount to swap (in the sell token's native units)
  * @param slippageBps - Slippage tolerance in basis points (e.g., 100 = 1%)
  */
-async function performSwap(connection, wallet, buyTokenMint, sellTokenMint, amount, slippageBps = 100 // Default 1% slippage
+async function performSwap(connection, wallet, buyTokenMint, sellTokenMint, amount, slippageBps = 500 // Default 5% slippage (increased for higher chance of success)
 ) {
     try {
         console.log(`Getting quote for swap: ${amount} ${sellTokenMint} -> ${buyTokenMint}`);
@@ -39,22 +38,78 @@ async function performSwap(connection, wallet, buyTokenMint, sellTokenMint, amou
             console.log('Creating QuickNode connection for Jupiter swap...');
             // Create a dedicated QuickNode connection for Jupiter
             const quickNodeConnection = new web3_js_1.Connection(`https://wiser-white-diamond.solana-mainnet.quiknode.pro/${env_1.default.QUICKNODE_API_KEY}/`, 'confirmed');
-            // Initialize Jupiter API with QuickNode connection and wallet
-            const jupiter = new jup_api_1.JupiterAPI(quickNodeConnection, wallet);
-            console.log('Executing swap via Jupiter with QuickNode connection...');
-            // Execute the swap directly
-            const txSignature = await jupiter.executeSwap(sellTokenMint, // Input mint address
-            buyTokenMint, // Output mint address
-            Math.floor(amount * 1_000_000), // Convert to decimal units (6 decimals)
-            slippageBps, // Slippage tolerance
-            wallet.publicKey // User's public key
-            );
-            console.log(`Swap executed successfully with Jupiter!`);
+            console.log('Checking wallet SOL balance...');
+            const balance = await quickNodeConnection.getBalance(wallet.publicKey);
+            console.log(`Wallet balance: ${balance / 1_000_000_000} SOL`);
+            if (balance < amount * 1_000_000_000) {
+                throw new Error(`Insufficient SOL balance for swap. Required: ${amount} SOL, Available: ${balance / 1_000_000_000} SOL`);
+            }
+            // Check inputs are valid PublicKeys
+            try {
+                new web3_js_1.PublicKey(sellTokenMint);
+                new web3_js_1.PublicKey(buyTokenMint);
+            }
+            catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                throw new Error(`Invalid token mint address: ${errorMessage}`);
+            }
+            console.log('Proceeding with swap using Jupiter REST API...');
+            // SOL has 9 decimals
+            const inputAmount = Math.floor(amount * 1_000_000_000); // Convert to lamports
+            console.log(`Executing swap with ${sellTokenMint} -> ${buyTokenMint}`);
+            console.log(`Amount: ${inputAmount} lamports (${amount} SOL)`);
+            console.log(`Slippage: ${slippageBps} basis points (${slippageBps / 100}%)`);
+            // Step 1: Get a quote from Jupiter's REST API
+            console.log('Getting quote from Jupiter REST API...');
+            const quoteUrl = new URL('https://quote-api.jup.ag/v6/quote');
+            quoteUrl.searchParams.append('inputMint', sellTokenMint);
+            quoteUrl.searchParams.append('outputMint', buyTokenMint);
+            quoteUrl.searchParams.append('amount', inputAmount.toString());
+            quoteUrl.searchParams.append('slippageBps', slippageBps.toString());
+            const quoteResponse = await fetch(quoteUrl.toString());
+            const quoteData = await quoteResponse.json();
+            if (!quoteResponse.ok) {
+                throw new Error(`Jupiter quote failed: ${JSON.stringify(quoteData)}`);
+            }
+            console.log(`Quote received: In=${quoteData.inputAmount}, Out=${quoteData.outputAmount}`);
+            console.log(`Price impact: ${quoteData.priceImpactPct}%`);
+            // Step 2: Get a serialized transaction
+            console.log('Getting serialized transaction...');
+            const transactionResponse = await fetch('https://quote-api.jup.ag/v6/swap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    quoteResponse: quoteData,
+                    userPublicKey: wallet.publicKey.toString(),
+                    wrapAndUnwrapSol: true, // Automatically wrap and unwrap SOL
+                    prioritizationFeeLamports: 5000 // Add priority fee (0.000005 SOL)
+                })
+            });
+            const transactionData = await transactionResponse.json();
+            if (!transactionResponse.ok) {
+                throw new Error(`Failed to get transaction: ${JSON.stringify(transactionData)}`);
+            }
+            // Step 3: Deserialize and sign the transaction
+            console.log('Deserializing and signing transaction...');
+            const serializedTransaction = transactionData.swapTransaction;
+            // Create a buffer from the serialized transaction
+            const transactionBuffer = Buffer.from(serializedTransaction, 'base64');
+            // Deserialize as a versioned transaction
+            const transaction = web3_js_1.VersionedTransaction.deserialize(transactionBuffer);
+            // Sign the transaction with our wallet
+            transaction.sign([wallet]);
+            // Step 4: Send the signed transaction
+            console.log('Sending signed transaction...');
+            const txSignature = await quickNodeConnection.sendTransaction(transaction, { skipPreflight: false, preflightCommitment: 'confirmed' });
+            console.log(`Swap transaction sent: ${txSignature}`);
             return txSignature;
         }
     }
     catch (error) {
         console.error(`Swap failed: ${error.message || 'Unknown error'}`);
+        if (error.transactionLogs) {
+            console.error('Transaction logs:', error.transactionLogs.join('\n'));
+        }
         throw error;
     }
 }
