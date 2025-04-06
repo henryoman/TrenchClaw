@@ -13,13 +13,14 @@ const dca_1 = require("./dca");
 async function main() {
     try {
         console.log('Initializing DCA bot...');
-        // Create Solana RPC connection with QuickNode endpoint
-        const connection = new web3_js_1.Connection(`https://wiser-white-diamond.solana-mainnet.quiknode.pro/${env_1.default.QUICKNODE_API_KEY}/`, 'confirmed');
+        // Create Solana RPC connection with Helius endpoint
+        const connection = new web3_js_1.Connection(`https://rpc.helius.xyz/?api-key=${env_1.default.HELIUS_API_KEY}`, 'confirmed');
         // Get wallet keypair from private key
         const wallet = (0, keys_1.getKeypair)(env_1.default.PRIVATE_KEY);
         console.log(`Wallet public key: ${wallet.publicKey.toString()}`);
         // Log connection info
-        console.log('Connection established to Solana network via QuickNode');
+        console.log('Connection established to Solana network via Helius');
+        console.log('Helius API Key loaded:', env_1.default.HELIUS_API_KEY ? 'Yes' : 'No');
         console.log('QuickNode API Key loaded:', env_1.default.QUICKNODE_API_KEY ? 'Yes' : 'No');
         // Start the DCA bot
         await (0, dca_1.runDCA)(connection, wallet);

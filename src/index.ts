@@ -10,9 +10,9 @@ async function main(): Promise<void> {
   try {
     console.log('Initializing DCA bot...');
     
-    // Create Solana RPC connection with QuickNode endpoint
+    // Create Solana RPC connection with Helius endpoint
     const connection = new Connection(
-      `https://wiser-white-diamond.solana-mainnet.quiknode.pro/${env.QUICKNODE_API_KEY}/`,
+      `https://rpc.helius.xyz/?api-key=${env.HELIUS_API_KEY}`,
       'confirmed'
     );
     
@@ -21,7 +21,8 @@ async function main(): Promise<void> {
     console.log(`Wallet public key: ${wallet.publicKey.toString()}`);
     
     // Log connection info
-    console.log('Connection established to Solana network via QuickNode');
+    console.log('Connection established to Solana network via Helius');
+    console.log('Helius API Key loaded:', env.HELIUS_API_KEY ? 'Yes' : 'No');
     console.log('QuickNode API Key loaded:', env.QUICKNODE_API_KEY ? 'Yes' : 'No');
     
     // Start the DCA bot

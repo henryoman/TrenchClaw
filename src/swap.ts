@@ -5,7 +5,7 @@ import env from './config/env';
 /**
  * Perform a token swap using Jupiter v6
  * 
- * @param connection - Solana RPC connection
+ * @param connection - Solana RPC connection (used only for dev mode checks)
  * @param wallet - Keypair of the wallet performing the swap
  * @param buyTokenMint - Token mint address to buy
  * @param sellTokenMint - Token mint address to sell
@@ -40,10 +40,19 @@ export async function performSwap(
       console.log(`[DEV MODE] Swap simulated successfully!`);
       return mockSignature;
     } else {
-      // For production use, perform real swap using Jupiter API
+      // For production use, perform real swap using Jupiter API with QuickNode
+      console.log('Creating QuickNode connection for Jupiter swap...');
       
-      // Initialize Jupiter API with connection and wallet
-      const jupiter = new JupiterAPI(connection, wallet);
+      // Create a dedicated QuickNode connection for Jupiter
+      const quickNodeConnection = new Connection(
+        `https://wiser-white-diamond.solana-mainnet.quiknode.pro/${env.QUICKNODE_API_KEY}/`,
+        'confirmed'
+      );
+      
+      // Initialize Jupiter API with QuickNode connection and wallet
+      const jupiter = new JupiterAPI(quickNodeConnection, wallet);
+      
+      console.log('Executing swap via Jupiter with QuickNode connection...');
       
       // Execute the swap directly
       const txSignature = await jupiter.executeSwap(
