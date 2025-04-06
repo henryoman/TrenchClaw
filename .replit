@@ -1,0 +1,39 @@
+modules = ["nodejs-20"]
+
+[nix]
+channel = "stable-24_05"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "DCA Bot"
+
+[[workflows.workflow]]
+name = "DCA Bot"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = """
+mkdir -p config && touch config/.env && echo \"HELIUS_API_KEY=test_api_key
+QUICKNODE_API_KEY=test_quicknode_key
+PRIVATE_KEY=test_private_key\" > config/.env && mkdir -p dist && npx tsc && node dist/index.js"""
+
+[deployment]
+run = ["sh", "-c", """
+mkdir -p config && touch config/.env && echo \"HELIUS_API_KEY=test_api_key
+QUICKNODE_API_KEY=test_quicknode_key
+PRIVATE_KEY=test_private_key\" > config/.env && npm start"""]
