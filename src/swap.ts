@@ -1,6 +1,7 @@
 import { Connection, Keypair, PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import env from './config/env';
 import * as bs58 from 'bs58';
+import { checkSpecialToken, getActualTokenBalance } from './special-tokens';
 
 /**
  * Perform a token swap using Jupiter v6
@@ -21,6 +22,34 @@ export async function performSwap(
   slippageBps: number = 500 // Default 5% slippage
 ): Promise<string> {
   try {
+    // Check if this is a special token that needs special handling
+    const specialToken = checkSpecialToken(sellTokenMint);
+    if (specialToken && sellTokenMint !== buyTokenMint) {
+      console.log(`Special token detected: ${specialToken.name}`);
+      
+      // If we're selling a special token, we may need to adjust the amount
+      if (specialToken.minAmount && amount < specialToken.minAmount) {
+        console.log(`${specialToken.name} requires a minimum amount of ${specialToken.minAmount} for selling`);
+        
+        // Get the actual balance
+        const actualBalance = await getActualTokenBalance(connection, wallet, sellTokenMint);
+        if (actualBalance >= specialToken.minAmount) {
+          console.log(`Using minimum required amount of ${specialToken.minAmount} tokens for selling`);
+          amount = specialToken.minAmount;
+        } else if (actualBalance > 0) {
+          console.log(`Using all available ${actualBalance} tokens for selling (less than minimum)`);
+          amount = actualBalance;
+        } else {
+          throw new Error(`Insufficient ${specialToken.name} balance for swap. Required: ${specialToken.minAmount}`);
+        }
+      }
+      
+      // If the token is marked as unsellable, throw an error
+      if (specialToken.unsellable) {
+        throw new Error(`Token ${specialToken.name} (${sellTokenMint}) cannot be sold directly.`);
+      }
+    }
+    
     console.log(`Getting quote for swap: ${amount} ${sellTokenMint} -> ${buyTokenMint}`);
     
     // Check if we're in dev mode (using test keys)
