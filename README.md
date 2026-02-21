@@ -1,140 +1,120 @@
-# Solana DCA Bot
+# OpenSniper → Solana Agent Transition Plan
 
-A Dollar-Cost Averaging (DCA) bot for Solana that automatically executes token swaps at scheduled intervals using Jupiter Swap API.
+This repository is being repurposed from a narrow "scheduled trading bot" into an **OpenClaw-like Solana agent runtime** with clear, composable actions and stronger safety controls.
 
-## Features
+## Current State (What We Have)
 
-- **Multiple DCA Strategies**: Configure multiple strategies to buy different tokens at different intervals
-- **Swing Trading Strategy**: Buy tokens and automatically sell them back after a specified time delay
-- **Percentage-Based Trading**: Buy tokens with a percentage of wallet balance and sell at a specific point in the trading cycle
-- **Customizable Intervals**: Set how frequently you want to buy (in minutes)
-- **Buy Limits**: Optionally set a total number of buys after which the strategy will stop
-- **Robust Error Handling**: Built-in retry mechanism and special handling for tokens with liquidity issues
-- **Solana Blockchain**: Built on the Solana blockchain for fast and low-cost transactions
-- **Jupiter Swap Integration**: Uses Jupiter Swap for optimal token swaps with low slippage
+The existing codebase is strongest in one area: **automated Jupiter-based swaps on fixed schedules**.
 
-## Requirements
+### Working capabilities
+- DCA scheduling with configurable intervals and optional `totalBuys`.
+- Swing strategy (buy then delayed sell).
+- Percentage-cycle strategy (buy % of SOL, sell later in cycle).
+- Solana wallet loading from private key.
+- Basic strategy schema validation via Zod.
+- Jupiter quote+swap transaction flow.
 
-- Node.js (v16+)
-- npm or yarn
-- Solana wallet with private key
-- Helius API Key for RPC access
-- QuickNode API Key (optional, for metrics)
+### Key risks / weak spots
+- Agent is strategy-loop driven, not action-driven (hard to extend to broader tasks).
+- Tight coupling to specific RPC providers and static env vars.
+- No explicit policy engine (allow/deny lists, notional caps, cooldowns, emergency stop).
+- No portfolio/risk state model (PnL, exposure, max drawdown checks).
+- No simulation framework beyond a basic dev-mode mock path.
+- Legacy files and duplicate docs/configs increase confusion.
 
-## Setup
+---
 
-1. Clone this repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Create configuration files:
-   - Create `config/.env` file with your API keys and private key
-   - Modify `config/strategies.json` for your DCA strategies
-   - Modify `config/swing-strategies.json` for your swing trading strategies
+## Target: OpenClaw-like Solana Agent
 
-### Environment Variables
+We should move toward a **tool/action architecture** where each capability is a reusable action with preconditions and safety checks.
 
-Create a `config/.env` file with the following variables:
+## Action Inventory: Need vs Have
 
-```
-HELIUS_API_KEY=your_helius_api_key_here
-QUICKNODE_API_KEY=your_quicknode_api_key_here
-PRIVATE_KEY=your_base58_encoded_private_key_or_json_array
-```
+| Action | Needed for agent | Current status | Reuse from current repo | Gap / next step |
+|---|---|---|---|---|
+| `getWalletState` | Core context for every decision | Partial | Connection + key loading + balance checks | Add unified state snapshot (SOL, SPL balances, open positions, recent txs) |
+| `quoteSwap` | Price discovery and planning | Partial | Jupiter quote call in `swap.ts` | Separate quote from execution; add route quality checks |
+| `executeSwap` | Core execution primitive | Yes (basic) | Existing Jupiter swap submit/sign/send flow | Add slippage guardrails, max notional, per-token permissions |
+| `scheduleTask` | Recurring agent jobs | Yes (strategy loops) | DCA/swing/percentage timers | Replace strategy-specific loops with generic scheduler |
+| `cancelTask` | Control plane for automation | No | N/A | Add task registry and cancellation API |
+| `riskCheck` | Prevent blowups / rugs | Minimal | Special token checks | Formal policy engine (exposure caps, denylist, min liquidity) |
+| `positionOpen`/`positionClose` | Higher-level agent behavior | No | Swing logic has partial lifecycle | Build explicit position model + PnL tracking |
+| `rebalancePortfolio` | Treasury management | No | N/A | Add target weights + rebalance action |
+| `monitorTokenSignals` | Event-driven triggers | No | N/A | Integrate on-chain + market signal adapters |
+| `simulatePlan` | Safe dry-runs/backtests | Minimal | DEV mode only | Add deterministic simulation layer + report output |
+| `explainDecision` | OpenClaw-like transparency | No | Existing console logs | Persist reason graph for each action |
+| `emergencyStop` | Fast risk off-switch | No | N/A | Add global kill switch + persistent locked state |
 
-### Strategy Configuration
+---
 
-#### DCA Strategy
-Edit `config/strategies.json` to configure your DCA strategies:
+## What We Can Reuse Immediately
 
-```json
-[
-  {
-    "swap": {
-      "sellTokenMint": "So11111111111111111111111111111111111111112", 
-      "buyTokenMint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" 
-    },
-    "dca": {
-      "buyAmount": 0.001,
-      "intervalSeconds": 20,
-      "totalBuys": 3
-    }
-  }
-]
-```
+1. **Swap transport layer** (Jupiter quote + serialized tx submit).
+2. **Config loading + schema validation** patterns (Zod).
+3. **Basic scheduling mechanics** from current strategy runners.
+4. **Wallet key handling** utilities.
 
-#### Swing Trading Strategy
-Edit `config/swing-strategies.json` to configure your swing trading strategies:
+## What We Should Remove / Deprioritize
 
-```json
-[
-  {
-    "swap": {
-      "sellTokenMint": "So11111111111111111111111111111111111111112",
-      "buyTokenMint": "PriNtiE7V98rC4Vzvns696BFjDxwGDuC2a8qinnjEYj"
-    },
-    "swing": {
-      "buyAmount": 0.001,
-      "intervalSeconds": 60,
-      "sellDelaySeconds": 15,
-      "totalCycles": 10
-    }
-  }
-]
-```
+- Legacy duplicate docs and stale migration artifacts.
+- Duplicate strategy config copy files.
+- Strategy-specific assumptions hardcoded into core flow.
+- Provider-specific assumptions baked into execution path.
 
-#### Percentage-Based Trading Strategy
-Edit `config/percentage-strategies.json` to configure your percentage-based trading strategies:
+---
 
-```json
-[
-  {
-    "swap": {
-      "sellTokenMint": "So11111111111111111111111111111111111111112",
-      "buyTokenMint": "PriNtiE7V98rC4Vzvns696BFjDxwGDuC2a8qinnjEYj"
-    },
-    "percentage": {
-      "buyPercentage": 90,
-      "sellTimePercentage": 60,
-      "cycleSeconds": 120,
-      "totalCycles": 10
-    }
-  }
-]
-```
+## Runtime Standard: Bun Only
 
-## Special Token Handling
+- Package management: **bun** (`bun install`)
+- Unit tests: **bun test**
+- Type checks: `bun run typecheck`
+- Build output: `bun run build`
 
-The bot includes special handling for tokens with low liquidity or selling restrictions:
+Any npm-specific workflows (`npm`, `npx`, `package-lock.json`) are deprecated for this repo.
 
-1. When buying tokens in the swing strategy, the bot will attempt to sell them back after the configured delay
-2. If a token cannot be sold back to SOL (due to low liquidity, no direct trading pair, or selling restrictions), the bot will:
-   - Display a liquidity warning
-   - Skip the sell phase of that cycle
-   - Continue to the next cycle
-   - The tokens will remain in your wallet
+---
 
-This allows the bot to continue operating even when dealing with tokens that have selling restrictions, ensuring your automation doesn't halt unexpectedly.
+## Proposed Roadmap
 
-## Usage
+### Phase 1 — Cleanup + Foundation
+- Keep `swap` and wallet utilities.
+- Introduce action interface: `name`, `inputSchema`, `precheck`, `execute`, `postcheck`.
+- Add centralized policy config (`allowTokens`, `denyTokens`, `maxTradeUsd`, `maxSlippageBps`, `cooldownSeconds`).
+- Add single source of truth docs for architecture and action catalog.
 
-Start the DCA bot:
+### Phase 2 — Core Agent Actions
+- Extract `quoteSwap` and `executeSwap` into separate actions.
+- Add `getWalletState`, `riskCheck`, `scheduleTask`, `cancelTask`, `emergencyStop`.
+- Build action registry + dispatcher.
 
-```
-npm start
-```
+### Phase 3 — Intelligent Behavior Layer
+- Add `positionOpen/Close`, `rebalancePortfolio`, and signal-triggered actions.
+- Add simulation/backtest runner with decision traces.
+- Add structured logs for each action and outcome.
 
-The bot will automatically:
-1. Load your configurations
-2. Connect to the Solana network
-3. Schedule and execute swaps according to your strategies
-4. Continue running in the background 
+### Phase 4 — Hardening
+- Add test matrix for safety policies.
+- Add failure recovery, retries with bounded backoff, and idempotency keys.
+- Add runbooks and operator controls.
 
-## Development Mode
+---
 
-For testing without performing actual swaps, the bot includes a development mode that simulates transactions without sending them to the blockchain. Set `DEV_MODE=true` in your `.env` file to enable this mode.
 
-## License
+## Cleanup Completed in This Repo
 
-MIT
+- Removed duplicate legacy README (`README.md.new`).
+- Removed pasted archival artifact under `attached_assets/`.
+- Removed duplicate config file (`config/strategies (copy).json`).
+- Removed stale runtime log document (`logs.txt`).
+
+---
+
+## Definition of Done for the Transition
+
+This repo will be considered transitioned when:
+- Strategy loops are optional wrappers, not the core runtime.
+- Action registry exists and powers execution.
+- All trade actions pass through policy/risk checks.
+- Simulation mode produces decision traces similar to live mode.
+- Operator can stop all activity instantly.
+

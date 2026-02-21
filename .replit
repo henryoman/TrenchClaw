@@ -13,10 +13,10 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "DCA Bot"
+args = "Solana Agent"
 
 [[workflows.workflow]]
-name = "DCA Bot"
+name = "Solana Agent"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -30,10 +30,10 @@ task = "shell.exec"
 args = """
 mkdir -p config && touch config/.env && echo \"HELIUS_API_KEY=test_api_key
 QUICKNODE_API_KEY=test_quicknode_key
-PRIVATE_KEY=test_private_key\" > config/.env && mkdir -p dist && npx tsc && node dist/index.js"""
+PRIVATE_KEY=test_private_key\" > config/.env && bun run build && bun run start"""
 
 [deployment]
 run = ["sh", "-c", """
 mkdir -p config && touch config/.env && echo \"HELIUS_API_KEY=test_api_key
 QUICKNODE_API_KEY=test_quicknode_key
-PRIVATE_KEY=test_private_key\" > config/.env && npm start"""]
+PRIVATE_KEY=test_private_key\" > config/.env && bun run start"""]
