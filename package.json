@@ -1,22 +1,27 @@
 {
-  "name": "workspace",
+  "name": "opensniper",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "OpenSniper Solana agent runtime (Bun)",
+  "license": "MIT",
+  "packageManager": "bun@1.2.14",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "bun src/index.ts",
+    "build": "bunx tsc",
+    "typecheck": "bunx tsc --noEmit",
+    "test": "bun test",
+    "test:unit": "bun test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "@solana/web3.js": "^1.98.0",
-    "@types/node": "^22.14.0",
     "bs58": "^6.0.0",
     "dotenv": "^16.4.7",
     "jup-api": "^1.1.33",
-    "ts-node": "^10.9.2",
     "typescript": "^5.8.3",
     "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.9",
+    "@types/node": "^22.14.0"
   }
 }
