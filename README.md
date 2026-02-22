@@ -153,27 +153,50 @@ Ink requires React. Blessed is unmaintained. OpenTUI gives TrenchClaw a high-per
 
 ## v0.1 Checklist
 
-- [ ] Finalize runtime layout (`src/ai`, `src/brain`, `src/solana`, `src/app/cli`, `src/types`)
-- [ ] Wire action contracts + dispatcher lifecycle end-to-end
-- [ ] Wire RPC, Jupiter, and token-account adapters into shared context
-- [ ] Implement core actions (`checkSolBalance`, `checkBalance`, `getWalletState`, `quoteSwap`, `executeSwap`)
-- [ ] Implement core routines (DCA, swing, percentage, sniper)
-- [ ] Implement core triggers (timer, price, on-chain)
-- [ ] Wire OpenTUI views (overview, bots, action feed, controls)
-- [ ] Wire persistent state store for jobs + receipts
-- [ ] Finalize `.env.example` for first public alpha
+- [x] Repo scaffolding refactor
+- [ ] Finish runtime folder setup
+- [ ] Finish action registry
+- [ ] Finish dispatcher
+- [ ] Finish RPC adapter
+- [ ] Finish Jupiter adapter
+- [ ] Finish token-account adapter
+- [ ] Implement `checkSolBalance`
+- [ ] Implement `checkBalance`
+- [ ] Implement `getWalletState`
+- [ ] Implement `quoteSwap`
+- [ ] Implement `executeSwap`
+- [ ] Implement DCA routine
+- [ ] Implement swing routine
+- [ ] Implement percentage routine
+- [ ] Implement sniper routine
+- [ ] Implement timer trigger
+- [ ] Implement price trigger
+- [ ] Implement on-chain trigger
+- [ ] Finish OpenTUI overview view
+- [ ] Finish OpenTUI bots view
+- [ ] Finish OpenTUI action-feed view
+- [ ] Finish OpenTUI controls view
+- [ ] Finish state-store jobs table
+- [ ] Finish state-store receipts table
+- [ ] Finalize `.env.example`
 - [ ] First alpha release
 
 ## v1.0 Checklist
 
-- [ ] Make action lifecycle production-safe (idempotency, retries, timeouts)
-- [ ] Build full policy engine (allowlists, caps, slippage, cooldowns, breakers)
-- [ ] Add deterministic simulation + paper-trading mode
-- [ ] Harden RPC failover with health scoring + observability
-- [ ] Add structured logs, decision traces, and operator alerts
-- [ ] Add multi-wallet support + deployable bot profiles
-- [ ] Complete OpenTUI control plane + incident workflows
-- [ ] Add integration + e2e coverage for trade lifecycle + recovery
+- [ ] Finish production action lifecycle
+- [ ] Finish full policy engine
+- [ ] Implement simulation mode
+- [ ] Implement paper-trading mode
+- [ ] Finish RPC failover hardening
+- [ ] Finish observability wiring
+- [ ] Finish structured logging
+- [ ] Finish decision trace logging
+- [ ] Finish operator alerts
+- [ ] Implement multi-wallet support
+- [ ] Finish bot profile deployment flow
+- [ ] Finish OpenTUI incident workflows
+- [ ] Add integration tests
+- [ ] Add e2e tests
 - [ ] npm package publishing
 - [ ] Homebrew install flow
 
