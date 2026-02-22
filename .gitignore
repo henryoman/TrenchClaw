@@ -12,3 +12,9 @@ config/.env.*
 *.pem
 *.key
 *.p12
+
+# Generated clients from IDL codegen
+lib/client/generated/
+
+# Runtime data (Bun SQLite)
+data/
