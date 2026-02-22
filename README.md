@@ -1,3 +1,17 @@
+<p align="center">
+  <img src="./public/opentrench.png" alt="OpenTrench" width="320" />
+</p>
+
+<p align="center">
+  <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
+  <a href="https://github.com/anza-xyz/kit"><img src="https://img.shields.io/badge/Solana%20Kit-551BF9?style=for-the-badge&logo=solana&logoColor=white" alt="Solana Kit" /></a>
+  <a href="https://umi.typedoc.metaplex.com"><img src="https://img.shields.io/badge/Umi-2E2E2E?style=for-the-badge&logo=metaplex&logoColor=white" alt="Umi" /></a>
+  <a href="https://www.metaplex.com"><img src="https://img.shields.io/badge/Metaplex-6A00FF?style=for-the-badge&logo=metaplex&logoColor=white" alt="Metaplex" /></a>
+  <a href="https://www.jup.ag"><img src="https://img.shields.io/badge/Jupiter-00BFA6?style=for-the-badge&logo=jupiter&logoColor=white" alt="Jupiter" /></a>
+  <a href="https://www.helius.dev"><img src="https://img.shields.io/badge/Helius-FF6B35?style=for-the-badge&logo=helius&logoColor=white" alt="Helius" /></a>
+  <a href="https://solana.com"><img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana" /></a>
+</p>
+
 # TrenchClaw
 
 TrenchClaw is an open claw runtime for the Solana blockchain. It is a terminal-first agent that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line.

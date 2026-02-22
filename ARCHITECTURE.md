@@ -81,6 +81,16 @@ trenchclaw/
 │   │   │           └── token/
 │   │   │               └── createToken.ts
 │   │   │
+│   │   ├── wallet/                  # Wallet management (Turnkey-inspired, local)
+│   │   │   ├── index.ts             # Re-exports
+│   │   │   ├── wallet-types.ts      # Wallet, WalletAccount, WalletPolicy, SigningRequest types
+│   │   │   ├── wallet-manager.ts    # Create, derive, import, export, delete wallets
+│   │   │   ├── wallet-store.ts      # Encrypted wallet persistence (Bun SQLite)
+│   │   │   ├── wallet-signer.ts     # Signer factory: wallet ID → Kit KeyPairSigner
+│   │   │   ├── wallet-policy.ts     # Per-wallet signing policies (deny > allow, implicit deny)
+│   │   │   ├── hd-derivation.ts     # BIP44 HD derivation for Solana (m/44'/501'/n'/0')
+│   │   │   └── encryption.ts        # AES-256-GCM encryption for key material at rest
+│   │   │
 │   │   ├── routines/                # Composed strategies (planners, not executors)
 │   │   │   ├── dca.ts
 │   │   │   ├── swing.ts
@@ -211,6 +221,17 @@ interface ActionStep {
 - **rpc-pool**: Manages multiple RPC endpoints (Helius, QuickNode, etc). Health scoring per endpoint, automatic failover, retry policy by method class (reads vs writes), commitment level per request.
 - **jupiter**: Wraps Jupiter API (quote, swap, route comparison). Handles serialization, versioned transactions, priority fees. Used by swap actions.
 - **token-account**: SPL token account queries. Get balances, find/create ATAs, resolve decimals, fetch metadata. Used by read-only and transfer actions.
+
+### `src/solana/wallet/` — Wallet Management
+- Turnkey-inspired wallet infrastructure implemented locally with Solana Kit primitives.
+- **wallet-types**: All interfaces (Wallet, WalletAccount, WalletPolicy, SigningRequest).
+- **wallet-manager**: Wallet lifecycle — create HD wallet, import from mnemonic or base58 key, derive accounts, export, delete.
+- **wallet-store**: SQLite persistence for wallets, accounts, policies, and signing audit log.
+- **wallet-signer**: Signer factory — decrypts key material and returns a Kit `KeyPairSigner`. The only module that touches raw private keys.
+- **wallet-policy**: Per-wallet signing policy engine. Evaluates conditions (amount caps, address allowlists, program blocklists, cooldowns, time windows) before every signing request. Deny overrides allow. Implicit deny by default.
+- **hd-derivation**: BIP44 Solana derivation (`m/44'/501'/n'/0'`). Derive multiple accounts from one seed.
+- **encryption**: AES-256-GCM via Web Crypto API. PBKDF2 key derivation from operator passphrase. No plaintext keys on disk.
+- Full design: [`WALLET_MANAGEMENT.md`](./WALLET_MANAGEMENT.md)
 
 ### `src/solana/actions/` — Execution Primitives
 - One file per action. Each file exports a single `Action<TInput, TOutput>` conforming to the shared contract.
