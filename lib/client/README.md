@@ -11,12 +11,24 @@ This directory holds auto-generated TypeScript clients for on-chain Solana progr
 ## IDL sources
 
 | Program | IDL file | What it's for |
-|---|---|---|
+| --- | --- | --- |
 | SPL Token | `spl-token.json` | Token transfers, minting, ATA creation |
+| SPL Token 2022 | `spl-token-2022.json` | Token extensions (fees, transfer hooks, metadata pointer) |
 | Token Metadata (Metaplex) | `mpl-token-metadata.json` | Token name/symbol/uri metadata |
-| Jupiter (if needed) | `jupiter.json` | Direct CPI into Jupiter (optional, API is primary) |
+| Jupiter | `jupiter.json` | Direct CPI into Jupiter (optional, API is primary) |
 | Raydium AMM | `raydium-amm.json` | Pool detection for sniper triggers |
+| Raydium CLMM | `raydium-clmm.json` | Concentrated liquidity routing/parsing |
 | Pump.fun | `pump-fun.json` | Token launch detection |
+
+Current source URLs (fetched to `lib/client/idl/`):
+
+- `https://raw.githubusercontent.com/solana-program/token/main/program/idl.json`
+- `https://raw.githubusercontent.com/solana-program/token-2022/main/interface/idl.json`
+- `https://raw.githubusercontent.com/metaplex-foundation/mpl-token-metadata/main/idls/token_metadata.json`
+- `https://raw.githubusercontent.com/jup-ag/jupiter-cpi/main/idl.json`
+- `https://raw.githubusercontent.com/raydium-io/raydium-idl/master/raydium_amm/idl.json`
+- `https://raw.githubusercontent.com/raydium-io/raydium-idl/master/raydium_clmm/amm_v3.json`
+- `https://raw.githubusercontent.com/streamingfast/substreams-solana-pump-fun/main/idls/program.json`
 
 ## Codegen options
 

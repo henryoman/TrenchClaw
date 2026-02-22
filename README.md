@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/opentrench.png" alt="OpenTrench" width="320" />
+  <img src="./public/trenchclaw.png" alt="TrenchClaw" width="320" />
 </p>
 
 <p align="center">
@@ -153,27 +153,27 @@ Ink requires React. Blessed is unmaintained. OpenTUI gives TrenchClaw a high-per
 
 ## v0.1 Checklist
 
-- [ ] Stable runtime layout (`src/ai`, `src/brain`, `src/solana`, `src/app/cli`, `src/types`)
-- [ ] Action contracts and dispatcher lifecycle wired end-to-end
-- [ ] RPC/Jupiter/token-account adapters wired with shared context
-- [ ] Core actions implemented (`checkSolBalance`, `checkBalance`, `getWalletState`, `quoteSwap`, `executeSwap`)
-- [ ] Core routines implemented (DCA, swing, percentage, sniper)
-- [ ] Core triggers implemented (timer, price, on-chain)
-- [ ] OpenTUI views wired (overview, bots, action feed, controls)
-- [ ] Persistent state store wired for jobs and receipts
-- [ ] `.env.example` finalized for first public alpha
+- [ ] Finalize runtime layout (`src/ai`, `src/brain`, `src/solana`, `src/app/cli`, `src/types`)
+- [ ] Wire action contracts + dispatcher lifecycle end-to-end
+- [ ] Wire RPC, Jupiter, and token-account adapters into shared context
+- [ ] Implement core actions (`checkSolBalance`, `checkBalance`, `getWalletState`, `quoteSwap`, `executeSwap`)
+- [ ] Implement core routines (DCA, swing, percentage, sniper)
+- [ ] Implement core triggers (timer, price, on-chain)
+- [ ] Wire OpenTUI views (overview, bots, action feed, controls)
+- [ ] Wire persistent state store for jobs + receipts
+- [ ] Finalize `.env.example` for first public alpha
 - [ ] First alpha release
 
 ## v1.0 Checklist
 
-- [ ] Production-safe action lifecycle with idempotency, retries, and timeouts
-- [ ] Full policy engine (allowlists, caps, slippage, cooldowns, circuit breakers)
-- [ ] Deterministic simulation and paper-trading mode
-- [ ] Robust RPC failover with health scoring and observability
-- [ ] Structured logs, decision traces, and operator alerts
-- [ ] Multi-wallet support and deployable bot profiles
-- [ ] Complete OpenTUI control plane with incident workflows
-- [ ] Integration and e2e test coverage for trade lifecycle and recovery
+- [ ] Make action lifecycle production-safe (idempotency, retries, timeouts)
+- [ ] Build full policy engine (allowlists, caps, slippage, cooldowns, breakers)
+- [ ] Add deterministic simulation + paper-trading mode
+- [ ] Harden RPC failover with health scoring + observability
+- [ ] Add structured logs, decision traces, and operator alerts
+- [ ] Add multi-wallet support + deployable bot profiles
+- [ ] Complete OpenTUI control plane + incident workflows
+- [ ] Add integration + e2e coverage for trade lifecycle + recovery
 - [ ] npm package publishing
 - [ ] Homebrew install flow
 
