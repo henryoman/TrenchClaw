@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "env": {
+    "node": true
+  },
+  "plugins": ["typescript", "import", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "perf": "warn"
+  },
+  "ignorePatterns": [
+    "lib/client/**",
+    "coverage/**",
+    "dist/**",
+    "build/**",
+    "node_modules/**"
+  ],
+  "rules": {
+    "no-console": "off",
+    "no-await-in-loop": "off",
+    "unicorn/no-empty-file": "off",
+    "unicorn/no-useless-fallback-in-spread": "off"
+  }
+}
