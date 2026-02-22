@@ -1,7 +1,7 @@
 {
-  "name": "opensniper",
+  "name": "trenchclaw",
   "version": "1.0.0",
-  "description": "OpenSniper Solana agent runtime (Bun)",
+  "description": "Trenchclaw Solana agent runtime (Bun)",
   "license": "MIT",
   "packageManager": "bun@1.2.14",
   "type": "commonjs",
