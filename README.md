@@ -91,30 +91,25 @@ This means TrenchClaw only ships the Kit code it actually uses. No dead code. No
 
 ---
 
-## Why TypeScript on Bun
+## TrenchClaw vs ElizaOS and Agent Kit
 
-The "just use Rust" argument comes up constantly in Solana. Here is an honest take.
+If you are evaluating Solana agent stacks today, the practical split is this: TrenchClaw is built directly on `@solana/kit`, while many existing agent ecosystems still rely on legacy `@solana/web3.js` integrations.
 
-**Rust is faster for latency-critical execution.** If you are building a same-block copy-trading bot that needs p99 under 100ms from signal to on-chain inclusion, Rust is the right choice. Geyser gRPC in Rust is ~200ms faster than Node.js equivalents. For HFT and competitive MEV, Rust wins.
+| | TrenchClaw | ElizaOS (typical Solana plugin setups) | Agent Kit style starter stacks |
+|---|---|---|---|
+| Primary Solana SDK | `@solana/kit` | Commonly `@solana/web3.js`-based plugins/adapters | Commonly `@solana/web3.js` wrappers |
+| API style | Functional + composable | Framework/plugin driven | Framework/toolkit driven |
+| Tree-shaking | Strong (modular Kit packages) | Often weaker due to `Connection`-style clients | Often weaker due to broad utility bundles |
+| Type guarantees around tx composition | Strong compile-time checks in Kit pipeline | Depends on plugin quality | Depends on toolkit layer |
+| Runtime focus | Terminal-first operator runtime | Multi-platform agent framework | General AI-agent developer UX |
 
-**But most Solana automation is not HFT.** DCA buys every 30 minutes. Swing trades on a 4-hour cycle. Percentage rebalances once a day. Sniper entries where the bottleneck is pool detection, not instruction serialization. For these workloads, the runtime language is not the bottleneck — RPC latency, network propagation, and Jupiter routing are.
+Why this matters:
 
-**TypeScript on Bun is genuinely fast.** Bun is not Node.js. It runs on [JavaScriptCore](https://developer.apple.com/documentation/javascriptcore) (Safari's engine), written in Zig, optimized for fast startup and low memory. It executes TypeScript natively with zero build step.
+- `@solana/web3.js` v1 is in maintenance mode, while `@solana/kit` is the actively developed path forward from Anza.
+- Legacy web3.js-heavy integrations usually carry more historical baggage (polyfills, looser typing, larger utility surfaces).
+- TrenchClaw is optimized for production operator workflows (actions, routines, triggers, policies, and control-plane UX), not generic chatbot abstractions first.
 
-| | Node.js 22 | Bun 1.2 |
-|---|---|---|
-| Cold start | 60–120ms | 15–30ms |
-| HTTP throughput | ~68K req/s (Fastify) | ~245K req/s (Bun.serve) |
-| SQLite operations | ~12ms (external dep) | ~3ms (built-in native) |
-| CPU-bound tasks | ~3,400ms (sort benchmark) | ~1,700ms (same benchmark) |
-| Package install | 30–45s (npm) | 2–3s |
-| TypeScript | Requires transpilation | Native execution |
-
-Bun's native SQLite is what TrenchClaw uses for persistent state: job queues, action receipts, policy hits, decision logs. No external database. No ORM. 4x faster than Node.js SQLite alternatives, built into the runtime.
-
-**The real argument for TypeScript is development velocity and ecosystem reach.** Solana Kit, Jupiter API, Metaplex, Anchor client generation (Codama), OpenTUI — all TypeScript-native. The entire operator-facing stack (TUI, CLI, config parsing, event bus) is TypeScript. Rewriting that in Rust buys you nothing when the hot path is a network call to Jupiter that takes 200ms regardless of your language.
-
-**TrenchClaw's position:** use TypeScript where it makes sense (orchestration, UI, config, adapters, action dispatch) and leave the door open for Rust where it matters (future: custom on-chain programs, latency-critical triggers). The adapter architecture means a Rust-based RPC client or signing module can slot in without rewriting the runtime.
+**Bottom line:** if you want a Solana-native operator runtime with modern SDK foundations, TrenchClaw is purpose-built for that. If you want a broad agent framework with Solana as one plugin among many, ElizaOS/Agent Kit can fit — but the Solana layer is frequently still tied to older web3.js assumptions.
 
 ---
 
