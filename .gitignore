@@ -1,1 +1,14 @@
 node_modules/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+config/.env
+config/.env.*
+!config/.env.example
+
+# Local key material
+*.pem
+*.key
+*.p12
