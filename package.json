@@ -15,5 +15,12 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.30",
+    "@opentui/core": "^0.1.81",
+    "@solana/kit": "^6.1.0",
+    "ai": "^6.0.97",
+    "zod": "^4.3.6"
   }
 }

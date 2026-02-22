@@ -1,4 +1,6 @@
-export type CliMode = "dev" | "start" | "headless";
+import { renderWelcomeToTrenchClaw } from "./views/welcome";
+
+export type CliMode = "dev" | "start" | "headless" | "cli";
 
 export type CliCommand = "status" | "stop" | "pause" | "resume";
 
@@ -24,11 +26,25 @@ export const parseCliArgs = (argv: string[]): ParsedCliArgs => {
     return { command: second, botId: third };
   }
 
+  if (first === "cli" && !second) {
+    return { mode: "cli" };
+  }
+
   return {};
 };
 
-export const startCli = (argv: string[] = Bun.argv): ParsedCliArgs => {
-  return parseCliArgs(argv);
+export const startCli = async (argv: string[] = Bun.argv): Promise<ParsedCliArgs> => {
+  const parsedArgs = parseCliArgs(argv);
+
+  if (parsedArgs.mode === "cli") {
+    await renderWelcomeToTrenchClaw();
+  }
+
+  return parsedArgs;
 };
 
 export * from "./views";
+
+if (import.meta.main) {
+  await startCli(Bun.argv);
+}

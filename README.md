@@ -18,7 +18,7 @@ TrenchClaw is an open claw runtime for the Solana blockchain. It is a terminal-f
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit), [`Bun`](https://bun.sh), and [`OpenTUI`](https://opentui.com) from the ground up. Zero legacy dependencies. Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
-Coming soon to npm and Homebrew.
+Coming soon to npm and Homebrew. Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
