@@ -7,24 +7,24 @@
 //   │  Bots (3 total)                             │
 //   ├─────────────────────────────────────────────┤
 //   │  ▶ DCA #1                         [running] │
-//   │    Routine: dca                              │
-//   │    Pair: SOL → BONK                          │
-//   │    Amount: 0.1 SOL / cycle                   │
-//   │    Cycles: 14 / 100                          │
-//   │    Next run: in 4m 32s                       │
-//   │    Last result: ok (tx: 5xK...mN2)           │
+//   │    Routine: dca                             │
+//   │    Pair: SOL → BONK                         │
+//   │    Amount: 0.1 SOL / cycle                  │
+//   │    Cycles: 14 / 100                         │
+//   │    Next run: in 4m 32s                      │
+//   │    Last result: ok (tx: 5xK...mN2)          │
 //   ├─────────────────────────────────────────────┤
 //   │  ⏸ Swing #2                       [paused]  │
-//   │    Routine: swing                            │
-//   │    Pair: SOL → WIF                           │
-//   │    Phase: waiting for sell (in 12m)           │
-//   │    Cycles: 3 / 10                            │
+//   │    Routine: swing                           │
+//   │    Pair: SOL → WIF                          │
+//   │    Phase: waiting for sell (in 12m)         │
+//   │    Cycles: 3 / 10                           │
 //   ├─────────────────────────────────────────────┤
-//   │  👁 Sniper #3                     [watching] │
-//   │    Routine: sniper                           │
-//   │    Trigger: on-chain (newPool, Raydium)      │
-//   │    Buy amount: 0.5 SOL                       │
-//   │    Status: listening for events...            │
+//   │  👁 Sniper #3                    [watching] │
+//   │    Routine: sniper                          │
+//   │    Trigger: on-chain (newPool, Raydium      │
+//   │    Buy amount: 0.5 SOL                      │
+//   │    Status: listening for events...          │
 //   └─────────────────────────────────────────────┘
 //
 // Data sources:
