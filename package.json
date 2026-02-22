@@ -8,10 +8,14 @@
     "start": "bun run src/cli/index.ts start",
     "headless": "bun run src/cli/index.ts headless",
     "cli": "bun run src/cli/index.ts cli",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bunx tsc --noEmit",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "lint:ci": "oxlint --deny correctness ."
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "oxlint": "^1.49.0"
   },
   "peerDependencies": {
     "typescript": "^5"
