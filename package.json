@@ -3,6 +3,13 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bun run src/cli/index.ts dev",
+    "start": "bun run src/cli/index.ts start",
+    "headless": "bun run src/cli/index.ts headless",
+    "cli": "bun run src/cli/index.ts cli",
+    "typecheck": "bunx tsc --noEmit"
+  },
   "devDependencies": {
     "@types/bun": "latest"
   },
