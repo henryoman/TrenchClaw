@@ -1,4 +1,4 @@
-# OpenSniper Roadmap: OpenClaw-Style Solana Bot Runtime
+# Trenchclaw Roadmap: OpenClaw-Style Solana Bot Runtime
 
 This project is evolving into an **OpenClaw-like trading/runtime framework for Solana** that can support sniping, swing/DCA bots, automation jobs, and safer operator controls.
 
@@ -131,7 +131,7 @@ To stay provider-neutral, we will build an internal RPC adapter around common me
 
 ## Definition of Success
 
-We can consider OpenSniper aligned with an OpenClaw-style Solana runtime when:
+We can consider Trenchclaw aligned with an OpenClaw-style Solana runtime when:
 - [ ] Bots are composed from reusable actions, not hardcoded loops.
 - [ ] Every trade path is guarded by formal risk/policy checks.
 - [ ] Deployments are RPC-agnostic and resilient to endpoint failures.

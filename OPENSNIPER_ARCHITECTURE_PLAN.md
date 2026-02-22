@@ -1,8 +1,8 @@
-# OpenSniper: Detailed Architecture Plan (OpenClaw-Inspired, Solana Kit 6.1)
+# Trenchclaw: Detailed Architecture Plan (OpenClaw-Inspired, Solana Kit 6.1)
 
 ## 1) Executive Summary
 
-OpenSniper should evolve into an **OpenClaw-style, action-driven bot runtime for Solana**, using **Solana Kit 6.1** as the core chain integration layer. The platform should support:
+Trenchclaw should evolve into an **OpenClaw-style, action-driven bot runtime for Solana**, using **Solana Kit 6.1** as the core chain integration layer. The platform should support:
 
 - high-frequency token swap execution,
 - strategy bots (DCA, swing, momentum, percentage cycles),
@@ -17,7 +17,7 @@ The key architectural shift is from script-centric loops to a **runtime with reu
 
 ## 2) Product Vision
 
-OpenSniper is positioned as:
+Trenchclaw is positioned as:
 
 - **"OpenClaw for Solana"** (modular bot runtime),
 - **execution-first** (reliable swap primitives, confirmations, route sanity checks),
@@ -135,7 +135,7 @@ Even while using Solana Kit 6.1, the runtime should maintain provider abstractio
 ## 6) Proposed New File Structure (Based on OpenClaw Patterns)
 
 ```text
-OpenSniper/
+Trenchclaw/
 ├─ docs/
 │  ├─ architecture/
 │  │  ├─ runtime-overview.md
@@ -302,7 +302,7 @@ OpenSniper/
 │  ├─ integration/
 │  └─ e2e/
 │
-└─ OPENSNIPER_ARCHITECTURE_PLAN.md
+└─ TRENCHCLAW_ARCHITECTURE_PLAN.md
 ```
 
 ---
@@ -375,7 +375,7 @@ OpenSniper/
 
 ## 10) Definition of Done for “OpenClaw-like on Solana”
 
-OpenSniper can be considered aligned when:
+Trenchclaw can be considered aligned when:
 
 - bots are assembled from action contracts instead of direct loops,
 - every trade is risk-checked and recorded with decision logs,
