@@ -22,3 +22,20 @@
 //   - TUI portfolio view.
 //
 // Calls token-account adapter's getTokenBalance() through the RPC pool.
+
+
+const options = {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: '1',
+      method: 'getBalance',
+      params: ['83astBRguLMdt2h5U1Tpdq5tjFoJ6noeGwaY3mDLVcri']
+    })
+  };
+  
+  fetch('https://mainnet.helius-rpc.com/?api-key=', options)
+    .then(res => res.json())
+    .then(res => console.log(res))
+    .catch(err => console.error(err));

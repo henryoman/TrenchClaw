@@ -1,0 +1,1 @@
+solana-keygen grind --starts-with {"4 letters"}:1

@@ -22,6 +22,8 @@ Coming soon to npm and Homebrew. Please give us a star if you're interested in s
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
+This bot is extremely unsafe and there is a very high chance something unexpected will happen if you use it.
+
 ## We ship every day
 
 ### Monday 2/23 deliverables
@@ -110,7 +112,6 @@ This means TrenchClaw only ships the Kit code it actually uses. No dead code. No
 
 ## TrenchClaw vs ElizaOS and Agent Kit
 
-<<<<<<< Updated upstream
 If you are evaluating Solana agent stacks today, the practical split is this: TrenchClaw is built directly on `@solana/kit`, while many existing agent ecosystems still rely on legacy `@solana/web3.js` integrations.
 
 | | TrenchClaw | ElizaOS (typical Solana plugin setups) | Agent Kit style starter stacks |
@@ -128,28 +129,6 @@ Why this matters:
 - TrenchClaw is optimized for production operator workflows (actions, routines, triggers, policies, and control-plane UX), not generic chatbot abstractions first.
 
 **Bottom line:** if you want a Solana-native operator runtime with modern SDK foundations, TrenchClaw is purpose-built for that. If you want a broad agent framework with Solana as one plugin among many, ElizaOS/Agent Kit can fit — but the Solana layer is frequently still tied to older web3.js assumptions.
-=======
-The "just use Rust" argument comes up constantly in Solana. Here is the practical take.
-
-**Rust still wins pure latency races.** If your strategy is true HFT/MEV where every millisecond decides PnL, Rust is the right tool.
-
-**Most automation bottlenecks are elsewhere.** For DCA, swing, rebalance, and many sniper flows, end-to-end delay is usually RPC/network/routing bound, not TypeScript execution bound.
-
-**Bun version note:** TrenchClaw targets **Bun 1.3+** (current local runtime: `1.3.9`). Any older `1.2` wording was stale.
-
-### Runtime and framework speed (current public benchmarks)
-
-[Sharkbench](https://sharkbench.dev/web) (Linux, Ryzen 7 7800X3D, last updated 2025-08-24) reports:
-
-| HTTP benchmark | Throughput (req/s) | Median latency |
-|---|---:|---:|
-| Bun + `Bun.serve` | 22,303 | 1.2 ms |
-| Bun + Fastify | 20,683 | 1.3 ms |
-| Node.js 22 + Fastify | 9,340 | 3.4 ms |
-| Node.js + Express | 5,766 | 5.5 ms |
-
-That is why this runtime uses Bun for orchestration-heavy paths: more headroom with lower latency under load.
->>>>>>> Stashed changes
 
 ### Cross-framework context (same benchmark source)
 
@@ -187,52 +166,68 @@ Solana Kit, Jupiter integration, Codama-generated clients, and the operator TUI 
 
 ---
 
-## v0.1 Checklist
+## v0.1 Checklist (current repo status)
 
-- [x] Repo scaffolding refactor
-- [ ] Finish runtime folder setup
-- [ ] Finish action registry
-- [ ] Finish dispatcher
-- [ ] Finish RPC adapter
-- [ ] Finish Jupiter adapter
-- [ ] Finish token-account adapter
-- [ ] Implement `checkSolBalance`
-- [ ] Implement `checkBalance`
-- [ ] Implement `getWalletState`
-- [ ] Implement `quoteSwap`
-- [ ] Implement `executeSwap`
-- [ ] Implement DCA routine
-- [ ] Implement swing routine
-- [ ] Implement percentage routine
-- [ ] Implement sniper routine
-- [ ] Implement timer trigger
-- [ ] Implement price trigger
-- [ ] Implement on-chain trigger
-- [ ] Finish OpenTUI overview view
-- [ ] Finish OpenTUI bots view
-- [ ] Finish OpenTUI action-feed view
-- [ ] Finish OpenTUI controls view
-- [ ] Finish state-store jobs table
-- [ ] Finish state-store receipts table
-- [ ] Finalize `.env.example`
+### Core foundation
+
+- [x] Monorepo scaffolding and module layout refactor
+- [x] Runtime core contracts + `src/ai/core` foundation
+- [x] Action registry implementation
+- [x] Dispatcher implementation (policy hooks, retries, idempotency receipts)
+- [x] Scheduler skeleton wired to dispatcher/state store
+- [x] Event bus implementation
+- [x] In-memory state store implementation (jobs/receipts/policy hits/decision logs)
+
+### Actions and adapters
+
+- [x] Data action surface split into `rpc/` and `api/`
+- [x] Dexscreener API action implementation
+- [x] Jupiter Ultra adapter implementation
+- [x] Jupiter Ultra swap actions (`ultraQuoteSwap`, `ultraExecuteSwap`)
+- [ ] Core RPC pool adapter implementation (current file is still spec/stub)
+- [ ] Standard Jupiter adapter implementation (current file is still spec/stub)
+- [ ] Token-account adapter implementation (current file is still spec/stub)
+- [ ] Read-only wallet actions (`checkSolBalance`, `checkBalance`, `getWalletState`) implementation
+- [ ] RPC swap actions (`quoteSwap`, `executeSwap`) implementation
+
+### Routines, triggers, and operator surfaces
+
+- [ ] DCA routine implementation (currently spec-only)
+- [ ] Swing routine implementation (currently spec-only)
+- [ ] Percentage routine implementation (currently spec-only)
+- [ ] Sniper routine implementation (currently spec-only)
+- [ ] Timer trigger implementation (currently spec-only)
+- [ ] Price trigger implementation (currently spec-only)
+- [ ] On-chain trigger implementation (currently spec-only)
+- [ ] OpenTUI `overview` view implementation
+- [ ] OpenTUI `bots` view implementation
+- [ ] OpenTUI `action-feed` view implementation
+- [ ] OpenTUI `controls` view implementation
+- [x] Web GUI app scaffold (`apps/web-gui`)
+
+### Quality and release readiness
+
+- [ ] SQLite-backed state store tables (`jobs`, `receipts`) implementation
+- [ ] Test coverage baseline (unit + integration)
+- [ ] Finalize `.env.example` (remove duplicates + align key names)
 - [ ] First alpha release
 
 ## v1.0 Checklist
 
-- [ ] Finish production action lifecycle
-- [ ] Finish full policy engine
-- [ ] Implement simulation mode
-- [ ] Implement paper-trading mode
-- [ ] Finish RPC failover hardening
-- [ ] Finish observability wiring
-- [ ] Finish structured logging
-- [ ] Finish decision trace logging
-- [ ] Finish operator alerts
-- [ ] Implement multi-wallet support
-- [ ] Finish bot profile deployment flow
-- [ ] Finish OpenTUI incident workflows
-- [ ] Add integration tests
-- [ ] Add e2e tests
+- [ ] Production-grade action lifecycle hardening
+- [ ] Full policy engine (composable policy packs + richer post-trade checks)
+- [ ] Simulation mode
+- [ ] Paper-trading mode
+- [ ] RPC failover hardening (health scoring + endpoint strategy)
+- [ ] Observability wiring (metrics + traces)
+- [ ] Structured logging rollout
+- [ ] Decision trace logging UX
+- [ ] Operator alerting pipeline
+- [ ] Multi-wallet support
+- [ ] Bot profile deployment flow
+- [ ] OpenTUI incident workflows
+- [ ] Integration test suite
+- [ ] End-to-end test suite
 - [ ] npm package publishing
 - [ ] Homebrew install flow
 
