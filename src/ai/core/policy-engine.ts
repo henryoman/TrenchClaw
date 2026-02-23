@@ -18,10 +18,6 @@ export class PolicyEngine implements PolicyEngineContract {
     payload?: unknown,
   ): Promise<PolicyResult[]> {
     const selected = [...this.policies, ...(ctx.policies ?? [])].filter((policy) => policy.type === type);
-    const results: PolicyResult[] = [];
-    for (const policy of selected) {
-      results.push(await policy.evaluate(ctx, payload));
-    }
-    return results;
+    return Promise.all(selected.map(async (policy) => policy.evaluate(ctx, payload)));
   }
 }

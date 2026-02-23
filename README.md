@@ -93,6 +93,7 @@ This means TrenchClaw only ships the Kit code it actually uses. No dead code. No
 
 ## TrenchClaw vs ElizaOS and Agent Kit
 
+<<<<<<< Updated upstream
 If you are evaluating Solana agent stacks today, the practical split is this: TrenchClaw is built directly on `@solana/kit`, while many existing agent ecosystems still rely on legacy `@solana/web3.js` integrations.
 
 | | TrenchClaw | ElizaOS (typical Solana plugin setups) | Agent Kit style starter stacks |
@@ -110,25 +111,48 @@ Why this matters:
 - TrenchClaw is optimized for production operator workflows (actions, routines, triggers, policies, and control-plane UX), not generic chatbot abstractions first.
 
 **Bottom line:** if you want a Solana-native operator runtime with modern SDK foundations, TrenchClaw is purpose-built for that. If you want a broad agent framework with Solana as one plugin among many, ElizaOS/Agent Kit can fit — but the Solana layer is frequently still tied to older web3.js assumptions.
+=======
+The "just use Rust" argument comes up constantly in Solana. Here is the practical take.
 
----
+**Rust still wins pure latency races.** If your strategy is true HFT/MEV where every millisecond decides PnL, Rust is the right tool.
 
-## Why OpenTUI
+**Most automation bottlenecks are elsewhere.** For DCA, swing, rebalance, and many sniper flows, end-to-end delay is usually RPC/network/routing bound, not TypeScript execution bound.
 
-[OpenTUI](https://opentui.com) is a terminal UI framework with a native rendering core written in Zig and TypeScript bindings. It powers [OpenCode](https://opencode.ai) in production. It is the only terminal UI framework built for Bun from the start.
+**Bun version note:** TrenchClaw targets **Bun 1.3+** (current local runtime: `1.3.9`). Any older `1.2` wording was stale.
 
-| | [Ink](https://www.npmjs.com/package/ink) | [Blessed](https://www.npmjs.com/package/neo-blessed) | [OpenTUI](https://opentui.com) |
-|---|---|---|---|
-| Core | JavaScript (React reconciler) | JavaScript | Zig + TypeScript |
-| Layout | Yoga (flexbox) | Custom widget system | Native flexbox |
-| Rendering | React render cycle | Direct terminal writes | Native renderer (30–60 FPS configurable) |
-| Syntax highlighting | No | No | Yes ([tree-sitter](https://tree-sitter.github.io/tree-sitter/)) |
-| Animations | No | No | Yes (Timeline API) |
-| Framework bindings | React only | None | React and [SolidJS](https://www.solidjs.com/) |
-| Bun-native | No | No | Yes (`bun create tui`) |
-| GitHub stars | ~27K | ~11K | ~8.8K |
+### Runtime and framework speed (current public benchmarks)
 
-Ink requires React. Blessed is unmaintained. OpenTUI gives TrenchClaw a high-performance operator dashboard — live action feeds, bot status, keyboard-driven controls, emergency stop — without pulling in a frontend framework or a widget library from 2015.
+[Sharkbench](https://sharkbench.dev/web) (Linux, Ryzen 7 7800X3D, last updated 2025-08-24) reports:
+
+| HTTP benchmark | Throughput (req/s) | Median latency |
+|---|---:|---:|
+| Bun + `Bun.serve` | 22,303 | 1.2 ms |
+| Bun + Fastify | 20,683 | 1.3 ms |
+| Node.js 22 + Fastify | 9,340 | 3.4 ms |
+| Node.js + Express | 5,766 | 5.5 ms |
+
+That is why this runtime uses Bun for orchestration-heavy paths: more headroom with lower latency under load.
+>>>>>>> Stashed changes
+
+### Cross-framework context (same benchmark source)
+
+| Framework/runtime | Throughput (req/s) |
+|---|---:|
+| Rust + Axum | 21,030 |
+| Bun + Fastify | 20,683 |
+| ASP.NET Core | 14,707 |
+| Go + Gin | 3,546 |
+| Python + FastAPI (Uvicorn) | 1,185 |
+
+### Storage: Bun SQLite
+
+TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for job queues, action receipts, policy hits, and decision logs. It keeps state local, restart-safe, and dependency-light.
+
+[Bun's SQLite docs](https://bun.com/docs/runtime/sqlite) show strong wins on many read/materialization workloads versus common JS drivers, but complex `JOIN`/aggregation workloads vary by query shape. So the rule is simple: use Bun SQLite by default, benchmark real production queries before making hard guarantees.
+
+### Why this stack here
+
+Solana Kit, Jupiter integration, Codama-generated clients, and the operator TUI ([OpenTUI](https://opentui.com)) are all TypeScript-native in this repo. Bun gives fast startup, strong HTTP performance, and native TypeScript execution while keeping the codebase in one language.
 
 ---
 

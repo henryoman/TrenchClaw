@@ -5,17 +5,17 @@
 // Layout (OpenTUI flexbox):
 //   ┌─────────────────────────────────────────────┐
 //   │  TrenchClaw v0.1.0          [RPC: healthy]  │
-//   ├──────────────────────┬──────────────────────┤
-//   │  Wallet               │  Active Bots         │
-//   │  Address: Abc...xyz   │  DCA #1: running     │
-//   │  SOL: 12.345          │  Swing #2: paused    │
-//   │  USDC: 500.00         │  Sniper #3: watching │
-//   │  Tokens: 3            │                      │
-//   ├──────────────────────┴──────────────────────┤
-//   │  Recent Actions                              │
+//   ├───────────────────────┬─────────────────────┤
+//   │  Wallet               │ Active Bots         │
+//   │  Address: Abc...xyz   │ DCA #1: running     │
+//   │  SOL: 12.345          │ Swing #2: paused    │
+//   │  USDC: 500.00         │ Sniper #3: watching │
+//   │  Tokens: 3            │                     │
+//   ├───────────────────────┴─────────────────────┤
+//   │  Recent Actions                             │
 //   │  [ok] quoteSwap SOL→BONK      2s ago        │
 //   │  [ok] executeSwap SOL→BONK    3s ago        │
-//   │  [!!] policy:block maxSlippage 15s ago       │
+//   │  [!!] policy:block maxSlippage 15s ago      │
 //   └─────────────────────────────────────────────┘
 //
 // Data sources:

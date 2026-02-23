@@ -17,9 +17,25 @@
     "node_modules/**"
   ],
   "rules": {
-    "no-console": "off",
-    "no-await-in-loop": "off",
-    "unicorn/no-empty-file": "off",
-    "unicorn/no-useless-fallback-in-spread": "off"
-  }
+    "no-console": "off"
+  },
+  "overrides": [
+    {
+      "files": [
+        "src/ai/core/dispatcher.ts"
+      ],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    },
+    {
+      "files": [
+        "src/solana/**/*.ts",
+        "src/cli/views/**/*.ts"
+      ],
+      "rules": {
+        "unicorn/no-empty-file": "off"
+      }
+    }
+  ]
 }

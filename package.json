@@ -11,7 +11,7 @@
     "typecheck": "bunx tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "lint:ci": "oxlint --deny correctness ."
+    "lint:ci": "oxlint --deny correctness --deny suspicious --deny perf ."
   },
   "devDependencies": {
     "@types/bun": "latest",
