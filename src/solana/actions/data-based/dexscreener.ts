@@ -1,19 +1,68 @@
 const DEXSCREENER_API_BASE_URL = "https://api.dexscreener.com";
+const MAX_TOKEN_ADDRESSES_PER_REQUEST = 30;
 
 export interface DexscreenerRequestOptions {
   signal?: AbortSignal;
 }
 
+interface DexscreenerInvokeBase {
+  options?: DexscreenerRequestOptions;
+}
+
+export interface DexscreenerInvokeWithChainAndTokenAddress extends DexscreenerInvokeBase {
+  chainId: string;
+  tokenAddress: string;
+}
+
+export interface DexscreenerInvokeWithChainAndPairAddress extends DexscreenerInvokeBase {
+  chainId: string;
+  pairAddress: string;
+}
+
+export interface DexscreenerInvokeSearchPairs extends DexscreenerInvokeBase {
+  query: string;
+}
+
+export interface DexscreenerInvokeTokensByChain extends DexscreenerInvokeBase {
+  chainId: string;
+  tokenAddresses: string[];
+}
+
+function assertNonEmptyParam(name: string, value: string): string {
+  const normalized = value.trim();
+  if (!normalized) {
+    throw new Error(`Dexscreener invocation error: "${name}" cannot be empty.`);
+  }
+
+  return normalized;
+}
+
+function assertTokenAddresses(tokenAddresses: string[]): string[] {
+  const normalized = tokenAddresses.map((item) => item.trim()).filter(Boolean);
+
+  if (normalized.length === 0) {
+    throw new Error('Dexscreener invocation error: "tokenAddresses" must include at least one address.');
+  }
+
+  if (normalized.length > MAX_TOKEN_ADDRESSES_PER_REQUEST) {
+    throw new Error(
+      `Dexscreener invocation error: "tokenAddresses" supports up to ${MAX_TOKEN_ADDRESSES_PER_REQUEST} addresses per request.`,
+    );
+  }
+
+  return normalized;
+}
+
 async function fetchDexscreener<T>(
   path: string,
-  options: DexscreenerRequestOptions = {},
+  requestOptions: DexscreenerRequestOptions = {},
 ): Promise<T> {
   const response = await fetch(`${DEXSCREENER_API_BASE_URL}${path}`, {
     method: "GET",
     headers: {
       Accept: "application/json",
     },
-    signal: options.signal,
+    signal: requestOptions.signal,
   });
 
   if (!response.ok) {
@@ -40,9 +89,9 @@ export interface DexscreenerTokenProfile {
 export type DexscreenerTokenProfilesResponse = DexscreenerTokenProfile[];
 
 export function getDexscreenerLatestTokenProfiles(
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeBase = {},
 ): Promise<DexscreenerTokenProfilesResponse> {
-  return fetchDexscreener<DexscreenerTokenProfilesResponse>("/token-profiles/latest/v1", options);
+  return fetchDexscreener<DexscreenerTokenProfilesResponse>("/token-profiles/latest/v1", input.options);
 }
 
 export interface DexscreenerTokenBoost {
@@ -64,15 +113,15 @@ export interface DexscreenerTokenBoost {
 export type DexscreenerTokenBoostsResponse = DexscreenerTokenBoost[];
 
 export function getDexscreenerLatestTokenBoosts(
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeBase = {},
 ): Promise<DexscreenerTokenBoostsResponse> {
-  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/latest/v1", options);
+  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/latest/v1", input.options);
 }
 
 export function getDexscreenerTopTokenBoosts(
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeBase = {},
 ): Promise<DexscreenerTokenBoostsResponse> {
-  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/top/v1", options);
+  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/top/v1", input.options);
 }
 
 export interface DexscreenerOrderStatus {
@@ -84,11 +133,11 @@ export interface DexscreenerOrderStatus {
 export type DexscreenerOrdersResponse = DexscreenerOrderStatus[];
 
 export function getDexscreenerOrdersByToken(
-  chainId: string,
-  tokenAddress: string,
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeWithChainAndTokenAddress,
 ): Promise<DexscreenerOrdersResponse> {
-  return fetchDexscreener<DexscreenerOrdersResponse>(`/orders/v1/${chainId}/${tokenAddress}`, options);
+  const chainId = assertNonEmptyParam("chainId", input.chainId);
+  const tokenAddress = assertNonEmptyParam("tokenAddress", input.tokenAddress);
+  return fetchDexscreener<DexscreenerOrdersResponse>(`/orders/v1/${chainId}/${tokenAddress}`, input.options);
 }
 
 export interface DexscreenerPairToken {
@@ -129,13 +178,11 @@ export interface DexscreenerPairsResponse {
   pairs: DexscreenerPairInfo[];
 }
 
-export function searchDexscreenerPairs(
-  query: string,
-  options?: DexscreenerRequestOptions,
-): Promise<DexscreenerPairsResponse> {
+export function searchDexscreenerPairs(input: DexscreenerInvokeSearchPairs): Promise<DexscreenerPairsResponse> {
+  const query = assertNonEmptyParam("query", input.query);
   return fetchDexscreener<DexscreenerPairsResponse>(
     `/latest/dex/search?q=${encodeURIComponent(query)}`,
-    options,
+    input.options,
   );
 }
 
@@ -145,40 +192,39 @@ export interface DexscreenerPairResponse {
 }
 
 export async function getDexscreenerPairByChainAndPairId(
-  chainId: string,
-  pairId: string,
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeWithChainAndPairAddress,
 ): Promise<DexscreenerPairInfo | null> {
+  const chainId = assertNonEmptyParam("chainId", input.chainId);
+  const pairAddress = assertNonEmptyParam("pairAddress", input.pairAddress);
   const response = await fetchDexscreener<DexscreenerPairResponse>(
-    `/latest/dex/pairs/${chainId}/${pairId}`,
-    options,
+    `/latest/dex/pairs/${chainId}/${pairAddress}`,
+    input.options,
   );
 
   return response.pair ?? null;
 }
 
 export async function getDexscreenerTokenPairsByChain(
-  chainId: string,
-  tokenAddress: string,
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeWithChainAndTokenAddress,
 ): Promise<DexscreenerPairInfo[]> {
+  const chainId = assertNonEmptyParam("chainId", input.chainId);
+  const tokenAddress = assertNonEmptyParam("tokenAddress", input.tokenAddress);
   const response = await fetchDexscreener<DexscreenerPairsResponse>(
     `/token-pairs/v1/${chainId}/${tokenAddress}`,
-    options,
+    input.options,
   );
 
   return response.pairs;
 }
 
 export async function getDexscreenerTokensByChain(
-  chainId: string,
-  tokenAddresses: string[],
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeTokensByChain,
 ): Promise<DexscreenerPairInfo[]> {
-  const normalizedAddresses = tokenAddresses.map((item) => item.trim()).filter(Boolean);
+  const chainId = assertNonEmptyParam("chainId", input.chainId);
+  const tokenAddresses = assertTokenAddresses(input.tokenAddresses);
   const response = await fetchDexscreener<DexscreenerPairsResponse>(
-    `/tokens/v1/${chainId}/${normalizedAddresses.join(",")}`,
-    options,
+    `/tokens/v1/${chainId}/${tokenAddresses.join(",")}`,
+    input.options,
   );
 
   return response.pairs;
@@ -203,11 +249,11 @@ export interface DexscreenerCommunityTakeover {
 export type DexscreenerCommunityTakeoversResponse = DexscreenerCommunityTakeover[];
 
 export function getDexscreenerLatestCommunityTakeovers(
-  options?: DexscreenerRequestOptions,
+  input: DexscreenerInvokeBase = {},
 ): Promise<DexscreenerCommunityTakeoversResponse> {
   return fetchDexscreener<DexscreenerCommunityTakeoversResponse>(
     "/community-takeovers/latest/v1",
-    options,
+    input.options,
   );
 }
 
@@ -229,8 +275,6 @@ export interface DexscreenerAd {
 
 export type DexscreenerAdsResponse = DexscreenerAd[];
 
-export function getDexscreenerLatestAds(
-  options?: DexscreenerRequestOptions,
-): Promise<DexscreenerAdsResponse> {
-  return fetchDexscreener<DexscreenerAdsResponse>("/ads/latest/v1", options);
+export function getDexscreenerLatestAds(input: DexscreenerInvokeBase = {}): Promise<DexscreenerAdsResponse> {
+  return fetchDexscreener<DexscreenerAdsResponse>("/ads/latest/v1", input.options);
 }
