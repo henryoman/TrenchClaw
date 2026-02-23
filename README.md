@@ -22,6 +22,23 @@ Coming soon to npm and Homebrew. Please give us a star if you're interested in s
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
+## We ship every day
+
+### Monday 2/23 deliverables
+
+- GUI repo setup
+- Finish Jupiter ultra actions and test
+- Finish building current data fetching methods and test
+- Update test coverage in general across the whole repo
+- Finish default user-facing YAML config surface
+- Decouple TUI frontend so frontend can be agnostic as we build more of them
+
+### Tuesday deliverables
+
+- Setup structure for GitHub releases and CI pipeline
+- Setup Codama IDL and client generation foundation
+- Add the rest of the actions
+
 ---
 
 ## Why Solana Kit
