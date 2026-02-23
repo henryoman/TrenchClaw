@@ -79,13 +79,13 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
   const fetchImpl = config.fetchImpl ?? fetch;
 
   const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+    const headers = new Headers(init?.headers);
+    headers.set("content-type", "application/json");
+    headers.set("x-api-key", config.apiKey);
+
     const response = await fetchImpl(`${baseUrl}${path}`, {
       ...init,
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": config.apiKey,
-        ...(init?.headers ?? {}),
-      },
+      headers,
     });
 
     if (!response.ok) {

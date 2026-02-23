@@ -57,7 +57,7 @@ export class InMemoryStateStore implements IStateStore {
 
   getRecentReceipts(limit: number): ActionResult[] {
     return Array.from(this.receipts.values())
-      .sort((a, b) => b.timestamp - a.timestamp)
+      .toSorted((a, b) => b.timestamp - a.timestamp)
       .slice(0, limit);
   }
 }
