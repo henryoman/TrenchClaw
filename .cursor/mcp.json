@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "Jupiter": {
+      "name": "Jupiter",
+      "url": "https://dev.jup.ag/mcp",
+      "headers": {}
+    },
+    "Helius Docs": {
+      "name": "Helius Docs",
+      "url": "https://www.helius.dev/docs/mcp",
+      "headers": {}
+    }
+  }
+}
