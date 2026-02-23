@@ -1,0 +1,187 @@
+configVersion: 1
+profile: default
+
+network:
+  chain: solana
+  cluster: mainnet-beta
+  commitment: confirmed
+  websocketEnabled: true
+  requestTimeoutMs: 10000
+  transactionTimeoutMs: 30000
+  retry:
+    readsMaxAttempts: 3
+    writesMaxAttempts: 2
+    backoffMs: 250
+    backoffMultiplier: 2
+  rpc:
+    strategy: failover
+    endpoints:
+      - name: helius
+        url: ${HELIUS_RPC_URL}
+        wsUrl: ${HELIUS_WS_URL}
+        enabled: true
+      - name: quicknode
+        url: ${QUICKNODE_RPC_URL}
+        wsUrl: ${QUICKNODE_WS_URL}
+        enabled: true
+      - name: fallback
+        url: ${RPC_URL}
+        wsUrl: ${WS_URL}
+        enabled: true
+
+wallet:
+  custodyMode: local-encrypted
+  defaults:
+    keyEncoding: base64
+    createWalletCountLimit: 100
+    exportFormat: base58
+  dangerously:
+    allowPrivateKeyAccess: true
+    allowWalletSigning: true
+    allowCreatingWallets: true
+    allowDeletingWallets: true
+    allowExportingWallets: true
+    allowImportingWallets: true
+    allowListingWallets: true
+    allowShowingWallets: true
+    allowUpdatingWallets: true
+
+trading:
+  enabled: true
+  programId: null
+  mode:
+    simulation: false
+    paperTrading: false
+  limits:
+    maxSwapNotionalSol: 2
+    maxSingleTransferSol: 2
+    maxPriorityFeeLamports: 1000000
+    maxSlippageBps: 300
+  jupiter:
+    ultra:
+      enabled: true
+      allowQuotes: true
+      allowExecutions: true
+      allowCancellations: true
+    standard:
+      enabled: true
+      allowQuotes: true
+      allowExecutions: true
+  dexscreener:
+    enabled: true
+
+actions:
+  dataBased:
+    getMarketData: true
+    getAccountInfo: true
+    getMultipleAccounts: true
+    getBalance: true
+    getTokenMetadata: true
+    getTokenPrice: true
+    dexscreener: true
+  walletBased:
+    checkBalance: true
+    checkSolBalance: true
+    getWalletState: true
+    quoteSwap: true
+    executeSwap: true
+    ultraQuoteSwap: true
+    ultraExecuteSwap: true
+    transferSol: true
+    transferToken: true
+    createToken: true
+    createWallets: true
+  dangerously:
+    allowSwapping: true
+    allowMinting: true
+    allowBurning: true
+
+routines:
+  enabled: true
+  dca:
+    enabled: true
+  swing:
+    enabled: true
+  percentage:
+    enabled: true
+  sniper:
+    enabled: true
+
+triggers:
+  enabled: true
+  timer:
+    enabled: true
+  price:
+    enabled: true
+  onChain:
+    enabled: true
+
+agent:
+  enabled: true
+  dangerously:
+    allowFilesystemWrites: true
+    allowNetworkAccess: true
+    allowSystemAccess: true
+    allowHardwareAccess: true
+  internetAccess:
+    trustedSitesOnly: true
+    allowFullAccess: false
+    trustedSites: []
+    blockedSites: []
+    allowedProtocols:
+      - https
+    blockedProtocols: []
+    allowedPorts:
+      - 443
+      - 80
+    blockedPorts: []
+    allowedDomains: []
+    blockedDomains: []
+
+runtime:
+  scheduler:
+    tickMs: 1000
+    maxConcurrentJobs: 8
+  dispatcher:
+    maxActionAttempts: 3
+    defaultActionTimeoutMs: 45000
+    defaultBackoffMs: 500
+  idempotency:
+    enabled: true
+    ttlHours: 24
+
+storage:
+  sqlite:
+    enabled: true
+    path: ./data/trenchclaw.db
+    walMode: true
+    busyTimeoutMs: 5000
+  retention:
+    receiptsDays: 30
+    policyHitsDays: 30
+    decisionLogsDays: 30
+
+ui:
+  cli:
+    enabled: true
+  webGui:
+    enabled: true
+    host: 127.0.0.1
+    port: 4173
+  tui:
+    enabled: true
+    overviewView: true
+    botsView: true
+    actionFeedView: true
+    controlsView: true
+
+observability:
+  logging:
+    level: info
+    pretty: true
+    includeDecisionTrace: true
+  metrics:
+    enabled: false
+  tracing:
+    enabled: false
+ 
