@@ -1,2 +1,1 @@
-export * from "./transferSol";
-export * from "./transferToken";
+export * from "./transfer";

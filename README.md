@@ -154,8 +154,14 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - [x] Runtime core contracts and orchestration foundation
 - [x] Action registry + dispatcher + scheduler + event bus
 - [x] Bun SQLite state store foundation
+- [x] SQLite hardening (migrations, indexes, retention pruning)
+- [x] Live storage schema with Zod + typed runtime validation
+- [x] Market data storage schema (`market_instruments`, `ohlcv_bars`, `market_snapshots`, `http_cache`)
 - [x] Jupiter Ultra action path (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`)
 - [x] Runtime settings profiles and policy guardrails
+- [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) wired into runtime bootstrap
+- [x] Automatic current time/date injection into every LLM system prompt
+- [x] Tests centralized under `tests/` (removed in-source test files)
 - [ ] Complete remaining priority Solana actions/adapters
 - [ ] CLI command surface stabilization for daily operator use
 - [ ] Test coverage baseline (unit + integration)
