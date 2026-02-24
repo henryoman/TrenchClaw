@@ -8,12 +8,12 @@ const createWalletsRoutineConfigSchema = z.object({
   privateKeyEncoding: z.enum(["base64", "hex", "bytes"]).default("base64"),
   output: z
     .object({
-      directory: z.string().min(1).default("data/wallets/keypairs"),
+      directory: z.string().min(1).default("src/brain/protected/keypairs"),
       filePrefix: z.string().min(1).default("wallet"),
       includeIndexInFileName: z.boolean().default(true),
     })
     .default({
-      directory: "data/wallets/keypairs",
+      directory: "src/brain/protected/keypairs",
       filePrefix: "wallet",
       includeIndexInFileName: true,
     }),

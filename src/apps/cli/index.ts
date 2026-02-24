@@ -1,7 +1,9 @@
 import { renderWelcomeToTrenchClaw } from "./views/welcome";
 import { bootstrapRuntime, type RuntimeBootstrap } from "../../runtime/bootstrap";
+import { createInterface } from "node:readline/promises";
 
 export type CliMode = "dev" | "start" | "headless" | "cli";
+type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
 
 export type CliCommand = "status" | "stop" | "pause" | "resume";
 
@@ -16,6 +18,13 @@ export interface RuntimeServerInfo {
   port: number;
   url: string;
 }
+
+const RUNTIME_PROFILE_OPTIONS: Array<{ id: string; profile: RuntimeSafetyProfile; label: string }> = [
+  { id: "1", profile: "safe", label: "Safe (read-mostly / guarded)" },
+  { id: "2", profile: "dangerous", label: "Dangerous (confirm before risky actions)" },
+  { id: "3", profile: "veryDangerous", label: "Very Dangerous (no confirmation gate)" },
+];
+const DEFAULT_RUNTIME_PROFILE: RuntimeSafetyProfile = "dangerous";
 
 export const parseCliArgs = (argv: string[]): ParsedCliArgs => {
   const [, , ...rest] = argv;
@@ -122,6 +131,11 @@ export const startCli = async (argv: string[] = Bun.argv): Promise<ParsedCliArgs
     return parsedArgs;
   }
 
+  if (parsedArgs.mode !== "headless") {
+    const selectedProfile = await promptRuntimeProfile();
+    process.env.TRENCHCLAW_PROFILE = selectedProfile;
+  }
+
   const runtime = await bootstrapRuntime();
   let serverInfo: RuntimeServerInfo | null = null;
   try {
@@ -147,6 +161,57 @@ export const startCli = async (argv: string[] = Bun.argv): Promise<ParsedCliArgs
 };
 
 export * from "./views";
+
+async function promptRuntimeProfile(): Promise<RuntimeSafetyProfile> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    return process.env.TRENCHCLAW_PROFILE === "safe" ||
+      process.env.TRENCHCLAW_PROFILE === "dangerous" ||
+      process.env.TRENCHCLAW_PROFILE === "veryDangerous"
+      ? process.env.TRENCHCLAW_PROFILE
+      : DEFAULT_RUNTIME_PROFILE;
+  }
+
+  const existing = process.env.TRENCHCLAW_PROFILE;
+  const currentDefault =
+    existing === "safe" || existing === "dangerous" || existing === "veryDangerous"
+      ? existing
+      : DEFAULT_RUNTIME_PROFILE;
+
+  process.stdout.write("\nSelect runtime mode:\n");
+  for (const option of RUNTIME_PROFILE_OPTIONS) {
+    const defaultMarker = option.profile === currentDefault ? " (default)" : "";
+    process.stdout.write(`  ${option.id}) ${option.label}${defaultMarker}\n`);
+  }
+
+  const rl = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  try {
+    while (true) {
+      const raw = (await rl.question("Choose mode [1-3] (Enter for default): ")).trim();
+      if (!raw) {
+        return currentDefault;
+      }
+
+      const byId = RUNTIME_PROFILE_OPTIONS.find((option) => option.id === raw);
+      if (byId) {
+        return byId.profile;
+      }
+
+      const normalized = raw.toLowerCase();
+      const byName = RUNTIME_PROFILE_OPTIONS.find((option) => option.profile.toLowerCase() === normalized);
+      if (byName) {
+        return byName.profile;
+      }
+
+      process.stdout.write('Invalid selection. Enter 1, 2, 3, "safe", "dangerous", or "veryDangerous".\n');
+    }
+  } finally {
+    rl.close();
+  }
+}
 
 if (import.meta.main) {
   await startCli(Bun.argv);

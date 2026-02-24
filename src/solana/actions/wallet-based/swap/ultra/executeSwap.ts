@@ -1,5 +1,5 @@
 import type { Action } from "../../../../../ai/contracts/action";
-import type { JupiterUltraExecuteResponse } from "../../../../../solana/adapters/jupiter-ultra";
+import type { JupiterUltraExecuteResponse } from "../../../../lib/adapters/jupiter-ultra";
 
 import {
   createActionFailure,

@@ -1,12 +1,7 @@
-# Agent/runtime-editable override layer.
-# Only allowlisted low-risk keys are applied from this file.
-# User-protected keys (wallet/trading permissions, dangerous flags, network authority)
-# are ignored even if set here.
+# Agent capability override layer.
+# This file is intentionally limited to agent-level ability toggles.
+# Runtime tuning, strategy/routine controls, and deep system settings are not applied
+# from here in safe/dangerous profiles.
 
-runtime:
-  scheduler:
-    tickMs: 1000
-    maxConcurrentJobs: 8
-
-triggers:
+agent:
   enabled: true

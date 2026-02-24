@@ -8,6 +8,7 @@
     "start": "bun run src/apps/cli/index.ts start",
     "headless": "bun run src/apps/cli/index.ts headless",
     "cli": "bun run src/apps/cli/index.ts cli",
+    "knowledge:refresh": "bun run scripts/knowledge/refresh-manifest.ts",
     "systemd:install": "bun run scripts/systemd/install.ts",
     "typecheck": "bunx tsc --noEmit",
     "lint": "oxlint .",

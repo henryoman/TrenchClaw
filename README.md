@@ -14,32 +14,15 @@
 
 # TrenchClaw
 
-TrenchClaw is an open claw runtime for the Solana blockchain. It is a terminal-first agent that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line.
+TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line.
 
-Built on [`@solana/kit`](https://github.com/anza-xyz/kit), [`Bun`](https://bun.sh), and [`OpenTUI`](https://opentui.com) from the ground up. Zero legacy dependencies. Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
+Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/TUI/mobile surfaces planned for 1.0. Zero legacy dependencies. Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
-Coming soon to npm and Homebrew. Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
+Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
-This bot is extremely unsafe and there is a very high chance something unexpected will happen if you use it.
-
-## We ship every day
-
-### Monday 2/23 deliverables
-
-- GUI repo setup
-- Finish Jupiter ultra actions and test
-- Finish building current data fetching methods and test
-- Update test coverage in general across the whole repo
-- Finish default user-facing YAML config surface
-- Decouple TUI frontend so frontend can be agnostic as we build more of them
-
-### Tuesday deliverables
-
-- Setup structure for GitHub releases and CI pipeline
-- Setup Codama IDL and client generation foundation
-- Add the rest of the actions
+## THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
 
 ---
 
@@ -148,7 +131,7 @@ TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for job queues, action rece
 
 ### Why this stack here
 
-Solana Kit, Jupiter integration, Codama-generated clients, and the operator TUI ([OpenTUI](https://opentui.com)) are all TypeScript-native in this repo. Bun gives fast startup, strong HTTP performance, and native TypeScript execution while keeping the codebase in one language.
+Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript-native in this repo. Bun gives fast startup, strong HTTP performance, and native TypeScript execution while keeping the codebase in one language.
 
 ---
 
@@ -158,58 +141,27 @@ Solana Kit, Jupiter integration, Codama-generated clients, and the operator TUI 
 - Composes actions into routines: DCA, swing, percentage, and sniper
 - Fires routines from triggers: timers, price thresholds, and on-chain events (pool creation, liquidity adds)
 - Persists job state, action receipts, and decision logs in Bun SQLite (restart-safe)
-- Emits structured events on a typed bus consumed by the TUI, logs, and future alerting
-- Exposes a full operator control plane: overview, bot management, live action feed, emergency stop
+- Emits structured events on a typed bus consumed by CLI logs and future alerting
+- Exposes an operator control surface through the CLI
 - Keeps agent knowledge (soul, rules, skills, outside context) in `src/brain/`, loaded by orchestration in `src/ai/`
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
 
 ---
 
-## v0.1 Checklist (current repo status)
+## v0.1 Checklist (CLI release)
 
-### Core foundation
-
-- [x] Monorepo scaffolding and module layout refactor
-- [x] Runtime core contracts + `src/ai/core` foundation
-- [x] Action registry implementation
-- [x] Dispatcher implementation (policy hooks, retries, idempotency receipts)
-- [x] Scheduler skeleton wired to dispatcher/state store
-- [x] Event bus implementation
-- [x] In-memory state store implementation (jobs/receipts/policy hits/decision logs)
-
-### Actions and adapters
-
-- [x] Data action surface split into `rpc/` and `api/`
-- [x] Dexscreener API action implementation
-- [x] Jupiter Ultra adapter implementation
-- [x] Jupiter Ultra swap actions (`ultraQuoteSwap`, `ultraExecuteSwap`)
-- [ ] Core RPC pool adapter implementation (current file is still spec/stub)
-- [ ] Standard Jupiter adapter implementation (current file is still spec/stub)
-- [ ] Token-account adapter implementation (current file is still spec/stub)
-- [ ] Read-only wallet actions (`checkSolBalance`, `checkBalance`, `getWalletState`) implementation
-- [ ] RPC swap actions (`quoteSwap`, `executeSwap`) implementation
-
-### Routines, triggers, and operator surfaces
-
-- [ ] DCA routine implementation (currently spec-only)
-- [ ] Swing routine implementation (currently spec-only)
-- [ ] Percentage routine implementation (currently spec-only)
-- [ ] Sniper routine implementation (currently spec-only)
-- [ ] Timer trigger implementation (currently spec-only)
-- [ ] Price trigger implementation (currently spec-only)
-- [ ] On-chain trigger implementation (currently spec-only)
-- [ ] OpenTUI `overview` view implementation
-- [ ] OpenTUI `bots` view implementation
-- [ ] OpenTUI `action-feed` view implementation
-- [ ] OpenTUI `controls` view implementation
-- [x] Web GUI app scaffold (`src/apps/web-gui`)
-
-### Quality and release readiness
-
-- [ ] SQLite-backed state store tables (`jobs`, `receipts`) implementation
+- [x] Runtime core contracts and orchestration foundation
+- [x] Action registry + dispatcher + scheduler + event bus
+- [x] Bun SQLite state store foundation
+- [x] Jupiter Ultra action path (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`)
+- [x] Runtime settings profiles and policy guardrails
+- [ ] Complete remaining priority Solana actions/adapters
+- [ ] CLI command surface stabilization for daily operator use
 - [ ] Test coverage baseline (unit + integration)
-- [ ] Finalize `.env.example` (remove duplicates + align key names)
+- [ ] Finalize `.env.example` and runtime config defaults
+- [ ] npm package publishing
+- [ ] Homebrew install flow
 - [ ] First alpha release
 
 ## v1.0 Checklist
@@ -224,15 +176,16 @@ Solana Kit, Jupiter integration, Codama-generated clients, and the operator TUI 
 - [ ] Decision trace logging UX
 - [ ] Operator alerting pipeline
 - [ ] Multi-wallet support
-- [ ] Bot profile deployment flow
-- [ ] OpenTUI incident workflows
+- [ ] GUI application release
+- [ ] Terminal UI (TUI) release
+- [ ] Solana Seeker mobile app release
 - [ ] Integration test suite
 - [ ] End-to-end test suite
-- [ ] npm package publishing
-- [ ] Homebrew install flow
 
 ---
 
 ## License
 
 TBD
+
+# use at your own risk
