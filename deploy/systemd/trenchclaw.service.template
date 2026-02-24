@@ -1,0 +1,18 @@
+[Unit]
+Description=TrenchClaw headless runtime (Bun)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__SERVICE_USER__
+Group=__SERVICE_GROUP__
+WorkingDirectory=__WORKING_DIRECTORY__
+EnvironmentFile=-/etc/trenchclaw/user.env
+EnvironmentFile=-/etc/trenchclaw/agent.env
+ExecStart=__BUN_BIN__ run apps/cli/index.ts headless
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

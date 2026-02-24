@@ -1,51 +1,42 @@
-import { Box, Text, createCliRenderer } from "@opentui/core";
-
 export interface WelcomeViewOptions {
   version?: string;
-  jupiterPortalUrl?: string;
-  apiKeyEnvName?: string;
+  stream?: NodeJS.WriteStream;
+  runtimeServerUrl?: string;
 }
 
-export const renderWelcomeToTrenchClaw = async (
+const ANSI = {
+  reset: "\u001b[0m",
+  bold: "\u001b[1m",
+  neonTurquoise: "\u001b[38;2;0;245;212m",
+  neonPurple: "\u001b[38;2;191;0;255m",
+} as const;
+
+const colorize = (value: string, color: keyof typeof ANSI): string =>
+  `${ANSI[color]}${value}${ANSI.reset}`;
+
+export const renderWelcomeToTrenchClaw = (
   options: WelcomeViewOptions = {},
-) => {
+) : void => {
   const version = options.version ?? "v0.1.0";
-  const jupiterPortalUrl = options.jupiterPortalUrl ?? "https://portal.jup.ag";
-  const apiKeyEnvName = options.apiKeyEnvName ?? "JUPITER_ULTRA_API_KEY";
+  const stream = options.stream ?? process.stdout;
+  const runtimeServerUrl = options.runtimeServerUrl ?? "http://127.0.0.1:4020";
 
-  const renderer = await createCliRenderer({
-    exitOnCtrlC: true,
-    useAlternateScreen: true,
-  });
+  const lines = [
+    `${ANSI.bold}${ANSI.neonTurquoise}TrenchClaw CLI${ANSI.reset} ${colorize(version, "neonPurple")}`,
+    "",
+    colorize("Minimal Bun CLI bootstrap", "neonPurple"),
+    "- Runtime: Bun only",
+    "- UI: terminal text only",
+    `- Server: ${runtimeServerUrl}`,
+    "",
+    colorize("Placeholders (coming next)", "neonTurquoise"),
+    "- config: load, validate, and save settings",
+    "- bots: list, start, pause, resume, stop",
+    "- actions: run one-off checks and tasks",
+    "- telemetry: basic logs and health status",
+    "",
+    `${colorize("Accent colors:", "neonPurple")} turquoise + purple`,
+  ];
 
-  renderer.root.add(
-    Box(
-      {
-        flexDirection: "column",
-        borderStyle: "rounded",
-        padding: 1,
-        gap: 1,
-      },
-      Text({ content: `Welcome to TrenchClaw ${version}`, fg: "#7CFC98" }),
-      Text({ content: "Terminal-first Solana operator runtime." }),
-      Text({ content: "" }),
-      Text({ content: "Jupiter Ultra Setup", fg: "#8BE9FD" }),
-      Text({
-        content: `1) Create a universal API key at ${jupiterPortalUrl}`,
-      }),
-      Text({
-        content: `2) Export ${apiKeyEnvName}=<your_key>`,
-      }),
-      Text({
-        content: "3) Ultra flow is API-key based (no custom RPC required for order/execute)",
-      }),
-      Text({ content: "" }),
-      Text({
-        content: "Press Ctrl+C to exit this welcome screen.",
-        fg: "#A6ACB9",
-      }),
-    ),
-  );
-
-  return renderer;
+  stream.write(`${lines.join("\n")}\n`);
 };

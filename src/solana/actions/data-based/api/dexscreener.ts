@@ -1,5 +1,6 @@
 const DEXSCREENER_API_BASE_URL = "https://api.dexscreener.com";
 const MAX_TOKEN_ADDRESSES_PER_REQUEST = 30;
+const DEXSCREENER_SOLANA_CHAIN_ID = "solana";
 
 export interface DexscreenerRequestOptions {
   signal?: AbortSignal;
@@ -9,13 +10,11 @@ interface DexscreenerInvokeBase {
   options?: DexscreenerRequestOptions;
 }
 
-export interface DexscreenerInvokeWithChainAndTokenAddress extends DexscreenerInvokeBase {
-  chainId: string;
+export interface DexscreenerInvokeWithTokenAddress extends DexscreenerInvokeBase {
   tokenAddress: string;
 }
 
-export interface DexscreenerInvokeWithChainAndPairAddress extends DexscreenerInvokeBase {
-  chainId: string;
+export interface DexscreenerInvokeWithPairAddress extends DexscreenerInvokeBase {
   pairAddress: string;
 }
 
@@ -23,8 +22,7 @@ export interface DexscreenerInvokeSearchPairs extends DexscreenerInvokeBase {
   query: string;
 }
 
-export interface DexscreenerInvokeTokensByChain extends DexscreenerInvokeBase {
-  chainId: string;
+export interface DexscreenerInvokeTokens extends DexscreenerInvokeBase {
   tokenAddresses: string[];
 }
 
@@ -133,11 +131,13 @@ export interface DexscreenerOrderStatus {
 export type DexscreenerOrdersResponse = DexscreenerOrderStatus[];
 
 export function getDexscreenerOrdersByToken(
-  input: DexscreenerInvokeWithChainAndTokenAddress,
+  input: DexscreenerInvokeWithTokenAddress,
 ): Promise<DexscreenerOrdersResponse> {
-  const chainId = assertNonEmptyParam("chainId", input.chainId);
   const tokenAddress = assertNonEmptyParam("tokenAddress", input.tokenAddress);
-  return fetchDexscreener<DexscreenerOrdersResponse>(`/orders/v1/${chainId}/${tokenAddress}`, input.options);
+  return fetchDexscreener<DexscreenerOrdersResponse>(
+    `/orders/v1/${DEXSCREENER_SOLANA_CHAIN_ID}/${tokenAddress}`,
+    input.options,
+  );
 }
 
 export interface DexscreenerPairToken {
@@ -192,12 +192,11 @@ export interface DexscreenerPairResponse {
 }
 
 export async function getDexscreenerPairByChainAndPairId(
-  input: DexscreenerInvokeWithChainAndPairAddress,
+  input: DexscreenerInvokeWithPairAddress,
 ): Promise<DexscreenerPairInfo | null> {
-  const chainId = assertNonEmptyParam("chainId", input.chainId);
   const pairAddress = assertNonEmptyParam("pairAddress", input.pairAddress);
   const response = await fetchDexscreener<DexscreenerPairResponse>(
-    `/latest/dex/pairs/${chainId}/${pairAddress}`,
+    `/latest/dex/pairs/${DEXSCREENER_SOLANA_CHAIN_ID}/${pairAddress}`,
     input.options,
   );
 
@@ -205,12 +204,11 @@ export async function getDexscreenerPairByChainAndPairId(
 }
 
 export async function getDexscreenerTokenPairsByChain(
-  input: DexscreenerInvokeWithChainAndTokenAddress,
+  input: DexscreenerInvokeWithTokenAddress,
 ): Promise<DexscreenerPairInfo[]> {
-  const chainId = assertNonEmptyParam("chainId", input.chainId);
   const tokenAddress = assertNonEmptyParam("tokenAddress", input.tokenAddress);
   const response = await fetchDexscreener<DexscreenerPairsResponse>(
-    `/token-pairs/v1/${chainId}/${tokenAddress}`,
+    `/token-pairs/v1/${DEXSCREENER_SOLANA_CHAIN_ID}/${tokenAddress}`,
     input.options,
   );
 
@@ -218,12 +216,11 @@ export async function getDexscreenerTokenPairsByChain(
 }
 
 export async function getDexscreenerTokensByChain(
-  input: DexscreenerInvokeTokensByChain,
+  input: DexscreenerInvokeTokens,
 ): Promise<DexscreenerPairInfo[]> {
-  const chainId = assertNonEmptyParam("chainId", input.chainId);
   const tokenAddresses = assertTokenAddresses(input.tokenAddresses);
   const response = await fetchDexscreener<DexscreenerPairsResponse>(
-    `/tokens/v1/${chainId}/${tokenAddresses.join(",")}`,
+    `/tokens/v1/${DEXSCREENER_SOLANA_CHAIN_ID}/${tokenAddresses.join(",")}`,
     input.options,
   );
 

@@ -3,7 +3,17 @@ profile: default
 
 network:
   chain: solana
-  cluster: mainnet-beta
+  availableClusters:
+    - mainnet-beta
+    - devnet
+    - testnet
+    - custom
+  defaultCluster: mainnet-beta
+  defaultRpcUrl: ${HELIUS_RPC_URL}
+  defaultWsUrl: ${HELIUS_WS_URL}
+  defaultCommitment: confirmed
+  defaultWebsocketEnabled: true
+  defaultRequestTimeoutMs: 10000
   commitment: confirmed
   websocketEnabled: true
   requestTimeoutMs: 10000
@@ -39,7 +49,7 @@ wallet:
     allowPrivateKeyAccess: true
     allowWalletSigning: true
     allowCreatingWallets: true
-    allowDeletingWallets: true
+    allowDeletingWallets: false
     allowExportingWallets: true
     allowImportingWallets: true
     allowListingWallets: true

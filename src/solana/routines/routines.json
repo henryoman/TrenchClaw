@@ -1,0 +1,10 @@
+{
+  "createWallets": {
+    "routineName": "createWallets",
+    "command": "createWallets count=<number> [includePrivateKey=true|false] [privateKeyEncoding=base64|hex|bytes] [output.directory=<path>] [output.filePrefix=<prefix>] [output.includeIndexInFileName=true|false]",
+    "defaults": {
+      "count": 1,
+      "output.directory": "runtime/config/workspace/keypairs"
+    }
+  }
+}

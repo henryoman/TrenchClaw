@@ -1,8 +1,9 @@
 import { address, createSolanaRpc } from "@solana/kit";
 import type { Commitment, Slot } from "@solana/kit";
+import { DEFAULT_SOLANA_MAINNET_RPC_URL } from "./shared";
 
 export interface GetBalanceParams {
-  rpcUrl: string;
+  rpcUrl?: string;
   account: string;
   commitment?: Commitment;
   minContextSlot?: Slot;
@@ -15,7 +16,7 @@ export interface GetBalanceResult {
 }
 
 export async function getBalance(params: GetBalanceParams): Promise<GetBalanceResult> {
-  const rpc = createSolanaRpc(params.rpcUrl, params.rpcConfig);
+  const rpc = createSolanaRpc(params.rpcUrl ?? DEFAULT_SOLANA_MAINNET_RPC_URL, params.rpcConfig);
   const accountAddress = address(params.account);
   const response = await rpc
     .getBalance(accountAddress, {
