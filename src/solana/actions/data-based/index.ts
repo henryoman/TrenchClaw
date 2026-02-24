@@ -5,3 +5,4 @@ export * from "./rpc/getBalance";
 export * from "./rpc/getTokenMetadata";
 export * from "./rpc/getTokenPrice";
 export * from "./api/dexscreener";
+export * from "./alerts";

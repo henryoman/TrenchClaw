@@ -23,6 +23,7 @@ import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-si
 import { actionSequenceRoutine } from "../solana/routines/action-sequence";
 import { createWalletsRoutine } from "../solana/routines/create-wallets";
 import { createWalletsAction } from "../solana/actions/wallet-based/create-wallets/createWallets";
+import { createBlockchainAlertAction } from "../solana/actions/data-based/alerts/createBlockchainAlert";
 import { transferAction } from "../solana/actions/wallet-based/transfer/transfer";
 import { ultraExecuteSwapAction } from "../solana/actions/wallet-based/swap/ultra/executeSwap";
 import { ultraQuoteSwapAction } from "../solana/actions/wallet-based/swap/ultra/quoteSwap";
@@ -99,6 +100,10 @@ const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string):
       settings.trading.jupiter.ultra.allowQuotes &&
       settings.trading.jupiter.ultra.allowExecutions
     );
+  }
+
+  if (actionName === "createBlockchainAlert") {
+    return settings.trading.enabled;
   }
 
   if (actionName === "transfer") {
@@ -180,6 +185,10 @@ const hasUserConfirmation = (payload: unknown, requiredToken: string): boolean =
 
 const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
   const actions: RuntimeAction[] = [createWalletsAction];
+
+  if (settings.trading.enabled) {
+    actions.push(createBlockchainAlertAction);
+  }
 
   if (
     settings.trading.enabled &&
