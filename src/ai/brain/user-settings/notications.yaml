@@ -1,0 +1,4 @@
+notification-config:
+  enabled: true
+  alertWhenBig24hvalueDrop: true
+  min24hUsdValue: 24

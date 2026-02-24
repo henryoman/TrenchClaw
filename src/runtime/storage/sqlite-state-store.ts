@@ -3,9 +3,19 @@ import path from "node:path";
 import { Database } from "bun:sqlite";
 
 import type { ActionResult } from "../../ai/contracts/action";
-import type { DecisionLog, JobState, JobStatus, PolicyHit, StateStore } from "../../ai/contracts/state";
+import type {
+  ChatMessageState,
+  ConversationState,
+  DecisionLog,
+  JobState,
+  JobStatus,
+  PolicyHit,
+  StateStore,
+} from "../../ai/contracts/state";
 import {
   actionResultSchema,
+  chatMessageStateSchema,
+  conversationStateSchema,
   decisionLogSchema,
   httpCacheEntryInputSchema,
   httpCacheEntryRecordSchema,
@@ -18,7 +28,6 @@ import {
   runtimeRetentionInputSchema,
   runtimeRetentionResultSchema,
   saveOhlcvBarsInputSchema,
-  sqliteJobRowSchema,
   sqliteStateStoreConfigSchema,
   type HttpCacheEntryInput,
   type HttpCacheEntryRecord,
@@ -31,14 +40,14 @@ import {
   type RuntimeRetentionResult,
   type SaveOhlcvBarsInput,
 } from "./schema";
+import { getSqliteSchemaSnapshot, syncSqliteSchema, type SqliteSchemaSyncReport } from "./sqlite-orm";
+import { sqliteChatMessageRowSchema, sqliteConversationRowSchema, sqliteJobRowSchema } from "./sqlite-schema";
 
 export type SqliteStateStoreConfig = {
   path: string;
   walMode: boolean;
   busyTimeoutMs: number;
 };
-
-const CURRENT_SCHEMA_VERSION = 2;
 
 const parseJson = <T>(value: string, fallback: T): T => {
   try {
@@ -80,6 +89,7 @@ const toNullableString = (value: unknown): string | undefined => {
 export class SqliteStateStore implements StateStore {
   private readonly db: Database;
   private readonly config: SqliteStateStoreConfig;
+  private readonly schemaSyncReport: SqliteSchemaSyncReport;
 
   constructor(config: SqliteStateStoreConfig) {
     this.config = sqliteStateStoreConfigSchema.parse(config);
@@ -88,7 +98,7 @@ export class SqliteStateStore implements StateStore {
     this.db = new Database(absolutePath, { create: true, strict: true });
 
     this.configureConnection();
-    this.runMigrations();
+    this.schemaSyncReport = syncSqliteSchema(this.db);
   }
 
   saveJob(job: JobState): void {
@@ -270,6 +280,129 @@ export class SqliteStateStore implements StateStore {
     return rows
       .map((row) => parseJsonWithSchema<ActionResult | null>(row.payload_json, actionResultSchema, null))
       .filter((row): row is ActionResult => row !== null);
+  }
+
+  saveConversation(conversation: ConversationState): void {
+    const parsed = conversationStateSchema.parse(conversation);
+    this.db
+      .query(
+        `
+        INSERT INTO conversations (id, session_id, title, summary, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          session_id = excluded.session_id,
+          title = excluded.title,
+          summary = excluded.summary,
+          updated_at = excluded.updated_at
+      `,
+      )
+      .run(
+        parsed.id,
+        parsed.sessionId ?? null,
+        parsed.title ?? null,
+        parsed.summary ?? null,
+        parsed.createdAt,
+        parsed.updatedAt,
+      );
+  }
+
+  getConversation(id: string): ConversationState | null {
+    const row = this.db
+      .query(
+        `
+        SELECT id, session_id, title, summary, created_at, updated_at
+        FROM conversations
+        WHERE id = ?
+      `,
+      )
+      .get(id) as Record<string, unknown> | null;
+
+    if (!row) {
+      return null;
+    }
+
+    const parsed = sqliteConversationRowSchema.parse(row);
+    return conversationStateSchema.parse({
+      id: parsed.id,
+      sessionId: parsed.session_id ?? undefined,
+      title: parsed.title ?? undefined,
+      summary: parsed.summary ?? undefined,
+      createdAt: parsed.created_at,
+      updatedAt: parsed.updated_at,
+    });
+  }
+
+  listConversations(limit = 100): ConversationState[] {
+    const rows = this.db
+      .query(
+        `
+        SELECT id, session_id, title, summary, created_at, updated_at
+        FROM conversations
+        ORDER BY updated_at DESC
+        LIMIT ?
+      `,
+      )
+      .all(Math.max(1, Math.trunc(limit))) as Record<string, unknown>[];
+
+    return rows.map((row) => {
+      const parsed = sqliteConversationRowSchema.parse(row);
+      return conversationStateSchema.parse({
+        id: parsed.id,
+        sessionId: parsed.session_id ?? undefined,
+        title: parsed.title ?? undefined,
+        summary: parsed.summary ?? undefined,
+        createdAt: parsed.created_at,
+        updatedAt: parsed.updated_at,
+      });
+    });
+  }
+
+  saveChatMessage(message: ChatMessageState): void {
+    const parsed = chatMessageStateSchema.parse(message);
+    this.db
+      .query(
+        `
+        INSERT INTO chat_messages (id, conversation_id, role, content, metadata_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `,
+      )
+      .run(
+        parsed.id,
+        parsed.conversationId,
+        parsed.role,
+        parsed.content,
+        parsed.metadata === undefined ? null : JSON.stringify(parsed.metadata),
+        parsed.createdAt,
+      );
+  }
+
+  listChatMessages(conversationId: string, limit = 500): ChatMessageState[] {
+    const rows = this.db
+      .query(
+        `
+        SELECT id, conversation_id, role, content, metadata_json, created_at
+        FROM chat_messages
+        WHERE conversation_id = ?
+        ORDER BY created_at ASC
+        LIMIT ?
+      `,
+      )
+      .all(conversationId, Math.max(1, Math.trunc(limit))) as Record<string, unknown>[];
+
+    return rows.map((row) => {
+      const parsed = sqliteChatMessageRowSchema.parse(row);
+      return chatMessageStateSchema.parse({
+        id: parsed.id,
+        conversationId: parsed.conversation_id,
+        role: parsed.role,
+        content: parsed.content,
+        metadata:
+          parsed.metadata_json == null
+            ? undefined
+            : parseJson<Record<string, unknown> | undefined>(parsed.metadata_json, undefined),
+        createdAt: parsed.created_at,
+      });
+    });
   }
 
   upsertMarketInstrument(input: MarketInstrumentInput): number {
@@ -674,6 +807,14 @@ export class SqliteStateStore implements StateStore {
     this.db.close(false);
   }
 
+  getSchemaSyncReport(): SqliteSchemaSyncReport {
+    return { ...this.schemaSyncReport };
+  }
+
+  getSchemaSnapshot(): string {
+    return getSqliteSchemaSnapshot();
+  }
+
   private mapJobRow(row: Record<string, unknown>): JobState {
     const parsedRow = sqliteJobRowSchema.parse(row);
 
@@ -717,163 +858,5 @@ export class SqliteStateStore implements StateStore {
     this.db.exec(`PRAGMA busy_timeout = ${Math.max(0, Math.trunc(this.config.busyTimeoutMs))};`);
   }
 
-  private runMigrations(): void {
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS schema_migrations (
-        version INTEGER PRIMARY KEY,
-        applied_at INTEGER NOT NULL
-      );
-    `);
-
-    const row = this.db
-      .query(
-        `
-        SELECT MAX(version) AS version
-        FROM schema_migrations
-      `,
-      )
-      .get() as { version: number | null } | null;
-
-    let currentVersion = Number(row?.version ?? 0);
-
-    if (currentVersion >= CURRENT_SCHEMA_VERSION) {
-      return;
-    }
-
-    const apply = this.db.transaction(() => {
-      while (currentVersion < CURRENT_SCHEMA_VERSION) {
-        const nextVersion = currentVersion + 1;
-
-        if (nextVersion === 1) {
-          this.db.exec(`
-            CREATE TABLE IF NOT EXISTS jobs (
-              id TEXT PRIMARY KEY,
-              bot_id TEXT NOT NULL,
-              routine_name TEXT NOT NULL,
-              status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'paused', 'stopped', 'failed')),
-              config_json TEXT NOT NULL,
-              next_run_at INTEGER,
-              last_run_at INTEGER,
-              cycles_completed INTEGER NOT NULL CHECK (cycles_completed >= 0),
-              total_cycles INTEGER CHECK (total_cycles IS NULL OR total_cycles >= 0),
-              last_result_json TEXT,
-              created_at INTEGER NOT NULL,
-              updated_at INTEGER NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_jobs_status_next_run_at ON jobs(status, next_run_at);
-            CREATE INDEX IF NOT EXISTS idx_jobs_bot_id_status ON jobs(bot_id, status);
-
-            CREATE TABLE IF NOT EXISTS action_receipts (
-              idempotency_key TEXT PRIMARY KEY,
-              payload_json TEXT NOT NULL,
-              timestamp INTEGER NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_action_receipts_timestamp ON action_receipts(timestamp DESC);
-
-            CREATE TABLE IF NOT EXISTS policy_hits (
-              id TEXT PRIMARY KEY,
-              action_name TEXT NOT NULL,
-              result_json TEXT NOT NULL,
-              created_at INTEGER NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_policy_hits_created_at ON policy_hits(created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_policy_hits_action_name_created_at ON policy_hits(action_name, created_at DESC);
-
-            CREATE TABLE IF NOT EXISTS decision_logs (
-              id TEXT PRIMARY KEY,
-              job_id TEXT REFERENCES jobs(id) ON DELETE SET NULL,
-              action_name TEXT NOT NULL,
-              trace_json TEXT NOT NULL,
-              created_at INTEGER NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_decision_logs_created_at ON decision_logs(created_at DESC);
-            CREATE INDEX IF NOT EXISTS idx_decision_logs_job_id_created_at ON decision_logs(job_id, created_at DESC);
-          `);
-        }
-
-        if (nextVersion === 2) {
-          this.db.exec(`
-            CREATE TABLE IF NOT EXISTS market_instruments (
-              id INTEGER PRIMARY KEY,
-              chain TEXT NOT NULL,
-              address TEXT NOT NULL,
-              symbol TEXT,
-              name TEXT,
-              decimals INTEGER CHECK (decimals IS NULL OR decimals >= 0),
-              created_at INTEGER NOT NULL,
-              updated_at INTEGER NOT NULL,
-              UNIQUE(chain, address)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_market_instruments_chain_symbol ON market_instruments(chain, symbol);
-
-            CREATE TABLE IF NOT EXISTS ohlcv_bars (
-              instrument_id INTEGER NOT NULL REFERENCES market_instruments(id) ON DELETE CASCADE,
-              source TEXT NOT NULL,
-              interval TEXT NOT NULL,
-              open_time INTEGER NOT NULL,
-              close_time INTEGER NOT NULL,
-              open REAL NOT NULL,
-              high REAL NOT NULL,
-              low REAL NOT NULL,
-              close REAL NOT NULL,
-              volume REAL,
-              trades INTEGER,
-              vwap REAL,
-              fetched_at INTEGER NOT NULL,
-              raw_json TEXT,
-              PRIMARY KEY(instrument_id, source, interval, open_time)
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_ohlcv_lookup ON ohlcv_bars(instrument_id, source, interval, open_time DESC);
-            CREATE INDEX IF NOT EXISTS idx_ohlcv_fetched_at ON ohlcv_bars(fetched_at DESC);
-
-            CREATE TABLE IF NOT EXISTS market_snapshots (
-              id TEXT PRIMARY KEY,
-              instrument_id INTEGER NOT NULL REFERENCES market_instruments(id) ON DELETE CASCADE,
-              source TEXT NOT NULL,
-              snapshot_type TEXT NOT NULL,
-              data_json TEXT NOT NULL,
-              timestamp INTEGER NOT NULL
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_market_snapshots_lookup ON market_snapshots(instrument_id, source, snapshot_type, timestamp DESC);
-
-            CREATE TABLE IF NOT EXISTS http_cache (
-              cache_key TEXT PRIMARY KEY,
-              source TEXT NOT NULL,
-              endpoint TEXT NOT NULL,
-              request_hash TEXT NOT NULL,
-              response_json TEXT NOT NULL,
-              status_code INTEGER NOT NULL,
-              etag TEXT,
-              last_modified TEXT,
-              fetched_at INTEGER NOT NULL,
-              expires_at INTEGER
-            );
-
-            CREATE INDEX IF NOT EXISTS idx_http_cache_expires_at ON http_cache(expires_at);
-            CREATE INDEX IF NOT EXISTS idx_http_cache_source_endpoint ON http_cache(source, endpoint);
-          `);
-        }
-
-        this.db
-          .query(
-            `
-            INSERT INTO schema_migrations (version, applied_at)
-            VALUES (?, ?)
-          `,
-          )
-          .run(nextVersion, Date.now());
-
-        currentVersion = nextVersion;
-      }
-    });
-
-    apply();
-  }
+  // DB schema is now synced from sqlite-orm table specs on boot.
 }

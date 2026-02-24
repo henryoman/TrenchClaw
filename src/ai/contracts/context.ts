@@ -1,5 +1,6 @@
 import type { RuntimeEventBus } from "./events";
 import type { Policy } from "./policy";
+import type { StateStore } from "./state";
 
 export type RuntimeActor = "user" | "agent" | "system";
 
@@ -24,6 +25,7 @@ export interface ActionContext {
   policies?: Policy[];
   jobMeta?: JobMeta;
   eventBus?: RuntimeEventBus;
+  stateStore?: StateStore;
 }
 
 export interface CreateActionContextConfig extends ActionContext {}

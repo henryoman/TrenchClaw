@@ -4,6 +4,7 @@
 observability:
   logging:
     level: info
+    style: human
     pretty: true
 
 ui:

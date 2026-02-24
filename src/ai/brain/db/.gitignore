@@ -1,0 +1,17 @@
+# Keep folder structure and docs in git, ignore runtime artifacts.
+*
+!.gitignore
+!README.md
+!.keep
+!memory/
+!memory/MEMORY.md
+!runtime/
+!runtime/.keep
+!runtime/events/
+!runtime/events/.keep
+!sessions/
+!sessions/.keep
+!summaries/
+!summaries/.keep
+!system/
+!system/.keep

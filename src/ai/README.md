@@ -11,7 +11,7 @@
 - `core/scheduler.ts`: runs due jobs and dispatches routine plans.
 - `core/state-store.ts`: in-memory state implementation (jobs, receipts, logs).
 - `llm/client.ts`: single OpenAI/Vercel AI SDK client wrapper.
-- `llm/prompt-loader.ts`: loads `src/ai/brain/protected/prompts/system.md`.
+- `llm/prompt-loader.ts`: builds system payloads from `src/ai/brain/system-settings/system/prompts/payload-manifest.yaml`.
 
 ## Rule of Thumb
 

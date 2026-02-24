@@ -12,6 +12,152 @@ const REQUIRED_ENV_DEFAULTS: Record<string, string> = {
   QUICKNODE_WS_URL: "wss://quicknode.example",
 };
 
+const BASE_SETTINGS_YAML = `
+configVersion: 1
+profile: dangerous
+
+network:
+  chain: solana
+  cluster: mainnet-beta
+  commitment: confirmed
+  websocketEnabled: true
+  requestTimeoutMs: 10000
+  transactionTimeoutMs: 45000
+  retry:
+    readsMaxAttempts: 3
+    writesMaxAttempts: 3
+    backoffMs: 500
+    backoffMultiplier: 1.5
+  rpc:
+    strategy: failover
+    endpoints:
+      - name: primary
+        url: \${RPC_URL}
+        wsUrl: \${WS_URL}
+        enabled: true
+
+wallet:
+  custodyMode: local-encrypted
+  defaults:
+    keyEncoding: base64
+    createWalletCountLimit: 100
+    exportFormat: base58
+  dangerously:
+    allowPrivateKeyAccess: true
+    allowWalletSigning: true
+    allowCreatingWallets: true
+    allowDeletingWallets: false
+    allowExportingWallets: true
+    allowImportingWallets: true
+    allowListingWallets: true
+    allowShowingWallets: true
+    allowUpdatingWallets: true
+
+trading:
+  enabled: true
+  mode:
+    simulation: false
+    paperTrading: false
+  confirmations:
+    requireUserConfirmationForDangerousActions: true
+    userConfirmationToken: I_CONFIRM
+  limits:
+    maxSwapNotionalSol: 100
+    maxSingleTransferSol: 10
+    maxPriorityFeeLamports: 1000000
+    maxSlippageBps: 500
+  jupiter:
+    ultra:
+      enabled: true
+      allowQuotes: true
+      allowExecutions: true
+      allowCancellations: false
+    standard:
+      enabled: false
+      allowQuotes: false
+      allowExecutions: false
+  dexscreener:
+    enabled: true
+  programId: null
+
+agent:
+  enabled: true
+  dangerously:
+    allowFilesystemWrites: true
+    allowNetworkAccess: true
+    allowSystemAccess: false
+    allowHardwareAccess: false
+  internetAccess:
+    trustedSitesOnly: true
+    allowFullAccess: false
+    trustedSites: []
+    blockedSites: []
+    allowedProtocols: [https]
+    blockedProtocols: []
+    allowedPorts: [443, 80]
+    blockedPorts: []
+
+runtime:
+  scheduler:
+    tickMs: 1000
+    maxConcurrentJobs: 4
+  dispatcher:
+    maxActionAttempts: 3
+    defaultActionTimeoutMs: 20000
+    defaultBackoffMs: 500
+  idempotency:
+    enabled: true
+    ttlHours: 24
+
+storage:
+  sqlite:
+    enabled: false
+    path: /tmp/trenchclaw-tests.db
+    walMode: true
+    busyTimeoutMs: 5000
+  files:
+    enabled: false
+    eventsDirectory: /tmp/trenchclaw-events
+  sessions:
+    enabled: false
+    directory: /tmp/trenchclaw-sessions
+    agentId: test-agent
+    source: tests
+  memory:
+    enabled: false
+    directory: /tmp/trenchclaw-memory
+    longTermFile: memory.md
+  retention:
+    receiptsDays: 7
+    policyHitsDays: 7
+    decisionLogsDays: 7
+
+ui:
+  cli:
+    enabled: true
+  webGui:
+    enabled: false
+    host: 127.0.0.1
+    port: 3000
+  tui:
+    enabled: false
+    overviewView: true
+    botsView: true
+    actionFeedView: true
+    controlsView: true
+
+observability:
+  logging:
+    level: info
+    style: human
+    pretty: false
+    includeDecisionTrace: false
+  metrics:
+    enabled: false
+  tracing:
+    enabled: false
+`;
+
 const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_PROFILE",
   "TRENCHCLAW_SETTINGS_BASE_FILE",
@@ -21,20 +167,23 @@ const MUTABLE_ENV_KEYS = [
 ] as const;
 
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
+const createdFiles: string[] = [];
 
 const writeYaml = async (content: string): Promise<string> => {
   const target = `/tmp/trenchclaw-bootstrap-test-${crypto.randomUUID()}.yaml`;
   await Bun.write(target, content);
+  createdFiles.push(target);
   return target;
 };
 
-const applyDefaultEnv = (): void => {
+const applyDefaultEnv = async (): Promise<void> => {
   for (const [key, value] of Object.entries(REQUIRED_ENV_DEFAULTS)) {
     process.env[key] = value;
   }
+  process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(BASE_SETTINGS_YAML);
 };
 
-afterEach(() => {
+afterEach(async () => {
   for (const key of MUTABLE_ENV_KEYS) {
     const initial = initialEnv[key];
     if (initial === undefined) {
@@ -43,11 +192,15 @@ afterEach(() => {
     }
     process.env[key] = initial;
   }
+
+  for (const filePath of createdFiles.splice(0)) {
+    await Bun.$`rm -f ${filePath}`.quiet();
+  }
 });
 
 describe("bootstrapRuntime", () => {
   test("applies capability-only agent allowlist while preserving user authority for protected keys", async () => {
-    applyDefaultEnv();
+    await applyDefaultEnv();
     const userSettingsPath = await writeYaml(`
 wallet:
   dangerously:
@@ -77,7 +230,7 @@ runtime:
   });
 
   test("blocks createWallets when wallet permission is disabled in user settings", async () => {
-    applyDefaultEnv();
+    await applyDefaultEnv();
     const userSettingsPath = await writeYaml(`
 wallet:
   dangerously:
@@ -95,10 +248,15 @@ wallet:
             count: 1,
             includePrivateKey: false,
             privateKeyEncoding: "base64",
+            walletLocator: {
+              group: "blocked",
+              startIndex: 1,
+            },
             output: {
-              directory: "/tmp",
+              directory: "src/ai/brain/protected/test-blocked/keypairs",
               filePrefix: "blocked",
               includeIndexInFileName: true,
+              walletLibraryFile: "src/ai/brain/protected/test-blocked/wallet-library.jsonl",
             },
           },
         },
@@ -112,7 +270,7 @@ wallet:
   });
 
   test("creates a blockchain alert and persists it", async () => {
-    applyDefaultEnv();
+    await applyDefaultEnv();
 
     const runtime = await bootstrapRuntime();
     const alertsFile = `/tmp/trenchclaw-alerts-${crypto.randomUUID()}.json`;
@@ -163,7 +321,7 @@ wallet:
   });
 
   test("requires explicit confirmation for dangerous swap actions in dangerous profile", async () => {
-    applyDefaultEnv();
+    await applyDefaultEnv();
     process.env.TRENCHCLAW_PROFILE = "dangerous";
 
     const runtime = await bootstrapRuntime();
@@ -195,4 +353,3 @@ wallet:
     }
   });
 });
-

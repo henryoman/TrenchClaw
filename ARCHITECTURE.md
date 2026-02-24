@@ -129,6 +129,18 @@ Canonical root: `src/ai/brain/db/`
 - `src/ai/brain/db/runtime/events/*.json`
 - Writer: `src/runtime/storage/file-event-log.ts`
 
+### Runtime console logging styles (operator-selectable)
+- Logger module: `src/runtime/logging/runtime-logger.ts`
+- Config: `observability.logging`
+  - `level`: `debug | info | warn | error`
+  - `style`: `human | json`
+  - `pretty`: pretty-print JSON mode
+  - `includeDecisionTrace`: include extra action/policy details in console output
+- `human` style:
+  - readable line logs for terminal operators
+- `json` style:
+  - structured JSON logs for ingestion by dashboards/log pipelines
+
 ### Session logs (OpenClaw-style)
 - Index: `src/ai/brain/db/sessions/sessions.json`
 - Per-session transcript/events: `src/ai/brain/db/sessions/<sessionId>.jsonl`
@@ -196,6 +208,7 @@ src/
   runtime/
     bootstrap.ts
     config/
+    logging/
     storage/
   solana/
     adapters/

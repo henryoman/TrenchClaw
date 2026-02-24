@@ -21,8 +21,9 @@ Use this map to navigate from intent -> decision -> execution:
 - `src/ai/brain/rules.md`: hard behavioral rules and non-negotiable constraints.
 
 ### 2) Prompting layer
-- `src/ai/brain/system-prompt.md`: baseline system prompt for all runs.
-- `src/ai/brain/prompts/modes/`: specialized mode prompts that tune behavior by mission.
+- `src/ai/brain/system-settings/system/prompts/payload-manifest.yaml`: central source of truth for prompt payload composition by mode.
+- `src/ai/brain/system-settings/system/prompts/system.md`: baseline system prompt for all runs.
+- `src/ai/brain/system-settings/system/prompts/modes/`: specialized mode prompts that tune behavior by mission.
 
 ### 3) Runtime AI core
 - `src/ai/core/action-registry.ts`: action capability catalog.
@@ -49,14 +50,14 @@ Use this map to navigate from intent -> decision -> execution:
 ## How To Navigate the Filesystem Fast
 When adding or changing behavior, follow this order:
 
-1. **Define intent** in `system-prompt.md` and one mode prompt.
+1. **Define intent** in `system/prompts/system.md` (via payload manifest) and one mode prompt.
 2. **Check constraints** in `rules.md` and wallet policy code.
 3. **Verify capability exists** in the action registry and action folders.
 4. **Trace execution path** via dispatcher -> policy engine -> adapter.
 5. **Confirm observability** (events/receipts) so operators can audit outcomes.
 
 If you only need to add a new strategy behavior:
-- Start in `src/ai/brain/prompts/modes/`.
+- Start in `src/ai/brain/system-settings/system/prompts/modes/`.
 - Then wire needed tools in `src/solana/actions/`.
 - Keep execution deterministic through dispatcher contracts.
 

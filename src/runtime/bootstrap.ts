@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import {
   ActionDispatcher,
   ActionRegistry,
@@ -23,8 +25,15 @@ import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-si
 import { actionSequenceRoutine } from "../solana/routines/action-sequence";
 import { createWalletsRoutine } from "../solana/routines/create-wallets";
 import { createWalletsAction } from "../solana/actions/wallet-based/create-wallets/createWallets";
-import { createBlockchainAlertAction } from "../solana/actions/data-based/alerts/createBlockchainAlert";
+import { renameWalletsAction } from "../solana/actions/wallet-based/create-wallets/renameWallets";
+import { createBlockchainAlertAction } from "../solana/actions/data-fetch/alerts/createBlockchainAlert";
+import { queryRuntimeStoreAction } from "../solana/actions/data-fetch/runtime/queryRuntimeStore";
 import { transferAction } from "../solana/actions/wallet-based/transfer/transfer";
+import {
+  privacyAirdropAction,
+  privacySwapAction,
+  privacyTransferAction,
+} from "../solana/actions/wallet-based/transfer/privacyCash";
 import { ultraExecuteSwapAction } from "../solana/actions/wallet-based/swap/ultra/executeSwap";
 import { ultraQuoteSwapAction } from "../solana/actions/wallet-based/swap/ultra/quoteSwap";
 import { ultraSwapAction } from "../solana/actions/wallet-based/swap/ultra/swap";
@@ -33,22 +42,26 @@ import {
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
 } from "./load";
+import { createRuntimeLogger, type RuntimeLogger } from "./logging";
 import {
   MemoryLogStore,
   RuntimeFileEventLog,
   SessionLogStore,
+  SessionSummaryStore,
   SqliteStateStore,
+  SystemLogStore,
   type ActiveSessionInfo,
 } from "./storage";
 
 type RuntimeAction = Action<any, any>;
-
-const INFO_LEVELS = new Set(["debug", "info"]);
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = new Set([
   "executeSwap",
   "ultraExecuteSwap",
   "ultraSwap",
   "transfer",
+  "privacyTransfer",
+  "privacyAirdrop",
+  "privacySwap",
   "createToken",
 ]);
 
@@ -81,6 +94,10 @@ const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string):
     return settings.wallet.dangerously.allowCreatingWallets;
   }
 
+  if (actionName === "renameWallets") {
+    return settings.wallet.dangerously.allowUpdatingWallets;
+  }
+
   if (actionName === "ultraQuoteSwap") {
     return settings.trading.enabled && settings.trading.jupiter.ultra.enabled && settings.trading.jupiter.ultra.allowQuotes;
   }
@@ -106,11 +123,34 @@ const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string):
     return settings.trading.enabled;
   }
 
+  if (actionName === "queryRuntimeStore") {
+    return true;
+  }
+
   if (actionName === "transfer") {
     return (
       settings.trading.enabled &&
       settings.wallet.dangerously.allowWalletSigning &&
       settings.trading.limits.maxSingleTransferSol > 0
+    );
+  }
+
+  if (actionName === "privacyTransfer" || actionName === "privacyAirdrop") {
+    return (
+      settings.trading.enabled &&
+      settings.wallet.dangerously.allowWalletSigning &&
+      settings.trading.limits.maxSingleTransferSol > 0
+    );
+  }
+
+  if (actionName === "privacySwap") {
+    return (
+      settings.trading.enabled &&
+      settings.wallet.dangerously.allowWalletSigning &&
+      settings.trading.limits.maxSingleTransferSol > 0 &&
+      settings.trading.jupiter.ultra.enabled &&
+      settings.trading.jupiter.ultra.allowQuotes &&
+      settings.trading.jupiter.ultra.allowExecutions
     );
   }
 
@@ -183,8 +223,14 @@ const hasUserConfirmation = (payload: unknown, requiredToken: string): boolean =
   );
 };
 
+const resolveStorageRootDirectory = (settings: RuntimeSettings): string => {
+  const sqlitePath = settings.storage.sqlite.path;
+  const sqliteDir = path.isAbsolute(sqlitePath) ? path.dirname(sqlitePath) : path.join(process.cwd(), path.dirname(sqlitePath));
+  return path.basename(sqliteDir) === "runtime" ? path.dirname(sqliteDir) : sqliteDir;
+};
+
 const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
-  const actions: RuntimeAction[] = [createWalletsAction];
+  const actions: RuntimeAction[] = [createWalletsAction, renameWalletsAction, queryRuntimeStoreAction];
 
   if (settings.trading.enabled) {
     actions.push(createBlockchainAlertAction);
@@ -196,20 +242,22 @@ const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
     settings.trading.limits.maxSingleTransferSol > 0
   ) {
     actions.push(transferAction);
+    actions.push(privacyTransferAction, privacyAirdropAction);
   }
 
   if (settings.trading.enabled && settings.trading.jupiter.ultra.enabled) {
     actions.push(ultraQuoteSwapAction, ultraExecuteSwapAction, ultraSwapAction);
+    if (
+      settings.wallet.dangerously.allowWalletSigning &&
+      settings.trading.limits.maxSingleTransferSol > 0 &&
+      settings.trading.jupiter.ultra.allowQuotes &&
+      settings.trading.jupiter.ultra.allowExecutions
+    ) {
+      actions.push(privacySwapAction);
+    }
   }
 
   return actions;
-};
-
-const maybeLog = (settings: RuntimeSettings, ...parts: unknown[]): void => {
-  if (!INFO_LEVELS.has(settings.observability.logging.level)) {
-    return;
-  }
-  console.log(...parts);
 };
 
 const EVENT_NAMES: RuntimeEventName[] = [
@@ -226,6 +274,7 @@ const EVENT_NAMES: RuntimeEventName[] = [
 
 const attachEventLogging = (
   settings: RuntimeSettings,
+  logger: RuntimeLogger,
   eventBus: RuntimeEventBus,
   fileEventLog?: RuntimeFileEventLog,
   sessionLogStore?: SessionLogStore,
@@ -253,18 +302,54 @@ const attachEventLogging = (
     });
   }
 
-  if (!INFO_LEVELS.has(settings.observability.logging.level)) {
-    return;
-  }
-
+  const includeDecisionTrace = settings.observability.logging.includeDecisionTrace;
   eventBus.on("action:success", (event) => {
-    maybeLog(settings, "[action:success]", event.payload.actionName, event.payload.idempotencyKey);
+    logger.info("action:success", {
+      actionName: event.payload.actionName,
+      idempotencyKey: event.payload.idempotencyKey,
+      ...(includeDecisionTrace
+        ? { durationMs: event.payload.durationMs, txSignature: event.payload.txSignature ?? null }
+        : {}),
+    });
   });
   eventBus.on("action:fail", (event) => {
-    maybeLog(settings, "[action:fail]", event.payload.actionName, event.payload.error);
+    logger.warn("action:fail", {
+      actionName: event.payload.actionName,
+      error: event.payload.error,
+      ...(includeDecisionTrace
+        ? {
+            idempotencyKey: event.payload.idempotencyKey,
+            retryable: event.payload.retryable,
+            attempts: event.payload.attempts,
+          }
+        : {}),
+    });
   });
   eventBus.on("policy:block", (event) => {
-    maybeLog(settings, "[policy:block]", event.payload.actionName, event.payload.reason);
+    logger.warn("policy:block", {
+      actionName: event.payload.actionName,
+      reason: event.payload.reason,
+      ...(includeDecisionTrace ? { policyName: event.payload.policyName } : {}),
+    });
+  });
+  eventBus.on("action:retry", (event) => {
+    logger.info("action:retry", {
+      actionName: event.payload.actionName,
+      attempt: event.payload.attempt,
+      ...(includeDecisionTrace
+        ? {
+            idempotencyKey: event.payload.idempotencyKey,
+            nextRetryMs: event.payload.nextRetryMs,
+          }
+        : {}),
+    });
+  });
+  eventBus.on("rpc:failover", (event) => {
+    logger.warn("rpc:failover", {
+      fromEndpoint: event.payload.fromEndpoint,
+      toEndpoint: event.payload.toEndpoint,
+      ...(includeDecisionTrace && event.payload.reason ? { reason: event.payload.reason } : {}),
+    });
   });
 };
 
@@ -294,14 +379,41 @@ export interface RuntimeBootstrap {
 export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
+  const logger = createRuntimeLogger(settings);
   const eventBus = new InMemoryRuntimeEventBus();
-  const stateStore: StateStore = settings.storage.sqlite.enabled
+  const sqliteStore = settings.storage.sqlite.enabled
     ? new SqliteStateStore({
         path: settings.storage.sqlite.path,
         walMode: settings.storage.sqlite.walMode,
         busyTimeoutMs: settings.storage.sqlite.busyTimeoutMs,
       })
-    : new InMemoryStateStore();
+    : null;
+  const stateStore: StateStore = sqliteStore ?? new InMemoryStateStore();
+  const storageRootDirectory = resolveStorageRootDirectory(settings);
+  const systemLogStore = new SystemLogStore({
+    directory: path.join(storageRootDirectory, "system"),
+  });
+  const unsubscribeSystemLogs = logger.subscribe((entry) => {
+    systemLogStore.append(entry);
+  });
+  const sessionSummaryStore = new SessionSummaryStore({
+    directory: path.join(storageRootDirectory, "summaries"),
+  });
+  if (sqliteStore) {
+    const syncReport = sqliteStore.getSchemaSyncReport();
+    logger.info("storage:schema_sync", {
+      createdTables: syncReport.createdTables.length,
+      addedColumns: syncReport.addedColumns.length,
+      createdIndexes: syncReport.createdIndexes.length,
+      warnings: syncReport.warnings.length,
+    });
+    if (syncReport.warnings.length > 0) {
+      logger.warn("storage:schema_sync_warnings", {
+        warnings: syncReport.warnings.join(" | "),
+      });
+    }
+    logger.info("storage:schema_snapshot", { snapshot: sqliteStore.getSchemaSnapshot() });
+  }
   if (settings.storage.sqlite.enabled && "pruneRuntimeData" in stateStore) {
     const pruneResult = (
       stateStore as StateStore & {
@@ -321,14 +433,12 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       policyHitsDays: settings.storage.retention.policyHitsDays,
       decisionLogsDays: settings.storage.retention.decisionLogsDays,
     });
-    maybeLog(
-      settings,
-      "[storage:prune]",
-      `receipts=${pruneResult.receiptsDeleted}`,
-      `policyHits=${pruneResult.policyHitsDeleted}`,
-      `decisionLogs=${pruneResult.decisionLogsDeleted}`,
-      `cache=${pruneResult.cacheDeleted}`,
-    );
+    logger.info("storage:prune", {
+      receipts: pruneResult.receiptsDeleted,
+      policyHits: pruneResult.policyHitsDeleted,
+      decisionLogs: pruneResult.decisionLogsDeleted,
+      cache: pruneResult.cacheDeleted,
+    });
   }
   const llm = await createLlmClientFromEnv();
   const registry = new ActionRegistry();
@@ -368,6 +478,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
           jupiterUltra,
           tokenAccounts,
           ultraSigner,
+          stateStore,
         }),
       resolveRoutine: (routineName) => resolveRoutinePlanner(routineName),
     },
@@ -399,6 +510,9 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       "system",
       `Runtime booted (profile=${settings.profile}, tickMs=${settings.runtime.scheduler.tickMs})`,
     );
+    if (sqliteStore) {
+      await sessionLogStore.appendMessage("system", sqliteStore.getSchemaSnapshot());
+    }
   }
   if (memoryLogStore) {
     memoryLogStore.appendDaily(
@@ -406,7 +520,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     );
   }
 
-  attachEventLogging(settings, eventBus, fileEventLog, sessionLogStore, memoryLogStore);
+  attachEventLogging(settings, logger, eventBus, fileEventLog, sessionLogStore, memoryLogStore);
   scheduler.start();
 
   const enqueueJob = (input: {
@@ -454,12 +568,26 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       closableStateStore.close?.();
       if (sessionLogStore) {
         void sessionLogStore.appendMessage("system", "Runtime stopped");
+        void (async () => {
+          const stats = await sessionLogStore.getActiveSessionStats();
+          if (!stats) {
+            return;
+          }
+          await sessionSummaryStore.writeSummary({
+            ...stats,
+            profile: settings.profile,
+            schedulerTickMs: settings.runtime.scheduler.tickMs,
+            registeredActions: registry.list().map((action) => action.name),
+            pendingJobsAtStop: stateStore.listJobs({ status: "pending" }).length,
+          });
+        })();
       }
       if (memoryLogStore) {
         memoryLogStore.appendDaily(
           `- [${new Date().toISOString()}] runtime:stop session=${session?.sessionId ?? "none"}`,
         );
       }
+      unsubscribeSystemLogs();
     },
     enqueueJob,
     describe: () => ({

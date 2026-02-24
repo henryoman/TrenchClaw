@@ -1,7 +1,7 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
 import { resolveLlmProviderConfigFromEnv } from "./config";
-import { loadDefaultSystemPrompt } from "./prompt-loader";
+import { loadSystemPromptPayload } from "./prompt-loader";
 import type {
   LlmClient,
   LlmClientConfig,
@@ -57,9 +57,22 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
     baseURL: config.baseURL,
   });
   const model = openai.responses(config.model);
+  const resolveSystemPrompt = async (input: LlmGenerateInput | LlmStreamInput): Promise<string> => {
+    if (input.system) {
+      return input.system;
+    }
+
+    const requestedMode = input.mode?.trim();
+    if (!requestedMode || requestedMode === config.defaultMode) {
+      return config.defaultSystemPrompt;
+    }
+
+    const payload = await loadSystemPromptPayload(requestedMode);
+    return payload.systemPrompt;
+  };
 
   const generate = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
-    const system = withTemporalContext(input.system ?? config.defaultSystemPrompt);
+    const system = withTemporalContext(await resolveSystemPrompt(input));
     const result = await generateText({
       model,
       system,
@@ -72,7 +85,7 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
   };
 
   const stream = async (input: LlmStreamInput): Promise<LlmStreamResult> => {
-    const system = withTemporalContext(input.system ?? config.defaultSystemPrompt);
+    const system = withTemporalContext(await resolveSystemPrompt(input));
     const result = streamText({
       model,
       system,
@@ -88,6 +101,7 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
     provider: config.provider,
     model: config.model,
     defaultSystemPrompt: config.defaultSystemPrompt,
+    defaultMode: config.defaultMode,
     generate,
     stream,
   };
@@ -98,10 +112,11 @@ export const createLlmClientFromEnv = async (): Promise<LlmClient | null> => {
   if (!providerConfig) {
     return null;
   }
-  const defaultSystemPrompt = await loadDefaultSystemPrompt();
+  const defaultPromptPayload = await loadSystemPromptPayload(process.env.TRENCHCLAW_AGENT_MODE);
 
   return createLlmClient({
     ...providerConfig,
-    defaultSystemPrompt,
+    defaultSystemPrompt: defaultPromptPayload.systemPrompt,
+    defaultMode: defaultPromptPayload.mode,
   });
 };

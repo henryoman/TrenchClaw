@@ -1,14 +1,23 @@
 import { z } from "zod";
 
 import type { ActionResult } from "../../ai/contracts/action";
-import type { DecisionLog, JobState, PolicyHit } from "../../ai/contracts/state";
+import type {
+  ChatMessageState,
+  ConversationState,
+  DecisionLog,
+  JobState,
+  PolicyHit,
+} from "../../ai/contracts/state";
+import { sqliteJobStatusSchema } from "./sqlite-schema";
+
+export * from "./sqlite-schema";
 
 const nonEmpty = z.string().trim().min(1);
 const unixMs = z.number().int().nonnegative();
 const optionalUnixMs = unixMs.optional();
 const jsonRecord = z.record(z.string(), z.unknown());
 
-export const runtimeJobStatusSchema = z.enum(["pending", "running", "paused", "stopped", "failed"]);
+export const runtimeJobStatusSchema = sqliteJobStatusSchema;
 
 export const actionResultSchema: z.ZodType<ActionResult> = z.object({
   ok: z.boolean(),
@@ -54,6 +63,26 @@ export const decisionLogSchema: z.ZodType<DecisionLog> = z.object({
   jobId: nonEmpty.optional(),
   actionName: nonEmpty,
   trace: z.array(z.string()),
+  createdAt: unixMs,
+});
+
+export const chatMessageRoleSchema = z.enum(["system", "user", "assistant", "tool"]);
+
+export const conversationStateSchema: z.ZodType<ConversationState> = z.object({
+  id: nonEmpty,
+  sessionId: nonEmpty.optional(),
+  title: z.string().optional(),
+  summary: z.string().optional(),
+  createdAt: unixMs,
+  updatedAt: unixMs,
+});
+
+export const chatMessageStateSchema: z.ZodType<ChatMessageState> = z.object({
+  id: nonEmpty,
+  conversationId: nonEmpty,
+  role: chatMessageRoleSchema,
+  content: z.string(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: unixMs,
 });
 
@@ -167,21 +196,6 @@ export const runtimeRetentionResultSchema = z.object({
   cacheDeleted: z.number().int().nonnegative(),
 });
 
-export const sqliteJobRowSchema = z.object({
-  id: nonEmpty,
-  bot_id: nonEmpty,
-  routine_name: nonEmpty,
-  status: runtimeJobStatusSchema,
-  config_json: z.string(),
-  next_run_at: z.number().int().nonnegative().nullable(),
-  last_run_at: z.number().int().nonnegative().nullable(),
-  cycles_completed: z.number().int().nonnegative(),
-  total_cycles: z.number().int().nonnegative().nullable(),
-  last_result_json: z.string().nullable(),
-  created_at: unixMs,
-  updated_at: unixMs,
-});
-
 export type MarketInstrumentInput = z.infer<typeof marketInstrumentInputSchema>;
 export type OhlcvBarInput = z.infer<typeof ohlcvBarInputSchema>;
 export type SaveOhlcvBarsInput = z.infer<typeof saveOhlcvBarsInputSchema>;
@@ -192,3 +206,5 @@ export type HttpCacheEntryInput = z.infer<typeof httpCacheEntryInputSchema>;
 export type HttpCacheEntryRecord = z.infer<typeof httpCacheEntryRecordSchema>;
 export type RuntimeRetentionInput = z.infer<typeof runtimeRetentionInputSchema>;
 export type RuntimeRetentionResult = z.infer<typeof runtimeRetentionResultSchema>;
+export type ConversationStateInput = z.infer<typeof conversationStateSchema>;
+export type ChatMessageStateInput = z.infer<typeof chatMessageStateSchema>;

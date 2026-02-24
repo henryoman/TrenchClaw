@@ -1,2 +1,2 @@
-export * from "./data-based";
+export * from "./data-fetch";
 export * from "./wallet-based";

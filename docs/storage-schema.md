@@ -3,7 +3,9 @@
 Database file: configured by `storage.sqlite.path`.
 
 Runtime-validated TypeScript schema source:
-- `src/runtime/storage/schema.ts` (Zod, single source of truth for storage payload shapes)
+- `src/runtime/storage/sqlite-schema.ts` (Zod, single source of truth for SQLite table row shapes)
+- `src/runtime/storage/schema.ts` (runtime payload/input schemas layered on top)
+- `src/runtime/storage/sqlite-orm.ts` (Zod-to-SQL mapping + boot-time schema sync)
 
 ## Runtime state
 
@@ -53,6 +55,28 @@ Indexes:
 Indexes:
 - `(created_at DESC)`
 - `(job_id, created_at DESC)`
+
+### `conversations`
+- `id TEXT PRIMARY KEY`
+- `session_id TEXT`
+- `title TEXT`
+- `summary TEXT`
+- `created_at INTEGER NOT NULL`
+- `updated_at INTEGER NOT NULL`
+
+Index:
+- `(updated_at DESC)`
+
+### `chat_messages`
+- `id TEXT PRIMARY KEY`
+- `conversation_id TEXT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE`
+- `role TEXT NOT NULL` (`system|user|assistant|tool`)
+- `content TEXT NOT NULL`
+- `metadata_json TEXT`
+- `created_at INTEGER NOT NULL`
+
+Index:
+- `(conversation_id, created_at DESC)`
 
 ## Market + chart data
 
@@ -127,3 +151,4 @@ Indexes:
 - Latest quote / non-candle payloads: `market_snapshots`
 - Reusable raw API payloads with TTL: `http_cache`
 - Execution state: runtime tables (`jobs`, `action_receipts`, `policy_hits`, `decision_logs`)
+- Conversation state: `conversations`, `chat_messages`

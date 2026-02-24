@@ -25,6 +25,10 @@ describe("createWalletsAction", () => {
       includePrivateKey: true,
       privateKeyEncoding: "base64",
       walletPath: "group1.wallet001",
+      walletLocator: {
+        group: "group1",
+        startIndex: 1,
+      },
       output: {
         directory,
         filePrefix: "wallet",
@@ -38,11 +42,17 @@ describe("createWalletsAction", () => {
       return;
     }
 
-    expect(result.data.wallets).toHaveLength(1);
-    expect(result.data.wallets[0]?.walletPath).toBe("group1.wallet001");
-    expect(result.data.wallets[0]).not.toHaveProperty("privateKey");
+    const data = result.data;
+    expect(data).toBeDefined();
+    if (!data) {
+      return;
+    }
 
-    const libraryLines = (await Bun.file(result.data.walletLibraryFilePath).text())
+    expect(data.wallets).toHaveLength(1);
+    expect(data.wallets[0]?.walletPath).toBe("group1.wallet001");
+    expect(data.wallets[0]).not.toHaveProperty("privateKey");
+
+    const libraryLines = (await Bun.file(data.walletLibraryFilePath).text())
       .trim()
       .split("\n")
       .filter(Boolean);
@@ -52,7 +62,7 @@ describe("createWalletsAction", () => {
     expect(libraryEntry.walletPath).toBe("group1.wallet001");
     expect(typeof libraryEntry.keypairFilePath).toBe("string");
 
-    const keypairJson = await Bun.file(result.data.files[0] ?? "").json();
+    const keypairJson = await Bun.file(data.files[0] ?? "").json();
     expect(keypairJson.walletPath).toBe("group1.wallet001");
     expect(typeof keypairJson.privateKey).toBe("string");
   });
@@ -60,6 +70,12 @@ describe("createWalletsAction", () => {
   test("rejects writing wallet artifacts outside protected directory", async () => {
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
+      includePrivateKey: false,
+      privateKeyEncoding: "base64",
+      walletLocator: {
+        group: "tmp",
+        startIndex: 1,
+      },
       output: {
         directory: "./tmp/outside-protected",
         filePrefix: "wallet",

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { createBlockchainAlertAction } from "../../../../../src/solana/actions/data-based/alerts/createBlockchainAlert";
+import { createBlockchainAlertAction } from "../../../../../src/solana/actions/data-fetch/alerts/createBlockchainAlert";
 import { createActionContext } from "../../../../../src/ai";
 
 const createdFiles: string[] = [];

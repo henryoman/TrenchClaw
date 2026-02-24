@@ -165,6 +165,7 @@ const uiSchema = z.object({
 const observabilitySchema = z.object({
   logging: z.object({
     level: z.enum(["debug", "info", "warn", "error"]),
+    style: z.enum(["human", "json"]),
     pretty: z.boolean(),
     includeDecisionTrace: z.boolean(),
   }),

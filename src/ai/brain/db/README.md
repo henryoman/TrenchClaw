@@ -1,26 +1,24 @@
-# Brain DB
+# Brain DB Layout
 
-This folder is the canonical runtime persistence root for TrenchClaw.
+Canonical runtime persistence root for TrenchClaw.
 
-## Runtime data layout
+## Core layout
 
-- `runtime/trenchclaw.db`
-: SQLite state store (`jobs`, `action_receipts`, `policy_hits`, `decision_logs`).
+- `runtime/`
+  - `trenchclaw.db` (+ `-wal`/`-shm`): Bun SQLite state
+  - `events/`: structured runtime event files
+- `sessions/`
+  - `sessions.json`: session index and counters
+  - `<sessionId>.jsonl`: per-session transcript/event stream
+- `summaries/`
+  - `<sessionId>.md`: compact session summary generated at runtime stop
+- `system/`
+  - `<YYYY-MM-DD>.log`: system/runtime logger output
+- `memory/`
+  - `MEMORY.md`: curated long-term memory
+  - `<YYYY-MM-DD>.md`: daily memory notes
 
-- `runtime/events/`
-: File event stream (JSON event files).
+## Source of truth
 
-- `sessions/sessions.json`
-: Session index map (OpenClaw-style session registry).
-
-- `sessions/<sessionId>.jsonl`
-: Per-session transcript/event log stream.
-
-- `memory/<YYYY-MM-DD>.md`
-: Daily memory notes.
-
-- `memory/MEMORY.md`
-: Long-term memory file.
-
-- Wallet export/create action outputs are intentionally written to
-  `src/ai/brain/protected/keypairs/` (outside this `db/` tree).
+- SQLite row/table schema: `src/runtime/storage/sqlite-schema.ts`
+- Zod -> SQL mapping + boot sync: `src/runtime/storage/sqlite-orm.ts`

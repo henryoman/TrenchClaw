@@ -68,6 +68,16 @@ export interface ActiveSessionInfo {
   source: string;
 }
 
+export interface ActiveSessionStats {
+  sessionId: string;
+  sessionKey: string;
+  source: string;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+  eventCount: number;
+}
+
 const toAbsolutePath = (targetPath: string): string =>
   path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
 
@@ -140,6 +150,29 @@ export class SessionLogStore {
 
   getActiveSession(): ActiveSessionInfo | null {
     return this.active;
+  }
+
+  async getActiveSessionStats(): Promise<ActiveSessionStats | null> {
+    const active = this.active;
+    if (!active) {
+      return null;
+    }
+
+    const store = await this.readStore();
+    const entry = store.sessions[active.sessionKey];
+    if (!entry) {
+      return null;
+    }
+
+    return {
+      sessionId: entry.sessionId,
+      sessionKey: active.sessionKey,
+      source: entry.source,
+      createdAt: entry.createdAt,
+      updatedAt: entry.updatedAt,
+      messageCount: entry.messageCount,
+      eventCount: entry.eventCount,
+    };
   }
 
   async appendMessage(

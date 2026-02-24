@@ -9,11 +9,16 @@
     "headless": "bun run src/apps/cli/index.ts headless",
     "cli": "bun run src/apps/cli/index.ts cli",
     "knowledge:refresh": "bun run scripts/knowledge/refresh-manifest.ts",
+    "context:refresh": "bun run scripts/context/refresh-workspace-context.ts",
     "systemd:install": "bun run scripts/systemd/install.ts",
     "typecheck": "bunx tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
-    "lint:ci": "oxlint --deny correctness --deny suspicious --deny perf ."
+    "lint:ci": "oxlint --deny correctness --deny suspicious --deny perf .",
+    "check:schema-backend": "bunx tsc --noEmit --pretty false",
+    "test": "bun test",
+    "build": "bun build src/apps/cli/index.ts --target bun --outdir dist",
+    "ci": "bun run lint && bun run typecheck && bun run check:schema-backend && bun run test && bun run build"
   },
   "devDependencies": {
     "@types/bun": "latest",
@@ -27,6 +32,7 @@
     "@opentui/core": "^0.1.81",
     "@solana/kit": "^6.1.0",
     "ai": "^6.0.97",
+    "privacycash": "^1.0.16",
     "zod": "^4.3.6"
   }
 }

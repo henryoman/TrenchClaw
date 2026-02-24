@@ -3,7 +3,9 @@
 This folder owns runtime persistence and runtime file writes.
 
 Full schema reference: `docs/storage-schema.md`.
-Live Zod schema module: `src/runtime/storage/schema.ts`.
+Live SQLite Zod schema module: `src/runtime/storage/sqlite-schema.ts`.
+Runtime payload Zod schema module: `src/runtime/storage/schema.ts`.
+SQLite schema sync + ORM mapping: `src/runtime/storage/sqlite-orm.ts`.
 
 ## SQLite (Bun) Database
 
@@ -31,6 +33,17 @@ Primary database: `storage.sqlite.path` (from runtime settings).
   - Key: `id`
   - FK: `job_id -> jobs(id)`
   - Indexed: `created_at DESC`, `(job_id, created_at DESC)`
+
+- `conversations`
+: Conversation containers for chat history.
+  - Key: `id`
+  - Indexed: `updated_at DESC`
+
+- `chat_messages`
+: Individual chat entries attached to a conversation.
+  - Key: `id`
+  - FK: `conversation_id -> conversations(id)`
+  - Indexed: `(conversation_id, created_at DESC)`
 
 ### Market/chart data tables
 
@@ -61,6 +74,12 @@ Primary database: `storage.sqlite.path` (from runtime settings).
 
 - `schema_migrations`
 : Applied schema versions and timestamps.
+- Boot-time schema sync
+: On runtime boot, TrenchClaw auto-syncs SQLite schema from `sqlite-orm.ts`:
+  - creates missing tables
+  - adds missing columns
+  - creates missing indexes
+  - logs a compact schema snapshot for model/operator context
 
 ## Runtime file stores
 
@@ -70,12 +89,19 @@ Primary database: `storage.sqlite.path` (from runtime settings).
 - `session-log-store.ts`
 : Session index (`sessions.json`) and per-session JSONL transcript files.
 
+- `session-summary-store.ts`
+: Writes compact markdown summaries (`summaries/<sessionId>.md`) at runtime stop.
+
+- `system-log-store.ts`
+: Appends runtime/system logger entries into daily log files (`system/<YYYY-MM-DD>.log`).
+
 - `memory-log-store.ts`
 : Daily and long-term markdown memory logs.
 
 ## Data placement rules
 
 - Job/execution state: `jobs`, `action_receipts`, `policy_hits`, `decision_logs`
+- Conversation history: `conversations`, `chat_messages`
 - Downloaded chart candles: `ohlcv_bars`
 - Latest computed market state: `market_snapshots`
 - Raw API cacheable responses: `http_cache`

@@ -26,7 +26,89 @@ Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bu
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
+Quick links:
+- [Why TypeScript?](#why-typescript)
+- [Why Solana Kit](#why-solana-kit)
+- [TrenchClaw vs ElizaOS and Agent Kit](#trenchclaw-vs-elizaos-and-agent-kit)
+
 ## THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
+
+---
+
+## Why TypeScript?
+
+The TypeScript repo is heavier than minimalist alternatives. It is currently the best and most accurate agent orchestrator for this stack. Here is why.
+
+### What advanced agents actually require
+
+An "advanced" agent (beyond prompt-in / prompt-out) is mostly **state + typed tool I/O + event streaming + orchestration**:
+
+1. **Tool contracts that are both machine-readable and runtime-validatable** — the model needs a schema to decide how to call tools; your runtime needs to validate arguments before executing anything (guardrails). In practice this becomes "JSON Schema everywhere" + a local validator.
+2. **A first-class event stream** — you don't just want final text; you want structured events: partial tokens, tool-call intents, tool args, tool results, retries, errors, traces.
+3. **Composable middleware** — logging, redaction, policy checks, rate limits, caching, retries, circuit breakers, and tool routing.
+4. **Rapid iteration** — agent quality is dominated by iteration speed: schema tweaks, tool UX, prompt/tool descriptions, trace analysis.
+
+That set of needs strongly selects for ecosystems that treat schemas as primary artifacts, JSON as the native interchange, streaming as a first-class API, and web deployment as the default.
+
+**Compile-time types + runtime schemas (the missing half in systems languages).**
+
+For agents, types alone are insufficient because the LLM must see the contract and your runtime must validate untrusted tool arguments. In the Vercel AI SDK tool model, a tool declares an `inputSchema` (Zod or JSON Schema) which is both consumed by the LLM (tool selection + argument shaping) and used by the runtime to validate the tool call before `execute` runs. TypeScript is where this shines:
+
+- Zod is ergonomic to author in TS.
+- You can infer TS types from schemas (or vice versa) so the schema and the implementation don't drift.
+- You can carry schema objects through routing layers without codegen.
+
+In most systems-language stacks you end up with one of: great static typing but the schema shown to the model is hand-rolled/duplicated, or runtime validation that requires heavy codegen pipelines. **Agent code is glue code. Glue code penalizes heavy codegen.**
+
+**The Vercel AI SDK is TypeScript-first by design.**
+
+Vercel positions the AI SDK as "The AI Toolkit for TypeScript." Tool calling (`generateText` + `tool(...)`) is a core primitive. AI SDK strict mode behavior (tool schema compatibility, fail-fast semantics) is exactly the production detail you want in advanced agents. If your orchestration is centered on Vercel AI SDK primitives — tools, streams, UI streaming, provider adapters — the lowest-friction native language is TS.
+
+**Structural typing + JSON-native payloads + ergonomic transforms.**
+
+Agent payloads are structurally shaped objects: tool args, tool results, intermediate plans, traces. TS is effective because structural typing matches JSON shapes, transform pipelines are concise (`map`/`filter`/`reduce`, Zod transforms), and you can model event streams as discriminated unions and exhaustively `switch` on them (high leverage for agent traces). In systems languages you're constantly bridging between strongly typed structs and dynamic JSON, adding serialization boilerplate and versioning friction.
+
+**The JS/TS agent ecosystem is schema-driven by default.**
+
+Community patterns converge on "schema as first-class value," and lots of integrations assume Node/TS toolchain. Even if you don't use LangChain, this means schema-oriented integrations are plug-and-play rather than ports.
+
+### Why systems languages underperform here
+
+This isn't about raw capability — it's about where the complexity lives.
+
+- **Agent orchestration is I/O-bound + integration-heavy, not CPU-bound.** Most agent loops spend time calling models, calling web APIs, waiting on DB, streaming events to UI, and validating/routing tool calls. That profile does not reward Rust/Zig/C++ the way a tight compute kernel does.
+- **The hard part is contract evolution, not execution speed.** The dominant failure modes are schema drift, tool ambiguity, partial/invalid args, and inability to safely evolve tool signatures. TS + schema-first patterns reduce drift because the schema object is colocated with the code and passed through the system as data. In systems languages the "contract as data" story becomes a build-time artifact (codegen), a separate schema file that can drift, or runtime reflection that's less ergonomic than TS + Zod — all of which increase iteration cost.
+- **Streaming UX is easier in the JS runtime model.** Token streaming, partial structured outputs, tool-call visualizations, reactive UI updates — the Vercel/Next ecosystem is optimized for that workflow and the AI SDK provides those primitives in the same language and runtime as your UI.
+
+### The correct synthesis
+
+The strongest architecture is usually:
+
+> **TypeScript orchestrator (agent brain) + systems-language executors (muscle)**
+
+- **TS owns:** tool schemas and validation, orchestration loop and routing, streaming events and UI integration, persistence format/versioning of traces, provider adapters (AI SDK).
+- **Rust/Zig/Go own:** cryptography-heavy or latency-critical primitives (signing, parsing), sandboxed tool executables, deterministic compute kernels, RPC services behind strict schemas.
+
+This preserves agentic flow (fast iteration, schema-first tooling, Vercel AI SDK integration) while still using systems languages where they actually dominate. Writing the agent orchestrator in a systems language usually means recreating a TS-shaped ecosystem from scratch — more engineering spent on plumbing, less on agent behavior and safety.
+
+### Why Solana Kit is an advantage in this architecture
+
+`@solana/kit` is not just a Solana SDK choice here; it improves the same agentic properties this TypeScript stack optimizes for:
+
+- **Schema-aligned tool boundaries:** Kit's typed RPC, transactions, and signer APIs map cleanly into JSON Schema/Zod-based tool contracts.
+- **Safer orchestration loops:** functional, immutable transaction composition reduces hidden mutation bugs inside multi-step tool pipelines.
+- **Lower drift risk:** strict TS types around accounts, signers, blockhash lifetimes, and lamports (`bigint`) keep model-selected tool args closer to executable reality.
+- **Better iteration velocity:** composable modular imports and generated clients (Codama) make it faster to add or refine Solana actions without rewriting plumbing.
+
+### When TypeScript is effectively required
+
+TS is effectively required when all are true:
+
+1. Orchestration is centered on Vercel AI SDK primitives (tools, streams, strict-mode behavior).
+2. Tool contracts evolve rapidly and must stay aligned across model-visible schema, runtime validation, and implementation types.
+3. The product depends on streaming-first UX in a Next/Vercel-style deployment surface.
+
+Under these constraints, systems-language orchestrators often re-create TS-native schema + streaming + UI integration layers from scratch.
 
 ---
 
@@ -129,7 +211,19 @@ Why this matters:
 
 ### Storage: Bun SQLite
 
-TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for job queues, action receipts, policy hits, and decision logs. It keeps state local, restart-safe, and dependency-light.
+TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for runtime jobs, receipts, policy/decision traces, market/cache data, and chat persistence (`conversations`, `chat_messages`). It keeps state local, restart-safe, and dependency-light.
+
+Schema is Zod-first and auto-synced on boot:
+- Row/table schema source of truth: `src/runtime/storage/sqlite-schema.ts`
+- Zod-to-SQL mapping + boot sync: `src/runtime/storage/sqlite-orm.ts`
+- Runtime prints a compact schema snapshot at boot for operator/model context
+
+Runtime log/data layout is split by purpose under `src/ai/brain/db/`:
+- `runtime/`: SQLite DB + runtime event files
+- `sessions/`: session index + JSONL transcript stream
+- `summaries/`: compact per-session markdown summaries
+- `system/`: daily system/runtime logs
+- `memory/`: daily + long-term memory notes
 
 [Bun's SQLite docs](https://bun.com/docs/runtime/sqlite) show strong wins on many read/materialization workloads versus common JS drivers, but complex `JOIN`/aggregation workloads vary by query shape. So the rule is simple: use Bun SQLite by default, benchmark real production queries before making hard guarantees.
 
@@ -144,7 +238,8 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Registers and dispatches typed Solana actions with policy gates, retries, and idempotency
 - Composes actions into routines: DCA, swing, percentage, and sniper
 - Fires routines from triggers: timers, price thresholds, and on-chain events (pool creation, liquidity adds)
-- Persists job state, action receipts, and decision logs in Bun SQLite (restart-safe)
+- Persists runtime state + chat history in Bun SQLite (restart-safe)
+- Auto-syncs SQLite schema from Zod table specs on boot (no manual version bump for additive changes)
 - Emits structured events on a typed bus consumed by CLI logs and future alerting
 - Exposes an operator control surface through the CLI
 - Keeps agent knowledge (soul, rules, skills, outside context) in `src/ai/brain/`, loaded by orchestration in `src/ai/`
@@ -158,9 +253,10 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - [x] Runtime core contracts and orchestration foundation
 - [x] Action registry + dispatcher + scheduler + event bus
 - [x] Bun SQLite state store foundation
-- [x] SQLite hardening (migrations, indexes, retention pruning)
+- [x] SQLite hardening (auto schema sync, indexes, retention pruning)
 - [x] Live storage schema with Zod + typed runtime validation
-- [x] Market data storage schema (`market_instruments`, `ohlcv_bars`, `market_snapshots`, `http_cache`)
+- [x] Market + chat storage schema (`market_instruments`, `ohlcv_bars`, `market_snapshots`, `http_cache`, `conversations`, `chat_messages`)
+- [x] Runtime log split (`system` daily logs + `session` JSONL + session summaries)
 - [x] Jupiter Ultra action path (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`)
 - [x] Runtime settings profiles and policy guardrails
 - [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) wired into runtime bootstrap

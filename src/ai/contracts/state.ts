@@ -33,6 +33,26 @@ export interface PolicyHit {
   createdAt: number;
 }
 
+export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
+
+export interface ConversationState {
+  id: string;
+  sessionId?: string;
+  title?: string;
+  summary?: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ChatMessageState {
+  id: string;
+  conversationId: string;
+  role: ChatMessageRole;
+  content: string;
+  metadata?: Record<string, unknown>;
+  createdAt: number;
+}
+
 export interface StateStore {
   saveJob(job: JobState): void;
   getJob(id: string): JobState | null;
@@ -43,4 +63,9 @@ export interface StateStore {
   savePolicyHit(hit: PolicyHit): void;
   saveDecisionLog(log: DecisionLog): void;
   getRecentReceipts(limit: number): ActionResult[];
+  saveConversation(conversation: ConversationState): void;
+  getConversation(id: string): ConversationState | null;
+  listConversations(limit?: number): ConversationState[];
+  saveChatMessage(message: ChatMessageState): void;
+  listChatMessages(conversationId: string, limit?: number): ChatMessageState[];
 }

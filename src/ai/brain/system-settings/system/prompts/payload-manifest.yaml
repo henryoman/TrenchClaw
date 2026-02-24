@@ -1,0 +1,29 @@
+version: 1
+defaults:
+  mode: operator
+  includeKnowledgeManifest: false
+  includeKnowledgeDirectoryTreeFallback: false
+  includeWorkspaceDirectoryTree: false
+modes:
+  operator:
+    includeWorkspaceDirectoryTree: false
+    promptFiles:
+      - system.md
+      - modes/operator.md
+      - ../context/workspace-and-schema.md
+  analyst:
+    promptFiles:
+      - system.md
+      - modes/analyst.md
+  strategist:
+    promptFiles:
+      - system.md
+      - modes/strategist.md
+  risk-manager:
+    promptFiles:
+      - system.md
+      - modes/risk-manager.md
+  teacher:
+    promptFiles:
+      - system.md
+      - modes/teacher.md
