@@ -1,5 +1,5 @@
 # Human/operator-editable override layer.
-# Merged after the bundled profile config.
+# Final authority for protected keys.
 
 observability:
   logging:

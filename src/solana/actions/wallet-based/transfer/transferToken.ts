@@ -1,32 +1,35 @@
-// Action: transferToken
-// Category: wallet-based
-// Subcategory: transfer
-// Wallet required: Yes (full signing authority)
-//
-// Sends SPL tokens from the active wallet to a destination address.
-//
-// Input:
-//   mintAddress: string   — Token mint to transfer.
-//   destination: string   — Recipient wallet address.
-//   amount: number        — Amount in human-readable units.
-//
-// Output:
-//   txSignature: string   — Confirmed transaction signature.
-//   amount: number        — Amount sent (human units).
-//   mintAddress: string   — Token mint transferred.
-//   destination: string   — Recipient address.
-//   fee: number           — Transaction fee in SOL.
-//
-// Execution flow:
-//   1. Validate destination is a valid public key.
-//   2. Resolve source ATA (must exist and have sufficient balance).
-//   3. Derive destination ATA. If it doesn't exist, include createATA instruction.
-//   4. Resolve token decimals via token-account adapter.
-//   5. Convert human amount to raw units.
-//   6. Build spl-token transfer instruction.
-//   7. Get recent blockhash, build + sign transaction.
-//   8. Send via RPC pool + await confirmation.
-//
-// Used by:
-//   - Direct operator commands.
-//   - Future: token distribution, airdrop routines.
+import { z } from "zod";
+
+import type { Action } from "../../../../ai/contracts/action";
+
+const transferTokenInputSchema = z.object({
+  mintAddress: z.string().min(1),
+  destination: z.string().min(1),
+  amountUi: z.number().positive(),
+});
+
+export type TransferTokenInput = z.output<typeof transferTokenInputSchema>;
+
+export interface TransferTokenOutput {
+  mintAddress: string;
+  destination: string;
+  amountUi: number;
+}
+
+export const transferTokenAction: Action<TransferTokenInput, TransferTokenOutput> = {
+  name: "transferToken",
+  category: "wallet-based",
+  subcategory: "transfer",
+  inputSchema: transferTokenInputSchema,
+  async execute(_ctx, input) {
+    return {
+      ok: false,
+      retryable: false,
+      code: "NOT_IMPLEMENTED",
+      error: `transferToken is not implemented yet (mint=${input.mintAddress}, destination=${input.destination}, amountUi=${input.amountUi})`,
+      durationMs: 0,
+      timestamp: Date.now(),
+      idempotencyKey: crypto.randomUUID(),
+    };
+  },
+};

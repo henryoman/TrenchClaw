@@ -3,6 +3,7 @@ profile: default
 
 network:
   chain: solana
+  cluster: mainnet-beta
   availableClusters:
     - mainnet-beta
     - devnet
