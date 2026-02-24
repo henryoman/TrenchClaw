@@ -153,6 +153,9 @@ storage:
     path: ./data/trenchclaw.db
     walMode: true
     busyTimeoutMs: 5000
+  files:
+    enabled: true
+    eventsDirectory: ./data/logs/events
   retention:
     receiptsDays: 7
     policyHitsDays: 7

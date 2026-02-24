@@ -84,17 +84,28 @@ export class ActionDispatcher {
     const results: ActionResult[] = [];
     const policyHits = [];
     const completed = new Set<string>();
+    const stepResults = new Map<string, ActionResult>();
 
-    for (const step of steps) {
+    for (const [index, step] of steps.entries()) {
       if (step.dependsOn && !completed.has(step.dependsOn)) {
         throw new Error(`Step "${step.actionName}" depends on missing key "${step.dependsOn}"`);
       }
 
-      const stepResult = await this.dispatchStep(ctx, step);
+      const resolvedInput = resolveStepInput(step.input, stepResults);
+      const resolvedStep: ActionStep = {
+        ...step,
+        input: resolvedInput,
+      };
+
+      const stepResult = await this.dispatchStep(ctx, resolvedStep);
       results.push(...stepResult.results);
       policyHits.push(...stepResult.policyHits);
 
       const first = stepResult.results[0];
+      if (first) {
+        stepResults.set(resolveStepRefKey(step, index), first);
+      }
+
       if (!first?.ok && !first?.retryable) {
         break;
       }
@@ -220,4 +231,91 @@ function computeBackoffMs(policy: RetryPolicy, attempt: number): number {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function resolveStepRefKey(step: ActionStep, index: number): string {
+  if (step.refKey) {
+    return step.refKey;
+  }
+  if (step.idempotencyKey) {
+    return step.idempotencyKey;
+  }
+  return `step-${index + 1}`;
+}
+
+function resolveStepInput(input: unknown, stepResults: Map<string, ActionResult>): unknown {
+  if (typeof input === "string") {
+    return resolveTemplateString(input, stepResults);
+  }
+
+  if (Array.isArray(input)) {
+    return input.map((entry) => resolveStepInput(entry, stepResults));
+  }
+
+  if (!input || typeof input !== "object") {
+    return input;
+  }
+
+  const resolvedEntries = Object.entries(input as Record<string, unknown>).map(([key, value]) => [
+    key,
+    resolveStepInput(value, stepResults),
+  ]);
+
+  return Object.fromEntries(resolvedEntries);
+}
+
+const FULL_TEMPLATE_PATTERN = /^\$\{steps\.([a-zA-Z0-9_-]+)\.(output|result)((?:\.[a-zA-Z0-9_-]+)*)\}$/;
+const INLINE_TEMPLATE_PATTERN = /\$\{steps\.([a-zA-Z0-9_-]+)\.(output|result)((?:\.[a-zA-Z0-9_-]+)*)\}/g;
+
+function resolveTemplateString(template: string, stepResults: Map<string, ActionResult>): unknown {
+  const fullMatch = template.match(FULL_TEMPLATE_PATTERN);
+  if (fullMatch) {
+    const [, stepKey = "", root = "output", path = ""] = fullMatch;
+    return resolveTemplateReference(stepKey, root as "output" | "result", path, stepResults);
+  }
+
+  if (!template.includes("${steps.")) {
+    return template;
+  }
+
+  return template.replace(
+    INLINE_TEMPLATE_PATTERN,
+    (_match, stepKey: string, root: "output" | "result", path: string) => {
+      const value = resolveTemplateReference(stepKey, root, path, stepResults);
+      if (value === null || value === undefined) {
+        return "";
+      }
+      if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+        return String(value);
+      }
+      throw new Error(
+        `Template "${template}" resolved to non-primitive value for steps.${stepKey}.${root}${path || ""}`,
+      );
+    },
+  );
+}
+
+function resolveTemplateReference(
+  stepKey: string,
+  root: "output" | "result",
+  path: string,
+  stepResults: Map<string, ActionResult>,
+): unknown {
+  const result = stepResults.get(stepKey);
+  if (!result) {
+    throw new Error(`Template reference failed: step "${stepKey}" has no prior result`);
+  }
+
+  const rootValue = root === "output" ? result.data : result;
+  const segments = path.split(".").filter(Boolean);
+
+  let current: unknown = rootValue;
+  for (const segment of segments) {
+    if (!current || typeof current !== "object" || !(segment in (current as Record<string, unknown>))) {
+      throw new Error(`Template reference failed: steps.${stepKey}.${root}${path} is undefined`);
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+
+  return current;
 }
