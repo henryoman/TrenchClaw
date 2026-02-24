@@ -1,3 +1,5 @@
+import type { LlmProvider } from "./config";
+
 export interface LlmGenerateInput {
   prompt: string;
   system?: string;
@@ -23,7 +25,7 @@ export interface LlmStreamResult {
 }
 
 export interface LlmClient {
-  readonly provider: "openai";
+  readonly provider: LlmProvider;
   readonly model: string;
   readonly defaultSystemPrompt: string;
   generate: (input: LlmGenerateInput) => Promise<LlmGenerateResult>;
@@ -31,7 +33,9 @@ export interface LlmClient {
 }
 
 export interface LlmClientConfig {
+  provider: LlmProvider;
   apiKey: string;
   model: string;
+  baseURL?: string;
   defaultSystemPrompt: string;
 }
