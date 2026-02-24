@@ -111,6 +111,57 @@ wallet:
     }
   });
 
+  test("creates a blockchain alert and persists it", async () => {
+    applyDefaultEnv();
+
+    const runtime = await bootstrapRuntime();
+    const alertsFile = `/tmp/trenchclaw-alerts-${crypto.randomUUID()}.json`;
+    try {
+      const result = await runtime.dispatcher.dispatchStep(
+        createActionContext({ actor: "agent" }),
+        {
+          actionName: "createBlockchainAlert",
+          input: {
+            assetSymbol: "SOL",
+            condition: {
+              type: "priceAbove",
+              threshold: 250,
+            },
+            notification: {
+              channels: ["log"],
+              cooldownMinutes: 5,
+            },
+            storageFilePath: alertsFile,
+          },
+        },
+      );
+
+      expect(result.results[0]?.ok).toBe(true);
+      expect(result.results[0]?.data).toMatchObject({
+        storageFilePath: alertsFile,
+        alert: {
+          assetSymbol: "SOL",
+          condition: {
+            type: "priceAbove",
+            threshold: 250,
+          },
+          notification: {
+            channels: ["log"],
+            cooldownMinutes: 5,
+          },
+          status: "active",
+        },
+      });
+
+      const persisted = JSON.parse(await Bun.file(alertsFile).text()) as unknown[];
+      expect(Array.isArray(persisted)).toBe(true);
+      expect(persisted).toHaveLength(1);
+    } finally {
+      runtime.stop();
+      await Bun.$`rm -f ${alertsFile}`.quiet();
+    }
+  });
+
   test("requires explicit confirmation for dangerous swap actions in dangerous profile", async () => {
     applyDefaultEnv();
     process.env.TRENCHCLAW_PROFILE = "dangerous";
