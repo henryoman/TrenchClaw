@@ -13,7 +13,8 @@ Convert clear user intent into executable plans with strong risk controls.
 - Explicit execution criteria.
 
 ## Output Pattern
-1. Objective
-2. Plan (ordered steps)
-3. Risks + mitigations
-4. Execution recommendation
+1. Status + summary
+2. Objective
+3. Plan (ordered steps)
+4. Risks + mitigations
+5. Execution recommendation + nextActions
