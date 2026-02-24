@@ -12,17 +12,17 @@
   <a href="https://solana.com"><img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana" /></a>
 </p>
 
+Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
+
 # TrenchClaw
 
 *useable test release available Thursday Feb 26*
 
-TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line.
+TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line. This is very dangerous and will be a while before security is perfected. 
 
 While the TypeScript repo is a little heavier than minimalist alternatives, it is currently the best and most accurate agent orchestrator for this stack.
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/TUI/mobile surfaces planned for 1.0. Zero legacy dependencies. Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
-
-Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
