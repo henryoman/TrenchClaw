@@ -26,7 +26,7 @@ import { bootstrapRuntime } from "../runtime/bootstrap";
 
 const runtime = await bootstrapRuntime();
 if (!runtime.llm) {
-  throw new Error("OPENAI_API_KEY is missing");
+  throw new Error("AI provider credentials are missing");
 }
 
 const response = await runtime.llm.generate({
@@ -35,3 +35,16 @@ const response = await runtime.llm.generate({
 
 console.log(response.text);
 ```
+
+## LLM Provider Standard
+
+TrenchClaw uses a provider-agnostic OpenAI-compatible standard via AI SDK. Configure these env vars:
+
+- `TRENCHCLAW_AI_PROVIDER`: `openrouter` (default), `openai`, or `openai-compatible`.
+- `TRENCHCLAW_AI_MODEL`: model id for the provider.
+- `TRENCHCLAW_AI_BASE_URL`: optional override base URL.
+- `OPENROUTER_API_KEY`: used for `openrouter`.
+- `OPENAI_API_KEY`: used for `openai`.
+- `TRENCHCLAW_AI_API_KEY`: used for `openai-compatible`.
+
+Default provider/model is OpenRouter + Step 3.5 free: `stepfun-ai/step-3.5-mini:free`.
