@@ -261,32 +261,31 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - [x] Runtime settings profiles and policy guardrails
 - [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) wired into runtime bootstrap
 - [x] Automatic current time/date injection into every LLM system prompt
-- [x] Tests centralized under `tests/` (removed in-source test files)
-- [ ] Complete remaining priority Solana actions/adapters
-- [ ] CLI command surface stabilization for daily operator use
-- [ ] Test coverage baseline (unit + integration)
-- [ ] Finalize `.env.example` and runtime config defaults
-- [ ] npm package publishing
-- [ ] Homebrew install flow
-- [ ] First alpha release
+- [x] CLI runtime entrypoints (`dev`, `start`, `headless`, `cli`) + HTTP health/status routes
+- [x] Tests centralized under `tests/`
+- [ ] Fix current failing test in `tests/runtime/config/authority.test.ts` (`dangerous` profile partial-override expectation)
+- [ ] Implement currently stub-only modules:
+  - `src/solana/routines/dca.ts`
+  - `src/solana/triggers/timer.ts`
+  - `src/solana/triggers/price.ts`
+  - `src/solana/triggers/on-chain.ts`
+  - `src/solana/actions/wallet-based/swap/rpc/quoteSwap.ts`
+  - `src/solana/actions/wallet-based/swap/rpc/executeSwap.ts`
+  - `src/solana/actions/wallet-based/token/mint/createToken.ts`
+  - `src/solana/actions/data-fetch/rpc/getTokenPrice.ts`
+  - `src/solana/actions/data-fetch/rpc/getMarketData.ts`
+  - `src/solana/actions/data-fetch/rpc/getTokenMetadata.ts`
+  - `src/solana/actions/wallet-based/read-only/checkSolBalance.ts`
+  - `src/solana/actions/wallet-based/read-only/getWalletState.ts`
+- [ ] Wire additional routines into runtime bootstrap (currently `createWallets` + `actionSequence` only)
 
 ## v1.0 Checklist
 
-- [ ] Production-grade action lifecycle hardening
-- [ ] Full policy engine (composable policy packs + richer post-trade checks)
-- [ ] Simulation mode
-- [ ] Paper-trading mode
-- [ ] RPC failover hardening (health scoring + endpoint strategy)
-- [ ] Observability wiring (metrics + traces)
-- [ ] Structured logging rollout
-- [ ] Decision trace logging UX
-- [ ] Operator alerting pipeline
-- [ ] Multi-wallet support
-- [ ] GUI application release
-- [ ] Terminal UI (TUI) release
-- [ ] Solana Seeker mobile app release
-- [ ] Integration test suite
-- [ ] End-to-end test suite
+- [ ] Simulation and paper-trading execution paths (config flags exist under `trading.mode`)
+- [ ] Metrics and tracing wiring (config flags exist under `observability.metrics` and `observability.tracing`)
+- [ ] Trigger-to-routine execution flow for timer/price/on-chain triggers
+- [ ] Integration and end-to-end test layers (beyond current unit-focused suite)
+- [ ] Web GUI production rollout (`src/apps/web-gui` scaffold exists)
 
 ---
 
