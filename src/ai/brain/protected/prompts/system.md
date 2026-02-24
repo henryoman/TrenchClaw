@@ -168,6 +168,6 @@ For non-trivial requests:
 
 Default to `operator` mode unless requested otherwise. Mode files live in:
 
-- `src/brain/prompts/modes/`
+- `src/ai/brain/prompts/modes/`
 
 Select or blend modes intentionally, but keep safety constraints global.

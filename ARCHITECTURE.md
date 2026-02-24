@@ -10,7 +10,7 @@ This document reflects the current codebase state in `src/**`.
 
 1. **Action runtime first**: deterministic actions and routines before broad agent autonomy.
 2. **Policy over prompt**: runtime settings and policy engine are hard gates.
-3. **Brain-owned persistence**: runtime data lives under `src/brain/db/**`.
+3. **Brain-owned persistence**: runtime data lives under `src/ai/brain/db/**`.
 4. **Auditability by default**: SQLite receipts + event files + session JSONL + memory markdown.
 5. **Progressive AI integration**: LLM client exists but runtime remains action-centric.
 
@@ -96,7 +96,7 @@ Schema: `src/runtime/config/schema.ts`
 Loader: `src/runtime/config/loader.ts`
 
 Merge order:
-1. Bundled base profile (`src/brain/protected/settings/*.yaml`)
+1. Bundled base profile (`src/ai/brain/protected/settings/*.yaml`)
 2. Sanitized agent override (`TRENCHCLAW_SETTINGS_AGENT_FILE`)
 3. User override (`TRENCHCLAW_SETTINGS_USER_FILE`)
 4. Protected-path enforcement (user/base authority restored)
@@ -113,10 +113,10 @@ In `dangerous` mode, selected actions require explicit user confirmation token/f
 
 ## Persistence & Logging (Brain DB)
 
-Canonical root: `src/brain/db/`
+Canonical root: `src/ai/brain/db/`
 
 ### SQLite runtime state
-- `src/brain/db/runtime/trenchclaw.db`
+- `src/ai/brain/db/runtime/trenchclaw.db`
 - Backed by `bun:sqlite`
 - Store: `src/runtime/storage/sqlite-state-store.ts`
 - Tables:
@@ -126,21 +126,21 @@ Canonical root: `src/brain/db/`
   - `decision_logs`
 
 ### File event stream
-- `src/brain/db/runtime/events/*.json`
+- `src/ai/brain/db/runtime/events/*.json`
 - Writer: `src/runtime/storage/file-event-log.ts`
 
 ### Session logs (OpenClaw-style)
-- Index: `src/brain/db/sessions/sessions.json`
-- Per-session transcript/events: `src/brain/db/sessions/<sessionId>.jsonl`
+- Index: `src/ai/brain/db/sessions/sessions.json`
+- Per-session transcript/events: `src/ai/brain/db/sessions/<sessionId>.jsonl`
 - Store: `src/runtime/storage/session-log-store.ts`
 
 ### Memory logs
-- Daily notes: `src/brain/db/memory/YYYY-MM-DD.md`
-- Long-term notes: `src/brain/db/memory/MEMORY.md`
+- Daily notes: `src/ai/brain/db/memory/YYYY-MM-DD.md`
+- Long-term notes: `src/ai/brain/db/memory/MEMORY.md`
 - Store: `src/runtime/storage/memory-log-store.ts`
 
 ### Wallet output artifacts
-- Default keypair output: `src/brain/protected/keypairs/`
+- Default keypair output: `src/ai/brain/protected/keypairs/`
 
 ---
 

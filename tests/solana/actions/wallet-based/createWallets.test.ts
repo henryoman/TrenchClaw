@@ -16,9 +16,9 @@ afterEach(async () => {
 describe("createWalletsAction", () => {
   test("accepts JSON config and appends wallet metadata into protected wallet library", async () => {
     const scopeName = `test-wallets-${crypto.randomUUID()}`;
-    const directory = path.join("src/brain/protected", scopeName, "keypairs");
-    const walletLibraryFile = path.join("src/brain/protected", scopeName, "wallet-library.jsonl");
-    createdPaths.add(path.join(process.cwd(), "src/brain/protected", scopeName));
+    const directory = path.join("src/ai/brain/protected", scopeName, "keypairs");
+    const walletLibraryFile = path.join("src/ai/brain/protected", scopeName, "wallet-library.jsonl");
+    createdPaths.add(path.join(process.cwd(), "src/ai/brain/protected", scopeName));
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,

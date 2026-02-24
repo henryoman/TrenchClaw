@@ -23,4 +23,4 @@ This folder is the canonical runtime persistence root for TrenchClaw.
 : Long-term memory file.
 
 - Wallet export/create action outputs are intentionally written to
-  `src/brain/protected/keypairs/` (outside this `db/` tree).
+  `src/ai/brain/protected/keypairs/` (outside this `db/` tree).

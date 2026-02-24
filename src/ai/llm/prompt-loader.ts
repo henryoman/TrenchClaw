@@ -1,9 +1,9 @@
 import { fileURLToPath } from "node:url";
-import { renderDirectoryTree } from "../../brain/knowledge/knowledge-tree";
+import { renderDirectoryTree } from "../brain/knowledge/knowledge-tree";
 
-const DEFAULT_PROMPT_FILE = "../../brain/protected/prompts/system.md";
-const DEFAULT_KNOWLEDGE_DIR = "../../brain/knowledge/";
-const DEFAULT_KNOWLEDGE_MANIFEST_FILE = "../../brain/knowledge/KNOWLEDGE_MANIFEST.md";
+const DEFAULT_PROMPT_FILE = "../brain/protected/prompts/system.md";
+const DEFAULT_KNOWLEDGE_DIR = "../brain/knowledge/";
+const DEFAULT_KNOWLEDGE_MANIFEST_FILE = "../brain/knowledge/KNOWLEDGE_MANIFEST.md";
 
 const FALLBACK_SYSTEM_PROMPT = [
   "You are TrenchClaw, a safety-first Solana runtime operator.",

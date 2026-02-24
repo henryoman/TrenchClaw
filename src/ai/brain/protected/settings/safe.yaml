@@ -108,21 +108,21 @@ runtime:
 storage:
   sqlite:
     enabled: true
-    path: ./src/brain/db/runtime/trenchclaw.db
+    path: ./src/ai/brain/db/runtime/trenchclaw.db
     walMode: true
     busyTimeoutMs: 5000
   files:
     enabled: true
-    eventsDirectory: ./src/brain/db/runtime/events
+    eventsDirectory: ./src/ai/brain/db/runtime/events
   sessions:
     enabled: true
-    directory: ./src/brain/db/sessions
+    directory: ./src/ai/brain/db/sessions
     agentId: trenchclaw
     source: runtime
   memory:
     enabled: true
-    directory: ./src/brain/db/memory
-    longTermFile: ./src/brain/db/memory/MEMORY.md
+    directory: ./src/ai/brain/db/memory
+    longTermFile: ./src/ai/brain/db/memory/MEMORY.md
   retention:
     receiptsDays: 7
     policyHitsDays: 7

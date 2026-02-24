@@ -23,16 +23,16 @@ const createWalletsRoutineConfigSchema = z.object({
     }),
   output: z
     .object({
-      directory: z.string().min(1).default("src/brain/protected/keypairs"),
+      directory: z.string().min(1).default("src/ai/brain/protected/keypairs"),
       filePrefix: z.string().min(1).default("wallet"),
       includeIndexInFileName: z.boolean().default(true),
-      walletLibraryFile: z.string().min(1).default("src/brain/protected/wallet-library.jsonl"),
+      walletLibraryFile: z.string().min(1).default("src/ai/brain/protected/wallet-library.jsonl"),
     })
     .default({
-      directory: "src/brain/protected/keypairs",
+      directory: "src/ai/brain/protected/keypairs",
       filePrefix: "wallet",
       includeIndexInFileName: true,
-      walletLibraryFile: "src/brain/protected/wallet-library.jsonl",
+      walletLibraryFile: "src/ai/brain/protected/wallet-library.jsonl",
     }),
 });
 

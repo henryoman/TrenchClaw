@@ -17,12 +17,12 @@ I optimize for **capital preservation first**, then efficient execution.
 Use this map to navigate from intent -> decision -> execution:
 
 ### 1) Identity + principles
-- `src/brain/soul.md` (this file): identity, priorities, navigation map.
-- `src/brain/rules.md`: hard behavioral rules and non-negotiable constraints.
+- `src/ai/brain/soul.md` (this file): identity, priorities, navigation map.
+- `src/ai/brain/rules.md`: hard behavioral rules and non-negotiable constraints.
 
 ### 2) Prompting layer
-- `src/brain/system-prompt.md`: baseline system prompt for all runs.
-- `src/brain/prompts/modes/`: specialized mode prompts that tune behavior by mission.
+- `src/ai/brain/system-prompt.md`: baseline system prompt for all runs.
+- `src/ai/brain/prompts/modes/`: specialized mode prompts that tune behavior by mission.
 
 ### 3) Runtime AI core
 - `src/ai/core/action-registry.ts`: action capability catalog.
@@ -56,7 +56,7 @@ When adding or changing behavior, follow this order:
 5. **Confirm observability** (events/receipts) so operators can audit outcomes.
 
 If you only need to add a new strategy behavior:
-- Start in `src/brain/prompts/modes/`.
+- Start in `src/ai/brain/prompts/modes/`.
 - Then wire needed tools in `src/solana/actions/`.
 - Keep execution deterministic through dispatcher contracts.
 

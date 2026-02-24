@@ -4,7 +4,7 @@
     "command": "createWallets count=<number> [includePrivateKey=true|false] [privateKeyEncoding=base64|hex|bytes] [output.directory=<path>] [output.filePrefix=<prefix>] [output.includeIndexInFileName=true|false]",
     "defaults": {
       "count": 1,
-      "output.directory": "src/brain/protected/keypairs"
+      "output.directory": "src/ai/brain/protected/keypairs"
     }
   },
   "actionSequence": {
@@ -19,7 +19,7 @@
             "includePrivateKey": false,
             "privateKeyEncoding": "base64",
             "output": {
-              "directory": "src/brain/protected/keypairs",
+              "directory": "src/ai/brain/protected/keypairs",
               "filePrefix": "wallet",
               "includeIndexInFileName": true
             }

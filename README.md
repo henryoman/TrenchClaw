@@ -147,7 +147,7 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Persists job state, action receipts, and decision logs in Bun SQLite (restart-safe)
 - Emits structured events on a typed bus consumed by CLI logs and future alerting
 - Exposes an operator control surface through the CLI
-- Keeps agent knowledge (soul, rules, skills, outside context) in `src/brain/`, loaded by orchestration in `src/ai/`
+- Keeps agent knowledge (soul, rules, skills, outside context) in `src/ai/brain/`, loaded by orchestration in `src/ai/`
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
 

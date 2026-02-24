@@ -26,7 +26,7 @@ const createBlockchainAlertInputSchema = z.object({
       note: z.string().max(500).optional(),
     })
     .optional(),
-  storageFilePath: z.string().min(1).default("src/brain/db/alerts/blockchain-alerts.json"),
+  storageFilePath: z.string().min(1).default("src/ai/brain/db/alerts/blockchain-alerts.json"),
 });
 
 type CreateBlockchainAlertInput = z.output<typeof createBlockchainAlertInputSchema>;

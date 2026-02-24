@@ -5,9 +5,9 @@ import { z } from "zod";
 
 import type { Action } from "../../../../ai/contracts/action";
 
-const protectedRootDirectory = path.join(process.cwd(), "src/brain/protected");
-const defaultKeyDirectory = "src/brain/protected/keypairs";
-const defaultWalletLibraryPath = "src/brain/protected/wallet-library.jsonl";
+const protectedRootDirectory = path.join(process.cwd(), "src/ai/brain/protected");
+const defaultKeyDirectory = "src/ai/brain/protected/keypairs";
+const defaultWalletLibraryPath = "src/ai/brain/protected/wallet-library.jsonl";
 
 const walletLocatorSchema = z
   .object({
