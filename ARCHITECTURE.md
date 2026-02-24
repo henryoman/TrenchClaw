@@ -256,7 +256,7 @@ interface ActionStep {
 - **price**: Watch token price via adapter. Fire when crossing a threshold (above/below/percent-change).
 - **on-chain**: WebSocket subscription to on-chain events (new pool creation, large transfers, program logs). Drives sniper and reactive strategies.
 
-### `src/app/cli/` — Operator Interface
+### `src/apps/cli/` — Operator Interface
 - **index.ts**: CLI entrypoint. Parses args (`start`, `status`, `stop`, `tui`). Boots OpenTUI or runs single commands.
 - **views/overview**: Main dashboard. Wallet balances, active bot count, last N actions, RPC health indicator.
 - **views/bots**: Per-bot detail. Status, current cycle, P&L estimate, next scheduled action.

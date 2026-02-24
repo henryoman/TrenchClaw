@@ -19,7 +19,7 @@ export const renderWelcomeToTrenchClaw = (
 ) : void => {
   const version = options.version ?? "v0.1.0";
   const stream = options.stream ?? process.stdout;
-  const runtimeServerUrl = options.runtimeServerUrl ?? "http://127.0.0.1:4020";
+  const runtimeServerUrl = options.runtimeServerUrl ?? "disabled";
 
   const lines = [
     `${ANSI.bold}${ANSI.neonTurquoise}TrenchClaw CLI${ANSI.reset} ${colorize(version, "neonPurple")}`,

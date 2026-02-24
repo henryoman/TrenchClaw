@@ -10,7 +10,7 @@ Group=__SERVICE_GROUP__
 WorkingDirectory=__WORKING_DIRECTORY__
 EnvironmentFile=-/etc/trenchclaw/user.env
 EnvironmentFile=-/etc/trenchclaw/agent.env
-ExecStart=__BUN_BIN__ run apps/cli/index.ts headless
+ExecStart=__BUN_BIN__ run src/apps/cli/index.ts headless
 Restart=always
 RestartSec=2
 

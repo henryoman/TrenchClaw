@@ -31,7 +31,7 @@
     {
       "files": [
         "src/solana/**/*.ts",
-        "src/cli/views/**/*.ts"
+        "src/apps/cli/views/**/*.ts"
       ],
       "rules": {
         "unicorn/no-empty-file": "off"

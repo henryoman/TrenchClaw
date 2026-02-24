@@ -1,5 +1,7 @@
 # Agent/runtime-editable override layer.
-# Merged last and has highest precedence.
+# Only allowlisted low-risk keys are applied from this file.
+# User-protected keys (wallet/trading permissions, dangerous flags, network authority)
+# are ignored even if set here.
 
 runtime:
   scheduler:

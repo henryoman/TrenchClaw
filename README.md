@@ -203,7 +203,7 @@ Solana Kit, Jupiter integration, Codama-generated clients, and the operator TUI 
 - [ ] OpenTUI `bots` view implementation
 - [ ] OpenTUI `action-feed` view implementation
 - [ ] OpenTUI `controls` view implementation
-- [x] Web GUI app scaffold (`apps/web-gui`)
+- [x] Web GUI app scaffold (`src/apps/web-gui`)
 
 ### Quality and release readiness
 

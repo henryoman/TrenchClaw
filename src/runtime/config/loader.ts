@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 
+import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
 
 export type RuntimeSettingsProfile = "default" | "safe";
@@ -60,7 +61,9 @@ const parseYaml = (source: string, filePath: string): unknown => {
     return parsed;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to parse settings YAML at "${filePath}": ${message}`);
+    throw new Error(`Failed to parse settings YAML at "${filePath}": ${message}`, {
+      cause: error,
+    });
   }
 };
 
@@ -112,8 +115,14 @@ export const loadRuntimeSettings = async (
   const baseSettings = await readSettingsFile(baseSettingsPath);
   const userSettings = await loadOptionalSettingsFile(userSettingsPath);
   const agentSettings = await loadOptionalSettingsFile(agentSettingsPath);
-  const mergedSettings = deepMerge(deepMerge(baseSettings, userSettings), agentSettings);
-  const withResolvedEnv = resolveEnvTokens(mergedSettings);
+  const sanitizedAgentSettings = sanitizeAgentSettings(agentSettings);
+  const mergedSettings = deepMerge(deepMerge(baseSettings, sanitizedAgentSettings), userSettings);
+  const protectedMergedSettings = enforceUserProtectedSettings({
+    baseSettings,
+    userSettings,
+    mergedSettings,
+  });
+  const withResolvedEnv = resolveEnvTokens(protectedMergedSettings);
   const validated = runtimeSettingsSchema.parse(withResolvedEnv);
   const usingBundledBaseProfile = !process.env[SETTINGS_BASE_FILE_ENV_KEY];
 

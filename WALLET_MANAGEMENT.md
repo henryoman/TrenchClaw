@@ -361,7 +361,7 @@ If one bot wallet is compromised or misbehaves, the others are unaffected. Same 
 | `src/ai/state-store.ts` | Wallet tables (`wallets`, `wallet_accounts`, `wallet_policies`, `signing_log`) are added to the same SQLite database. Same migration pattern. |
 | `src/ai/event-bus.ts` | New events: `wallet:created`, `wallet:deleted`, `wallet:policy-block`, `wallet:signing-success`. |
 | `src/solana/actions/` | Actions receive a `KeyPairSigner` from context. They call Kit's `signTransactionMessageWithSigners()`. They never import wallet internals. |
-| `src/app/cli/views/` | New TUI view: `wallets.ts` — list wallets, show accounts, balances, policy summaries, signing history. |
+| `src/apps/cli/views/` | New TUI view: `wallets.ts` — list wallets, show accounts, balances, policy summaries, signing history. |
 | `src/solana/routines/` | Each routine's `BotConfig` references a `walletId`. Different bots can use different wallets. |
 
 ---
