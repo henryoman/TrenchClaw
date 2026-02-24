@@ -11,18 +11,22 @@ import {
   type JobState,
   type RuntimeEventBus,
 } from "../ai";
+import type { RoutinePlanner } from "../ai/contracts/scheduler";
 import { createJupiterUltraAdapterFromEnv } from "../solana/adapters/jupiter-ultra";
+import { createTokenAccountAdapterFromEnv } from "../solana/adapters/token-account";
+import { createUltraSignerAdapterFromEnv } from "../solana/adapters/ultra-signer";
+import { actionSequenceRoutine } from "../solana/routines/action-sequence";
 import { createWalletsRoutine } from "../solana/routines/create-wallets";
 import { createWalletsAction } from "../solana/actions/wallet-based/create-wallets/createWallets";
 import { ultraExecuteSwapAction } from "../solana/actions/wallet-based/swap/ultra/executeSwap";
 import { ultraQuoteSwapAction } from "../solana/actions/wallet-based/swap/ultra/quoteSwap";
+import { ultraSwapAction } from "../solana/actions/wallet-based/swap/ultra/swap";
 import {
   loadRuntimeSettings,
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
 } from "./config";
 
-type RoutinePlanner = (typeof createWalletsRoutine);
 type RuntimeAction = Action<any, any>;
 
 const INFO_LEVELS = new Set(["debug", "info"]);
@@ -39,8 +43,13 @@ const resolveRoutinePlanner = (routineName: string): RoutinePlanner => {
   if (routineName === "createWallets") {
     return createWalletsRoutine;
   }
+  if (routineName === "actionSequence") {
+    return actionSequenceRoutine;
+  }
 
-  throw new Error(`Unsupported routine "${routineName}". Only "createWallets" is currently implemented.`);
+  throw new Error(
+    `Unsupported routine "${routineName}". Supported routines: "createWallets", "actionSequence".`,
+  );
 };
 
 const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string): boolean => {
@@ -54,6 +63,14 @@ const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string):
 
   if (actionName === "ultraExecuteSwap") {
     return settings.actions.walletBased.ultraExecuteSwap && settings.trading.jupiter.ultra.allowExecutions;
+  }
+
+  if (actionName === "ultraSwap") {
+    return (
+      settings.actions.walletBased.ultraSwap &&
+      settings.trading.jupiter.ultra.allowQuotes &&
+      settings.trading.jupiter.ultra.allowExecutions
+    );
   }
 
   return false;
@@ -88,7 +105,7 @@ const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
   const actions: RuntimeAction[] = [createWalletsAction];
 
   if (settings.trading.enabled && settings.trading.jupiter.ultra.enabled) {
-    actions.push(ultraQuoteSwapAction, ultraExecuteSwapAction);
+    actions.push(ultraQuoteSwapAction, ultraExecuteSwapAction, ultraSwapAction);
   }
 
   return actions;
@@ -156,6 +173,8 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   }
 
   const jupiterUltra = createJupiterUltraAdapterFromEnv();
+  const tokenAccounts = createTokenAccountAdapterFromEnv();
+  const ultraSigner = await createUltraSignerAdapterFromEnv();
 
   const scheduler = new Scheduler(
     {
@@ -172,6 +191,8 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
             cycle: job.cyclesCompleted + 1,
           },
           jupiterUltra,
+          tokenAccounts,
+          ultraSigner,
         }),
       resolveRoutine: (routineName) => resolveRoutinePlanner(routineName),
     },

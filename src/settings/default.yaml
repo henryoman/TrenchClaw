@@ -98,6 +98,7 @@ actions:
     executeSwap: true
     ultraQuoteSwap: true
     ultraExecuteSwap: true
+    ultraSwap: true
     transferSol: true
     transferToken: true
     createToken: true

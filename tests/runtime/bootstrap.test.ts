@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { createActionContext } from "../ai";
-import { bootstrapRuntime } from "./bootstrap";
+import { createActionContext } from "../../src/ai";
+import { bootstrapRuntime } from "../../src/runtime/bootstrap";
 
 const REQUIRED_ENV_DEFAULTS: Record<string, string> = {
   RPC_URL: "https://rpc.example",
@@ -111,4 +111,3 @@ actions:
     }
   });
 });
-
