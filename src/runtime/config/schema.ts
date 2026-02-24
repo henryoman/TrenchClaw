@@ -95,6 +95,7 @@ const actionsSchema = z.object({
     executeSwap: z.boolean(),
     ultraQuoteSwap: z.boolean(),
     ultraExecuteSwap: z.boolean(),
+    ultraSwap: z.boolean(),
     transferSol: z.boolean(),
     transferToken: z.boolean(),
     createToken: z.boolean(),

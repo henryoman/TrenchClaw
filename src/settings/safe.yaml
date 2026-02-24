@@ -79,6 +79,7 @@ actions:
     executeSwap: false
     ultraQuoteSwap: false
     ultraExecuteSwap: false
+    ultraSwap: false
     transferSol: false
     transferToken: false
     createToken: false

@@ -1,3 +1,11 @@
+import {
+  formatUltraError,
+  normalizeAmount,
+  parseUltraJson,
+  resolveRequestId,
+  resolveSwapTransaction,
+} from "../ultra/parsing";
+
 const DEFAULT_JUPITER_ULTRA_BASE_URL = "https://api.jup.ag/ultra/v1";
 
 export interface JupiterUltraAdapterConfig {
@@ -10,8 +18,10 @@ export interface JupiterUltraOrderRequest {
   inputMint: string;
   outputMint: string;
   amount: bigint | number | string;
-  taker: string;
+  taker?: string;
   mode?: "ExactIn" | "ExactOut";
+  swapMode?: "ExactIn" | "ExactOut";
+  slippageBps?: number;
   referralAccount?: string;
   referralFee?: number;
 }
@@ -19,6 +29,7 @@ export interface JupiterUltraOrderRequest {
 export interface JupiterUltraOrderResponse {
   requestId: string;
   transaction: string;
+  raw: unknown;
   [key: string]: unknown;
 }
 
@@ -30,27 +41,28 @@ export interface JupiterUltraExecuteRequest {
 export interface JupiterUltraExecuteResponse {
   status: string;
   signature?: string;
+  raw: unknown;
   [key: string]: unknown;
 }
-
-const normalizeAmount = (amount: bigint | number | string): string => {
-  if (typeof amount === "bigint") {
-    return amount.toString(10);
-  }
-
-  return String(amount);
-};
 
 const toQueryParams = (request: JupiterUltraOrderRequest): URLSearchParams => {
   const params = new URLSearchParams({
     inputMint: request.inputMint,
     outputMint: request.outputMint,
     amount: normalizeAmount(request.amount),
-    taker: request.taker,
   });
 
-  if (request.mode) {
-    params.set("mode", request.mode);
+  if (request.taker) {
+    params.set("taker", request.taker);
+  }
+
+  const swapMode = request.swapMode ?? request.mode;
+  if (swapMode) {
+    params.set("swapMode", swapMode);
+  }
+
+  if (typeof request.slippageBps === "number") {
+    params.set("slippageBps", String(request.slippageBps));
   }
 
   if (request.referralAccount) {
@@ -64,49 +76,96 @@ const toQueryParams = (request: JupiterUltraOrderRequest): URLSearchParams => {
   return params;
 };
 
-const readErrorMessage = async (response: Response): Promise<string> => {
-  const responseText = await response.text();
-
-  if (!responseText) {
-    return `Jupiter Ultra request failed (${response.status})`;
-  }
-
-  return `Jupiter Ultra request failed (${response.status}): ${responseText}`;
-};
+const readErrorMessage = (status: number, payload: unknown): string =>
+  formatUltraError("Jupiter Ultra request failed", status, payload);
 
 export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => {
   const baseUrl = config.baseUrl ?? DEFAULT_JUPITER_ULTRA_BASE_URL;
   const fetchImpl = config.fetchImpl ?? fetch;
 
-  const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const request = async (path: string, init?: RequestInit): Promise<unknown> => {
     const headers = new Headers(init?.headers);
     headers.set("content-type", "application/json");
     headers.set("x-api-key", config.apiKey);
+    headers.set("x-ultra-api-key", config.apiKey);
 
     const response = await fetchImpl(`${baseUrl}${path}`, {
       ...init,
       headers,
     });
+    const payload = await parseUltraJson(response);
 
     if (!response.ok) {
-      throw new Error(await readErrorMessage(response));
+      throw new Error(readErrorMessage(response.status, payload));
     }
 
-    return (await response.json()) as T;
+    return payload;
   };
 
   return {
     baseUrl,
     getOrder: (orderRequest: JupiterUltraOrderRequest): Promise<JupiterUltraOrderResponse> => {
       const queryParams = toQueryParams(orderRequest);
-      return request<JupiterUltraOrderResponse>(`/order?${queryParams.toString()}`);
+      return request(`/order?${queryParams.toString()}`).then((payload) => {
+        const requestId = resolveRequestId(payload);
+        if (!requestId) {
+          throw new Error("Ultra order response is missing requestId");
+        }
+
+        const transaction = resolveSwapTransaction(payload);
+        if (!transaction) {
+          throw new Error("Ultra order response is missing transaction");
+        }
+
+        if (payload && typeof payload === "object") {
+          return {
+            ...(payload as Record<string, unknown>),
+            requestId,
+            transaction,
+            raw: payload,
+          };
+        }
+
+        return {
+          requestId,
+          transaction,
+          raw: payload,
+        };
+      });
     },
     executeOrder: (
       executeRequest: JupiterUltraExecuteRequest,
+      options?: { signal?: AbortSignal },
     ): Promise<JupiterUltraExecuteResponse> => {
-      return request<JupiterUltraExecuteResponse>("/execute", {
+      return request("/execute", {
         method: "POST",
         body: JSON.stringify(executeRequest),
+        signal: options?.signal,
+      }).then((payload) => {
+        const payloadRecord = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+        const status =
+          payloadRecord && typeof payloadRecord.status === "string"
+            ? payloadRecord.status
+            : "Unknown";
+        const signature =
+          payloadRecord && typeof payloadRecord.signature === "string"
+            ? payloadRecord.signature
+            : undefined;
+
+        if (payloadRecord) {
+          return {
+            ...payloadRecord,
+            status,
+            signature,
+            raw: payload,
+          };
+        }
+
+        return {
+          status,
+          signature,
+          raw: payload,
+        };
       });
     },
   };

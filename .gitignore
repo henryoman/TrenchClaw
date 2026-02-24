@@ -18,3 +18,5 @@ lib/client/generated/
 
 # Runtime data (Bun SQLite)
 data/
+
+repomix-output.xml

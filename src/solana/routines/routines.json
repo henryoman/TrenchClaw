@@ -6,5 +6,26 @@
       "count": 1,
       "output.directory": "runtime/config/workspace/keypairs"
     }
+  },
+  "actionSequence": {
+    "routineName": "actionSequence",
+    "command": "actionSequence steps='[{\"key\":\"step-1\",\"actionName\":\"ultraSwap\",\"input\":{...}},{\"key\":\"step-2\",\"dependsOn\":\"step-1\",\"actionName\":\"createWallets\",\"input\":{...}}]'",
+    "defaults": {
+      "steps": [
+        {
+          "actionName": "createWallets",
+          "input": {
+            "count": 1,
+            "includePrivateKey": false,
+            "privateKeyEncoding": "base64",
+            "output": {
+              "directory": "runtime/config/workspace/keypairs",
+              "filePrefix": "wallet",
+              "includeIndexInFileName": true
+            }
+          }
+        }
+      ]
+    }
   }
 }

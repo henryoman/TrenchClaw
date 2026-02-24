@@ -19,6 +19,6 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["index.ts", "src/**/*.ts", "lib/**/*.ts"],
+  "include": ["index.ts", "src/**/*.ts", "tests/**/*.ts", "lib/**/*.ts"],
   "exclude": ["src/apps/web-gui/**"]
 }
