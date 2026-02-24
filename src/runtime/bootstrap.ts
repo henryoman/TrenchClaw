@@ -23,6 +23,7 @@ import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-si
 import { actionSequenceRoutine } from "../solana/routines/action-sequence";
 import { createWalletsRoutine } from "../solana/routines/create-wallets";
 import { createWalletsAction } from "../solana/actions/wallet-based/create-wallets/createWallets";
+import { transferAction } from "../solana/actions/wallet-based/transfer/transfer";
 import { ultraExecuteSwapAction } from "../solana/actions/wallet-based/swap/ultra/executeSwap";
 import { ultraQuoteSwapAction } from "../solana/actions/wallet-based/swap/ultra/quoteSwap";
 import { ultraSwapAction } from "../solana/actions/wallet-based/swap/ultra/swap";
@@ -46,8 +47,7 @@ const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = new Set([
   "executeSwap",
   "ultraExecuteSwap",
   "ultraSwap",
-  "transferSol",
-  "transferToken",
+  "transfer",
   "createToken",
 ]);
 
@@ -98,6 +98,14 @@ const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string):
       settings.trading.jupiter.ultra.enabled &&
       settings.trading.jupiter.ultra.allowQuotes &&
       settings.trading.jupiter.ultra.allowExecutions
+    );
+  }
+
+  if (actionName === "transfer") {
+    return (
+      settings.trading.enabled &&
+      settings.wallet.dangerously.allowWalletSigning &&
+      settings.trading.limits.maxSingleTransferSol > 0
     );
   }
 
@@ -172,6 +180,14 @@ const hasUserConfirmation = (payload: unknown, requiredToken: string): boolean =
 
 const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
   const actions: RuntimeAction[] = [createWalletsAction];
+
+  if (
+    settings.trading.enabled &&
+    settings.wallet.dangerously.allowWalletSigning &&
+    settings.trading.limits.maxSingleTransferSol > 0
+  ) {
+    actions.push(transferAction);
+  }
 
   if (settings.trading.enabled && settings.trading.jupiter.ultra.enabled) {
     actions.push(ultraQuoteSwapAction, ultraExecuteSwapAction, ultraSwapAction);
