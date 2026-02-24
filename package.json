@@ -8,6 +8,7 @@
     "start": "bun run apps/cli/index.ts start",
     "headless": "bun run apps/cli/index.ts headless",
     "cli": "bun run apps/cli/index.ts cli",
+    "systemd:install": "bun run scripts/systemd/install.ts",
     "typecheck": "bunx tsc --noEmit",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",

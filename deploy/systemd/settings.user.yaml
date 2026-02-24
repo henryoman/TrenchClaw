@@ -1,0 +1,12 @@
+# Human/operator-editable override layer.
+# Merged after the bundled profile config.
+
+observability:
+  logging:
+    level: info
+    pretty: true
+
+ui:
+  webGui:
+    host: 127.0.0.1
+    port: 4173

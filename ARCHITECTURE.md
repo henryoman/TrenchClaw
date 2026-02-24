@@ -273,6 +273,33 @@ interface ActionStep {
 | `bun run start` | Boot runtime + OpenTUI in production mode |
 | `bun run headless` | Boot runtime without TUI (for server/daemon deployment) |
 | `bun run cli -- status` | One-shot CLI command, print status and exit |
+| `bun run systemd:install` | Install/update Linux systemd unit and config files |
+
+---
+
+## Linux systemd (Bun)
+
+TrenchClaw ships a Bun-based installer plus service template in `deploy/systemd/`.
+
+```bash
+sudo bun run systemd:install
+sudo systemctl daemon-reload
+sudo systemctl enable trenchclaw
+sudo systemctl restart trenchclaw
+```
+
+Config ownership is split:
+
+- User-editable: `/etc/trenchclaw/user.env` and `/etc/trenchclaw/settings.user.yaml`
+- Agent/runtime-editable: `/etc/trenchclaw/agent.env` and `/etc/trenchclaw/settings.agent.yaml`
+
+Merged runtime config precedence:
+
+1. Bundled base profile (`src/settings/default.yaml` or `src/settings/safe.yaml`)
+2. User override (`TRENCHCLAW_SETTINGS_USER_FILE`)
+3. Agent override (`TRENCHCLAW_SETTINGS_AGENT_FILE`)
+
+Later layers override earlier ones.
 
 ---
 

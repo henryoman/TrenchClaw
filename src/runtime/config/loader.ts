@@ -10,6 +10,29 @@ const SETTINGS_FILE_BY_PROFILE: Record<RuntimeSettingsProfile, string> = {
 };
 
 const ENV_TOKEN_REGEX = /\$\{([A-Z0-9_]+)\}/g;
+const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
+const SETTINGS_BASE_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_BASE_FILE";
+const SETTINGS_USER_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_USER_FILE";
+const SETTINGS_AGENT_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_AGENT_FILE";
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value != null && typeof value === "object" && !Array.isArray(value);
+
+const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
+  if (!isRecord(baseValue) || !isRecord(overlayValue)) {
+    return overlayValue;
+  }
+
+  const merged: Record<string, unknown> = { ...baseValue };
+
+  for (const [key, value] of Object.entries(overlayValue)) {
+    const currentValue = merged[key];
+    merged[key] =
+      isRecord(currentValue) && isRecord(value) ? deepMerge(currentValue, value) : value;
+  }
+
+  return merged;
+};
 
 const resolveEnvTokens = (value: unknown): unknown => {
   if (typeof value === "string") {
@@ -41,23 +64,62 @@ const parseYaml = (source: string, filePath: string): unknown => {
   }
 };
 
+const readSettingsFile = async (filePath: string): Promise<unknown> => {
+  const file = Bun.file(filePath);
+  if (!(await file.exists())) {
+    throw new Error(`Settings file does not exist: "${filePath}"`);
+  }
+
+  return parseYaml(await file.text(), filePath);
+};
+
+const loadOptionalSettingsFile = async (filePath: string | undefined): Promise<unknown> => {
+  if (!filePath) {
+    return {};
+  }
+
+  return readSettingsFile(filePath);
+};
+
+export const resolveRuntimeSettingsProfile = (
+  profileFromEnv = process.env[SETTINGS_PROFILE_ENV_KEY],
+): RuntimeSettingsProfile => {
+  if (!profileFromEnv) {
+    return "default";
+  }
+
+  if (profileFromEnv === "default" || profileFromEnv === "safe") {
+    return profileFromEnv;
+  }
+
+  throw new Error(
+    `Invalid ${SETTINGS_PROFILE_ENV_KEY} value "${profileFromEnv}". Expected "default" or "safe".`,
+  );
+};
+
 export const getSettingsFilePath = (profile: RuntimeSettingsProfile): string => {
   const relativePath = SETTINGS_FILE_BY_PROFILE[profile];
   return fileURLToPath(new URL(relativePath, import.meta.url));
 };
 
 export const loadRuntimeSettings = async (
-  profile: RuntimeSettingsProfile = "default",
+  profile: RuntimeSettingsProfile = resolveRuntimeSettingsProfile(),
 ): Promise<RuntimeSettings> => {
-  const filePath = getSettingsFilePath(profile);
-  const rawYaml = await Bun.file(filePath).text();
-  const parsedYaml = parseYaml(rawYaml, filePath);
-  const withResolvedEnv = resolveEnvTokens(parsedYaml);
-  const validated = runtimeSettingsSchema.parse(withResolvedEnv);
+  const baseSettingsPath = process.env[SETTINGS_BASE_FILE_ENV_KEY] || getSettingsFilePath(profile);
+  const userSettingsPath = process.env[SETTINGS_USER_FILE_ENV_KEY];
+  const agentSettingsPath = process.env[SETTINGS_AGENT_FILE_ENV_KEY];
 
-  if (validated.profile !== profile) {
+  const baseSettings = await readSettingsFile(baseSettingsPath);
+  const userSettings = await loadOptionalSettingsFile(userSettingsPath);
+  const agentSettings = await loadOptionalSettingsFile(agentSettingsPath);
+  const mergedSettings = deepMerge(deepMerge(baseSettings, userSettings), agentSettings);
+  const withResolvedEnv = resolveEnvTokens(mergedSettings);
+  const validated = runtimeSettingsSchema.parse(withResolvedEnv);
+  const usingBundledBaseProfile = !process.env[SETTINGS_BASE_FILE_ENV_KEY];
+
+  if (usingBundledBaseProfile && validated.profile !== profile) {
     throw new Error(
-      `Settings profile mismatch in "${filePath}". Expected "${profile}" but got "${validated.profile}"`,
+      `Settings profile mismatch after applying overrides. Expected "${profile}" but got "${validated.profile}"`,
     );
   }
 

@@ -1,0 +1,10 @@
+# Agent/runtime-editable override layer.
+# Merged last and has highest precedence.
+
+runtime:
+  scheduler:
+    tickMs: 1000
+    maxConcurrentJobs: 8
+
+triggers:
+  enabled: true
