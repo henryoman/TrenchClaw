@@ -80,6 +80,17 @@ This isn't about raw capability — it's about where the complexity lives.
 - **The hard part is contract evolution, not execution speed.** The dominant failure modes are schema drift, tool ambiguity, partial/invalid args, and inability to safely evolve tool signatures. TS + schema-first patterns reduce drift because the schema object is colocated with the code and passed through the system as data. In systems languages the "contract as data" story becomes a build-time artifact (codegen), a separate schema file that can drift, or runtime reflection that's less ergonomic than TS + Zod — all of which increase iteration cost.
 - **Streaming UX is easier in the JS runtime model.** Token streaming, partial structured outputs, tool-call visualizations, reactive UI updates — the Vercel/Next ecosystem is optimized for that workflow and the AI SDK provides those primitives in the same language and runtime as your UI.
 
+### Why many Go/Rust agent stacks are a poor fit for this environment
+
+In this repo's environment (AI SDK orchestration + schema-first tools + Solana execution), the main risk is usually unsafe or ambiguous tool behavior, not raw compute throughput.
+
+- **AI SDK + Zod is a single control plane in TS.** The same schema object drives model-visible tool contracts and runtime validation. In Go/Rust stacks this is usually split across generated types, JSON schemas, and adapter layers, which increases mismatch risk.
+- **Fast guardrail iteration matters more than compile targets.** We frequently adjust tool descriptions, policy checks, confirmation gates, and schema constraints. TS lets these changes land in one place and ship quickly without regeneration/rebinding cycles.
+- **Wallet and execution safety are runtime-policy problems.** Confirmation requirements, amount/notional limits, allowlists, idempotency keys, decision traces, and policy block reasons all live in orchestration/runtime layers. That layer benefits most from TS-native schema + event tooling.
+- **Most Go/Rust "agent frameworks" optimize for infra shape, not operator safety UX.** They can be excellent for service performance, but often require extra custom work to match strict tool schemas, rich stream events, and interactive safety controls expected in trading/operator systems.
+
+Systems languages still fit extremely well behind strict boundaries (signing, parsing, deterministic execution, high-throughput services). They are usually not the fastest path for the orchestrator that must remain tightly coupled to AI SDK tool contracts and streaming UI behavior.
+
 ### The correct synthesis
 
 The strongest architecture is usually:

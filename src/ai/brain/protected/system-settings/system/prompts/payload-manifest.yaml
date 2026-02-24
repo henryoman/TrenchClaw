@@ -1,0 +1,22 @@
+version: 1
+system: system.md
+default-mode: operator
+
+operator:
+  prompt:
+      - modes/operator.md
+  context:
+    - includeKnowledgeManifest: true
+    - includeKnowledgeDirectoryTreeFallback: true
+    - includeDBSchemaSnapshot: true
+    - includeTemporalContext: true
+    - includeCurrentDate: true
+    - includeCurrentTime: true
+    - includeCurrentTimezone: true
+    - includeCurrentUserSettings: true
+    - includeCurrentUserProfile: true
+    - includeCurrentUserPreferences: true
+    - includeConversationSummary: true
+    - include20MostRecentChatMessages: true
+    
+

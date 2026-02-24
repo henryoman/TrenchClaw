@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-02-24T23:02:13.996Z
+Generated at: 2026-02-24T23:43:39.532Z
 Root: src/
 
 This file is generated. Refresh with:
@@ -35,25 +35,27 @@ src/
 |   |   |   |-- dexscreener-api-reference.md
 |   |   |   |-- helius.md
 |   |   |   |-- KNOWLEDGE_MANIFEST.md
-|   |   |   `-- knowledge-tree.ts
-|   |   |-- system-settings/
-|   |   |   |-- profiles/
-|   |   |   |   `-- user-default.json
-|   |   |   |-- system/
-|   |   |   |   |-- context/
-|   |   |   |   |   `-- workspace-and-schema.md
-|   |   |   |   |-- prompts/
-|   |   |   |   |   |-- modes/
-|   |   |   |   |   |   `-- operator.md
-|   |   |   |   |   |-- payload-manifest.yaml
-|   |   |   |   |   `-- system.md
-|   |   |   |   |-- safety-modes/
-|   |   |   |   |   |-- dangerous.yaml
-|   |   |   |   |   |-- safe.yaml
-|   |   |   |   |   `-- veryDangerous.yaml
-|   |   |   |   `-- ai.json
-|   |   |   `-- vault.json
+|   |   |   |-- knowledge-tree.ts
+|   |   |   `-- workspace-and-schema.md
+|   |   |-- protected/
+|   |   |   `-- system-settings/
+|   |   |       |-- profiles/
+|   |   |       |   `-- user-default.json
+|   |   |       |-- system/
+|   |   |       |   |-- context/
+|   |   |       |   |-- prompts/
+|   |   |       |   |   |-- modes/
+|   |   |       |   |   |   `-- operator.md
+|   |   |       |   |   |-- payload-manifest.yaml
+|   |   |       |   |   `-- system.md
+|   |   |       |   |-- safety-modes/
+|   |   |       |   |   |-- dangerous.yaml
+|   |   |       |   |   |-- safe.yaml
+|   |   |       |   |   `-- veryDangerous.yaml
+|   |   |       |   `-- ai.json
+|   |   |       `-- vault.json
 |   |   |-- user-settings/
+|   |   |   |-- notications.yaml
 |   |   |   |-- settings.yaml
 |   |   |   `-- swap.yaml
 |   |   |-- workspace/
@@ -81,10 +83,12 @@ src/
 |   |   |-- index.ts
 |   |   |-- prompt-loader.ts
 |   |   |-- types.ts
+|   |   |-- user-settings-loader.ts
 |   |   `-- workspace-map.ts
 |   |-- index.ts
 |   `-- README.md
 |-- apps/
+|   |-- chat-connector/
 |   |-- cli/
 |   |   |-- views/
 |   |   |   |-- action-feed.ts
@@ -133,6 +137,9 @@ src/
 |-- solana/
 |   |-- actions/
 |   |   |-- data-fetch/
+|   |   |   |-- alerts/
+|   |   |   |   |-- createBlockchainAlert.ts
+|   |   |   |   `-- index.ts
 |   |   |   |-- api/
 |   |   |   |   `-- dexscreener.ts
 |   |   |   |-- rpc/
@@ -178,6 +185,7 @@ src/
 |   |   |   |       `-- createToken.ts
 |   |   |   |-- transfer/
 |   |   |   |   |-- index.ts
+|   |   |   |   |-- privacyCash.ts
 |   |   |   |   `-- transfer.ts
 |   |   |   `-- index.ts
 |   |   `-- index.ts

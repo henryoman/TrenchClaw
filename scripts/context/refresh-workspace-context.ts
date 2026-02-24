@@ -6,7 +6,7 @@ import { getSqliteSchemaSnapshot } from "../../src/runtime/storage/sqlite-orm";
 
 const SRC_DIR = fileURLToPath(new URL("../../src/", import.meta.url));
 const CONTEXT_FILE = fileURLToPath(
-  new URL("../../src/ai/brain/system-settings/system/context/workspace-and-schema.md", import.meta.url),
+  new URL("../../src/ai/brain/knowledge/workspace-and-schema.md", import.meta.url),
 );
 
 const OMITTED_DIR_NAMES = new Set([
