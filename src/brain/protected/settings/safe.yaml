@@ -1,0 +1,154 @@
+configVersion: 1
+profile: safe
+
+network:
+  chain: solana
+  cluster: mainnet-beta
+  commitment: finalized
+  websocketEnabled: true
+  requestTimeoutMs: 10000
+  transactionTimeoutMs: 30000
+  retry:
+    readsMaxAttempts: 2
+    writesMaxAttempts: 1
+    backoffMs: 500
+    backoffMultiplier: 2
+  rpc:
+    strategy: failover
+    endpoints:
+      - name: primary
+        url: ${RPC_URL}
+        wsUrl: ${WS_URL}
+        enabled: true
+
+wallet:
+  custodyMode: local-encrypted
+  defaults:
+    keyEncoding: base64
+    createWalletCountLimit: 1
+    exportFormat: base58
+  dangerously:
+    allowPrivateKeyAccess: false
+    allowWalletSigning: false
+    allowCreatingWallets: false
+    allowDeletingWallets: false
+    allowExportingWallets: false
+    allowImportingWallets: false
+    allowListingWallets: true
+    allowShowingWallets: true
+    allowUpdatingWallets: false
+
+trading:
+  enabled: false
+  programId: null
+  mode:
+    simulation: true
+    paperTrading: true
+  confirmations:
+    requireUserConfirmationForDangerousActions: true
+    userConfirmationToken: I_CONFIRM
+  limits:
+    maxSwapNotionalSol: 0
+    maxSingleTransferSol: 0
+    maxPriorityFeeLamports: 0
+    maxSlippageBps: 0
+  jupiter:
+    ultra:
+      enabled: false
+      allowQuotes: false
+      allowExecutions: false
+      allowCancellations: false
+    standard:
+      enabled: false
+      allowQuotes: false
+      allowExecutions: false
+  dexscreener:
+    enabled: true
+
+agent:
+  enabled: true
+  dangerously:
+    allowFilesystemWrites: false
+    allowNetworkAccess: true
+    allowSystemAccess: false
+    allowHardwareAccess: false
+  internetAccess:
+    trustedSitesOnly: true
+    allowFullAccess: false
+    trustedSites: []
+    blockedSites: []
+    allowedProtocols:
+      - https
+    blockedProtocols:
+      - http
+      - ftp
+      - file
+    allowedPorts:
+      - 443
+    blockedPorts:
+      - 22
+      - 25
+      - 2375
+      - 2376
+    allowedDomains: []
+    blockedDomains: []
+
+runtime:
+  scheduler:
+    tickMs: 2000
+    maxConcurrentJobs: 2
+  dispatcher:
+    maxActionAttempts: 1
+    defaultActionTimeoutMs: 30000
+    defaultBackoffMs: 1000
+  idempotency:
+    enabled: true
+    ttlHours: 48
+
+storage:
+  sqlite:
+    enabled: true
+    path: ./src/brain/db/runtime/trenchclaw.db
+    walMode: true
+    busyTimeoutMs: 5000
+  files:
+    enabled: true
+    eventsDirectory: ./src/brain/db/runtime/events
+  sessions:
+    enabled: true
+    directory: ./src/brain/db/sessions
+    agentId: trenchclaw
+    source: runtime
+  memory:
+    enabled: true
+    directory: ./src/brain/db/memory
+    longTermFile: ./src/brain/db/memory/MEMORY.md
+  retention:
+    receiptsDays: 7
+    policyHitsDays: 7
+    decisionLogsDays: 7
+
+ui:
+  cli:
+    enabled: true
+  webGui:
+    enabled: true
+    host: 127.0.0.1
+    port: 4173
+  tui:
+    enabled: true
+    overviewView: true
+    botsView: true
+    actionFeedView: true
+    controlsView: true
+
+observability:
+  logging:
+    level: info
+    pretty: true
+    includeDecisionTrace: true
+  metrics:
+    enabled: false
+  tracing:
+    enabled: false
+  

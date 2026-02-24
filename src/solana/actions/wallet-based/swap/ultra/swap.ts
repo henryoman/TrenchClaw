@@ -23,7 +23,7 @@ import {
   extractSignatureFromSignedTransaction,
   roundTimings,
   type UltraPhaseTimings,
-} from "../../../../../solana/ultra/parsing";
+} from "../../../../lib/ultra/parsing";
 
 const ultraSwapInputSchema = ultraQuoteInputSchema.and(
   z.object({

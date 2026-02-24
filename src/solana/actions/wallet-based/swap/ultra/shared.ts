@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { ActionContext } from "../../../../../ai/contracts/context";
 import type { ActionResult } from "../../../../../ai/contracts/action";
-import type { JupiterUltraAdapter, JupiterUltraOrderRequest } from "../../../../../solana/adapters/jupiter-ultra";
+import type { JupiterUltraAdapter, JupiterUltraOrderRequest } from "../../../../lib/adapters/jupiter-ultra";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 

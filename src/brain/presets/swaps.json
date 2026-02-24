@@ -1,0 +1,13 @@
+quickswap: {
+  swapType: "quickswap",
+  inputToken: "SOL",
+  outputToken: "USDC",
+  amount: 0.1
+}
+
+raydium: {
+  swapType: "raydium",
+  inputToken: "SOL",
+  outputToken: "USDC",
+  amount: 0.1
+}

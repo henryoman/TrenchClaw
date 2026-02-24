@@ -23,9 +23,9 @@ const MUTABLE_ENV_KEYS = [
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
 
 const writeYaml = async (content: string): Promise<string> => {
-  const path = `/tmp/trenchclaw-test-${crypto.randomUUID()}.yaml`;
-  await Bun.write(path, content);
-  return path;
+  const target = `/tmp/trenchclaw-bootstrap-test-${crypto.randomUUID()}.yaml`;
+  await Bun.write(target, content);
+  return target;
 };
 
 const applyDefaultEnv = (): void => {
@@ -36,54 +36,54 @@ const applyDefaultEnv = (): void => {
 
 afterEach(() => {
   for (const key of MUTABLE_ENV_KEYS) {
-    const original = initialEnv[key];
-    if (original === undefined) {
+    const initial = initialEnv[key];
+    if (initial === undefined) {
       delete process.env[key];
       continue;
     }
-    process.env[key] = original;
+    process.env[key] = initial;
   }
 });
 
 describe("bootstrapRuntime", () => {
-  test("applies agent allowlist and preserves user authority on protected keys", async () => {
+  test("applies capability-only agent allowlist while preserving user authority for protected keys", async () => {
     applyDefaultEnv();
-    const userPath = await writeYaml(`
+    const userSettingsPath = await writeYaml(`
 wallet:
   dangerously:
     allowDeletingWallets: false
 `);
-    const agentPath = await writeYaml(`
+    const agentSettingsPath = await writeYaml(`
 wallet:
   dangerously:
     allowDeletingWallets: true
+agent:
+  enabled: false
 runtime:
   scheduler:
-    tickMs: 4321
-    maxConcurrentJobs: 4
+    tickMs: 2468
 `);
-
-    process.env.TRENCHCLAW_SETTINGS_USER_FILE = userPath;
-    process.env.TRENCHCLAW_SETTINGS_AGENT_FILE = agentPath;
+    process.env.TRENCHCLAW_SETTINGS_USER_FILE = userSettingsPath;
+    process.env.TRENCHCLAW_SETTINGS_AGENT_FILE = agentSettingsPath;
 
     const runtime = await bootstrapRuntime();
     try {
       expect(runtime.settings.wallet.dangerously.allowDeletingWallets).toBe(false);
-      expect(runtime.settings.runtime.scheduler.tickMs).toBe(4321);
-      expect(runtime.describe().schedulerTickMs).toBe(4321);
+      expect(runtime.settings.agent.enabled).toBe(false);
+      expect(runtime.settings.runtime.scheduler.tickMs).toBe(1000);
     } finally {
       runtime.stop();
     }
   });
 
-  test("blocks disabled actions through runtime settings policy", async () => {
+  test("blocks createWallets when wallet permission is disabled in user settings", async () => {
     applyDefaultEnv();
-    const userPath = await writeYaml(`
-actions:
-  walletBased:
-    createWallets: false
+    const userSettingsPath = await writeYaml(`
+wallet:
+  dangerously:
+    allowCreatingWallets: false
 `);
-    process.env.TRENCHCLAW_SETTINGS_USER_FILE = userPath;
+    process.env.TRENCHCLAW_SETTINGS_USER_FILE = userSettingsPath;
 
     const runtime = await bootstrapRuntime();
     try {
@@ -97,7 +97,7 @@ actions:
             privateKeyEncoding: "base64",
             output: {
               directory: "/tmp",
-              filePrefix: "skip",
+              filePrefix: "blocked",
               includeIndexInFileName: true,
             },
           },
@@ -110,4 +110,38 @@ actions:
       runtime.stop();
     }
   });
+
+  test("requires explicit confirmation for dangerous swap actions in dangerous profile", async () => {
+    applyDefaultEnv();
+    process.env.TRENCHCLAW_PROFILE = "dangerous";
+
+    const runtime = await bootstrapRuntime();
+    try {
+      const blocked = await runtime.dispatcher.dispatchStep(
+        createActionContext({ actor: "agent" }),
+        {
+          actionName: "ultraSwap",
+          input: {},
+        },
+      );
+
+      expect(blocked.results[0]?.ok).toBe(false);
+      expect(blocked.results[0]?.error).toContain("requires explicit user confirmation");
+
+      const unblockedByToken = await runtime.dispatcher.dispatchStep(
+        createActionContext({ actor: "agent" }),
+        {
+          actionName: "ultraSwap",
+          input: {
+            userConfirmationToken: "I_CONFIRM",
+          },
+        },
+      );
+
+      expect(unblockedByToken.results[0]?.error ?? "").not.toContain("requires explicit user confirmation");
+    } finally {
+      runtime.stop();
+    }
+  });
 });
+
