@@ -10,6 +10,9 @@ import {
   type Policy,
   type JobState,
   type RuntimeEventBus,
+  type RuntimeEventName,
+  type RuntimeEventMap,
+  type StateStore,
 } from "../ai";
 import type { RoutinePlanner } from "../ai/contracts/scheduler";
 import { createJupiterUltraAdapterFromEnv } from "../solana/adapters/jupiter-ultra";
@@ -26,6 +29,7 @@ import {
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
 } from "./config";
+import { RuntimeFileEventLog, SqliteStateStore } from "./storage";
 
 type RuntimeAction = Action<any, any>;
 
@@ -118,7 +122,31 @@ const maybeLog = (settings: RuntimeSettings, ...parts: unknown[]): void => {
   console.log(...parts);
 };
 
-const attachEventLogging = (settings: RuntimeSettings, eventBus: RuntimeEventBus): void => {
+const EVENT_NAMES: RuntimeEventName[] = [
+  "action:start",
+  "action:success",
+  "action:fail",
+  "action:retry",
+  "bot:start",
+  "bot:pause",
+  "bot:stop",
+  "policy:block",
+  "rpc:failover",
+];
+
+const attachEventLogging = (
+  settings: RuntimeSettings,
+  eventBus: RuntimeEventBus,
+  fileEventLog?: RuntimeFileEventLog,
+): void => {
+  if (fileEventLog) {
+    for (const eventName of EVENT_NAMES) {
+      eventBus.on<typeof eventName>(eventName, (event) => {
+        fileEventLog.write(event.type, event.payload as RuntimeEventMap[typeof eventName], event.timestamp);
+      });
+    }
+  }
+
   if (!INFO_LEVELS.has(settings.observability.logging.level)) {
     return;
   }
@@ -137,7 +165,7 @@ const attachEventLogging = (settings: RuntimeSettings, eventBus: RuntimeEventBus
 export interface RuntimeBootstrap {
   settings: RuntimeSettings;
   eventBus: InMemoryRuntimeEventBus;
-  stateStore: InMemoryStateStore;
+  stateStore: StateStore;
   scheduler: Scheduler;
   dispatcher: ActionDispatcher;
   registry: ActionRegistry;
@@ -155,7 +183,13 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
   const eventBus = new InMemoryRuntimeEventBus();
-  const stateStore = new InMemoryStateStore();
+  const stateStore: StateStore = settings.storage.sqlite.enabled
+    ? new SqliteStateStore({
+        path: settings.storage.sqlite.path,
+        walMode: settings.storage.sqlite.walMode,
+        busyTimeoutMs: settings.storage.sqlite.busyTimeoutMs,
+      })
+    : new InMemoryStateStore();
   const registry = new ActionRegistry();
   const actions = buildActionCatalog(settings);
   const supportedActionMap = toSupportedActionMap(actions);
@@ -199,7 +233,10 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     settings.runtime.scheduler.tickMs,
   );
 
-  attachEventLogging(settings, eventBus);
+  const fileEventLog = settings.storage.files.enabled
+    ? new RuntimeFileEventLog({ directory: settings.storage.files.eventsDirectory })
+    : undefined;
+  attachEventLogging(settings, eventBus, fileEventLog);
   scheduler.start();
 
   const enqueueJob = (input: {
@@ -239,7 +276,11 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     scheduler,
     dispatcher,
     registry,
-    stop: () => scheduler.stop(),
+    stop: () => {
+      scheduler.stop();
+      const closableStateStore = stateStore as StateStore & { close?: () => void };
+      closableStateStore.close?.();
+    },
     enqueueJob,
     describe: () => ({
       profile: settings.profile,

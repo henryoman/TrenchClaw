@@ -26,9 +26,21 @@ const actionSequenceRoutineConfigSchema = z.object({
 export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
   const config = actionSequenceRoutineConfigSchema.parse(job.config);
   const keyToIdempotency = new Map<string, string>();
+  const seenKeys = new Set<string>();
 
   config.steps.forEach((step, index) => {
     const stepKey = step.key ?? `step-${index + 1}`;
+    if (seenKeys.has(stepKey)) {
+      throw new Error(`Duplicate action-sequence step key "${stepKey}"`);
+    }
+    seenKeys.add(stepKey);
+
+    if (step.dependsOn && !seenKeys.has(step.dependsOn)) {
+      throw new Error(
+        `Step "${stepKey}" depends on "${step.dependsOn}", but dependencies must reference a prior step key`,
+      );
+    }
+
     const idempotencyKey = step.idempotencyKey ?? `${job.id}:${stepKey}`;
     keyToIdempotency.set(stepKey, idempotencyKey);
   });
@@ -39,6 +51,7 @@ export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
     const dependsOnIdempotency = step.dependsOn ? keyToIdempotency.get(step.dependsOn) ?? step.dependsOn : undefined;
 
     return {
+      refKey: stepKey,
       actionName: step.actionName,
       input: step.input,
       dependsOn: dependsOnIdempotency,

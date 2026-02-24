@@ -166,6 +166,10 @@ const storageSchema = z.object({
     walMode: z.boolean(),
     busyTimeoutMs: z.number().int().nonnegative(),
   }),
+  files: z.object({
+    enabled: z.boolean(),
+    eventsDirectory: z.string().min(1),
+  }),
   retention: z.object({
     receiptsDays: z.number().int().positive(),
     policyHitsDays: z.number().int().positive(),
