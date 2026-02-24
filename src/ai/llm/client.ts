@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
+import { resolveLlmProviderConfigFromEnv } from "./config";
 import { loadDefaultSystemPrompt } from "./prompt-loader";
 import type {
   LlmClient,
@@ -9,8 +10,6 @@ import type {
   LlmStreamInput,
   LlmStreamResult,
 } from "./types";
-
-const DEFAULT_MODEL = "gpt-4.1-mini";
 
 const buildTemporalContext = (now: Date = new Date()): string => {
   const iso = now.toISOString();
@@ -53,7 +52,10 @@ const toStreamResult = (result: ReturnType<typeof streamText>): LlmStreamResult 
 });
 
 export const createLlmClient = (config: LlmClientConfig): LlmClient => {
-  const openai = createOpenAI({ apiKey: config.apiKey });
+  const openai = createOpenAI({
+    apiKey: config.apiKey,
+    baseURL: config.baseURL,
+  });
   const model = openai.responses(config.model);
 
   const generate = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
@@ -83,7 +85,7 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
   };
 
   return {
-    provider: "openai",
+    provider: config.provider,
     model: config.model,
     defaultSystemPrompt: config.defaultSystemPrompt,
     generate,
@@ -92,17 +94,14 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
 };
 
 export const createLlmClientFromEnv = async (): Promise<LlmClient | null> => {
-  const apiKey = process.env.OPENAI_API_KEY?.trim();
-  if (!apiKey) {
+  const providerConfig = resolveLlmProviderConfigFromEnv();
+  if (!providerConfig) {
     return null;
   }
-
-  const model = process.env.TRENCHCLAW_LLM_MODEL?.trim() || DEFAULT_MODEL;
   const defaultSystemPrompt = await loadDefaultSystemPrompt();
 
   return createLlmClient({
-    apiKey,
-    model,
+    ...providerConfig,
     defaultSystemPrompt,
   });
 };
