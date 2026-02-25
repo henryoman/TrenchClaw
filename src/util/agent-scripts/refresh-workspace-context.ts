@@ -3,7 +3,7 @@ import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Database } from "bun:sqlite";
 
-import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../src/runtime/storage/sqlite-orm";
+import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
 
 const SRC_DIR = fileURLToPath(new URL("../../src/", import.meta.url));
 const CONTEXT_FILE = fileURLToPath(

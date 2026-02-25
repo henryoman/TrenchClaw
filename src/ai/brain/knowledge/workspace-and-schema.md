@@ -32,7 +32,7 @@ src/
 |   |   |   `-- workspace-and-schema.md
 |   |   |-- protected/
 |   |   |   `-- system-settings/
-|   |   |       |-- profiles/
+|   |   |       |-- instance/
 |   |   |       |   `-- user-preferences.json
 |   |   |       |-- system/
 |   |   |       |   |-- context/

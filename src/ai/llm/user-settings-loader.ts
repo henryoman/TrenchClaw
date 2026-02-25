@@ -2,7 +2,7 @@ import path from "node:path";
 import { isRecord, parseStructuredFile, resolvePathFromModule } from "./shared";
 
 const DEFAULT_USER_SETTINGS_FILE = "../brain/user-settings/settings.yaml";
-const DEFAULT_VAULT_FILE = "../brain/protected/system-settings/vault.json";
+const DEFAULT_VAULT_FILE = "../brain/protected/system/no-read/vault.json";
 
 const USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";

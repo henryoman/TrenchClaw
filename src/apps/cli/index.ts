@@ -44,7 +44,8 @@ const RUNTIME_PROFILE_OPTIONS: Array<{ id: string; profile: RuntimeSafetyProfile
 ];
 const DEFAULT_RUNTIME_PROFILE: RuntimeSafetyProfile = "dangerous";
 const DEFAULT_INSTANCE_NAME = "trenchclaw-instance";
-const PROFILES_DIRECTORY = path.join(process.cwd(), "src/ai/brain/protected/system-settings/profiles");
+const INSTANCE_DIRECTORY = path.join(process.cwd(), "src/ai/brain/protected/instance");
+const LEGACY_PROFILES_DIRECTORY = path.join(process.cwd(), "src/ai/brain/protected/system-settings/profiles");
 
 interface InstanceProfileWriteResult {
   filePath: string;
@@ -395,19 +396,16 @@ async function writeInstanceProfile(input: {
   safetyProfile: RuntimeSafetyProfile;
   userPin: string | null;
 }): Promise<InstanceProfileWriteResult> {
-  await mkdir(PROFILES_DIRECTORY, { recursive: true });
+  await mkdir(INSTANCE_DIRECTORY, { recursive: true });
 
-  const entries = await readdir(PROFILES_DIRECTORY, { withFileTypes: true });
-  const profileNumbers = entries
-    .filter((entry) => entry.isFile())
-    .map((entry) => /^user-(\d+)\.json$/u.exec(entry.name)?.[1])
-    .filter((value): value is string => value != null)
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0);
+  const profileNumbers = [
+    ...(await readProfileNumbersFromDirectory(INSTANCE_DIRECTORY)),
+    ...(await readProfileNumbersFromDirectory(LEGACY_PROFILES_DIRECTORY)),
+  ];
 
   const nextProfileNumber = profileNumbers.length > 0 ? Math.max(...profileNumbers) + 1 : 1;
   const localInstanceId = String(nextProfileNumber).padStart(4, "0");
-  const filePath = path.join(PROFILES_DIRECTORY, `user-${nextProfileNumber}.json`);
+  const filePath = path.join(INSTANCE_DIRECTORY, `user-${nextProfileNumber}.json`);
   const nowIso = new Date().toISOString();
 
   const document = {
@@ -430,6 +428,20 @@ async function writeInstanceProfile(input: {
     instanceName: input.instanceName,
     localInstanceId,
   };
+}
+
+async function readProfileNumbersFromDirectory(directoryPath: string): Promise<number[]> {
+  try {
+    const entries = await readdir(directoryPath, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile())
+      .map((entry) => /^user-(\d+)\.json$/u.exec(entry.name)?.[1])
+      .filter((value): value is string => value != null)
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0);
+  } catch {
+    return [];
+  }
 }
 
 function parseYesNoInput(rawInput: string, defaultValue: boolean): boolean {

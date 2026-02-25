@@ -9,7 +9,7 @@ import { resolvePathFromModule } from "./shared";
 import { renderWorkspaceMapSection } from "./workspace-map";
 import { renderResolvedUserSettingsSection } from "./user-settings-loader";
 
-const DEFAULT_PROMPT_MANIFEST_FILE = "../brain/protected/system-settings/system/prompts/payload-manifest.yaml";
+const DEFAULT_PROMPT_MANIFEST_FILE = "../brain/protected/system/payload-manifest.yaml";
 const DEFAULT_KNOWLEDGE_DIR = "../brain/knowledge/";
 const DEFAULT_KNOWLEDGE_MANIFEST_FILE = "../brain/knowledge/KNOWLEDGE_MANIFEST.md";
 const DEFAULT_WORKSPACE_DIR = "../../";

@@ -1,7 +1,0 @@
-{
-  "instance": {
-    "name": "{{user input: name of instance}}",
-    "localInstanceId": "0001",
-    "userPin": null
-  }
-}

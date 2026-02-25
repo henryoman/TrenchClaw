@@ -1,0 +1,13 @@
+{
+  "instance": {
+    "name": "{{user input: name of instance}}",
+    "localInstanceId": "0001",
+    "userPin": null
+  },
+  "runtime": {
+    "safetyProfile": "dangerous",
+    "createdAt": "2026-02-25T00:53:37.863Z",
+    "updatedAt": "2026-02-25T00:53:37.863Z",
+    "userSettings": "user-settings/settings.yaml"
+  }
+}

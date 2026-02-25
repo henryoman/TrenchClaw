@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderDirectoryTree } from "../../src/ai/brain/knowledge/knowledge-tree";
+import { renderDirectoryTree } from "../../ai/brain/knowledge/knowledge-tree";
 
 const KNOWLEDGE_DIR = fileURLToPath(new URL("../../src/ai/brain/knowledge/", import.meta.url));
 const MANIFEST_PATH = fileURLToPath(new URL("../../src/ai/brain/knowledge/KNOWLEDGE_MANIFEST.md", import.meta.url));
