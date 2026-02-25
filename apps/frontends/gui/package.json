@@ -9,8 +9,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json",
-    "lint": "oxlint src/**/*.ts vite.config.ts",
-    "lint:fix": "oxlint --fix src/**/*.ts vite.config.ts"
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix ."
   },
   "dependencies": {
     "@trenchclaw/types": "workspace:*"

@@ -24,7 +24,7 @@
   "overrides": [
     {
       "files": [
-        "src/ai/core/dispatcher.ts"
+        "apps/trenchclaw/src/ai/core/dispatcher.ts"
       ],
       "rules": {
         "no-await-in-loop": "off"
@@ -32,11 +32,21 @@
     },
     {
       "files": [
-        "src/solana/**/*.ts",
-        "src/apps/cli/views/**/*.ts"
+        "apps/trenchclaw/src/solana/**/*.ts",
+        "apps/frontends/cli/views/**/*.ts"
       ],
       "rules": {
         "unicorn/no-empty-file": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/frontends/gui/**/*.ts",
+        "apps/frontends/gui/**/*.js",
+        "apps/frontends/gui/**/*.svelte"
+      ],
+      "env": {
+        "browser": true
       }
     }
   ]
