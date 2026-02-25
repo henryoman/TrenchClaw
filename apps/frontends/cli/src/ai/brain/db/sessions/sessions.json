@@ -4,9 +4,9 @@
     "agent:trenchclaw:main": {
       "sessionId": "b5278ec4-5926-4bf4-a3ef-1b69b8038b53",
       "createdAt": "2026-02-25T04:17:38.589Z",
-      "updatedAt": "2026-02-25T05:29:20.335Z",
-      "messageCount": 12,
-      "eventCount": 7,
+      "updatedAt": "2026-02-25T22:04:51.408Z",
+      "messageCount": 20,
+      "eventCount": 9,
       "source": "cli"
     }
   }
