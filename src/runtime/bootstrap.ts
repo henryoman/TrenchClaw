@@ -360,6 +360,9 @@ const EVENT_NAMES: RuntimeEventName[] = [
   "bot:stop",
   "policy:block",
   "rpc:failover",
+  "queue:enqueue",
+  "queue:dequeue",
+  "queue:complete",
 ];
 
 const attachEventLogging = (
@@ -369,6 +372,7 @@ const attachEventLogging = (
   fileEventLog?: RuntimeFileEventLog,
   sessionLogStore?: SessionLogStore,
   memoryLogStore?: MemoryLogStore,
+  summaryLogStore?: SummaryLogStore,
 ): void => {
   if (fileEventLog) {
     for (const eventName of EVENT_NAMES) {
@@ -389,6 +393,57 @@ const attachEventLogging = (
       memoryLogStore.appendDaily(
         `- [${new Date(event.timestamp).toISOString()}] policy:block ${event.payload.actionName} :: ${event.payload.reason}`,
       );
+    });
+  }
+  if (summaryLogStore) {
+    eventBus.on("bot:start", (event) => {
+      summaryLogStore.append({
+        timestamp: new Date(event.timestamp).toISOString(),
+        category: "runtime",
+        event: "bot:start",
+        details: {
+          botId: event.payload.botId,
+          routineName: event.payload.routineName,
+        },
+      });
+    });
+    eventBus.on("bot:stop", (event) => {
+      summaryLogStore.append({
+        timestamp: new Date(event.timestamp).toISOString(),
+        category: "runtime",
+        event: "bot:stop",
+        details: {
+          botId: event.payload.botId,
+          reason: event.payload.reason ?? null,
+        },
+      });
+    });
+    eventBus.on("action:success", (event) => {
+      const actionName = event.payload.actionName;
+      if (isTradeActionName(actionName)) {
+        summaryLogStore.append({
+          timestamp: new Date(event.timestamp).toISOString(),
+          category: "trade",
+          event: "trade:executed",
+          details: {
+            actionName,
+            txSignature: event.payload.txSignature ?? null,
+            durationMs: event.payload.durationMs,
+          },
+        });
+        return;
+      }
+      if (isDataActionName(actionName)) {
+        summaryLogStore.append({
+          timestamp: new Date(event.timestamp).toISOString(),
+          category: "data",
+          event: "data:download_complete",
+          details: {
+            actionName,
+            durationMs: event.payload.durationMs,
+          },
+        });
+      }
     });
   }
 
@@ -441,6 +496,40 @@ const attachEventLogging = (
       ...(includeDecisionTrace && event.payload.reason ? { reason: event.payload.reason } : {}),
     });
   });
+  eventBus.on("queue:enqueue", (event) => {
+    logger.info("queue:enqueue", {
+      jobId: event.payload.jobId,
+      botId: event.payload.botId,
+      routineName: event.payload.routineName,
+      queueSize: event.payload.queueSize,
+      queuePosition: event.payload.queuePosition,
+      ...(includeDecisionTrace ? { nextRunAt: event.payload.nextRunAt ?? null } : {}),
+    });
+  });
+  eventBus.on("queue:dequeue", (event) => {
+    logger.info("queue:dequeue", {
+      jobId: event.payload.jobId,
+      botId: event.payload.botId,
+      routineName: event.payload.routineName,
+      queueSize: event.payload.queueSize,
+      queuePosition: event.payload.queuePosition,
+      ...(includeDecisionTrace ? { waitMs: event.payload.waitMs } : {}),
+    });
+  });
+  eventBus.on("queue:complete", (event) => {
+    logger.info("queue:complete", {
+      jobId: event.payload.jobId,
+      botId: event.payload.botId,
+      routineName: event.payload.routineName,
+      status: event.payload.status,
+      ...(includeDecisionTrace
+        ? {
+            durationMs: event.payload.durationMs,
+            cyclesCompleted: event.payload.cyclesCompleted,
+          }
+        : {}),
+    });
+  });
 };
 
 export interface RuntimeBootstrap {
@@ -489,6 +578,18 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const sessionSummaryStore = new SessionSummaryStore({
     directory: path.join(storageRootDirectory, "summaries"),
   });
+  const summaryLogStore = new SummaryLogStore({
+    directory: path.join(storageRootDirectory, "summary"),
+  });
+  summaryLogStore.append({
+    timestamp: new Date().toISOString(),
+    category: "runtime",
+    event: "runtime:start",
+    details: {
+      profile: settings.profile,
+      schedulerTickMs: settings.runtime.scheduler.tickMs,
+    },
+  });
   if (sqliteStore) {
     const syncReport = sqliteStore.getSchemaSyncReport();
     logger.info("storage:schema_sync", {
@@ -530,7 +631,8 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       cache: pruneResult.cacheDeleted,
     });
   }
-  const llm = await createLlmClientFromEnv();
+  const baseLlm = await createLlmClientFromEnv();
+  const llm = baseLlm ? instrumentLlmClient(baseLlm, logger) : null;
   const registry = new ActionRegistry();
   const actions = buildActionCatalog(settings);
   const supportedActionMap = toSupportedActionMap(actions);
@@ -610,7 +712,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     );
   }
 
-  attachEventLogging(settings, logger, eventBus, fileEventLog, sessionLogStore, memoryLogStore);
+  attachEventLogging(settings, logger, eventBus, fileEventLog, sessionLogStore, memoryLogStore, summaryLogStore);
   scheduler.start();
 
   const enqueueJob = (input: {
@@ -631,6 +733,16 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       nextRunAt: now,
     };
     stateStore.saveJob(job);
+    const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
+    const queuePosition = pendingJobs.findIndex((entry) => entry.id === job.id) + 1;
+    eventBus.emit("queue:enqueue", {
+      jobId: job.id,
+      botId: job.botId,
+      routineName: job.routineName,
+      queueSize: pendingJobs.length,
+      queuePosition: queuePosition > 0 ? queuePosition : pendingJobs.length,
+      nextRunAt: job.nextRunAt,
+    });
     return job;
   };
 
@@ -677,6 +789,15 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
           `- [${new Date().toISOString()}] runtime:stop session=${session?.sessionId ?? "none"}`,
         );
       }
+      summaryLogStore.append({
+        timestamp: new Date().toISOString(),
+        category: "runtime",
+        event: "runtime:stop",
+        details: {
+          profile: settings.profile,
+          sessionId: session?.sessionId ?? null,
+        },
+      });
       unsubscribeSystemLogs();
     },
     enqueueJob,
