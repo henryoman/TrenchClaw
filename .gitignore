@@ -21,3 +21,8 @@ lib/client/generated/
 data/
 
 repomix-output.xml
+
+# Frontend build artifacts
+apps/frontends/*/dist/
+website/.svelte-kit/
+website/build/
