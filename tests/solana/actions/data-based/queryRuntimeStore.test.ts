@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { createActionContext } from "../../../../src/ai/runtime/types/context";
-import { SqliteStateStore } from "../../../../src/runtime/storage/sqlite-state-store";
-import { queryRuntimeStoreAction } from "../../../../src/solana/actions/data-fetch/runtime/queryRuntimeStore";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
+import { SqliteStateStore } from "../../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
+import { queryRuntimeStoreAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/queryRuntimeStore";
 
 const dbPaths: string[] = [];
 

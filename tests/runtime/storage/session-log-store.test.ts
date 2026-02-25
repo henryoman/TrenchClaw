@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { SessionLogStore } from "../../../src/runtime/storage/session-log-store";
+import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/session-log-store";
 
 const sessionDirs: string[] = [];
 

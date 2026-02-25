@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createWalletsRoutine } from "../../../src/solana/routines/create-wallets";
+import { createWalletsRoutine } from "../../../apps/trenchclaw/src/solana/routines/create-wallets";
 
 describe("createWalletsRoutine", () => {
   test("builds nested group wallet creation steps and rename step", async () => {

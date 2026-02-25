@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { resolveLlmProviderConfigFromEnv } from "../../src/ai/llm/config";
+import { resolveLlmProviderConfigFromEnv } from "../../apps/trenchclaw/src/ai/llm/config";
 
 const ENV_KEYS = [
   "TRENCHCLAW_AI_PROVIDER",

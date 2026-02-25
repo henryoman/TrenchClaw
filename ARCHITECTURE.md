@@ -1,237 +1,178 @@
 # TrenchClaw Architecture
 
-TrenchClaw is a Solana action runtime with OpenClaw-style persistence patterns (session logs + memory logs), policy-gated execution, and a terminal-first control plane.
+This file reflects the repository as it exists now (monorepo layout, package boundaries, runtime wiring, and currently active surfaces).
 
-This document reflects the current codebase state in `src/**`.
+## Monorepo Layout
 
----
+- Root workspace (`package.json`) uses Turbo + Bun.
+- Workspaces:
+  - `apps/trenchclaw` (`@trenchclaw/core`)
+  - `apps/frontends/cli` (`@trenchclaw/cli`)
+  - `apps/frontends/gui` (`@trenchclaw/web-gui`)
+  - `apps/types`
 
-## Current Direction
+Top-level supporting directories:
+- `tests/` (runtime, AI, solana action/routine tests)
+- `docs/` (storage schema and examples)
+- `deploy/systemd/` (service/env templates)
+- `scripts/systemd/install.ts` (installer)
+- `lib/client/idl/` (IDL JSONs)
 
-1. **Action runtime first**: deterministic actions and routines before broad agent autonomy.
-2. **Policy over prompt**: runtime settings and policy engine are hard gates.
-3. **Brain-owned persistence**: runtime data lives under `src/ai/brain/db/**`.
-4. **Auditability by default**: SQLite receipts + event files + session JSONL + memory markdown.
-5. **Progressive AI integration**: LLM client exists but runtime remains action-centric.
+## Runtime Entry Path
 
----
+- User commands are exposed at root (`bun run dev|start|headless|cli`) and routed by Turbo to `@trenchclaw/cli`.
+- CLI entrypoint: `apps/frontends/cli/index.ts`.
+- Runtime bootstrap: `apps/trenchclaw/src/runtime/bootstrap.ts`.
 
-## Runtime Entry Flow
-
-### CLI entrypoint
-- `src/apps/cli/index.ts`
-- Commands:
-  - `bun run dev`
-  - `bun run start`
-  - `bun run headless`
-  - `bun run cli`
-
-### Boot sequence
-1. Parse CLI mode.
-2. Resolve runtime profile (`safe`, `dangerous`, `veryDangerous`).
-3. Call `bootstrapRuntime()` (`src/runtime/bootstrap.ts`).
-4. Optionally start HTTP status server (`/health`, `/`).
+Boot sequence in current code:
+1. Parse mode/profile inputs in CLI.
+2. Load runtime settings (`safe | dangerous | veryDangerous`).
+3. Bootstrap runtime core/services.
+4. Start HTTP runtime server (`/`, `/health`) plus `/api/gui/*` endpoints.
 5. Start scheduler loop.
 
----
+## Runtime Composition
 
-## Core Runtime Composition
-
-`src/runtime/bootstrap.ts` wires:
-
+`apps/trenchclaw/src/runtime/bootstrap.ts` currently wires:
 - `ActionRegistry`
-- `PolicyEngine`
+- `PolicyEngine` (runtime settings gate)
 - `ActionDispatcher`
 - `Scheduler`
-- `StateStore` (SQLite or in-memory fallback)
-- `RuntimeEventBus`
-- Optional LLM client (`src/ai/llm/client.ts`)
+- `StateStore` (`SqliteStateStore` or `InMemoryStateStore`)
+- `InMemoryRuntimeEventBus`
+- Optional LLM client (from env)
 - Solana adapters:
   - `jupiter-ultra`
   - `token-account`
   - `ultra-signer`
+- File/session/memory/system/summary logging stores
 
----
+## Actions
 
-## Implemented Action Surface
+Codebase action modules exist under `apps/trenchclaw/src/solana/actions/**`.
 
-Currently wired actions:
+Actions that are actually registered are decided at runtime by settings (`buildActionCatalog`):
+- Always:
+  - `createWallets`
+  - `renameWallets`
+  - `queryRuntimeStore`
+- When trading enabled:
+  - `createBlockchainAlert`
+- When signing + transfer limits allow:
+  - `transfer`
+  - `privacyTransfer`
+  - `privacyAirdrop`
+- When Jupiter Ultra enabled:
+  - `ultraQuoteSwap`
+  - `ultraExecuteSwap`
+  - `ultraSwap`
+- When both Ultra + signing/limits allow:
+  - `privacySwap`
 
+Important: other action files exist (for example RPC swap/token/read-only helpers), but they are not all auto-registered in bootstrap.
+
+## Routines and Triggers
+
+Routines exported in `apps/trenchclaw/src/solana/routines/index.ts`:
+- `dca`
+- `create-wallets`
+- `action-sequence`
+
+Routines currently supported by the scheduler resolver in bootstrap:
 - `createWallets`
-- `ultraQuoteSwap`
-- `ultraExecuteSwap`
-- `ultraSwap`
+- `actionSequence`
 
-Source paths:
-- `src/solana/actions/wallet-based/create-wallets/createWallets.ts`
-- `src/solana/actions/wallet-based/swap/ultra/quoteSwap.ts`
-- `src/solana/actions/wallet-based/swap/ultra/executeSwap.ts`
-- `src/solana/actions/wallet-based/swap/ultra/swap.ts`
+Triggers exist in `apps/trenchclaw/src/solana/triggers/`:
+- `timer`
+- `price`
+- `on-chain`
 
-Transfer actions currently exist as stubs and are intentionally not part of active dangerous flow.
+Trigger modules are present and exported, but not directly wired by `bootstrapRuntime()` today.
 
----
+## Settings, Policy, and Safety
 
-## Implemented Routines
+Settings loader path:
+- `apps/trenchclaw/src/runtime/load/loader.ts`
 
-- `createWallets` routine
-- `actionSequence` routine (explicit ordered action graph with dependencies)
+Schema:
+- `apps/trenchclaw/src/runtime/load/schema.ts`
 
-Source paths:
-- `src/solana/routines/create-wallets.ts`
-- `src/solana/routines/action-sequence.ts`
+Authority/sanitization rules:
+- `apps/trenchclaw/src/runtime/load/authority.ts`
 
----
+Bundled safety profiles:
+- `apps/trenchclaw/src/ai/brain/protected/system/safety-modes/safe.yaml`
+- `apps/trenchclaw/src/ai/brain/protected/system/safety-modes/dangerous.yaml`
+- `apps/trenchclaw/src/ai/brain/protected/system/safety-modes/veryDangerous.yaml`
 
-## Policy & Safety Model
-
-### Settings profiles
-- `safe`
-- `dangerous`
-- `veryDangerous`
-
-Schema: `src/runtime/config/schema.ts`
-
-### Settings layering
-Loader: `src/runtime/config/loader.ts`
-
-Merge order:
-1. Bundled base profile (`src/ai/brain/protected/settings/*.yaml`)
-2. Sanitized agent override (`TRENCHCLAW_SETTINGS_AGENT_FILE`)
+Merge order in loader:
+1. Base profile file
+2. Agent override (`TRENCHCLAW_SETTINGS_AGENT_FILE`) after profile-based sanitization
 3. User override (`TRENCHCLAW_SETTINGS_USER_FILE`)
-4. Protected-path enforcement (user/base authority restored)
+4. User-protected path enforcement
+5. Normalization + Zod validation
 
-Authority rules:
-- `src/runtime/config/authority.ts`
-- Dangerous/safe modes restrict agent-editable paths.
-- Very dangerous mode allows broad agent override (except protected restoration rules).
+## Storage and Logging
 
-### Extra dangerous-action confirmation gate
-In `dangerous` mode, selected actions require explicit user confirmation token/flag (`trading.confirmations.*`).
+Storage implementation lives in:
+- `apps/trenchclaw/src/runtime/storage/*`
 
----
+Default normalized settings currently point to:
+- SQLite DB: `src/ai/brain/db/runtime.sqlite`
+- Event files: `src/ai/brain/db/events`
+- Sessions: `src/ai/brain/db/sessions`
+- Memory: `src/ai/brain/db/memory`
 
-## Persistence & Logging (Brain DB)
+SQLite tables include:
+- `jobs`
+- `action_receipts`
+- `policy_hits`
+- `decision_logs`
+- `conversations`
+- `chat_messages`
+- `market_instruments`
+- `ohlcv_bars`
+- `market_snapshots`
+- `http_cache`
+- `schema_migrations`
 
-Canonical root: `src/ai/brain/db/`
+Active stores in runtime:
+- `SqliteStateStore`
+- `RuntimeFileEventLog`
+- `SessionLogStore`
+- `SessionSummaryStore`
+- `MemoryLogStore`
+- `SystemLogStore`
+- `SummaryLogStore`
 
-### SQLite runtime state
-- `src/ai/brain/db/runtime/trenchclaw.db`
-- Backed by `bun:sqlite`
-- Store: `src/runtime/storage/sqlite-state-store.ts`
-- Tables:
-  - `jobs`
-  - `action_receipts`
-  - `policy_hits`
-  - `decision_logs`
+## AI and Solana Package Surfaces
 
-### File event stream
-- `src/ai/brain/db/runtime/events/*.json`
-- Writer: `src/runtime/storage/file-event-log.ts`
+`apps/trenchclaw/src/ai/` exports:
+- `runtime` types
+- `core` runtime engine pieces
+- `llm` client/config/prompt loaders
 
-### Runtime console logging styles (operator-selectable)
-- Logger module: `src/runtime/logging/runtime-logger.ts`
-- Config: `observability.logging`
-  - `level`: `debug | info | warn | error`
-  - `style`: `human | json`
-  - `pretty`: pretty-print JSON mode
-  - `includeDecisionTrace`: include extra action/policy details in console output
-- `human` style:
-  - readable line logs for terminal operators
-- `json` style:
-  - structured JSON logs for ingestion by dashboards/log pipelines
+`apps/trenchclaw/src/solana/` exports:
+- `lib/adapters`
+- `lib/wallet`
+- `actions`
+- `routines`
+- `triggers`
 
-### Session logs (OpenClaw-style)
-- Index: `src/ai/brain/db/sessions/sessions.json`
-- Per-session transcript/events: `src/ai/brain/db/sessions/<sessionId>.jsonl`
-- Store: `src/runtime/storage/session-log-store.ts`
+## Frontends
 
-### Memory logs
-- Daily notes: `src/ai/brain/db/memory/YYYY-MM-DD.md`
-- Long-term notes: `src/ai/brain/db/memory/MEMORY.md`
-- Store: `src/runtime/storage/memory-log-store.ts`
+CLI package:
+- `apps/frontends/cli/index.ts`
+- view modules in `apps/frontends/cli/views/*`
+- runtime HTTP + GUI API adapter in `apps/frontends/cli/web-gui.ts`
 
-### Wallet output artifacts
-- Default keypair output: `src/ai/brain/protected/keypairs/`
+Web GUI package:
+- Svelte + Vite app in `apps/frontends/gui/src/*`
+- build output currently committed in `apps/frontends/gui/dist/*`
 
----
+## Tests Present
 
-## AI Layer
-
-`src/ai/` is now a single public surface (`src/ai/index.ts`) with three subareas:
-
-- `contracts/` — shared runtime interfaces
-- `core/` — registry/dispatcher/scheduler/event-bus/policy-engine/state-store
-- `llm/` — OpenAI-backed client and prompt loading
-
-LLM client is optional and only enabled if `OPENAI_API_KEY` is present.
-
----
-
-## Solana Layer
-
-`src/solana/`:
-
-- `adapters/`:
-  - `jupiter-ultra.ts`
-  - `token-account.ts`
-  - `ultra-signer.ts`
-  - other adapter scaffolds retained
-- `actions/`:
-  - data-based RPC/API helpers
-  - wallet-based swap + wallet creation
-- `routines/`:
-  - `create-wallets`
-  - `action-sequence`
-- `wallet/`:
-  - wallet policy/types/encryption scaffolding
-  - hard deletion guard in `wallet-manager.ts`
-
----
-
-## Folder Map (Current)
-
-```text
-src/
-  apps/
-    cli/
-  ai/
-    contracts/
-    core/
-    llm/
-  brain/
-    protected/settings/
-    db/
-    rules.md
-    soul.md
-    system-prompt.md
-  runtime/
-    bootstrap.ts
-    config/
-    logging/
-    storage/
-  solana/
-    adapters/
-    actions/
-    routines/
-    wallet/
-```
-
----
-
-## Testing Status
-
-Active tests for runtime core/storage:
-- `src/runtime/bootstrap.test.ts`
-- `src/runtime/storage/sqlite-state-store.test.ts`
-- `src/runtime/storage/session-log-store.test.ts`
-- `src/runtime/storage/memory-log-store.test.ts`
-
----
-
-## Known Gaps
-
-1. Many Solana modules remain scaffold/spec-heavy.
-2. Trigger subsystem is not fully production-wired yet.
-3. CLI/TUI views are still mostly placeholders.
-4. Wallet full lifecycle implementation is incomplete (guardrails exist, full manager/store behavior still evolving).
+Current tests under `tests/`:
+- AI: config + prompt loader
+- Runtime: bootstrap, authority, storage stores
+- Solana: alerts/query runtime store, wallet creation/rename, create-wallets routine

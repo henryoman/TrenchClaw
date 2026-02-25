@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 
-import type { ActionResult } from "../../../src/ai/runtime/types/action";
-import { sqliteTables } from "../../../src/runtime/storage/sqlite-schema";
-import { SqliteStateStore } from "../../../src/runtime/storage/sqlite-state-store";
+import type { ActionResult } from "../../../apps/trenchclaw/src/ai/runtime/types/action";
+import { sqliteTables } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-schema";
+import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 
 const dbPaths: string[] = [];
 

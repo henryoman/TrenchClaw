@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { RuntimeLogger } from "../../../src/runtime/logging";
-import { SessionLogStore } from "../../../src/runtime/storage/session-log-store";
-import { SessionSummaryStore } from "../../../src/runtime/storage/session-summary-store";
-import { SystemLogStore } from "../../../src/runtime/storage/system-log-store";
+import { RuntimeLogger } from "../../../apps/trenchclaw/src/runtime/logging";
+import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/session-log-store";
+import { SessionSummaryStore } from "../../../apps/trenchclaw/src/runtime/storage/session-summary-store";
+import { SummaryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/summary-log-store";
+import { SystemLogStore } from "../../../apps/trenchclaw/src/runtime/storage/system-log-store";
 
 const tmpTargets: string[] = [];
 
@@ -75,5 +76,26 @@ describe("SystemLogStore + SessionSummaryStore", () => {
     expect(markdown.includes("# Session Summary")).toBe(true);
     expect(markdown.includes("messageCount: 1")).toBe(true);
     expect(markdown.includes("eventCount: 1")).toBe(true);
+  });
+
+  test("writes concise summary entries to daily files", async () => {
+    const root = `/tmp/trenchclaw-runtime-summary-${crypto.randomUUID()}`;
+    tmpTargets.push(root);
+
+    const summaryStore = new SummaryLogStore({
+      directory: `${root}/summary`,
+    });
+    summaryStore.append({
+      timestamp: new Date().toISOString(),
+      category: "trade",
+      event: "trade:executed",
+      details: { actionName: "ultraSwap", txSignature: "abc123" },
+    });
+
+    const logPath = `${root}/summary/${new Date().toISOString().slice(0, 10)}.log`;
+    const content = await Bun.file(logPath).text();
+    expect(content.includes("TRADE")).toBe(true);
+    expect(content.includes("trade:executed")).toBe(true);
+    expect(content.includes("ultraSwap")).toBe(true);
   });
 });

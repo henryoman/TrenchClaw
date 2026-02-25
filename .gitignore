@@ -1,4 +1,5 @@
 node_modules/
+.turbo/
 
 # Environment / secrets
 .env

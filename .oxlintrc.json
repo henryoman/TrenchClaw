@@ -13,11 +13,13 @@
     "lib/client/**",
     "coverage/**",
     "dist/**",
+    "**/dist/**",
     "build/**",
     "node_modules/**"
   ],
   "rules": {
-    "no-console": "off"
+    "no-console": "off",
+    "unicorn/no-empty-file": "off"
   },
   "overrides": [
     {

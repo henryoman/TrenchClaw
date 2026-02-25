@@ -1,0 +1,24 @@
+:root {
+  --tc-font-ui: "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
+  --tc-font-display: "Press Start 2P", "IBM Plex Mono", "JetBrains Mono", monospace;
+
+  --tc-color-black: #050308;
+  --tc-color-black-2: #0b0812;
+  --tc-color-purple: #3a1f5d;
+  --tc-color-purple-2: #2a1644;
+  --tc-color-turquoise: #2ae6d3;
+  --tc-color-turquoise-dim: #1aa899;
+  --tc-color-gray-1: #9a9aa3;
+  --tc-color-gray-2: #6f6f79;
+  --tc-color-gray-3: #d8d8df;
+  --tc-color-red: #e95f78;
+
+  --tc-border: 1px solid var(--tc-color-turquoise);
+  --tc-border-muted: 1px solid var(--tc-color-gray-2);
+
+  --tc-space-1: 4px;
+  --tc-space-2: 8px;
+  --tc-space-3: 12px;
+  --tc-space-4: 16px;
+  --tc-space-5: 20px;
+}

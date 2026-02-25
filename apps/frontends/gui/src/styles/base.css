@@ -1,0 +1,34 @@
+@import "./tokens.css";
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  color: var(--tc-color-gray-3);
+  background: repeating-linear-gradient(
+    0deg,
+    var(--tc-color-black) 0px,
+    var(--tc-color-black) 3px,
+    #07050c 3px,
+    #07050c 6px
+  );
+  font-family: var(--tc-font-ui);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+#app {
+  min-height: 100vh;
+}

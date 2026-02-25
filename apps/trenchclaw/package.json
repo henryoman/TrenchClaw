@@ -1,0 +1,32 @@
+{
+  "name": "@trenchclaw/core",
+  "version": "0.1.0",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "cleanup:runtime": "bun run src/lib/agent-scripts/clean-runtime-artifacts.ts",
+    "context:refresh": "bun run src/lib/agent-scripts/refresh-workspace-context.ts",
+    "refresh": "bun run typecheck && bun run lint && bun run context:refresh",
+    "systemd:install": "bun run ../../scripts/systemd/install.ts",
+    "typecheck": "bunx tsc --noEmit -p tsconfig.json",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "test": "bun test ../../tests",
+    "build": "bun build src/index.ts --target bun --outdir dist"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxlint": "^1.49.0",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^3.0.30",
+    "@opentui/core": "^0.1.81",
+    "@solana/kit": "^6.1.0",
+    "@solana/transactions": "^6.1.0",
+    "ai": "^6.0.97",
+    "privacycash": "^1.0.16",
+    "zod": "^4.3.6"
+  }
+}

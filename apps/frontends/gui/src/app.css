@@ -1,0 +1,5 @@
+/* App-level layout helpers only. Primitive styling lives in modular components. */
+
+:global(main) {
+  width: 100%;
+}

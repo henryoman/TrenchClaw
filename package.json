@@ -1,39 +1,35 @@
 {
-  "name": "trenchclaw",
-  "module": "index.ts",
+  "name": "@trenchclaw/monorepo",
   "type": "module",
   "private": true,
+  "packageManager": "bun@1.3.9",
+  "workspaces": [
+    "apps/*",
+    "apps/frontends/*"
+  ],
   "scripts": {
-    "dev": "bun run src/apps/cli/index.ts dev",
-    "start": "bun run src/apps/cli/index.ts start",
-    "headless": "bun run src/apps/cli/index.ts headless",
-    "cli": "bun run src/apps/cli/index.ts cli",
-    "knowledge:refresh": "bun run scripts/knowledge/refresh-manifest.ts",
-    "context:refresh": "bun run scripts/context/refresh-workspace-context.ts",
-    "refresh": "bun run typecheck && bun run lint && bun run build && bun run context:refresh",
-    "systemd:install": "bun run scripts/systemd/install.ts",
-    "typecheck": "bunx tsc --noEmit",
-    "lint": "oxlint .",
-    "lint:fix": "oxlint --fix .",
-    "lint:ci": "oxlint --deny correctness --deny suspicious --deny perf .",
-    "check:schema-backend": "bunx tsc --noEmit --pretty false",
-    "test": "bun test",
-    "build": "bun build src/apps/cli/index.ts --target bun --outdir dist",
-    "ci": "bun run lint && bun run typecheck && bun run check:schema-backend && bun run test && bun run build"
+    "dev": "bun run --cwd apps/frontends/gui dev",
+    "runtime:dev": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run dev --filter=@trenchclaw/cli",
+    "tui:dev": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run dev --filter=@trenchclaw/cli",
+    "gui:dev": "bun run --cwd apps/frontends/gui dev",
+    "dev:parallel": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run dev --parallel --filter=@trenchclaw/cli --filter=@trenchclaw/web-gui",
+    "dev:all": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run dev --parallel",
+    "web:dev": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run dev --filter=@trenchclaw/web-gui",
+    "start": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run start --filter=@trenchclaw/cli",
+    "headless": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run headless --filter=@trenchclaw/cli",
+    "cli": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run cli --filter=@trenchclaw/cli",
+    "build": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run build",
+    "typecheck": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run typecheck",
+    "lint": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run lint",
+    "lint:fix": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run lint:fix",
+    "test": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run test",
+    "context:refresh": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run context:refresh --filter=@trenchclaw/core",
+    "cleanup:runtime": "bun run --cwd apps/trenchclaw cleanup:runtime",
+    "refresh": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run refresh --filter=@trenchclaw/core",
+    "systemd:install": "bun run --cwd apps/trenchclaw systemd:install",
+    "ci": "bun run lint && bun run typecheck && bun run test && bun run build"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "oxlint": "^1.49.0"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
-  },
-  "dependencies": {
-    "@ai-sdk/openai": "^3.0.30",
-    "@opentui/core": "^0.1.81",
-    "@solana/kit": "^6.1.0",
-    "ai": "^6.0.97",
-    "privacycash": "^1.0.16",
-    "zod": "^4.3.6"
+    "turbo": "^2.3.3"
   }
 }

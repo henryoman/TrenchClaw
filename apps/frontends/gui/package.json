@@ -1,0 +1,26 @@
+{
+  "name": "@trenchclaw/web-gui",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 4173",
+    "dev:runtime": "VITE_TRENCHCLAW_RUNTIME_URL=http://127.0.0.1:4020 vite --host 127.0.0.1 --port 4173",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "svelte-check --tsconfig ./tsconfig.json",
+    "lint": "oxlint src/**/*.ts vite.config.ts",
+    "lint:fix": "oxlint --fix src/**/*.ts vite.config.ts"
+  },
+  "dependencies": {
+    "@trenchclaw/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.1.2",
+    "oxlint": "^1.49.0",
+    "svelte": "^4.2.19",
+    "svelte-check": "^4.3.1",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.0"
+  }
+}

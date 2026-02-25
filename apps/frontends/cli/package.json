@@ -1,0 +1,25 @@
+{
+  "name": "@trenchclaw/cli",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run index.ts dev",
+    "start": "bun run index.ts start",
+    "headless": "bun run index.ts headless",
+    "cli": "bun run index.ts cli",
+    "build": "bun build index.ts --target bun --outdir dist",
+    "typecheck": "bunx tsc --noEmit -p tsconfig.json",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix ."
+  },
+  "dependencies": {
+    "@trenchclaw/core": "workspace:*",
+    "@trenchclaw/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxlint": "^1.49.0",
+    "typescript": "^5.9.2"
+  }
+}

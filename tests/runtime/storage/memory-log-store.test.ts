@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { MemoryLogStore } from "../../../src/runtime/storage/memory-log-store";
+import { MemoryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/memory-log-store";
 
 const tmpTargets: string[] = [];
 

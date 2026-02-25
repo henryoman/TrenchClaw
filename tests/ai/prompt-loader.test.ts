@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { loadSystemPromptPayload, resetPromptLoaderCache } from "../../src/ai/llm/prompt-loader";
+import { loadSystemPromptPayload, resetPromptLoaderCache } from "../../apps/trenchclaw/src/ai/llm/prompt-loader";
 
 const ENV_KEYS = [
   "TRENCHCLAW_PROMPT_MANIFEST_FILE",
@@ -31,8 +31,8 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.mode).toBe("operator");
     expect(payload.systemPrompt).toContain("TrenchClaw System Prompt");
     expect(payload.systemPrompt).toContain("Mode: Operator");
-    expect(payload.systemPrompt).toContain("Workspace Map (src/)");
-    expect(payload.systemPrompt).toContain("# WORKSPACE ROOT: src/");
+    expect(payload.systemPrompt).toContain("Workspace Map (apps/trenchclaw/)");
+    expect(payload.systemPrompt).toContain("# WORKSPACE ROOT: apps/trenchclaw/");
     expect(payload.systemPrompt).toContain("ai/");
     expect(payload.systemPrompt).toContain("User Settings (Resolved)");
     expect(payload.systemPrompt).toContain("\"primaryRpc\": \"helius\"");
@@ -44,7 +44,7 @@ describe("loadSystemPromptPayload", () => {
 
     expect(payload.mode).toBe("operator");
     expect(payload.systemPrompt).toContain("Mode: Operator");
-    expect(payload.systemPrompt).toContain("Workspace Map (src/)");
+    expect(payload.systemPrompt).toContain("Workspace Map (apps/trenchclaw/)");
   });
 
   test("throws on unknown modes", async () => {
