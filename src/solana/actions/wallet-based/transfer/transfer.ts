@@ -16,8 +16,8 @@ import {
   type Instruction,
 } from "@solana/kit";
 
-import type { Action, ActionResult } from "../../../../ai/contracts/action";
-import type { ActionContext } from "../../../../ai/contracts/context";
+import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
+import type { ActionContext } from "../../../../ai/runtime/types/context";
 
 const DEFAULT_SOLANA_MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
 const LAMPORTS_PER_SOL = 1_000_000_000;

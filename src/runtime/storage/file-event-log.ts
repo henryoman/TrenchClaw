@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-import type { RuntimeEvent, RuntimeEventMap, RuntimeEventName } from "../../ai/contracts/events";
+import type { RuntimeEvent, RuntimeEventMap, RuntimeEventName } from "../../ai/runtime/types/events";
 
 export interface RuntimeFileEventLogConfig {
   directory: string;

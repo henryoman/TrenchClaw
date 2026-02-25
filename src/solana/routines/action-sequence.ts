@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { RoutinePlanner } from "../../ai/contracts/scheduler";
+import type { RoutinePlanner } from "../../ai/runtime/types/scheduler";
 
 const retryPolicySchema = z.object({
   maxAttempts: z.number().int().positive(),

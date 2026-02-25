@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { ActionContext } from "../../../../../ai/contracts/context";
-import type { ActionResult } from "../../../../../ai/contracts/action";
+import type { ActionContext } from "../../../../../ai/runtime/types/context";
+import type { ActionResult } from "../../../../../ai/runtime/types/action";
 import type { JupiterUltraAdapter, JupiterUltraOrderRequest } from "../../../../lib/adapters/jupiter-ultra";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";

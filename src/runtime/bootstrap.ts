@@ -18,7 +18,7 @@ import {
   type StateStore,
   type LlmClient,
 } from "../ai";
-import type { RoutinePlanner } from "../ai/contracts/scheduler";
+import type { RoutinePlanner } from "../ai/runtime/types/scheduler";
 import { createJupiterUltraAdapterFromEnv } from "../solana/lib/adapters/jupiter-ultra";
 import { createTokenAccountAdapterFromEnv } from "../solana/lib/adapters/token-account";
 import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-signer";

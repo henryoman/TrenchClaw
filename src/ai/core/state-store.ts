@@ -7,7 +7,7 @@ import type {
   JobStatus,
   PolicyHit,
   StateStore as IStateStore,
-} from "../contracts";
+} from "../runtime/types";
 
 export class InMemoryStateStore implements IStateStore {
   private readonly jobs = new Map<string, JobState>();

@@ -1,4 +1,4 @@
-import type { RuntimeActor } from "../../../ai/contracts/context";
+import type { RuntimeActor } from "../../../ai/runtime/types/context";
 
 export interface WalletDeleteRequest {
   walletId: string;

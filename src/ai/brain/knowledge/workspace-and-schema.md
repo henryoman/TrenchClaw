@@ -55,14 +55,6 @@ src/
 |   |   |-- workspace/
 |   |   |-- rules.md
 |   |   `-- soul.md
-|   |-- contracts/
-|   |   |-- action.ts
-|   |   |-- context.ts
-|   |   |-- events.ts
-|   |   |-- index.ts
-|   |   |-- policy.ts
-|   |   |-- scheduler.ts
-|   |   `-- state.ts
 |   |-- core/
 |   |   |-- action-registry.ts
 |   |   |-- dispatcher.ts
@@ -75,9 +67,22 @@ src/
 |   |   |-- client.ts
 |   |   |-- config.ts
 |   |   |-- index.ts
+|   |   |-- prompt-manifest.ts
 |   |   |-- prompt-loader.ts
+|   |   |-- shared.ts
 |   |   |-- types.ts
 |   |   |-- user-settings-loader.ts
+|   |   `-- workspace-map.ts
+|   `-- runtime/
+|       |-- index.ts
+|       `-- types/
+|           |-- action.ts
+|           |-- context.ts
+|           |-- events.ts
+|           |-- index.ts
+|           |-- policy.ts
+|           |-- scheduler.ts
+|           `-- state.ts
 |   |   `-- workspace-map.ts
 |   |-- index.ts
 |   `-- README.md

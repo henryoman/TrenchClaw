@@ -1,5 +1,5 @@
 import type { RuntimeBootstrap } from "../../runtime/bootstrap";
-import type { JobState } from "../../ai/contracts/state";
+import type { JobState } from "../../ai/runtime/types/state";
 
 interface WebGuiChatRequest {
   message?: unknown;

@@ -59,7 +59,7 @@ When adding or changing behavior, follow this order:
 If you only need to add a new strategy behavior:
 - Start in `src/ai/brain/system-settings/system/prompts/modes/`.
 - Then wire needed tools in `src/solana/actions/`.
-- Keep execution deterministic through dispatcher contracts.
+- Keep execution deterministic through dispatcher runtime types and policies.
 
 ---
 

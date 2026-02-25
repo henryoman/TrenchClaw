@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/contracts/action";
-import type { StateStore } from "../../../../ai/contracts/state";
+import type { Action } from "../../../../ai/runtime/types/action";
+import type { StateStore } from "../../../../ai/runtime/types/state";
 
 const maxLimit = 200;
 

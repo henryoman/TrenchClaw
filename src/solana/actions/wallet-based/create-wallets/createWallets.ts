@@ -3,7 +3,7 @@ import { appendFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/contracts/action";
+import type { Action } from "../../../../ai/runtime/types/action";
 import {
   assertProtectedWriteAllowed,
   assertWithinBrainProtectedDirectory,

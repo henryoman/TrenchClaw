@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { ActionStep } from "../../ai/contracts/action";
-import type { RoutinePlanner } from "../../ai/contracts/scheduler";
+import type { ActionStep } from "../../ai/runtime/types/action";
+import type { RoutinePlanner } from "../../ai/runtime/types/scheduler";
 
 const walletSegmentSchema = z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/);
 

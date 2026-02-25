@@ -26,7 +26,7 @@ const trimOrUndefined = (value: string | undefined): string | undefined => {
 
 const ensureApiKey = (name: string, value: string | undefined): string => {
   if (!value) {
-    throw new Error(`Missing API key for provider \"${name}\".`);
+    throw new Error(`Missing API key for provider "${name}".`);
   }
   return value;
 };

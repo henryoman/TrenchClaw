@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { Database } from "bun:sqlite";
 
-import type { ActionResult } from "../../ai/contracts/action";
+import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
   ConversationState,
@@ -11,7 +11,7 @@ import type {
   JobStatus,
   PolicyHit,
   StateStore,
-} from "../../ai/contracts/state";
+} from "../../ai/runtime/types/state";
 import {
   actionResultSchema,
   chatMessageStateSchema,

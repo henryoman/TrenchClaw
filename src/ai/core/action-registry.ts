@@ -3,7 +3,7 @@ import type {
   ActionCategory,
   ActionRegistryContract,
   RegisteredAction,
-} from "../contracts";
+} from "../runtime/types";
 
 export class ActionRegistry implements ActionRegistryContract {
   private readonly actions = new Map<string, Action>();

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 
-import type { ActionResult } from "../../../src/ai/contracts/action";
+import type { ActionResult } from "../../../src/ai/runtime/types/action";
 import { sqliteTables } from "../../../src/runtime/storage/sqlite-schema";
 import { SqliteStateStore } from "../../../src/runtime/storage/sqlite-state-store";
 

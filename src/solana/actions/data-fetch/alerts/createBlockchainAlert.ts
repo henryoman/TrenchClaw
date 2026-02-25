@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/contracts/action";
+import type { Action } from "../../../../ai/runtime/types/action";
 
 const alertConditionSchema = z.discriminatedUnion("type", [
   z.object({

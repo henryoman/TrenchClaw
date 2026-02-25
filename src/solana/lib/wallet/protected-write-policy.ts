@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { RuntimeActor } from "../../../ai/contracts/context";
+import type { RuntimeActor } from "../../../ai/runtime/types/context";
 
 const BRAIN_PROTECTED_ROOT_DIRECTORY = path.resolve(process.cwd(), "src/ai/brain/protected");
 

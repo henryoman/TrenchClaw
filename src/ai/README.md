@@ -2,8 +2,8 @@
 
 `src/ai` has three clear layers:
 
-- `contracts/`: pure runtime interfaces and shared domain types (no implementation logic).
-- `core/`: deterministic runtime implementations that satisfy `contracts/`.
+- `runtime/types/`: pure runtime interfaces and shared domain types (no implementation logic).
+- `core/`: deterministic runtime implementations that satisfy `runtime/types`.
 - `llm/`: model I/O only (prompt loading + Vercel AI SDK calls).
 
 ## What Lives Where
@@ -21,7 +21,7 @@
 - If code calls RPC, wallet, or mutates state via actions: it belongs in runtime orchestration (`core/`).
 - If code calls `generateText` / `streamText`: it belongs in `llm/`.
 - The planner should depend on `llm/`, then output deterministic `ActionStep[]` for `core/dispatcher`.
-- `core/` should import types from `contracts/` only, and never from `llm/`.
+- `core/` should import types from `runtime/types` only, and never from `llm/`.
 
 ## Minimal Usage
 

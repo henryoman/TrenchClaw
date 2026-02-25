@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import type { ActionResult } from "../../ai/contracts/action";
+import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
   ConversationState,
   DecisionLog,
   JobState,
   PolicyHit,
-} from "../../ai/contracts/state";
+} from "../../ai/runtime/types/state";
 import { sqliteJobStatusSchema } from "./sqlite-schema";
 
 export * from "./sqlite-schema";

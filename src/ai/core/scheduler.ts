@@ -5,7 +5,7 @@ import type {
   RoutinePlanner,
   RuntimeEventBus,
   StateStore,
-} from "../contracts";
+} from "../runtime/types";
 import type { ActionDispatcher } from "./dispatcher";
 
 export interface SchedulerDeps {

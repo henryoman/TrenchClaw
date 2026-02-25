@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { createActionContext } from "../../../../src/ai/contracts/context";
+import { createActionContext } from "../../../../src/ai/runtime/types/context";
 import { SqliteStateStore } from "../../../../src/runtime/storage/sqlite-state-store";
 import { queryRuntimeStoreAction } from "../../../../src/solana/actions/data-fetch/runtime/queryRuntimeStore";
 

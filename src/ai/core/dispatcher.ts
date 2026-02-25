@@ -9,7 +9,7 @@ import type {
   RetryPolicy,
   RuntimeEventBus,
   StateStore,
-} from "../contracts";
+} from "../runtime/types";
 
 const DEFAULT_RETRY_POLICY: RetryPolicy = {
   maxAttempts: 1,

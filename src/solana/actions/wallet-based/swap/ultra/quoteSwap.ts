@@ -1,4 +1,4 @@
-import type { Action } from "../../../../../ai/contracts/action";
+import type { Action } from "../../../../../ai/runtime/types/action";
 import type { JupiterUltraOrderResponse } from "../../../../lib/adapters/jupiter-ultra";
 
 import {
