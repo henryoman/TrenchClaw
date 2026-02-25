@@ -46,6 +46,30 @@ export type RuntimeEventMap = {
     toEndpoint: string;
     reason?: string;
   };
+  "queue:enqueue": {
+    jobId: string;
+    botId: string;
+    routineName: string;
+    queueSize: number;
+    queuePosition: number;
+    nextRunAt?: number;
+  };
+  "queue:dequeue": {
+    jobId: string;
+    botId: string;
+    routineName: string;
+    queueSize: number;
+    queuePosition: number;
+    waitMs: number;
+  };
+  "queue:complete": {
+    jobId: string;
+    botId: string;
+    routineName: string;
+    status: "pending" | "failed" | "stopped";
+    durationMs: number;
+    cyclesCompleted: number;
+  };
 };
 
 export type RuntimeEventName = keyof RuntimeEventMap;

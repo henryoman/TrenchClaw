@@ -46,6 +46,7 @@ export class Scheduler {
     const dueJobs = this.deps
       .stateStore
       .listJobs({ status: "pending" })
+      .toSorted(comparePendingJobs)
       .filter((job) => !job.nextRunAt || job.nextRunAt <= now);
 
     for (const job of dueJobs) {
@@ -60,6 +61,17 @@ export class Scheduler {
   }
 
   private async runJob(job: JobState): Promise<DispatchResult> {
+    const runStartedAt = Date.now();
+    const pendingBeforeDequeue = this.deps.stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
+    const queuePosition = pendingBeforeDequeue.findIndex((entry) => entry.id === job.id) + 1;
+    this.deps.eventBus.emit("queue:dequeue", {
+      jobId: job.id,
+      botId: job.botId,
+      routineName: job.routineName,
+      queueSize: pendingBeforeDequeue.length,
+      queuePosition: queuePosition > 0 ? queuePosition : 1,
+      waitMs: Math.max(0, runStartedAt - job.createdAt),
+    });
     this.deps.stateStore.updateJobStatus(job.id, "running");
     this.deps.eventBus.emit("bot:start", {
       botId: job.botId,
@@ -85,6 +97,14 @@ export class Scheduler {
       cyclesCompleted: job.cyclesCompleted + 1,
       nextRunAt: computeNextRunAt(job, Date.now()),
     });
+    this.deps.eventBus.emit("queue:complete", {
+      jobId: job.id,
+      botId: job.botId,
+      routineName: job.routineName,
+      status: finalStatus,
+      durationMs: Math.max(0, Date.now() - runStartedAt),
+      cyclesCompleted: job.cyclesCompleted + 1,
+    });
 
     if (finalStatus === "stopped" || finalStatus === "failed") {
       this.deps.eventBus.emit("bot:stop", {
@@ -95,6 +115,18 @@ export class Scheduler {
 
     return dispatchResult;
   }
+}
+
+function comparePendingJobs(a: JobState, b: JobState): number {
+  const nextRunA = typeof a.nextRunAt === "number" ? a.nextRunAt : Number.MAX_SAFE_INTEGER;
+  const nextRunB = typeof b.nextRunAt === "number" ? b.nextRunAt : Number.MAX_SAFE_INTEGER;
+  if (nextRunA !== nextRunB) {
+    return nextRunA - nextRunB;
+  }
+  if (a.createdAt !== b.createdAt) {
+    return a.createdAt - b.createdAt;
+  }
+  return a.id.localeCompare(b.id);
 }
 
 function determineFinalStatus(job: JobState, result: DispatchResult): JobState["status"] {
