@@ -4,8 +4,12 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/contracts/action";
+import {
+  assertProtectedWriteAllowed,
+  assertWithinBrainProtectedDirectory,
+  resolveAbsolutePath,
+} from "../../../lib/wallet/protected-write-policy";
 
-const protectedRootDirectory = path.join(process.cwd(), "src/ai/brain/protected");
 const defaultKeyDirectory = "src/ai/brain/protected/keypairs";
 const defaultWalletLibraryPath = "src/ai/brain/protected/wallet-library.jsonl";
 
@@ -71,23 +75,6 @@ const encodePrivateKey = (privateKeyBytes: Uint8Array, encoding: CreateWalletsIn
   return Buffer.from(privateKeyBytes).toString("base64");
 };
 
-const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
-
-const assertWithinProtectedDirectory = (targetPath: string): void => {
-  const normalizedTarget = path.resolve(targetPath);
-  const normalizedProtectedRoot = path.resolve(protectedRootDirectory);
-
-  if (
-    normalizedTarget !== normalizedProtectedRoot &&
-    !normalizedTarget.startsWith(`${normalizedProtectedRoot}${path.sep}`)
-  ) {
-    throw new Error(
-      `Wallet files must be stored under ${normalizedProtectedRoot}. Received: ${normalizedTarget}`,
-    );
-  }
-};
-
 const resolveWalletNaming = (input: CreateWalletsInput, index: number): { group: string; wallet: string; walletPath: string } => {
   if (input.walletPath) {
     const [group, wallet] = input.walletPath.split(".");
@@ -128,11 +115,17 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
       const input = createWalletsInputSchema.parse(rawInput);
       const wallets: CreatedWallet[] = [];
       const files: string[] = [];
-      const outputDirectory = toAbsolutePath(input.output.directory);
-      const walletLibraryFilePath = toAbsolutePath(input.output.walletLibraryFile);
+      const outputDirectory = resolveAbsolutePath(input.output.directory);
+      const walletLibraryFilePath = resolveAbsolutePath(input.output.walletLibraryFile);
 
-      assertWithinProtectedDirectory(outputDirectory);
-      assertWithinProtectedDirectory(walletLibraryFilePath);
+      assertWithinBrainProtectedDirectory(outputDirectory);
+      assertWithinBrainProtectedDirectory(walletLibraryFilePath);
+      assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: outputDirectory, operation: "create wallets" });
+      assertProtectedWriteAllowed({
+        actor: _ctx.actor,
+        targetPath: walletLibraryFilePath,
+        operation: "append wallet library",
+      });
 
       await Bun.$`mkdir -p ${outputDirectory}`.quiet();
       await Bun.$`mkdir -p ${path.dirname(walletLibraryFilePath)}`.quiet();
@@ -153,6 +146,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
         if (await Bun.file(keypairFilePath).exists()) {
           throw new Error(`Refusing to overwrite existing wallet file: ${keypairFilePath}`);
         }
+        assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: keypairFilePath, operation: "write keypair file" });
 
         const privateKey = input.includePrivateKey
           ? encodePrivateKey(privateKeyBytes, input.privateKeyEncoding)

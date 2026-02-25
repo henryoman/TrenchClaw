@@ -1,5 +1,5 @@
-import type { ActionResult } from "../contracts/action";
 import type {
+  ActionResult,
   ChatMessageState,
   ConversationState,
   DecisionLog,
@@ -7,7 +7,7 @@ import type {
   JobStatus,
   PolicyHit,
   StateStore as IStateStore,
-} from "../contracts/state";
+} from "../contracts";
 
 export class InMemoryStateStore implements IStateStore {
   private readonly jobs = new Map<string, JobState>();

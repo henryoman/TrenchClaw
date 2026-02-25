@@ -1,8 +1,9 @@
 # AI Folder Map
 
-`src/ai` has two responsibilities:
+`src/ai` has three clear layers:
 
-- `contracts/` + `core/`: deterministic runtime orchestration (actions, policies, scheduler, state, events).
+- `contracts/`: pure runtime interfaces and shared domain types (no implementation logic).
+- `core/`: deterministic runtime implementations that satisfy `contracts/`.
 - `llm/`: model I/O only (prompt loading + Vercel AI SDK calls).
 
 ## What Lives Where
@@ -11,13 +12,16 @@
 - `core/scheduler.ts`: runs due jobs and dispatches routine plans.
 - `core/state-store.ts`: in-memory state implementation (jobs, receipts, logs).
 - `llm/client.ts`: single OpenAI/Vercel AI SDK client wrapper.
-- `llm/prompt-loader.ts`: builds system payloads from `src/ai/brain/system-settings/system/prompts/payload-manifest.yaml`.
+- `llm/prompt-loader.ts`: builds system payloads from `src/ai/brain/protected/system-settings/system/prompts/payload-manifest.yaml`.
+- `llm/prompt-manifest.ts`: prompt manifest parsing and mode resolution.
+- `llm/shared.ts`: shared path/structure parsing helpers for loaders.
 
 ## Rule of Thumb
 
 - If code calls RPC, wallet, or mutates state via actions: it belongs in runtime orchestration (`core/`).
 - If code calls `generateText` / `streamText`: it belongs in `llm/`.
 - The planner should depend on `llm/`, then output deterministic `ActionStep[]` for `core/dispatcher`.
+- `core/` should import types from `contracts/` only, and never from `llm/`.
 
 ## Minimal Usage
 

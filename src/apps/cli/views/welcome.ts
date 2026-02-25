@@ -2,6 +2,7 @@ export interface WelcomeViewOptions {
   version?: string;
   stream?: NodeJS.WriteStream;
   runtimeServerUrl?: string;
+  webGuiUrl?: string;
 }
 
 const ANSI = {
@@ -20,14 +21,16 @@ export const renderWelcomeToTrenchClaw = (
   const version = options.version ?? "v0.1.0";
   const stream = options.stream ?? process.stdout;
   const runtimeServerUrl = options.runtimeServerUrl ?? "disabled";
+  const webGuiUrl = options.webGuiUrl ?? "disabled";
 
   const lines = [
     `${ANSI.bold}${ANSI.neonTurquoise}TrenchClaw CLI${ANSI.reset} ${colorize(version, "neonPurple")}`,
     "",
     colorize("Minimal Bun CLI bootstrap", "neonPurple"),
     "- Runtime: Bun only",
-    "- UI: terminal text only",
-    `- Server: ${runtimeServerUrl}`,
+    "- UI: terminal + browser",
+    `- Runtime API: ${runtimeServerUrl}`,
+    `- Web GUI: ${webGuiUrl}`,
     "",
     colorize("Placeholders (coming next)", "neonTurquoise"),
     "- config: load, validate, and save settings",

@@ -2,14 +2,14 @@ import type {
   Action,
   ActionRegistryContract,
   ActionResult,
+  ActionContext,
   ActionStep,
   DispatchResult,
+  PolicyEngineContract,
   RetryPolicy,
-} from "../contracts/action";
-import type { ActionContext } from "../contracts/context";
-import type { PolicyEngineContract } from "../contracts/policy";
-import type { StateStore } from "../contracts/state";
-import type { RuntimeEventBus } from "../contracts/events";
+  RuntimeEventBus,
+  StateStore,
+} from "../contracts";
 
 const DEFAULT_RETRY_POLICY: RetryPolicy = {
   maxAttempts: 1,

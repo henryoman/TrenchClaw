@@ -1,42 +1,11 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { isRecord, parseStructuredFile, resolvePathFromModule } from "./shared";
 
 const DEFAULT_USER_SETTINGS_FILE = "../brain/user-settings/settings.yaml";
 const DEFAULT_VAULT_FILE = "../brain/protected/system-settings/vault.json";
 
 const USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object" && !Array.isArray(value);
-
-const resolvePath = (relativePath: string, envValue?: string): string => {
-  if (envValue && envValue.trim().length > 0) {
-    return envValue.trim();
-  }
-
-  return fileURLToPath(new URL(relativePath, import.meta.url));
-};
-
-const parseStructuredFile = async (filePath: string): Promise<unknown> => {
-  const file = Bun.file(filePath);
-  if (!(await file.exists())) {
-    throw new Error(`File does not exist: "${filePath}"`);
-  }
-
-  const text = await file.text();
-  const ext = path.extname(filePath).toLowerCase();
-
-  if (ext === ".json") {
-    return JSON.parse(text);
-  }
-
-  if (ext === ".yaml" || ext === ".yml") {
-    return Bun.YAML.parse(text);
-  }
-
-  return text;
-};
 
 const getByPath = (root: unknown, segments: string[]): unknown => {
   let current = root;
@@ -145,11 +114,12 @@ export interface ResolvedUserSettingsPayload {
 }
 
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
-  const userSettingsPath = resolvePath(
+  const userSettingsPath = resolvePathFromModule(
+    import.meta.url,
     DEFAULT_USER_SETTINGS_FILE,
     process.env[USER_SETTINGS_FILE_ENV],
   );
-  const vaultPath = resolvePath(DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
+  const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
 
   const rawSettings = await parseStructuredFile(userSettingsPath);
   const vaultData = await parseStructuredFile(vaultPath);

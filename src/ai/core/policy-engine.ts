@@ -1,5 +1,4 @@
-import type { ActionContext } from "../contracts/context";
-import type { Policy, PolicyEngineContract, PolicyResult } from "../contracts/policy";
+import type { ActionContext, Policy, PolicyEngineContract, PolicyResult } from "../contracts";
 
 export class PolicyEngine implements PolicyEngineContract {
   constructor(private readonly policies: Policy[] = []) {}

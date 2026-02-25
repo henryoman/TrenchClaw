@@ -1,9 +1,12 @@
-import path from "node:path";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/contracts/action";
+import {
+  assertProtectedWriteAllowed,
+  assertWithinBrainProtectedDirectory,
+  resolveAbsolutePath,
+} from "../../../lib/wallet/protected-write-policy";
 
-const protectedRootDirectory = path.join(process.cwd(), "src/ai/brain/protected");
 const defaultWalletLibraryPath = "src/ai/brain/protected/wallet-library.jsonl";
 
 const walletPathSchema = z
@@ -36,23 +39,6 @@ interface RenameWalletsOutput {
   }>;
 }
 
-const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
-
-const assertWithinProtectedDirectory = (targetPath: string): void => {
-  const normalizedTarget = path.resolve(targetPath);
-  const normalizedProtectedRoot = path.resolve(protectedRootDirectory);
-
-  if (
-    normalizedTarget !== normalizedProtectedRoot &&
-    !normalizedTarget.startsWith(`${normalizedProtectedRoot}${path.sep}`)
-  ) {
-    throw new Error(
-      `Wallet files must be stored under ${normalizedProtectedRoot}. Received: ${normalizedTarget}`,
-    );
-  }
-};
-
 const parseWalletPath = (walletPath: string): { group: string; wallet: string } => {
   const [group, wallet] = walletPath.split(".");
   if (!group || !wallet) {
@@ -78,8 +64,13 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
 
     try {
       const input = renameWalletsInputSchema.parse(rawInput);
-      const walletLibraryFilePath = toAbsolutePath(input.walletLibraryFile);
-      assertWithinProtectedDirectory(walletLibraryFilePath);
+      const walletLibraryFilePath = resolveAbsolutePath(input.walletLibraryFile);
+      assertWithinBrainProtectedDirectory(walletLibraryFilePath);
+      assertProtectedWriteAllowed({
+        actor: _ctx.actor,
+        targetPath: walletLibraryFilePath,
+        operation: "rename wallets in library",
+      });
 
       const libraryFile = Bun.file(walletLibraryFilePath);
       if (!(await libraryFile.exists())) {
@@ -152,8 +143,13 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         const keypairFilePath = typeof next.keypairFilePath === "string" ? next.keypairFilePath : undefined;
 
         if (input.updateKeypairFiles && keypairFilePath) {
-          const absoluteKeypairFilePath = toAbsolutePath(keypairFilePath);
-          assertWithinProtectedDirectory(absoluteKeypairFilePath);
+          const absoluteKeypairFilePath = resolveAbsolutePath(keypairFilePath);
+          assertWithinBrainProtectedDirectory(absoluteKeypairFilePath);
+          assertProtectedWriteAllowed({
+            actor: _ctx.actor,
+            targetPath: absoluteKeypairFilePath,
+            operation: "rewrite keypair metadata",
+          });
 
           const keypairFile = Bun.file(absoluteKeypairFilePath);
           if (await keypairFile.exists()) {
@@ -175,6 +171,11 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
       }
 
       const nextLibrary = entries.map((entry) => JSON.stringify(entry)).join("\n");
+      assertProtectedWriteAllowed({
+        actor: _ctx.actor,
+        targetPath: walletLibraryFilePath,
+        operation: "rewrite wallet library",
+      });
       await Bun.write(walletLibraryFilePath, `${nextLibrary}\n`);
 
       return {

@@ -10,6 +10,7 @@
     "cli": "bun run src/apps/cli/index.ts cli",
     "knowledge:refresh": "bun run scripts/knowledge/refresh-manifest.ts",
     "context:refresh": "bun run scripts/context/refresh-workspace-context.ts",
+    "refresh": "bun run typecheck && bun run lint && bun run build && bun run context:refresh",
     "systemd:install": "bun run scripts/systemd/install.ts",
     "typecheck": "bunx tsc --noEmit",
     "lint": "oxlint .",

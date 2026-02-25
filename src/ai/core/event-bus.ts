@@ -4,7 +4,7 @@ import type {
   RuntimeEventHandler,
   RuntimeEventMap,
   RuntimeEventName,
-} from "../contracts/events";
+} from "../contracts";
 
 export class InMemoryRuntimeEventBus implements RuntimeEventBus {
   private readonly handlers = new Map<RuntimeEventName, Set<RuntimeEventHandler<RuntimeEventName>>>();
