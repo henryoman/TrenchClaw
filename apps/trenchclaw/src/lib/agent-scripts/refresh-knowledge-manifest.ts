@@ -3,8 +3,8 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderDirectoryTree } from "../../ai/brain/knowledge/knowledge-tree";
 
-const KNOWLEDGE_DIR = fileURLToPath(new URL("../../src/ai/brain/knowledge/", import.meta.url));
-const MANIFEST_PATH = fileURLToPath(new URL("../../src/ai/brain/knowledge/KNOWLEDGE_MANIFEST.md", import.meta.url));
+const KNOWLEDGE_DIR = fileURLToPath(new URL("../../ai/brain/knowledge/", import.meta.url));
+const MANIFEST_PATH = fileURLToPath(new URL("../../ai/brain/knowledge/KNOWLEDGE_MANIFEST.md", import.meta.url));
 
 const generatedAt = new Date().toISOString();
 const tree = await renderDirectoryTree(KNOWLEDGE_DIR);
