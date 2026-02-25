@@ -19,6 +19,7 @@ lib/client/generated/
 
 # Runtime data (Bun SQLite)
 data/
+apps/frontends/cli/src/ai/brain/db/
 
 repomix-output.xml
 

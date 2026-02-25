@@ -1,1 +1,0 @@
-{"type":"queue:complete","timestamp":1771993059600,"payload":{"jobId":"b0cd1b07-bd8b-4c1d-8cf6-ff592cc2e982","botId":"dev-bootstrap","routineName":"createWallets","status":"failed","durationMs":6,"cyclesCompleted":1}}

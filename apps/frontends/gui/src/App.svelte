@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy, onMount } from "svelte";
   import { CREATE_NEW_OPTION } from "./config";
   import {
     ChatPanel,
@@ -36,14 +37,15 @@
   $: if (runtime.state.phase === "app" && !chat) {
     void ensureChatController();
   }
-</script>
 
-<svelte:window
-  on:load={() => {
+  onMount(() => {
     void runtime.initializeSplash();
-  }}
-  on:beforeunload={runtime.stopPolling}
-/>
+  });
+
+  onDestroy(() => {
+    runtime.stopPolling();
+  });
+</script>
 
 {#if runtime.state.phase === "loading"}
   <LoadingSplash />

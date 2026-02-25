@@ -1,8 +1,7 @@
 import { renderWelcomeToTrenchClaw } from "./views/welcome";
 import { bootstrapRuntime, type RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
 import { createWebGuiApiHandler } from "./gui-transport";
-import path from "node:path";
-import { existsSync } from "node:fs";
+import { CORE_APP_ROOT } from "./runtime-paths";
 
 export type CliMode = "dev" | "start" | "headless" | "cli";
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
@@ -22,9 +21,6 @@ export interface RuntimeServerInfo {
 }
 
 const DEFAULT_RUNTIME_PROFILE: RuntimeSafetyProfile = "dangerous";
-const CORE_APP_ROOT = existsSync(path.join(process.cwd(), "../trenchclaw/src"))
-  ? path.resolve(process.cwd(), "../trenchclaw")
-  : process.cwd();
 
 export const parseCliArgs = (argv: string[]): ParsedCliArgs => {
   const [, , ...rest] = argv;

@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -22,6 +21,7 @@ import { convertToModelMessages, createGateway, stepCountIs, streamText, tool, t
 import type { RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
 import { resolveLlmProviderConfigFromEnv } from "../../trenchclaw/src/ai/llm/config";
 import { z } from "zod";
+import { CORE_APP_ROOT } from "./runtime-paths";
 
 const GUI_CONVERSATION_ID = "gui-main";
 const MAX_ACTIVITY_ITEMS = 250;
@@ -30,9 +30,6 @@ const CORS_HEADERS = {
   "access-control-allow-methods": "GET,POST,OPTIONS",
   "access-control-allow-headers": "content-type,accept",
 };
-const CORE_APP_ROOT = existsSync(path.join(process.cwd(), "../trenchclaw/src"))
-  ? path.resolve(process.cwd(), "../trenchclaw")
-  : process.cwd();
 const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";

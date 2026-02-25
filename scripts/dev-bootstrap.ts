@@ -125,12 +125,28 @@ const run = async (): Promise<void> => {
       RUNTIME_HOST,
       RUNTIME_PORT: String(runtimePort),
       RUNTIME_REQUIRE_SERVER: "1",
+      TRENCHCLAW_APP_ROOT: path.join(REPO_ROOT, "apps/trenchclaw"),
       TRENCHCLAW_GUI_URL: guiUrl,
     },
   });
 
   let guiProc: Bun.Subprocess | null = null;
   let shuttingDown = false;
+  let shutdownTimer: ReturnType<typeof setTimeout> | null = null;
+
+  const stopChildren = (): void => {
+    signalStop(runtimeProc);
+    if (guiProc) {
+      signalStop(guiProc);
+    }
+  };
+
+  const forceStopChildren = (): void => {
+    forceStop(runtimeProc);
+    if (guiProc) {
+      forceStop(guiProc);
+    }
+  };
 
   const shutdown = (exitCode: number): void => {
     if (shuttingDown) {
@@ -138,25 +154,38 @@ const run = async (): Promise<void> => {
     }
     shuttingDown = true;
 
-    signalStop(runtimeProc);
-    if (guiProc) {
-      signalStop(guiProc);
-    }
+    stopChildren();
+    process.exitCode = exitCode;
 
-    setTimeout(() => {
-      forceStop(runtimeProc);
-      if (guiProc) {
-        forceStop(guiProc);
-      }
-    }, 1500).unref();
-
-    setTimeout(() => {
+    shutdownTimer = setTimeout(() => {
+      forceStopChildren();
       process.exit(exitCode);
-    }, 1600).unref();
+    }, 1500);
+    shutdownTimer.unref();
   };
 
-  process.on("SIGINT", () => shutdown(0));
-  process.on("SIGTERM", () => shutdown(0));
+  const handleFatal = (label: string, error: unknown): void => {
+    const message = error instanceof Error ? error.stack ?? error.message : String(error);
+    console.error(`[bootstrap] ${label}: ${message}`);
+    shutdown(1);
+  };
+
+  process.once("SIGINT", () => shutdown(0));
+  process.once("SIGTERM", () => shutdown(0));
+  process.once("SIGHUP", () => shutdown(0));
+  process.once("exit", () => {
+    if (shutdownTimer) {
+      clearTimeout(shutdownTimer);
+      shutdownTimer = null;
+    }
+    stopChildren();
+  });
+  process.once("uncaughtException", (error) => {
+    handleFatal("uncaught exception", error);
+  });
+  process.once("unhandledRejection", (reason) => {
+    handleFatal("unhandled rejection", reason);
+  });
 
   try {
     await Promise.race([
