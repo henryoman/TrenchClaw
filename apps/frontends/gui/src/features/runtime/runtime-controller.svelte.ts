@@ -7,6 +7,7 @@ import {
   RUNTIME_REFRESH_INTERVAL_MS,
   RUNTIME_STATUS_CHECKING,
   RUNTIME_STATUS_OFFLINE,
+  STARTUP_GUARD_TIMEOUT_MS,
 } from "../../config/app-config";
 import { runtimeApi } from "../../runtime-api";
 
@@ -99,8 +100,16 @@ export const createRuntimeController = () => {
   const initializeSplash = async (): Promise<void> => {
     state.splashError = "";
     state.phase = "loading";
+
+    const startupPromise = Promise.all([runtimeApi.bootstrap(), runtimeApi.instances()]);
+    const timeoutPromise = new Promise<never>((_resolve, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Startup timed out after ${STARTUP_GUARD_TIMEOUT_MS}ms`));
+      }, STARTUP_GUARD_TIMEOUT_MS);
+    });
+
     try {
-      const [bootstrap, instances] = await Promise.all([runtimeApi.bootstrap(), runtimeApi.instances()]);
+      const [bootstrap, instances] = await Promise.race([startupPromise, timeoutPromise]);
       state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
       state.availableInstances = instances.instances;
       state.phase = "landing";
@@ -111,6 +120,13 @@ export const createRuntimeController = () => {
       state.splashError = `${errorText}. Start runtime and retry.`;
       state.phase = "landing";
       stopPolling();
+    } finally {
+      if (state.phase === "loading") {
+        state.runtimeStatus = RUNTIME_STATUS_OFFLINE;
+        state.splashError = "Startup stalled. Runtime did not complete initialization. Start runtime and retry.";
+        state.phase = "landing";
+        stopPolling();
+      }
     }
   };
 

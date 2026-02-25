@@ -19,32 +19,45 @@ const ensureValidPort = (value: number, label: string): number => {
   return value;
 };
 
-const canBindPort = (host: string, port: number): Promise<boolean> =>
+interface PortProbeResult {
+  available: boolean;
+  errorCode?: string;
+}
+
+const canBindPort = (host: string, port: number): Promise<PortProbeResult> =>
   new Promise((resolve) => {
     const server = createServer();
 
-    server.once("error", () => {
-      resolve(false);
+    server.once("error", (error: NodeJS.ErrnoException) => {
+      resolve({
+        available: false,
+        errorCode: error.code,
+      });
     });
 
     server.listen({ host, port }, () => {
       server.close(() => {
-        resolve(true);
+        resolve({ available: true });
       });
     });
   });
 
 const findAvailablePort = async (host: string, preferredPort: number, label: string): Promise<number> => {
   const firstPort = ensureValidPort(preferredPort, label);
-  const maxPort = 65535;
+  const maxPort = Math.min(65535, firstPort + 200);
 
   for (let port = firstPort; port <= maxPort; port += 1) {
-    if (await canBindPort(host, port)) {
+    const probe = await canBindPort(host, port);
+    if (probe.available) {
       return port;
+    }
+
+    if (probe.errorCode === "EACCES" || probe.errorCode === "EPERM") {
+      throw new Error(`Port probe blocked by OS permissions (${probe.errorCode}) on ${host}:${port}`);
     }
   }
 
-  throw new Error(`No available ${label} port found from ${firstPort} to ${maxPort}`);
+  throw new Error(`No available ${label} port found from ${firstPort} to ${maxPort} (${maxPort - firstPort + 1} attempts)`);
 };
 
 const waitForRuntimeHealth = async (runtimeUrl: string, timeoutMs: number): Promise<void> => {
