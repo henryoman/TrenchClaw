@@ -17,6 +17,8 @@ import {
   type RuntimeEventMap,
   type StateStore,
   type LlmClient,
+  type LlmGenerateInput,
+  type LlmGenerateResult,
 } from "../ai";
 import type { RoutinePlanner } from "../ai/runtime/types/scheduler";
 import { createJupiterUltraAdapterFromEnv } from "../solana/lib/adapters/jupiter-ultra";
@@ -48,6 +50,7 @@ import {
   RuntimeFileEventLog,
   SessionLogStore,
   SessionSummaryStore,
+  SummaryLogStore,
   SqliteStateStore,
   SystemLogStore,
   type ActiveSessionInfo,
@@ -64,6 +67,8 @@ const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = new Set([
   "privacySwap",
   "createToken",
 ]);
+const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "privacySwap"]);
+const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
@@ -227,6 +232,91 @@ const resolveStorageRootDirectory = (settings: RuntimeSettings): string => {
   const sqlitePath = settings.storage.sqlite.path;
   const sqliteDir = path.isAbsolute(sqlitePath) ? path.dirname(sqlitePath) : path.join(process.cwd(), path.dirname(sqlitePath));
   return path.basename(sqliteDir) === "runtime" ? path.dirname(sqliteDir) : sqliteDir;
+};
+
+const comparePendingJobs = (a: JobState, b: JobState): number => {
+  const nextRunA = typeof a.nextRunAt === "number" ? a.nextRunAt : Number.MAX_SAFE_INTEGER;
+  const nextRunB = typeof b.nextRunAt === "number" ? b.nextRunAt : Number.MAX_SAFE_INTEGER;
+  if (nextRunA !== nextRunB) {
+    return nextRunA - nextRunB;
+  }
+  if (a.createdAt !== b.createdAt) {
+    return a.createdAt - b.createdAt;
+  }
+  return a.id.localeCompare(b.id);
+};
+
+const isTradeActionName = (actionName: string): boolean => TRADE_ACTIONS.has(actionName);
+
+const isDataActionName = (actionName: string): boolean =>
+  !isTradeActionName(actionName) && DATA_ACTION_NAME_PATTERNS.some((pattern) => pattern.test(actionName));
+
+const instrumentLlmClient = (
+  llm: LlmClient,
+  logger: RuntimeLogger,
+): LlmClient => {
+  const generate = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
+    const startedAt = Date.now();
+    try {
+      const result = await llm.generate(input);
+      const durationMs = Date.now() - startedAt;
+      logger.info("ai:call", {
+        provider: llm.provider,
+        model: llm.model,
+        mode: input.mode ?? llm.defaultMode ?? "default",
+        promptChars: input.prompt.length,
+        durationMs,
+        finishReason: result.finishReason,
+        inputTokens: result.usage?.inputTokens ?? null,
+        outputTokens: result.usage?.outputTokens ?? null,
+        totalTokens: result.usage?.totalTokens ?? null,
+      });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("ai:call_fail", {
+        provider: llm.provider,
+        model: llm.model,
+        mode: input.mode ?? llm.defaultMode ?? "default",
+        promptChars: input.prompt.length,
+        durationMs: Date.now() - startedAt,
+        error: message,
+      });
+      throw error;
+    }
+  };
+
+  const stream: LlmClient["stream"] = async (input) => {
+    const startedAt = Date.now();
+    try {
+      const result = await llm.stream(input);
+      logger.info("ai:stream_start", {
+        provider: llm.provider,
+        model: llm.model,
+        mode: input.mode ?? llm.defaultMode ?? "default",
+        promptChars: input.prompt.length,
+        durationMs: Date.now() - startedAt,
+      });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error("ai:stream_fail", {
+        provider: llm.provider,
+        model: llm.model,
+        mode: input.mode ?? llm.defaultMode ?? "default",
+        promptChars: input.prompt.length,
+        durationMs: Date.now() - startedAt,
+        error: message,
+      });
+      throw error;
+    }
+  };
+
+  return {
+    ...llm,
+    generate,
+    stream,
+  };
 };
 
 const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
