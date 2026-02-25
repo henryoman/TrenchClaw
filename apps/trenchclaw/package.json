@@ -7,6 +7,8 @@
   "scripts": {
     "cleanup:runtime": "bun run src/lib/agent-scripts/clean-runtime-artifacts.ts",
     "context:refresh": "bun run src/lib/agent-scripts/refresh-workspace-context.ts",
+    "knowledge:refresh": "bun run src/lib/agent-scripts/refresh-knowledge-manifest.ts",
+    "generate": "bun run context:refresh && bun run knowledge:refresh",
     "refresh": "bun run typecheck && bun run lint && bun run context:refresh",
     "systemd:install": "bun run ../../scripts/systemd/install.ts",
     "typecheck": "bunx tsc --noEmit -p tsconfig.json",

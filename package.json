@@ -23,9 +23,11 @@
     "lint": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run lint",
     "lint:fix": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run lint:fix",
     "test": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run test",
+    "generate": "bun run --cwd apps/trenchclaw generate",
     "context:refresh": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run context:refresh --filter=@trenchclaw/core",
     "cleanup:runtime": "bun run --cwd apps/trenchclaw cleanup:runtime",
     "refresh": "TURBO_TELEMETRY_DISABLED=1 bunx turbo run refresh --filter=@trenchclaw/core",
+    "verify:generate": "bun run lint && bun run build && bun run typecheck && bun run test && bun run generate",
     "systemd:install": "bun run --cwd apps/trenchclaw systemd:install",
     "ci": "bun run lint && bun run typecheck && bun run test && bun run build"
   },
