@@ -2,6 +2,7 @@
   "name": "trenchclaw",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.3.9",
   "type": "module",
   "scripts": {
     "assets:sync": "bun run ./scripts/sync-public-assets.ts",

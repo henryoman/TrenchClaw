@@ -1,4 +1,4 @@
-import { cp, mkdir } from 'node:fs/promises';
+import { access, cp, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,4 +9,10 @@ const sourcePublicDir = path.join(repoRoot, 'public');
 const targetStaticDir = path.join(websiteDir, 'static');
 
 await mkdir(targetStaticDir, { recursive: true });
-await cp(sourcePublicDir, targetStaticDir, { recursive: true, force: true });
+try {
+  await access(sourcePublicDir);
+  await cp(sourcePublicDir, targetStaticDir, { recursive: true, force: true });
+} catch {
+  // On isolated deploy builders (e.g. website-only checkout), repo root public may not exist.
+  // Keep existing website/static assets and continue.
+}
