@@ -3,13 +3,18 @@
   import CreateInstanceModal from "./components/splash/CreateInstanceModal.svelte";
   import LandingSplash from "./components/splash/LandingSplash.svelte";
   import LoginSplash from "./components/splash/LoginSplash.svelte";
-  import ChatPanel, { type ChatRow } from "./components/workspace/ChatPanel.svelte";
+  import ChatPanel from "./components/workspace/ChatPanel.svelte";
   import QueuePanel from "./components/workspace/QueuePanel.svelte";
   import Sidebar from "./components/workspace/Sidebar.svelte";
   import SummaryPanel from "./components/workspace/SummaryPanel.svelte";
   import { runtimeApi } from "./runtime-api";
 
   type AppPhase = "loading" | "landing" | "login" | "app";
+  type ChatRow = {
+    role: "assistant" | "user" | "system";
+    text: string;
+    timestamp: number;
+  };
 
   const CREATE_NEW_OPTION = "__create_new__";
 

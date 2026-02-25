@@ -1,13 +1,12 @@
 <script lang="ts">
   import type { GuiQueueJobView } from "@trenchclaw/types";
   import RetroPanel from "../ui/RetroPanel.svelte";
-  import RetroTable from "../ui/RetroTable.svelte";
 
   export let jobs: GuiQueueJobView[] = [];
 </script>
 
 <RetroPanel title="Queue">
-  <RetroTable>
+  <table class="retro-table">
     <thead>
       <tr>
         <th>Status</th>
@@ -32,5 +31,28 @@
         {/each}
       {/if}
     </tbody>
-  </RetroTable>
+  </table>
 </RetroPanel>
+
+<style>
+  .retro-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  .retro-table th,
+  .retro-table td {
+    border: var(--tc-border-muted);
+    padding: 6px 8px;
+    text-align: left;
+  }
+
+  .retro-table th {
+    color: var(--tc-color-turquoise);
+    background: #111025;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 0.74rem;
+  }
+</style>

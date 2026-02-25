@@ -3,11 +3,11 @@
   import RetroInput from "../ui/RetroInput.svelte";
   import RetroPanel from "../ui/RetroPanel.svelte";
 
-  export interface ChatRow {
+  type ChatRow = {
     role: "assistant" | "user" | "system";
     text: string;
     timestamp: number;
-  }
+  };
 
   export let rows: ChatRow[] = [];
   export let input = "";

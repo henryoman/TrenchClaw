@@ -1,11 +1,10 @@
 <script lang="ts">
   export let value = "";
   export let placeholder = "";
-  export let type: "text" | "password" = "text";
   export let disabled = false;
 </script>
 
-<input bind:value {type} {placeholder} {disabled} class="retro-input" />
+<input bind:value {placeholder} {disabled} class="retro-input" />
 
 <style>
   .retro-input {
