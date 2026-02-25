@@ -1,22 +1,12 @@
 version: 1
-system: system.md
-default-mode: operator
-
-operator:
-  prompt:
+defaults:
+  mode: operator
+  includeKnowledgeManifest: false
+  includeKnowledgeDirectoryTreeFallback: false
+  includeWorkspaceDirectoryTree: true
+modes:
+  operator:
+    promptFiles:
+      - system.md
       - modes/operator.md
-  context:
-    - includeKnowledgeManifest: true
-    - includeKnowledgeDirectoryTreeFallback: true
-    - includeDBSchemaSnapshot: true
-    - includeTemporalContext: true
-    - includeCurrentDate: true
-    - includeCurrentTime: true
-    - includeCurrentTimezone: true
-    - includeCurrentUserSettings: true
-    - includeCurrentUserProfile: true
-    - includeCurrentUserPreferences: true
-    - includeConversationSummary: true
-    - include20MostRecentChatMessages: true
-    
-
+      - ../context/workspace-and-schema.md

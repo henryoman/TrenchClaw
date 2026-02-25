@@ -33,7 +33,6 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("Mode: Operator");
     expect(payload.systemPrompt).toContain("Workspace Map (src/)");
     expect(payload.systemPrompt).toContain("# WORKSPACE ROOT: src/");
-    expect(payload.systemPrompt).toContain("SQLite Schema Snapshot");
     expect(payload.systemPrompt).toContain("ai/");
     expect(payload.systemPrompt).toContain("User Settings (Resolved)");
     expect(payload.systemPrompt).toContain("\"primaryRpc\": \"helius\"");

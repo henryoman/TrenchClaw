@@ -1,9 +1,0 @@
-{
-  "profiles": {
-    "default": {
-      "user-settings": {
-        "primaryRpc": "helius"
-      }
-    }
-  }
-}

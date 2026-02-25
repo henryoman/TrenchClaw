@@ -55,7 +55,7 @@ src/
 |   |   |       |   `-- ai.json
 |   |   |       `-- vault.json
 |   |   |-- user-settings/
-|   |   |   |-- notications.yaml
+|   |   |   |-- notifications.yaml
 |   |   |   |-- settings.yaml
 |   |   |   `-- swap.yaml
 |   |   |-- workspace/

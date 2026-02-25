@@ -27,4 +27,4 @@ integrations:
   jupiterApiKeyRef: vault://integrations/jupiter/api-key
 
 notifications:
-  config: notications.yaml
+  config: notifications.yaml
