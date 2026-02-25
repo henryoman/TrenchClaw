@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
-  import { CREATE_NEW_OPTION } from "./config";
+  import { CREATE_NEW_OPTION, STARTUP_GUARD_TIMEOUT_MS } from "./config";
   import {
     ChatPanel,
     CreateInstanceModal,
@@ -19,6 +19,7 @@
 
   let chat: ChatController | null = null;
   let chatInitError = "";
+  let startupGuardTimer: ReturnType<typeof setTimeout> | null = null;
 
   const ensureChatController = async (): Promise<void> => {
     if (chat) {
@@ -38,11 +39,42 @@
     void ensureChatController();
   }
 
+  const clearStartupGuard = (): void => {
+    if (!startupGuardTimer) {
+      return;
+    }
+    clearTimeout(startupGuardTimer);
+    startupGuardTimer = null;
+  };
+
+  const armStartupGuard = (): void => {
+    clearStartupGuard();
+    startupGuardTimer = setTimeout(() => {
+      if (runtime.state.phase !== "loading") {
+        return;
+      }
+
+      runtime.state.runtimeStatus = "runtime: offline";
+      runtime.state.splashError = "Startup timed out. Runtime did not respond. Check `bun run dev` logs and retry.";
+      runtime.state.phase = "landing";
+    }, STARTUP_GUARD_TIMEOUT_MS);
+  };
+
+  $: if (runtime.state.phase !== "loading") {
+    clearStartupGuard();
+  }
+
   onMount(() => {
-    void runtime.initializeSplash();
+    armStartupGuard();
+    void runtime.initializeSplash().finally(() => {
+      if (runtime.state.phase !== "loading") {
+        clearStartupGuard();
+      }
+    });
   });
 
   onDestroy(() => {
+    clearStartupGuard();
     runtime.stopPolling();
   });
 </script>

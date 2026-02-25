@@ -4,7 +4,8 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "bun --bun vite --host 127.0.0.1 --port 4173",
+    "dev": "bun run --cwd ../../../ dev:bootstrap",
+    "dev:standalone": "bun --bun vite --host 127.0.0.1 --port 4173",
     "dev:runtime": "VITE_TRENCHCLAW_RUNTIME_URL=http://127.0.0.1:4020 bun --bun vite --host 127.0.0.1 --port 4173",
     "build": "bun --bun vite build",
     "preview": "bun --bun vite preview",

@@ -6,6 +6,7 @@ export const REQUEST_TIMEOUT_MS = 8000;
 
 export const RUNTIME_ACTIVITY_LIMIT = 80;
 export const RUNTIME_REFRESH_INTERVAL_MS = 2000;
+export const STARTUP_GUARD_TIMEOUT_MS = 12000;
 
 export const RUNTIME_STATUS_CHECKING = "runtime: checking...";
 export const RUNTIME_STATUS_OFFLINE = "runtime: offline";

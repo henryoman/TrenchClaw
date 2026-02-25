@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "bun run scripts/dev-bootstrap.ts",
     "dev:bootstrap": "bun run scripts/dev-bootstrap.ts",
-    "dev:gui-only": "bun run --bun --cwd apps/frontends/gui dev",
+    "dev:gui-only": "bun run --bun --cwd apps/frontends/gui dev:standalone",
     "runtime:dev": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run dev --filter=@trenchclaw/cli",
     "tui:dev": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run dev --filter=@trenchclaw/cli",
     "gui:dev": "bun run --bun --cwd apps/frontends/gui dev",

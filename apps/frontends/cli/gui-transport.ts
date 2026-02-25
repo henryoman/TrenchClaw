@@ -19,6 +19,7 @@ import type {
 } from "@trenchclaw/types";
 import { convertToModelMessages, createGateway, stepCountIs, streamText, tool, type LanguageModel, type UIMessage } from "ai";
 import type { RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
+import { createActionContext } from "../../trenchclaw/src/ai/runtime/types/context";
 import { resolveLlmProviderConfigFromEnv } from "../../trenchclaw/src/ai/llm/config";
 import { z } from "zod";
 import { CORE_APP_ROOT } from "./runtime-paths";
@@ -31,6 +32,9 @@ const CORS_HEADERS = {
   "access-control-allow-headers": "content-type,accept",
 };
 const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
+const DEFAULT_WALLET_OUTPUT_DIRECTORY = "src/ai/brain/protected/keypairs";
+const DEFAULT_WALLET_LIBRARY_FILE = "src/ai/brain/protected/wallet-library.jsonl";
+const WALLET_PATH_PATTERN = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/u;
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
 
@@ -118,6 +122,36 @@ const parseUiChatRequest = async (request: Request): Promise<{ messages: UIMessa
     return null;
   }
 };
+
+const createWalletsToolInputSchema = z.object({
+  count: z.number().int().min(1).max(25).default(1),
+  includePrivateKey: z.boolean().default(true),
+  privateKeyEncoding: z.enum(["base64", "hex", "bytes"]).default("base64"),
+  walletPath: z.string().trim().regex(WALLET_PATH_PATTERN).optional(),
+  walletLocator: z
+    .object({
+      group: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/u).default("default"),
+      wallet: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/u).optional(),
+      startIndex: z.number().int().positive().default(1),
+    })
+    .default({
+      group: "default",
+      startIndex: 1,
+    }),
+  output: z
+    .object({
+      directory: z.string().min(1).default(DEFAULT_WALLET_OUTPUT_DIRECTORY),
+      filePrefix: z.string().min(1).default("wallet"),
+      includeIndexInFileName: z.boolean().default(true),
+      walletLibraryFile: z.string().min(1).default(DEFAULT_WALLET_LIBRARY_FILE),
+    })
+    .default({
+      directory: DEFAULT_WALLET_OUTPUT_DIRECTORY,
+      filePrefix: "wallet",
+      includeIndexInFileName: true,
+      walletLibraryFile: DEFAULT_WALLET_LIBRARY_FILE,
+    }),
+});
 
 const parseCreateInstanceRequest = async (request: Request): Promise<GuiCreateInstanceRequest | null> => {
   try {
@@ -445,27 +479,75 @@ export class RuntimeGuiTransport {
     const model = resolveStreamingModel();
     const result = streamText({
       model,
+      system: [
+        "You are TrenchClaw's runtime assistant.",
+        "When the user asks to create Solana wallets or wallet JSON files, call the createWallets tool.",
+        "Do not claim wallets were created unless the tool confirms success.",
+      ].join(" "),
       messages: await convertToModelMessages(messages),
       stopWhen: stepCountIs(5),
       tools: {
-        weather: tool({
-          description: "Get the weather in a location (fahrenheit)",
-          inputSchema: z.object({
-            location: z.string().describe("The location to get the weather for"),
-          }),
-          execute: async ({ location }) => {
-            const temperature = Math.round(Math.random() * (90 - 32) + 32);
-            return { location, temperature };
-          },
-        }),
-        convertFahrenheitToCelsius: tool({
-          description: "Convert a temperature in fahrenheit to celsius",
-          inputSchema: z.object({
-            temperature: z.number().describe("The temperature in fahrenheit to convert"),
-          }),
-          execute: async ({ temperature }) => {
-            const celsius = Math.round((temperature - 32) * (5 / 9));
-            return { celsius };
+        createWallets: tool({
+          description:
+            "Create Solana wallets and write keypair JSON files plus wallet-library.jsonl in the protected runtime directory.",
+          inputSchema: createWalletsToolInputSchema,
+          execute: async (rawInput) => {
+            const input = createWalletsToolInputSchema.parse(rawInput);
+            this.addActivity("chat", `Tool createWallets requested (count=${input.count})`);
+
+            const dispatchResult = await this.runtime.dispatcher.dispatchStep(
+              createActionContext({
+                actor: "user",
+                eventBus: this.runtime.eventBus,
+                stateStore: this.runtime.stateStore,
+              }),
+              {
+                actionName: "createWallets",
+                input,
+              },
+            );
+
+            const actionResult = dispatchResult.results[0];
+            if (!actionResult) {
+              this.addActivity("chat", "Tool createWallets failed: missing dispatcher result");
+              return {
+                ok: false,
+                error: "createWallets dispatcher returned no result",
+              };
+            }
+
+            if (!actionResult.ok) {
+              const error = actionResult.error ?? "createWallets failed";
+              this.addActivity("chat", `Tool createWallets failed: ${error.slice(0, 120)}`);
+              return {
+                ok: false,
+                error,
+              };
+            }
+
+            const payload = actionResult.data as
+              | {
+                  wallets?: Array<{
+                    walletPath: string;
+                    address: string;
+                    keypairFilePath?: string;
+                  }>;
+                  outputDirectory?: string;
+                  files?: string[];
+                  walletLibraryFilePath?: string;
+                }
+              | undefined;
+            const createdCount = payload?.wallets?.length ?? 0;
+            this.addActivity("chat", `Tool createWallets confirmed (${createdCount} wallet${createdCount === 1 ? "" : "s"})`);
+
+            return {
+              ok: true,
+              createdCount,
+              outputDirectory: payload?.outputDirectory ?? null,
+              walletLibraryFilePath: payload?.walletLibraryFilePath ?? null,
+              files: payload?.files ?? [],
+              wallets: payload?.wallets ?? [],
+            };
           },
         }),
       },
