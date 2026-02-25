@@ -23,11 +23,11 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.30",
+    "@ai-sdk/openai": "3.0.33",
     "@opentui/core": "^0.1.81",
     "@solana/kit": "^6.1.0",
     "@solana/transactions": "^6.1.0",
-    "ai": "^6.0.97",
+    "ai": "6.0.99",
     "privacycash": "^1.0.16",
     "zod": "^4.3.6"
   }

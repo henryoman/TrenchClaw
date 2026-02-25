@@ -13,7 +13,10 @@
     "lint:fix": "oxlint --fix ."
   },
   "dependencies": {
-    "@trenchclaw/types": "workspace:*"
+    "@ai-sdk/svelte": "^4.0.99",
+    "@trenchclaw/types": "workspace:*",
+    "ai": "^6.0.99",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^3.1.2",
