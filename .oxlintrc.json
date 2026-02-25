@@ -15,6 +15,7 @@
     "dist/**",
     "**/dist/**",
     "build/**",
+    "**/build/**",
     ".svelte-kit/**",
     "**/.svelte-kit/**",
     "node_modules/**"
