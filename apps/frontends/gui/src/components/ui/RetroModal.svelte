@@ -3,19 +3,19 @@
 </script>
 
 <div class="retro-modal-backdrop" role="presentation">
-  <section class="retro-modal" role="dialog" aria-modal="true" aria-label={title}>
+  <div class="retro-modal" role="dialog" aria-modal="true" aria-label={title}>
     {#if title}
       <h2>{title}</h2>
     {/if}
     <slot />
-  </section>
+  </div>
 </div>
 
 <style>
   .retro-modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(4, 3, 8, 0.86);
+    background: rgba(0, 0, 0, 0.94);
     display: grid;
     place-items: center;
     padding: var(--tc-space-4);
@@ -25,7 +25,7 @@
   .retro-modal {
     width: min(480px, 100%);
     border: var(--tc-border);
-    background: var(--tc-color-black-2);
+    background: var(--tc-color-black);
     padding: var(--tc-space-4);
     display: grid;
     gap: var(--tc-space-3);

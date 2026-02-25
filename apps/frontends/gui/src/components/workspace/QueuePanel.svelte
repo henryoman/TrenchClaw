@@ -50,7 +50,7 @@
 
   .retro-table th {
     color: var(--tc-color-turquoise);
-    background: #111025;
+    background: var(--tc-color-black);
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-size: 0.74rem;

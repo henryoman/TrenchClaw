@@ -12,7 +12,7 @@
 <style>
   .sidebar {
     border-right: var(--tc-border);
-    background: #090611;
+    background: var(--tc-color-black);
     padding: var(--tc-space-3);
     display: flex;
     flex-direction: column;

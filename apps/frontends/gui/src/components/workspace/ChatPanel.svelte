@@ -1,30 +1,33 @@
 <script lang="ts">
+  import type { UIMessage } from "ai";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroInput from "../ui/RetroInput.svelte";
   import RetroPanel from "../ui/RetroPanel.svelte";
 
-  type ChatRow = {
-    role: "assistant" | "user" | "system";
-    text: string;
-    timestamp: number;
-  };
-
-  export let rows: ChatRow[] = [];
+  export let messages: UIMessage[] = [];
   export let input = "";
   export let sending = false;
-  export let formatTime: (unixMs: number) => string;
   export let onSubmit: () => void;
 </script>
 
 <RetroPanel title="Chat">
   <div class="chat-wrap">
-    {#each rows as row}
-      <p class={`row ${row.role}`}>
-        <span>{row.role === "assistant" ? "TrenchClaw" : row.role === "user" ? "You" : "System"}</span>
-        <small>{formatTime(row.timestamp)}</small>
+    {#if messages.length === 0}
+      <p class="hint">Console linked. Ask for actions, then verify queue and confirmations in the right panels.</p>
+    {/if}
+
+    {#each messages as message}
+      <div class={`row ${message.role}`}>
+        <span>{message.role === "assistant" ? "TrenchClaw" : message.role === "user" ? "You" : "System"}</span>
         <br />
-        {row.text}
-      </p>
+        {#each message.parts as part}
+          {#if part.type === "text"}
+            <span>{part.text}</span>
+          {:else if part.type.startsWith("tool-")}
+            <pre>{JSON.stringify(part, null, 2)}</pre>
+          {/if}
+        {/each}
+      </div>
     {/each}
   </div>
   <form
@@ -44,7 +47,14 @@
     min-height: 0;
     overflow: auto;
     padding: var(--tc-space-2);
-    background: #07050d;
+    background: var(--tc-color-black);
+  }
+
+  .hint {
+    margin: 0 0 var(--tc-space-2) 0;
+    color: var(--tc-color-gray-2);
+    font-size: 0.8rem;
+    line-height: 1.4;
   }
 
   .row {
@@ -63,17 +73,21 @@
   }
 
   .row.user span {
-    color: #9b7cf2;
+    color: var(--tc-color-gray-3);
   }
 
   .row.system span {
     color: var(--tc-color-red);
   }
 
-  .row small {
-    margin-left: 8px;
+  .row pre {
+    margin: 0;
+    padding: var(--tc-space-2);
+    border: var(--tc-border-muted);
+    background: var(--tc-color-black);
     color: var(--tc-color-gray-2);
-    font-size: 0.7rem;
+    font-size: 0.72rem;
+    overflow-x: auto;
   }
 
   .chat-form {

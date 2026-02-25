@@ -9,13 +9,16 @@
     "headless": "bun run index.ts headless",
     "cli": "bun run index.ts cli",
     "build": "bun build index.ts --target bun --outdir dist",
-    "typecheck": "bunx tsc --noEmit -p tsconfig.json",
+    "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix ."
   },
   "dependencies": {
+    "@ai-sdk/openai": "3.0.33",
     "@trenchclaw/core": "workspace:*",
-    "@trenchclaw/types": "workspace:*"
+    "@trenchclaw/types": "workspace:*",
+    "ai": "6.0.99",
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@types/bun": "latest",

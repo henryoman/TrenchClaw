@@ -9,13 +9,7 @@ body {
   margin: 0;
   min-height: 100%;
   color: var(--tc-color-gray-3);
-  background: repeating-linear-gradient(
-    0deg,
-    var(--tc-color-black) 0px,
-    var(--tc-color-black) 3px,
-    #07050c 3px,
-    #07050c 6px
-  );
+  background: var(--tc-color-black);
   font-family: var(--tc-font-ui);
 }
 

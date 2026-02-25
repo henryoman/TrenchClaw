@@ -10,14 +10,14 @@ import type {
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
 } from "@trenchclaw/types";
+import { GUI_API_BASE_PATH, REQUEST_TIMEOUT_MS } from "./config";
 
-const runtimeBaseUrl = (import.meta.env.VITE_TRENCHCLAW_RUNTIME_URL ?? "").trim().replace(/\/+$/u, "");
+export const runtimeBaseUrl = (import.meta.env.VITE_TRENCHCLAW_RUNTIME_URL ?? "").trim().replace(/\/+$/u, "");
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-const toRuntimeUrl = (pathname: string): string => `${runtimeBaseUrl}${pathname}`;
-const REQUEST_TIMEOUT_MS = 8000;
+export const toRuntimeUrl = (pathname: string): string => `${runtimeBaseUrl}${pathname}`;
 
 const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promise<T> => {
   const controller = new AbortController();
@@ -56,25 +56,25 @@ const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promi
 };
 
 export const runtimeApi = {
-  bootstrap: (): Promise<GuiBootstrapResponse> => fetchJson<GuiBootstrapResponse>(toRuntimeUrl("/api/gui/bootstrap")),
-  queue: (): Promise<GuiQueueResponse> => fetchJson<GuiQueueResponse>(toRuntimeUrl("/api/gui/queue")),
+  bootstrap: (): Promise<GuiBootstrapResponse> => fetchJson<GuiBootstrapResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/bootstrap`)),
+  queue: (): Promise<GuiQueueResponse> => fetchJson<GuiQueueResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/queue`)),
   activity: (limit = 100): Promise<GuiActivityResponse> =>
-    fetchJson<GuiActivityResponse>(toRuntimeUrl(`/api/gui/activity?limit=${Math.max(1, Math.trunc(limit))}`)),
+    fetchJson<GuiActivityResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/activity?limit=${Math.max(1, Math.trunc(limit))}`)),
   chat: (message: string): Promise<GuiChatResponse> =>
-    fetchJson<GuiChatResponse>(toRuntimeUrl("/api/gui/chat"), {
+    fetchJson<GuiChatResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/chat`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ message } satisfies GuiChatRequest),
     }),
-  instances: (): Promise<GuiInstancesResponse> => fetchJson<GuiInstancesResponse>(toRuntimeUrl("/api/gui/instances")),
+  instances: (): Promise<GuiInstancesResponse> => fetchJson<GuiInstancesResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`)),
   createInstance: (input: GuiCreateInstanceRequest): Promise<GuiCreateInstanceResponse> =>
-    fetchJson<GuiCreateInstanceResponse>(toRuntimeUrl("/api/gui/instances"), {
+    fetchJson<GuiCreateInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
   signInInstance: (input: GuiSignInInstanceRequest): Promise<GuiSignInInstanceResponse> =>
-    fetchJson<GuiSignInInstanceResponse>(toRuntimeUrl("/api/gui/instances/sign-in"), {
+    fetchJson<GuiSignInInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances/sign-in`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),

@@ -12,8 +12,8 @@
 <style>
   .retro-btn {
     border: var(--tc-border);
-    background: var(--tc-color-purple-2);
-    color: var(--tc-color-turquoise);
+    background: var(--tc-color-black);
+    color: var(--tc-color-gray-3);
     padding: 10px 12px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -29,13 +29,13 @@
   .retro-btn.secondary {
     border: var(--tc-border-muted);
     color: var(--tc-color-gray-3);
-    background: transparent;
+    background: var(--tc-color-black);
   }
 
   .retro-btn.danger {
     border-color: var(--tc-color-red);
     color: var(--tc-color-red);
-    background: transparent;
+    background: var(--tc-color-black);
   }
 
   .retro-btn:disabled {
@@ -44,6 +44,8 @@
   }
 
   .retro-btn:not(:disabled):hover {
-    background: var(--tc-color-purple);
+    border-color: var(--tc-color-turquoise);
+    color: var(--tc-color-turquoise);
+    background: var(--tc-color-black);
   }
 </style>

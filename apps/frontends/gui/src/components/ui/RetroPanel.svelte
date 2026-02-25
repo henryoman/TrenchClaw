@@ -10,7 +10,7 @@
 <style>
   .retro-panel {
     border: var(--tc-border);
-    background: var(--tc-color-black-2);
+    background: var(--tc-color-black);
     min-height: 0;
     display: grid;
     grid-template-rows: auto 1fr;

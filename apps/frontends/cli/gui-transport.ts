@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { createOpenAI } from "@ai-sdk/openai";
 import type {
   GuiActivityEntry,
   GuiActivityResponse,
@@ -17,14 +18,17 @@ import type {
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
 } from "@trenchclaw/types";
+import { convertToModelMessages, createGateway, stepCountIs, streamText, tool, type LanguageModel, type UIMessage } from "ai";
 import type { RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
+import { resolveLlmProviderConfigFromEnv } from "../../trenchclaw/src/ai/llm/config";
+import { z } from "zod";
 
 const GUI_CONVERSATION_ID = "gui-main";
 const MAX_ACTIVITY_ITEMS = 250;
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "content-type",
+  "access-control-allow-headers": "content-type,accept",
 };
 const CORE_APP_ROOT = existsSync(path.join(process.cwd(), "../trenchclaw/src"))
   ? path.resolve(process.cwd(), "../trenchclaw")
@@ -51,6 +55,32 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const createMessageId = (): string => crypto.randomUUID();
 
+const trimOrUndefined = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const resolveStreamingModel = (): LanguageModel => {
+  const gatewayApiKey = trimOrUndefined(process.env.AI_GATEWAY_API_KEY);
+  if (gatewayApiKey) {
+    const gateway = createGateway({ apiKey: gatewayApiKey });
+    return gateway(trimOrUndefined(process.env.TRENCHCLAW_AI_MODEL) ?? "anthropic/claude-sonnet-4.5");
+  }
+
+  const llmConfig = resolveLlmProviderConfigFromEnv();
+  if (!llmConfig) {
+    throw new Error(
+      "No model provider configured. Set AI_GATEWAY_API_KEY or your TRENCHCLAW/OpenAI provider env vars.",
+    );
+  }
+
+  const openai = createOpenAI({
+    apiKey: llmConfig.apiKey,
+    baseURL: llmConfig.baseURL,
+  });
+  return openai.responses(llmConfig.model);
+};
+
 const mapJobToView = (job: ReturnType<RuntimeBootstrap["stateStore"]["listJobs"]>[number]): GuiQueueJobView => ({
   id: job.id,
   botId: job.botId,
@@ -73,6 +103,20 @@ const parseChatRequest = async (request: Request): Promise<GuiChatRequest | null
       return null;
     }
     return { message };
+  } catch {
+    return null;
+  }
+};
+
+const parseUiChatRequest = async (request: Request): Promise<{ messages: UIMessage[] } | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !Array.isArray(payload.messages)) {
+      return null;
+    }
+    return {
+      messages: payload.messages as UIMessage[],
+    };
   } catch {
     return null;
   }
@@ -400,15 +444,64 @@ export class RuntimeGuiTransport {
     }
   }
 
+  async streamChat(messages: UIMessage[]): Promise<Response> {
+    const model = resolveStreamingModel();
+    const result = streamText({
+      model,
+      messages: await convertToModelMessages(messages),
+      stopWhen: stepCountIs(5),
+      tools: {
+        weather: tool({
+          description: "Get the weather in a location (fahrenheit)",
+          inputSchema: z.object({
+            location: z.string().describe("The location to get the weather for"),
+          }),
+          execute: async ({ location }) => {
+            const temperature = Math.round(Math.random() * (90 - 32) + 32);
+            return { location, temperature };
+          },
+        }),
+        convertFahrenheitToCelsius: tool({
+          description: "Convert a temperature in fahrenheit to celsius",
+          inputSchema: z.object({
+            temperature: z.number().describe("The temperature in fahrenheit to convert"),
+          }),
+          execute: async ({ temperature }) => {
+            const celsius = Math.round((temperature - 32) * (5 / 9));
+            return { celsius };
+          },
+        }),
+      },
+    });
+
+    return result.toUIMessageStreamResponse({
+      headers: CORS_HEADERS,
+    });
+  }
+
   createApiHandler(): (request: Request) => Promise<Response> {
     return async (request: Request) => {
       const url = new URL(request.url);
 
-      if (request.method === "OPTIONS" && url.pathname.startsWith("/api/gui/")) {
+      if (request.method === "OPTIONS" && (url.pathname.startsWith("/api/gui/") || url.pathname === "/api/chat")) {
         return new Response(null, {
           status: 204,
           headers: CORS_HEADERS,
         });
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/chat") {
+        const payload = await parseUiChatRequest(request);
+        if (!payload) {
+          return Response.json({ error: "Invalid chat payload" }, { status: 400, headers: CORS_HEADERS });
+        }
+
+        try {
+          return await this.streamChat(payload.messages);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });
+        }
       }
 
       if (request.method === "GET" && url.pathname === "/api/gui/bootstrap") {

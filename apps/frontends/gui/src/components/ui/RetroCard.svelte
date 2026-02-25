@@ -9,7 +9,7 @@
 <style>
   .retro-card {
     border: var(--tc-border);
-    background: linear-gradient(180deg, #120a1f 0%, #0a0711 100%);
+    background: var(--tc-color-black);
     padding: var(--tc-space-5);
   }
 

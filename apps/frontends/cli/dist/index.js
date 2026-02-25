@@ -22933,7 +22933,7 @@ async function* executeTool({
   }
 }
 
-// ../../../node_modules/.bun/@ai-sdk+openai@3.0.30+3c5d820c62823f0b/node_modules/@ai-sdk/openai/dist/index.mjs
+// ../../../node_modules/.bun/@ai-sdk+openai@3.0.33+3c5d820c62823f0b/node_modules/@ai-sdk/openai/dist/index.mjs
 var openaiErrorDataSchema = exports_external.object({
   error: exports_external.object({
     message: exports_external.string(),
@@ -24347,7 +24347,8 @@ var modelMaxImagesPerCall = {
   "dall-e-2": 10,
   "gpt-image-1": 10,
   "gpt-image-1-mini": 10,
-  "gpt-image-1.5": 10
+  "gpt-image-1.5": 10,
+  "chatgpt-image-latest": 10
 };
 var defaultResponseFormatPrefixes = [
   "gpt-image-1-mini",
@@ -24761,7 +24762,7 @@ var webSearchOutputSchema = lazySchema(() => zodSchema(exports_external.object({
       url: exports_external.string().nullish(),
       pattern: exports_external.string().nullish()
     })
-  ]),
+  ]).optional(),
   sources: exports_external.array(exports_external.discriminatedUnion("type", [
     exports_external.object({ type: exports_external.literal("url"), url: exports_external.string() }),
     exports_external.object({ type: exports_external.literal("api"), name: exports_external.string() })
@@ -24799,7 +24800,7 @@ var webSearchPreviewOutputSchema = lazySchema(() => zodSchema(exports_external.o
       url: exports_external.string().nullish(),
       pattern: exports_external.string().nullish()
     })
-  ])
+  ]).optional()
 })));
 var webSearchPreview = createProviderToolFactoryWithOutputSchema({
   id: "openai.web_search_preview",
@@ -25555,7 +25556,7 @@ var openaiResponsesChunkSchema = lazySchema(() => zodSchema(exports_external.uni
             url: exports_external.string().nullish(),
             pattern: exports_external.string().nullish()
           })
-        ])
+        ]).nullish()
       }),
       exports_external.object({
         type: exports_external.literal("file_search_call"),
@@ -25847,7 +25848,10 @@ var openaiResponsesResponseSchema = lazySchema(() => zodSchema(exports_external.
           query: exports_external.string().nullish(),
           sources: exports_external.array(exports_external.discriminatedUnion("type", [
             exports_external.object({ type: exports_external.literal("url"), url: exports_external.string() }),
-            exports_external.object({ type: exports_external.literal("api"), name: exports_external.string() })
+            exports_external.object({
+              type: exports_external.literal("api"),
+              name: exports_external.string()
+            })
           ])).nullish()
         }),
         exports_external.object({
@@ -25859,7 +25863,7 @@ var openaiResponsesResponseSchema = lazySchema(() => zodSchema(exports_external.
           url: exports_external.string().nullish(),
           pattern: exports_external.string().nullish()
         })
-      ])
+      ]).nullish()
     }),
     exports_external.object({
       type: exports_external.literal("file_search_call"),
@@ -26057,7 +26061,9 @@ var openaiResponsesReasoningModelIds = [
   "gpt-5.1-codex-max",
   "gpt-5.2",
   "gpt-5.2-chat-latest",
-  "gpt-5.2-pro"
+  "gpt-5.2-pro",
+  "gpt-5.2-codex",
+  "gpt-5.3-codex"
 ];
 var openaiResponsesModelIds = [
   "gpt-4.1",
@@ -27777,6 +27783,9 @@ function isErrorChunk(chunk) {
 }
 function mapWebSearchOutput(action2) {
   var _a16;
+  if (action2 == null) {
+    return {};
+  }
   switch (action2.type) {
     case "search":
       return {
@@ -28087,7 +28096,7 @@ var OpenAITranscriptionModel = class {
     };
   }
 };
-var VERSION2 = "3.0.30";
+var VERSION2 = "3.0.33";
 function createOpenAI(options = {}) {
   var _a16, _b16;
   const baseURL = (_a16 = withoutTrailingSlash(loadOptionalSetting({
@@ -28179,7 +28188,7 @@ function createOpenAI(options = {}) {
 }
 var openai = createOpenAI();
 
-// ../../../node_modules/.bun/@ai-sdk+gateway@3.0.53+3c5d820c62823f0b/node_modules/@ai-sdk/gateway/dist/index.mjs
+// ../../../node_modules/.bun/@ai-sdk+gateway@3.0.55+3c5d820c62823f0b/node_modules/@ai-sdk/gateway/dist/index.mjs
 var import_oidc = __toESM(require_dist(), 1);
 var import_oidc2 = __toESM(require_dist(), 1);
 var marker17 = "vercel.ai.gateway.error";
@@ -29245,7 +29254,7 @@ async function getVercelRequestId() {
   var _a92;
   return (_a92 = import_oidc.getContext().headers) == null ? undefined : _a92["x-vercel-id"];
 }
-var VERSION3 = "3.0.53";
+var VERSION3 = "3.0.55";
 var AI_GATEWAY_PROTOCOL_VERSION = "0.0.1";
 function createGatewayProvider(options = {}) {
   var _a92, _b92;
@@ -29285,13 +29294,18 @@ function createGatewayProvider(options = {}) {
       settingValue: undefined,
       environmentVariableName: "VERCEL_REGION"
     });
+    const projectId = loadOptionalSetting({
+      settingValue: undefined,
+      environmentVariableName: "VERCEL_PROJECT_ID"
+    });
     return async () => {
       const requestId = await getVercelRequestId();
       return {
         ...deploymentId && { "ai-o11y-deployment-id": deploymentId },
         ...environment && { "ai-o11y-environment": environment },
         ...region && { "ai-o11y-region": region },
-        ...requestId && { "ai-o11y-request-id": requestId }
+        ...requestId && { "ai-o11y-request-id": requestId },
+        ...projectId && { "ai-o11y-project-id": projectId }
       };
     };
   };
@@ -29396,7 +29410,7 @@ async function getGatewayAuthToken(options) {
   };
 }
 
-// ../../../node_modules/.bun/ai@6.0.97+3c5d820c62823f0b/node_modules/ai/dist/index.mjs
+// ../../../node_modules/.bun/ai@6.0.99+3c5d820c62823f0b/node_modules/ai/dist/index.mjs
 var import_api = __toESM(require_src(), 1);
 var import_api2 = __toESM(require_src(), 1);
 var __defProp2 = Object.defineProperty;
@@ -29670,6 +29684,19 @@ var name18 = "AI_MessageConversionError";
 var marker182 = `vercel.ai.error.${name18}`;
 var symbol182 = Symbol.for(marker182);
 var _a182;
+var MessageConversionError = class extends AISDKError {
+  constructor({
+    originalMessage,
+    message
+  }) {
+    super({ name: name18, message });
+    this[_a182] = true;
+    this.originalMessage = originalMessage;
+  }
+  static isInstance(error48) {
+    return AISDKError.hasMarker(error48, marker182);
+  }
+};
 _a182 = symbol182;
 var name19 = "AI_RetryError";
 var marker19 = `vercel.ai.error.${name19}`;
@@ -29976,7 +30003,7 @@ function detectMediaType({
   }
   return;
 }
-var VERSION4 = "6.0.97";
+var VERSION4 = "6.0.99";
 var download = async ({
   url: url2,
   maxBytes,
@@ -33496,6 +33523,18 @@ var uiMessageChunkSchema = lazySchema(() => zodSchema(exports_external.union([
 function isDataUIMessageChunk(chunk) {
   return chunk.type.startsWith("data-");
 }
+function isDataUIPart(part) {
+  return part.type.startsWith("data-");
+}
+function isTextUIPart(part) {
+  return part.type === "text";
+}
+function isFileUIPart(part) {
+  return part.type === "file";
+}
+function isReasoningUIPart(part) {
+  return part.type === "reasoning";
+}
 function isStaticToolUIPart(part) {
   return part.type.startsWith("tool-");
 }
@@ -33507,6 +33546,9 @@ function isToolUIPart(part) {
 }
 function getStaticToolName(part) {
   return part.type.split("-").slice(1).join("-");
+}
+function getToolName(part) {
+  return isDynamicToolUIPart(part) ? part.toolName : getStaticToolName(part);
 }
 function createStreamingUIMessageState({
   lastMessage,
@@ -36095,6 +36137,223 @@ var DefaultStreamTextResult = class {
     });
   }
 };
+async function convertToModelMessages(messages, options) {
+  const modelMessages = [];
+  if (options == null ? undefined : options.ignoreIncompleteToolCalls) {
+    messages = messages.map((message) => ({
+      ...message,
+      parts: message.parts.filter((part) => !isToolUIPart(part) || part.state !== "input-streaming" && part.state !== "input-available")
+    }));
+  }
+  for (const message of messages) {
+    switch (message.role) {
+      case "system": {
+        const textParts = message.parts.filter((part) => part.type === "text");
+        const providerMetadata = textParts.reduce((acc, part) => {
+          if (part.providerMetadata != null) {
+            return { ...acc, ...part.providerMetadata };
+          }
+          return acc;
+        }, {});
+        modelMessages.push({
+          role: "system",
+          content: textParts.map((part) => part.text).join(""),
+          ...Object.keys(providerMetadata).length > 0 ? { providerOptions: providerMetadata } : {}
+        });
+        break;
+      }
+      case "user": {
+        modelMessages.push({
+          role: "user",
+          content: message.parts.map((part) => {
+            var _a21;
+            if (isTextUIPart(part)) {
+              return {
+                type: "text",
+                text: part.text,
+                ...part.providerMetadata != null ? { providerOptions: part.providerMetadata } : {}
+              };
+            }
+            if (isFileUIPart(part)) {
+              return {
+                type: "file",
+                mediaType: part.mediaType,
+                filename: part.filename,
+                data: part.url,
+                ...part.providerMetadata != null ? { providerOptions: part.providerMetadata } : {}
+              };
+            }
+            if (isDataUIPart(part)) {
+              return (_a21 = options == null ? undefined : options.convertDataPart) == null ? undefined : _a21.call(options, part);
+            }
+          }).filter(isNonNullable)
+        });
+        break;
+      }
+      case "assistant": {
+        if (message.parts != null) {
+          let block = [];
+          async function processBlock() {
+            var _a21, _b16, _c, _d, _e, _f;
+            if (block.length === 0) {
+              return;
+            }
+            const content = [];
+            for (const part of block) {
+              if (isTextUIPart(part)) {
+                content.push({
+                  type: "text",
+                  text: part.text,
+                  ...part.providerMetadata != null ? { providerOptions: part.providerMetadata } : {}
+                });
+              } else if (isFileUIPart(part)) {
+                content.push({
+                  type: "file",
+                  mediaType: part.mediaType,
+                  filename: part.filename,
+                  data: part.url
+                });
+              } else if (isReasoningUIPart(part)) {
+                content.push({
+                  type: "reasoning",
+                  text: part.text,
+                  providerOptions: part.providerMetadata
+                });
+              } else if (isToolUIPart(part)) {
+                const toolName = getToolName(part);
+                if (part.state !== "input-streaming") {
+                  content.push({
+                    type: "tool-call",
+                    toolCallId: part.toolCallId,
+                    toolName,
+                    input: part.state === "output-error" ? (_a21 = part.input) != null ? _a21 : ("rawInput" in part) ? part.rawInput : undefined : part.input,
+                    providerExecuted: part.providerExecuted,
+                    ...part.callProviderMetadata != null ? { providerOptions: part.callProviderMetadata } : {}
+                  });
+                  if (part.approval != null) {
+                    content.push({
+                      type: "tool-approval-request",
+                      approvalId: part.approval.id,
+                      toolCallId: part.toolCallId
+                    });
+                  }
+                  if (part.providerExecuted === true && part.state !== "approval-responded" && (part.state === "output-available" || part.state === "output-error")) {
+                    content.push({
+                      type: "tool-result",
+                      toolCallId: part.toolCallId,
+                      toolName,
+                      output: await createToolModelOutput({
+                        toolCallId: part.toolCallId,
+                        input: part.input,
+                        output: part.state === "output-error" ? part.errorText : part.output,
+                        tool: (_b16 = options == null ? undefined : options.tools) == null ? undefined : _b16[toolName],
+                        errorMode: part.state === "output-error" ? "json" : "none"
+                      }),
+                      ...part.callProviderMetadata != null ? { providerOptions: part.callProviderMetadata } : {}
+                    });
+                  }
+                }
+              } else if (isDataUIPart(part)) {
+                const dataPart = (_c = options == null ? undefined : options.convertDataPart) == null ? undefined : _c.call(options, part);
+                if (dataPart != null) {
+                  content.push(dataPart);
+                }
+              } else {
+                const _exhaustiveCheck = part;
+                throw new Error(`Unsupported part: ${_exhaustiveCheck}`);
+              }
+            }
+            modelMessages.push({
+              role: "assistant",
+              content
+            });
+            const toolParts = block.filter((part) => {
+              var _a222;
+              return isToolUIPart(part) && (part.providerExecuted !== true || ((_a222 = part.approval) == null ? undefined : _a222.approved) != null);
+            });
+            if (toolParts.length > 0) {
+              {
+                const content2 = [];
+                for (const toolPart of toolParts) {
+                  if (((_d = toolPart.approval) == null ? undefined : _d.approved) != null) {
+                    content2.push({
+                      type: "tool-approval-response",
+                      approvalId: toolPart.approval.id,
+                      approved: toolPart.approval.approved,
+                      reason: toolPart.approval.reason,
+                      providerExecuted: toolPart.providerExecuted
+                    });
+                  }
+                  if (toolPart.providerExecuted === true) {
+                    continue;
+                  }
+                  switch (toolPart.state) {
+                    case "output-denied": {
+                      content2.push({
+                        type: "tool-result",
+                        toolCallId: toolPart.toolCallId,
+                        toolName: getToolName(toolPart),
+                        output: {
+                          type: "error-text",
+                          value: (_e = toolPart.approval.reason) != null ? _e : "Tool execution denied."
+                        },
+                        ...toolPart.callProviderMetadata != null ? { providerOptions: toolPart.callProviderMetadata } : {}
+                      });
+                      break;
+                    }
+                    case "output-error":
+                    case "output-available": {
+                      const toolName = getToolName(toolPart);
+                      content2.push({
+                        type: "tool-result",
+                        toolCallId: toolPart.toolCallId,
+                        toolName,
+                        output: await createToolModelOutput({
+                          toolCallId: toolPart.toolCallId,
+                          input: toolPart.input,
+                          output: toolPart.state === "output-error" ? toolPart.errorText : toolPart.output,
+                          tool: (_f = options == null ? undefined : options.tools) == null ? undefined : _f[toolName],
+                          errorMode: toolPart.state === "output-error" ? "text" : "none"
+                        }),
+                        ...toolPart.callProviderMetadata != null ? { providerOptions: toolPart.callProviderMetadata } : {}
+                      });
+                      break;
+                    }
+                  }
+                }
+                if (content2.length > 0) {
+                  modelMessages.push({
+                    role: "tool",
+                    content: content2
+                  });
+                }
+              }
+            }
+            block = [];
+          }
+          for (const part of message.parts) {
+            if (isTextUIPart(part) || isReasoningUIPart(part) || isFileUIPart(part) || isToolUIPart(part) || isDataUIPart(part)) {
+              block.push(part);
+            } else if (part.type === "step-start") {
+              await processBlock();
+            }
+          }
+          await processBlock();
+          break;
+        }
+        break;
+      }
+      default: {
+        const _exhaustiveCheck = message.role;
+        throw new MessageConversionError({
+          originalMessage: message,
+          message: `Unsupported role: ${_exhaustiveCheck}`
+        });
+      }
+    }
+  }
+  return modelMessages;
+}
 var uiMessagesSchema = lazySchema(() => zodSchema(exports_external.array(exports_external.object({
   id: exports_external.string(),
   role: exports_external.enum(["system", "user", "assistant"]),
@@ -44868,12 +45127,32 @@ var MAX_ACTIVITY_ITEMS = 250;
 var CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,OPTIONS",
-  "access-control-allow-headers": "content-type"
+  "access-control-allow-headers": "content-type,accept"
 };
 var CORE_APP_ROOT = existsSync(path17.join(process.cwd(), "../trenchclaw/src")) ? path17.resolve(process.cwd(), "../trenchclaw") : process.cwd();
 var INSTANCE_DIRECTORY = path17.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
 var isRecord6 = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
 var createMessageId = () => crypto.randomUUID();
+var trimOrUndefined2 = (value) => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+var resolveStreamingModel = () => {
+  const gatewayApiKey = trimOrUndefined2(process.env.AI_GATEWAY_API_KEY);
+  if (gatewayApiKey) {
+    const gateway2 = createGatewayProvider({ apiKey: gatewayApiKey });
+    return gateway2(trimOrUndefined2(process.env.TRENCHCLAW_AI_MODEL) ?? "anthropic/claude-sonnet-4.5");
+  }
+  const llmConfig = resolveLlmProviderConfigFromEnv();
+  if (!llmConfig) {
+    throw new Error("No model provider configured. Set AI_GATEWAY_API_KEY or your TRENCHCLAW/OpenAI provider env vars.");
+  }
+  const openai2 = createOpenAI({
+    apiKey: llmConfig.apiKey,
+    baseURL: llmConfig.baseURL
+  });
+  return openai2.responses(llmConfig.model);
+};
 var mapJobToView = (job) => ({
   id: job.id,
   botId: job.botId,
@@ -44895,6 +45174,19 @@ var parseChatRequest = async (request) => {
       return null;
     }
     return { message };
+  } catch {
+    return null;
+  }
+};
+var parseUiChatRequest = async (request) => {
+  try {
+    const payload = await request.json();
+    if (!isRecord6(payload) || !Array.isArray(payload.messages)) {
+      return null;
+    }
+    return {
+      messages: payload.messages
+    };
   } catch {
     return null;
   }
@@ -45159,14 +45451,59 @@ class RuntimeGuiTransport {
       throw error48;
     }
   }
+  async streamChat(messages) {
+    const model = resolveStreamingModel();
+    const result = streamText({
+      model,
+      messages: await convertToModelMessages(messages),
+      stopWhen: stepCountIs(5),
+      tools: {
+        weather: tool({
+          description: "Get the weather in a location (fahrenheit)",
+          inputSchema: exports_external.object({
+            location: exports_external.string().describe("The location to get the weather for")
+          }),
+          execute: async ({ location }) => {
+            const temperature = Math.round(Math.random() * (90 - 32) + 32);
+            return { location, temperature };
+          }
+        }),
+        convertFahrenheitToCelsius: tool({
+          description: "Convert a temperature in fahrenheit to celsius",
+          inputSchema: exports_external.object({
+            temperature: exports_external.number().describe("The temperature in fahrenheit to convert")
+          }),
+          execute: async ({ temperature }) => {
+            const celsius = Math.round((temperature - 32) * (5 / 9));
+            return { celsius };
+          }
+        })
+      }
+    });
+    return result.toUIMessageStreamResponse({
+      headers: CORS_HEADERS
+    });
+  }
   createApiHandler() {
     return async (request) => {
       const url2 = new URL(request.url);
-      if (request.method === "OPTIONS" && url2.pathname.startsWith("/api/gui/")) {
+      if (request.method === "OPTIONS" && (url2.pathname.startsWith("/api/gui/") || url2.pathname === "/api/chat")) {
         return new Response(null, {
           status: 204,
           headers: CORS_HEADERS
         });
+      }
+      if (request.method === "POST" && url2.pathname === "/api/chat") {
+        const payload = await parseUiChatRequest(request);
+        if (!payload) {
+          return Response.json({ error: "Invalid chat payload" }, { status: 400, headers: CORS_HEADERS });
+        }
+        try {
+          return await this.streamChat(payload.messages);
+        } catch (error48) {
+          const errorMessage = error48 instanceof Error ? error48.message : String(error48);
+          return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });
+        }
       }
       if (request.method === "GET" && url2.pathname === "/api/gui/bootstrap") {
         return Response.json(this.getBootstrap(), { headers: CORS_HEADERS });
