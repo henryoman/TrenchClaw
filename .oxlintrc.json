@@ -15,6 +15,8 @@
     "dist/**",
     "**/dist/**",
     "build/**",
+    ".svelte-kit/**",
+    "**/.svelte-kit/**",
     "node_modules/**"
   ],
   "rules": {
@@ -47,6 +49,19 @@
       ],
       "env": {
         "browser": true
+      }
+    },
+    {
+      "files": [
+        "website/**/*.ts",
+        "website/**/*.js",
+        "website/**/*.svelte"
+      ],
+      "env": {
+        "browser": true
+      },
+      "rules": {
+        "import/no-unassigned-import": "off"
       }
     }
   ]

@@ -69,6 +69,7 @@ export const startRuntimeServer = (
 ): RuntimeServerInfo => {
   const host = process.env.RUNTIME_HOST ?? "127.0.0.1";
   const port = toPortNumber(process.env.RUNTIME_PORT);
+  const strictPort = process.env.RUNTIME_STRICT_PORT === "1";
   const webGuiApiHandler = createWebGuiApiHandler(runtime);
   const createServer = (targetPort: number) =>
     Bun.serve({
@@ -103,7 +104,7 @@ export const startRuntimeServer = (
     } catch (error) {
       const isAddrInUse =
         error instanceof Error && "code" in error && (error as { code?: string }).code === "EADDRINUSE";
-      if (!isAddrInUse) {
+      if (!isAddrInUse || strictPort) {
         throw error;
       }
       return createServer(0);
@@ -148,6 +149,10 @@ export const startCli = async (argv: string[] = Bun.argv): Promise<ParsedCliArgs
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.warn(`[runtime] failed to start HTTP server: ${message}`);
+    if (process.env.RUNTIME_REQUIRE_SERVER === "1") {
+      runtime.stop();
+      throw new Error(`Runtime HTTP server is required but failed to start: ${message}`);
+    }
   }
 
   installShutdownHooks(runtime);
