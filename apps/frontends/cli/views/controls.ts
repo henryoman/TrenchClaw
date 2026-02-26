@@ -39,5 +39,5 @@
 //
 // Design notes:
 //   - Controls dispatch commands to the scheduler/dispatcher, not to RPC directly.
-//   - Every operator action is logged to state-store (decision_logs table).
+//   - Every operator action is emitted to runtime/system/session logs.
 //   - Keyboard shortcuts are single-key (no modifier needed) for fast response.

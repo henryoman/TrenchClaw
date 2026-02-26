@@ -23,17 +23,6 @@ Primary database: `storage.sqlite.path` (from runtime settings).
   - Key: `idempotency_key`
   - Indexed: `timestamp DESC`
 
-- `policy_hits`
-: Policy gate results.
-  - Key: `id`
-  - Indexed: `created_at DESC`, `(action_name, created_at DESC)`
-
-- `decision_logs`
-: Planner/dispatcher decision traces.
-  - Key: `id`
-  - FK: `job_id -> jobs(id)`
-  - Indexed: `created_at DESC`, `(job_id, created_at DESC)`
-
 - `conversations`
 : Conversation containers for chat history.
   - Key: `id`
@@ -103,7 +92,7 @@ Primary database: `storage.sqlite.path` (from runtime settings).
 
 ## Data placement rules
 
-- Job/execution state: `jobs`, `action_receipts`, `policy_hits`, `decision_logs`
+- Job/execution state: `jobs`, `action_receipts`
 - Conversation history: `conversations`, `chat_messages`
 - Downloaded chart candles: `ohlcv_bars`
 - Latest computed market state: `market_snapshots`
@@ -115,7 +104,5 @@ Primary database: `storage.sqlite.path` (from runtime settings).
 On runtime boot (SQLite mode), old records are pruned using configured retention:
 
 - `storage.retention.receiptsDays`
-- `storage.retention.policyHitsDays`
-- `storage.retention.decisionLogsDays`
 
 Expired `http_cache` rows are also pruned at boot.

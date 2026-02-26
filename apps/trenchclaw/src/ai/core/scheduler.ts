@@ -81,13 +81,6 @@ export class Scheduler {
     const ctx = this.deps.createContext(job);
     const planner = this.deps.resolveRoutine(job.routineName);
     const steps = await planner(ctx, job);
-    this.deps.stateStore.saveDecisionLog({
-      id: crypto.randomUUID(),
-      jobId: job.id,
-      actionName: "scheduler:plan",
-      trace: steps.map((step) => `${step.actionName}${step.dependsOn ? ` <- ${step.dependsOn}` : ""}`),
-      createdAt: Date.now(),
-    });
     const dispatchResult = await this.deps.dispatcher.dispatchPlan(ctx, steps);
 
     const finalStatus = determineFinalStatus(job, dispatchResult);

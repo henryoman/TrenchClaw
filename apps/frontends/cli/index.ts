@@ -138,6 +138,8 @@ export const startCli = async (argv: string[] = Bun.argv): Promise<ParsedCliArgs
 
   process.chdir(CORE_APP_ROOT);
   process.env.TRENCHCLAW_PROFILE = process.env.TRENCHCLAW_PROFILE ?? DEFAULT_RUNTIME_PROFILE;
+  process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "1";
+  process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "1";
 
   const runtime = await bootstrapRuntime();
   let serverInfo: RuntimeServerInfo | null = null;

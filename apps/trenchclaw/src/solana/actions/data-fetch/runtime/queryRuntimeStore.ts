@@ -33,6 +33,14 @@ const getRecentReceiptsRequestSchema = z.object({
   limit: z.number().int().positive().max(maxLimit).default(50),
 });
 
+const searchRuntimeTextRequestSchema = z.object({
+  type: z.literal("searchRuntimeText"),
+  query: z.string().trim().min(1).max(200),
+  scope: z.enum(["all", "conversations", "messages", "jobs", "receipts"]).default("all"),
+  limit: z.number().int().positive().max(maxLimit).default(25),
+  messageScanLimit: z.number().int().positive().max(maxLimit).default(100),
+});
+
 const queryRuntimeStoreInputSchema = z.object({
   request: z.discriminatedUnion("type", [
     listConversationsRequestSchema,
@@ -40,6 +48,7 @@ const queryRuntimeStoreInputSchema = z.object({
     listChatMessagesRequestSchema,
     listJobsRequestSchema,
     getRecentReceiptsRequestSchema,
+    searchRuntimeTextRequestSchema,
   ]),
 });
 
@@ -50,6 +59,14 @@ const asRuntimeStore = (value: unknown): StateStore | null => {
     return null;
   }
   return value as StateStore;
+};
+
+const stringContainsQuery = (value: unknown, queryLower: string): boolean => {
+  if (value == null) {
+    return false;
+  }
+  const text = typeof value === "string" ? value : JSON.stringify(value);
+  return text.toLowerCase().includes(queryLower);
 };
 
 export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = {
@@ -89,6 +106,79 @@ export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = 
           status: request.status,
           botId: request.botId,
         }).slice(0, request.limit);
+      } else if (request.type === "searchRuntimeText") {
+        const queryLower = request.query.toLowerCase();
+        const includeConversations = request.scope === "all" || request.scope === "conversations";
+        const includeMessages = request.scope === "all" || request.scope === "messages";
+        const includeJobs = request.scope === "all" || request.scope === "jobs";
+        const includeReceipts = request.scope === "all" || request.scope === "receipts";
+
+        const conversationPool = includeConversations || includeMessages ? store.listConversations(maxLimit) : [];
+        const matchedConversations = includeConversations
+          ? conversationPool
+              .filter(
+                (conversation) =>
+                  stringContainsQuery(conversation.id, queryLower) ||
+                  stringContainsQuery(conversation.sessionId, queryLower) ||
+                  stringContainsQuery(conversation.title, queryLower) ||
+                  stringContainsQuery(conversation.summary, queryLower),
+              )
+              .slice(0, request.limit)
+          : [];
+
+        const matchedMessages = includeMessages
+          ? conversationPool
+              .flatMap((conversation) =>
+                store
+                  .listChatMessages(conversation.id, request.messageScanLimit)
+                  .filter(
+                    (message) =>
+                      stringContainsQuery(message.id, queryLower) ||
+                      stringContainsQuery(message.content, queryLower) ||
+                      stringContainsQuery(message.role, queryLower),
+                  ),
+              )
+              .slice(0, request.limit)
+          : [];
+
+        const matchedJobs = includeJobs
+          ? store
+              .listJobs()
+              .filter(
+                (job) =>
+                  stringContainsQuery(job.id, queryLower) ||
+                  stringContainsQuery(job.botId, queryLower) ||
+                  stringContainsQuery(job.routineName, queryLower) ||
+                  stringContainsQuery(job.status, queryLower) ||
+                  stringContainsQuery(job.lastResult, queryLower),
+              )
+              .slice(0, request.limit)
+          : [];
+
+        const matchedReceipts = includeReceipts
+          ? store
+              .getRecentReceipts(maxLimit)
+              .filter(
+                (receipt) =>
+                  stringContainsQuery(receipt.idempotencyKey, queryLower) ||
+                  stringContainsQuery(receipt.error, queryLower) ||
+                  stringContainsQuery(receipt.code, queryLower) ||
+                  stringContainsQuery(receipt.txSignature, queryLower) ||
+                  stringContainsQuery(receipt.data, queryLower),
+              )
+              .slice(0, request.limit)
+          : [];
+
+        data = {
+          query: request.query,
+          scope: request.scope,
+          totalMatches:
+            matchedConversations.length + matchedMessages.length + matchedJobs.length + matchedReceipts.length,
+          conversations: matchedConversations,
+          messages: matchedMessages,
+          jobs: matchedJobs,
+          receipts: matchedReceipts,
+        };
       } else {
         data = store.getRecentReceipts(request.limit);
       }

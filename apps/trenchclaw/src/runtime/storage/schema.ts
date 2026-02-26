@@ -4,9 +4,7 @@ import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
   ConversationState,
-  DecisionLog,
   JobState,
-  PolicyHit,
 } from "../../ai/runtime/types/state";
 import { sqliteJobStatusSchema } from "./sqlite-schema";
 
@@ -45,25 +43,6 @@ export const jobStateSchema: z.ZodType<JobState> = z.object({
   lastResult: actionResultSchema.optional(),
   createdAt: unixMs,
   updatedAt: unixMs,
-});
-
-export const policyHitSchema: z.ZodType<PolicyHit> = z.object({
-  id: nonEmpty,
-  actionName: nonEmpty,
-  result: z.object({
-    allowed: z.boolean(),
-    reason: z.string().optional(),
-    policyName: nonEmpty,
-  }),
-  createdAt: unixMs,
-});
-
-export const decisionLogSchema: z.ZodType<DecisionLog> = z.object({
-  id: nonEmpty,
-  jobId: nonEmpty.optional(),
-  actionName: nonEmpty,
-  trace: z.array(z.string()),
-  createdAt: unixMs,
 });
 
 export const chatMessageRoleSchema = z.enum(["system", "user", "assistant", "tool"]);
@@ -185,14 +164,10 @@ export const httpCacheEntryRecordSchema = z.object({
 
 export const runtimeRetentionInputSchema = z.object({
   receiptsDays: z.number().int().positive(),
-  policyHitsDays: z.number().int().positive(),
-  decisionLogsDays: z.number().int().positive(),
 });
 
 export const runtimeRetentionResultSchema = z.object({
   receiptsDeleted: z.number().int().nonnegative(),
-  policyHitsDeleted: z.number().int().nonnegative(),
-  decisionLogsDeleted: z.number().int().nonnegative(),
   cacheDeleted: z.number().int().nonnegative(),
 });
 

@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-02-26T21:44:02.913Z
+Generated at: 2026-02-26T23:11:54.250Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -128,18 +128,49 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 1772140641150-action_start-9bd162e0-b9f1-49c5-962e-6752e4a06998.json
 |   |   |   |   |   |-- 1772140663740-policy_block-0294b657-49a3-4160-b364-85a5b60ab66a.json
 |   |   |   |   |   |-- 1772140663746-action_start-af245f02-92df-4a0c-bfce-53761e24a4f2.json
-|   |   |   |   |   `-- 1772140663747-action_success-2ac1b807-e999-4e19-a597-a1c3d67b62bc.json
+|   |   |   |   |   |-- 1772140663747-action_success-2ac1b807-e999-4e19-a597-a1c3d67b62bc.json
+|   |   |   |   |   |-- 1772142274419-policy_block-0ab598e0-41f8-4bb8-8539-dbb736a5eb66.json
+|   |   |   |   |   |-- 1772142274423-action_start-5aed74db-30fe-4643-a121-94d22b855227.json
+|   |   |   |   |   |-- 1772142274424-action_success-d5691f19-b421-4f81-b154-771f1fc994cf.json
+|   |   |   |   |   |-- 1772142903790-policy_block-13cca293-9477-429c-8271-35af5ee7a3f4.json
+|   |   |   |   |   |-- 1772142903795-action_start-a8cdb4cb-60c1-4c0a-b160-a6a34615b8cb.json
+|   |   |   |   |   |-- 1772142903797-action_success-24eb0a36-088c-4599-afb8-cae6dbaa0fe3.json
+|   |   |   |   |   |-- 1772146347578-policy_block-a04158ba-9844-44e6-88e6-efceaa07467d.json
+|   |   |   |   |   |-- 1772146347583-action_start-19da44ff-0bf1-425d-87c1-9e260501af29.json
+|   |   |   |   |   |-- 1772146347584-action_success-d27c1586-29f1-42e2-ada5-39b635e9d82b.json
+|   |   |   |   |   |-- 1772147128359-policy_block-2092d22f-e922-47b2-bbdd-90cf481d1174.json
+|   |   |   |   |   |-- 1772147128367-action_start-4308e313-2025-47aa-9783-9b55b4e615a3.json
+|   |   |   |   |   |-- 1772147128369-action_success-906b8ed4-b464-4f1c-81f2-b1eac8f3eaf9.json
+|   |   |   |   |   |-- 1772147485044-policy_block-01cb7ac3-a282-428f-b0bc-2c9768abd03d.json
+|   |   |   |   |   |-- 1772147485049-action_start-731e229e-1840-40c1-9900-eae553092812.json
+|   |   |   |   |   `-- 1772147485051-action_success-d41d177b-e2bc-4710-86e8-6d805eea9212.json
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-02-25.md
 |   |   |   |   |   |-- 2026-02-26.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
+|   |   |   |   |   |-- 1e6cf9e4-6e02-4b5a-afa8-19acd88909d9.jsonl
 |   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.jsonl
+|   |   |   |   |   |-- 34276a5a-42fa-440c-8637-d4a1342159eb.jsonl
+|   |   |   |   |   |-- 6060dcea-d4be-44f6-879a-5b627ebbaf15.jsonl
+|   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.jsonl
+|   |   |   |   |   |-- e6eabf21-2e17-4879-a067-cef94dd71041.jsonl
+|   |   |   |   |   |-- e88dc017-cbca-4ec4-a04b-05ab9f81ce73.jsonl
+|   |   |   |   |   |-- f259a179-cecf-4d2d-9df6-ab0583195fd1.jsonl
+|   |   |   |   |   |-- f6c10e94-92fb-4b0a-86ac-c53cbbbf710d.jsonl
 |   |   |   |   |   `-- sessions.json
 |   |   |   |   |-- summaries/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   `-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.md
+|   |   |   |   |   |-- 1e6cf9e4-6e02-4b5a-afa8-19acd88909d9.md
+|   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.md
+|   |   |   |   |   |-- 34276a5a-42fa-440c-8637-d4a1342159eb.md
+|   |   |   |   |   |-- 6060dcea-d4be-44f6-879a-5b627ebbaf15.md
+|   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.md
+|   |   |   |   |   |-- e6eabf21-2e17-4879-a067-cef94dd71041.md
+|   |   |   |   |   |-- e88dc017-cbca-4ec4-a04b-05ab9f81ce73.md
+|   |   |   |   |   |-- f259a179-cecf-4d2d-9df6-ab0583195fd1.md
+|   |   |   |   |   `-- f6c10e94-92fb-4b0a-86ac-c53cbbbf710d.md
 |   |   |   |   |-- summary/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-02-25.log
@@ -419,12 +450,10 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 
 ## SQLite Schema Snapshot
 ```text
-SQLite schema snapshot (11 tables)
+SQLite schema snapshot (9 tables)
 - schema_migrations: version:INTEGER[pk], applied_at:INTEGER[not_null]
 - jobs: id:TEXT[pk], bot_id:TEXT[not_null], routine_name:TEXT[not_null], status:TEXT[not_null], config_json:TEXT[not_null], next_run_at:INTEGER, last_run_at:INTEGER, cycles_completed:INTEGER[not_null], total_cycles:INTEGER, last_result_json:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - action_receipts: idempotency_key:TEXT[pk], payload_json:TEXT[not_null], timestamp:INTEGER[not_null]
-- policy_hits: id:TEXT[pk], action_name:TEXT[not_null], result_json:TEXT[not_null], created_at:INTEGER[not_null]
-- decision_logs: id:TEXT[pk], job_id:TEXT[fk->jobs.id], action_name:TEXT[not_null], trace_json:TEXT[not_null], created_at:INTEGER[not_null]
 - conversations: id:TEXT[pk], session_id:TEXT, title:TEXT, summary:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - chat_messages: id:TEXT[pk], conversation_id:TEXT[not_null,fk->conversations.id], role:TEXT[not_null], content:TEXT[not_null], metadata_json:TEXT, created_at:INTEGER[not_null]
 - market_instruments: id:INTEGER[pk], chain:TEXT[not_null], address:TEXT[not_null], symbol:TEXT, name:TEXT, decimals:INTEGER, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
@@ -459,14 +488,6 @@ CREATE TABLE "conversations" (
   "updated_at" INTEGER NOT NULL
 );
 
-CREATE TABLE "decision_logs" (
-  "id" TEXT PRIMARY KEY,
-  "job_id" TEXT REFERENCES "jobs"("id") ON DELETE SET NULL,
-  "action_name" TEXT NOT NULL,
-  "trace_json" TEXT NOT NULL,
-  "created_at" INTEGER NOT NULL
-);
-
 CREATE TABLE "http_cache" (
   "cache_key" TEXT PRIMARY KEY,
   "source" TEXT NOT NULL,
@@ -534,13 +555,6 @@ CREATE TABLE "ohlcv_bars" (
   PRIMARY KEY(instrument_id, source, interval, open_time)
 );
 
-CREATE TABLE "policy_hits" (
-  "id" TEXT PRIMARY KEY,
-  "action_name" TEXT NOT NULL,
-  "result_json" TEXT NOT NULL,
-  "created_at" INTEGER NOT NULL
-);
-
 CREATE TABLE "schema_migrations" (
   "version" INTEGER PRIMARY KEY,
   "applied_at" INTEGER NOT NULL
@@ -551,10 +565,6 @@ CREATE INDEX "idx_action_receipts_timestamp" ON "action_receipts"("timestamp");
 CREATE INDEX "idx_chat_messages_conversation_created_at" ON "chat_messages"("conversation_id", "created_at");
 
 CREATE INDEX "idx_conversations_updated_at" ON "conversations"("updated_at");
-
-CREATE INDEX "idx_decision_logs_created_at" ON "decision_logs"("created_at");
-
-CREATE INDEX "idx_decision_logs_job_id_created_at" ON "decision_logs"("job_id", "created_at");
 
 CREATE INDEX "idx_http_cache_expires_at" ON "http_cache"("expires_at");
 
@@ -571,10 +581,6 @@ CREATE INDEX "idx_market_snapshots_lookup" ON "market_snapshots"("instrument_id"
 CREATE INDEX "idx_ohlcv_fetched_at" ON "ohlcv_bars"("fetched_at");
 
 CREATE INDEX "idx_ohlcv_lookup" ON "ohlcv_bars"("instrument_id", "source", "interval", "open_time");
-
-CREATE INDEX "idx_policy_hits_action_name_created_at" ON "policy_hits"("action_name", "created_at");
-
-CREATE INDEX "idx_policy_hits_created_at" ON "policy_hits"("created_at");
 ```
 
 ## SQLite SQL Schema Snapshot (Live DB)
@@ -604,14 +610,6 @@ CREATE TABLE "conversations" (
   "updated_at" INTEGER NOT NULL
 );
 
-CREATE TABLE "decision_logs" (
-  "id" TEXT PRIMARY KEY,
-  "job_id" TEXT REFERENCES "jobs"("id") ON DELETE SET NULL,
-  "action_name" TEXT NOT NULL,
-  "trace_json" TEXT NOT NULL,
-  "created_at" INTEGER NOT NULL
-);
-
 CREATE TABLE "http_cache" (
   "cache_key" TEXT PRIMARY KEY,
   "source" TEXT NOT NULL,
@@ -679,13 +677,6 @@ CREATE TABLE "ohlcv_bars" (
   PRIMARY KEY(instrument_id, source, interval, open_time)
 );
 
-CREATE TABLE "policy_hits" (
-  "id" TEXT PRIMARY KEY,
-  "action_name" TEXT NOT NULL,
-  "result_json" TEXT NOT NULL,
-  "created_at" INTEGER NOT NULL
-);
-
 CREATE TABLE "schema_migrations" (
   "version" INTEGER PRIMARY KEY,
   "applied_at" INTEGER NOT NULL
@@ -696,10 +687,6 @@ CREATE INDEX "idx_action_receipts_timestamp" ON "action_receipts"("timestamp");
 CREATE INDEX "idx_chat_messages_conversation_created_at" ON "chat_messages"("conversation_id", "created_at");
 
 CREATE INDEX "idx_conversations_updated_at" ON "conversations"("updated_at");
-
-CREATE INDEX "idx_decision_logs_created_at" ON "decision_logs"("created_at");
-
-CREATE INDEX "idx_decision_logs_job_id_created_at" ON "decision_logs"("job_id", "created_at");
 
 CREATE INDEX "idx_http_cache_expires_at" ON "http_cache"("expires_at");
 
@@ -716,8 +703,4 @@ CREATE INDEX "idx_market_snapshots_lookup" ON "market_snapshots"("instrument_id"
 CREATE INDEX "idx_ohlcv_fetched_at" ON "ohlcv_bars"("fetched_at");
 
 CREATE INDEX "idx_ohlcv_lookup" ON "ohlcv_bars"("instrument_id", "source", "interval", "open_time");
-
-CREATE INDEX "idx_policy_hits_action_name_created_at" ON "policy_hits"("action_name", "created_at");
-
-CREATE INDEX "idx_policy_hits_created_at" ON "policy_hits"("created_at");
 ```

@@ -280,8 +280,6 @@ const normalizeRuntimeSettings = (
       },
       retention: {
         receiptsDays: 14,
-        policyHitsDays: 14,
-        decisionLogsDays: 14,
       },
     },
     ui: {

@@ -137,8 +137,6 @@ const storageSchema = z.object({
   }),
   retention: z.object({
     receiptsDays: z.number().int().positive(),
-    policyHitsDays: z.number().int().positive(),
-    decisionLogsDays: z.number().int().positive(),
   }),
 });
 

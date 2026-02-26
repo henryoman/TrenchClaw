@@ -33,21 +33,6 @@ export const sqliteActionReceiptRowSchema = z.object({
   timestamp: unixMs,
 });
 
-export const sqlitePolicyHitRowSchema = z.object({
-  id: nonEmpty,
-  action_name: nonEmpty,
-  result_json: z.string(),
-  created_at: unixMs,
-});
-
-export const sqliteDecisionLogRowSchema = z.object({
-  id: nonEmpty,
-  job_id: nonEmpty.nullable(),
-  action_name: nonEmpty,
-  trace_json: z.string(),
-  created_at: unixMs,
-});
-
 export const sqliteConversationRowSchema = z.object({
   id: nonEmpty,
   session_id: z.string().nullable(),
@@ -120,8 +105,6 @@ export const sqliteTables = {
   schema_migrations: sqliteSchemaMigrationRowSchema,
   jobs: sqliteJobRowSchema,
   action_receipts: sqliteActionReceiptRowSchema,
-  policy_hits: sqlitePolicyHitRowSchema,
-  decision_logs: sqliteDecisionLogRowSchema,
   conversations: sqliteConversationRowSchema,
   chat_messages: sqliteChatMessageRowSchema,
   market_instruments: sqliteMarketInstrumentRowSchema,
@@ -133,8 +116,6 @@ export const sqliteTables = {
 export type SqliteSchemaMigrationRow = z.infer<typeof sqliteSchemaMigrationRowSchema>;
 export type SqliteJobRow = z.infer<typeof sqliteJobRowSchema>;
 export type SqliteActionReceiptRow = z.infer<typeof sqliteActionReceiptRowSchema>;
-export type SqlitePolicyHitRow = z.infer<typeof sqlitePolicyHitRowSchema>;
-export type SqliteDecisionLogRow = z.infer<typeof sqliteDecisionLogRowSchema>;
 export type SqliteConversationRow = z.infer<typeof sqliteConversationRowSchema>;
 export type SqliteChatMessageRow = z.infer<typeof sqliteChatMessageRowSchema>;
 export type SqliteMarketInstrumentRow = z.infer<typeof sqliteMarketInstrumentRowSchema>;

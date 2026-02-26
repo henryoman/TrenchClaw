@@ -35,27 +35,6 @@ Indexes:
 Index:
 - `(timestamp DESC)`
 
-### `policy_hits`
-- `id TEXT PRIMARY KEY`
-- `action_name TEXT NOT NULL`
-- `result_json TEXT NOT NULL`
-- `created_at INTEGER NOT NULL`
-
-Indexes:
-- `(created_at DESC)`
-- `(action_name, created_at DESC)`
-
-### `decision_logs`
-- `id TEXT PRIMARY KEY`
-- `job_id TEXT REFERENCES jobs(id) ON DELETE SET NULL`
-- `action_name TEXT NOT NULL`
-- `trace_json TEXT NOT NULL`
-- `created_at INTEGER NOT NULL`
-
-Indexes:
-- `(created_at DESC)`
-- `(job_id, created_at DESC)`
-
 ### `conversations`
 - `id TEXT PRIMARY KEY`
 - `session_id TEXT`
@@ -150,5 +129,5 @@ Indexes:
 - Downloaded candles/charts: `ohlcv_bars`
 - Latest quote / non-candle payloads: `market_snapshots`
 - Reusable raw API payloads with TTL: `http_cache`
-- Execution state: runtime tables (`jobs`, `action_receipts`, `policy_hits`, `decision_logs`)
+- Execution state: runtime tables (`jobs`, `action_receipts`)
 - Conversation state: `conversations`, `chat_messages`

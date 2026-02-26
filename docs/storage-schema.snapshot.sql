@@ -22,14 +22,6 @@ CREATE TABLE "conversations" (
   "updated_at" INTEGER NOT NULL
 );
 
-CREATE TABLE "decision_logs" (
-  "id" TEXT PRIMARY KEY,
-  "job_id" TEXT REFERENCES "jobs"("id") ON DELETE SET NULL,
-  "action_name" TEXT NOT NULL,
-  "trace_json" TEXT NOT NULL,
-  "created_at" INTEGER NOT NULL
-);
-
 CREATE TABLE "http_cache" (
   "cache_key" TEXT PRIMARY KEY,
   "source" TEXT NOT NULL,
@@ -97,13 +89,6 @@ CREATE TABLE "ohlcv_bars" (
   PRIMARY KEY(instrument_id, source, interval, open_time)
 );
 
-CREATE TABLE "policy_hits" (
-  "id" TEXT PRIMARY KEY,
-  "action_name" TEXT NOT NULL,
-  "result_json" TEXT NOT NULL,
-  "created_at" INTEGER NOT NULL
-);
-
 CREATE TABLE "schema_migrations" (
   "version" INTEGER PRIMARY KEY,
   "applied_at" INTEGER NOT NULL
@@ -114,10 +99,6 @@ CREATE INDEX "idx_action_receipts_timestamp" ON "action_receipts"("timestamp");
 CREATE INDEX "idx_chat_messages_conversation_created_at" ON "chat_messages"("conversation_id", "created_at");
 
 CREATE INDEX "idx_conversations_updated_at" ON "conversations"("updated_at");
-
-CREATE INDEX "idx_decision_logs_created_at" ON "decision_logs"("created_at");
-
-CREATE INDEX "idx_decision_logs_job_id_created_at" ON "decision_logs"("job_id", "created_at");
 
 CREATE INDEX "idx_http_cache_expires_at" ON "http_cache"("expires_at");
 
@@ -134,7 +115,3 @@ CREATE INDEX "idx_market_snapshots_lookup" ON "market_snapshots"("instrument_id"
 CREATE INDEX "idx_ohlcv_fetched_at" ON "ohlcv_bars"("fetched_at");
 
 CREATE INDEX "idx_ohlcv_lookup" ON "ohlcv_bars"("instrument_id", "source", "interval", "open_time");
-
-CREATE INDEX "idx_policy_hits_action_name_created_at" ON "policy_hits"("action_name", "created_at");
-
-CREATE INDEX "idx_policy_hits_created_at" ON "policy_hits"("created_at");

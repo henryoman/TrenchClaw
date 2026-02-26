@@ -54,8 +54,6 @@ describe("SqliteStateStore", () => {
 
     const prune = store.pruneRuntimeData({
       receiptsDays: 1,
-      policyHitsDays: 1,
-      decisionLogsDays: 1,
     });
     expect(prune.receiptsDeleted).toBe(0);
 

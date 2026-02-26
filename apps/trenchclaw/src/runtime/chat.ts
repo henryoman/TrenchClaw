@@ -1,4 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   convertToModelMessages,
@@ -32,7 +33,10 @@ import { buildFilesystemPolicyPrompt } from "./security/filesystem-manifest";
 export interface RuntimeChatService {
   listToolNames: () => string[];
   generateText: (input: LlmGenerateInput) => Promise<LlmGenerateResult>;
-  stream: (messages: UIMessage[], input?: { headers?: HeadersInit }) => Promise<Response>;
+  stream: (
+    messages: UIMessage[],
+    input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
+  ) => Promise<Response>;
 }
 
 interface RuntimeChatServiceDeps {
@@ -84,11 +88,14 @@ const buildSystemPrompt = async (deps: RuntimeChatServiceDeps, toolNames: string
   } catch {
     // Keep runtime chat available even if manifest cannot be loaded.
   }
+  const generatedCatalogs = await loadGeneratedContextCatalogs();
   return [
     base,
     "Use tools for real execution. Do not claim execution unless a tool call confirms success.",
+    "For data-heavy questions, use multi-step retrieval: query/search first, inspect results, then follow-up tool calls.",
     `Available runtime tools: ${toolCatalog}`,
     filesystemPolicy,
+    generatedCatalogs,
   ].join("\n\n");
 };
 
@@ -96,6 +103,84 @@ const toToolDescription = (actionName: string, category: string, subcategory?: s
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
 const DEFAULT_WORKSPACE_ROOT_DIRECTORY = fileURLToPath(new URL("../ai/brain/workspace", import.meta.url));
+const GENERATED_CONTEXT_SNAPSHOT_FILE = fileURLToPath(
+  new URL("../ai/brain/protected/context/workspace-and-schema.md", import.meta.url),
+);
+const DEFAULT_CHAT_ID_PREFIX = "chat";
+
+const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const extractUiMessageText = (message: UIMessage): string => {
+  const text = message.parts
+    .filter((part): part is Extract<(typeof message.parts)[number], { type: "text" }> => part.type === "text")
+    .map((part) => part.text.trim())
+    .filter((part) => part.length > 0)
+    .join("\n");
+
+  if (text.length > 0) {
+    return text;
+  }
+
+  return JSON.stringify(message.parts);
+};
+
+const sanitizeConversationTitle = (title: string | undefined, fallbackMessages: UIMessage[]): string | undefined => {
+  const explicit = trimOrUndefinedValue(title);
+  if (explicit) {
+    return explicit.slice(0, 120);
+  }
+
+  const firstUserText = fallbackMessages
+    .filter((message) => message.role === "user")
+    .map((message) => extractUiMessageText(message))
+    .find((text) => text.length > 0);
+  if (!firstUserText) {
+    return undefined;
+  }
+  return firstUserText.slice(0, 120);
+};
+
+const resolveChatId = (chatId: string | undefined): string =>
+  trimOrUndefinedValue(chatId) ?? `${DEFAULT_CHAT_ID_PREFIX}-${crypto.randomUUID()}`;
+
+const withChatHeaders = (headers: HeadersInit | undefined, chatId: string): Headers => {
+  const merged = new Headers(headers);
+  merged.set("x-trenchclaw-chat-id", chatId);
+  return merged;
+};
+
+const extractSection = (markdown: string, heading: string): string => {
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`## ${escaped}\\n([\\s\\S]*?)(?=\\n## |$)`, "m");
+  const match = pattern.exec(markdown);
+  const body = match?.[1];
+  return typeof body === "string" ? `## ${heading}\n${body.trim()}` : "";
+};
+
+let cachedGeneratedContextCatalogs: string | null = null;
+
+const loadGeneratedContextCatalogs = async (): Promise<string> => {
+  if (cachedGeneratedContextCatalogs !== null) {
+    return cachedGeneratedContextCatalogs;
+  }
+  try {
+    const markdown = await readFile(GENERATED_CONTEXT_SNAPSHOT_FILE, "utf8");
+    const sections = [
+      extractSection(markdown, "Runtime Action Catalog (Generated)"),
+      extractSection(markdown, "Runtime Chat Tool Catalog (Generated)"),
+      extractSection(markdown, "GUI API Route Catalog (Generated)"),
+    ].filter((section) => section.length > 0);
+    cachedGeneratedContextCatalogs =
+      sections.length > 0 ? `Capability Snapshot (generated at startup):\n\n${sections.join("\n\n")}` : "";
+    return cachedGeneratedContextCatalogs;
+  } catch {
+    cachedGeneratedContextCatalogs = "";
+    return cachedGeneratedContextCatalogs;
+  }
+};
 
 const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
   const tools: Record<string, any> = {};
@@ -182,10 +267,24 @@ export const createRuntimeChatService = (
     return deps.llm.generate(input);
   };
 
-  const stream = async (messages: UIMessage[], input?: { headers?: HeadersInit }): Promise<Response> => {
+  const stream = async (
+    messages: UIMessage[],
+    input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
+  ): Promise<Response> => {
     const model = resolveModel();
     const toolNames = listToolNames();
     const tools: Record<string, any> = buildActionTools(deps);
+    const chatId = resolveChatId(input?.chatId);
+    const now = Date.now();
+    const existingConversation = deps.stateStore.getConversation(chatId);
+    deps.stateStore.saveConversation({
+      id: chatId,
+      sessionId: trimOrUndefinedValue(input?.sessionId) ?? existingConversation?.sessionId,
+      title: sanitizeConversationTitle(input?.conversationTitle, messages) ?? existingConversation?.title,
+      summary: existingConversation?.summary,
+      createdAt: existingConversation?.createdAt ?? now,
+      updatedAt: now,
+    });
     if (workspaceToolsEnabled) {
       workspaceToolPromise ??= createWorkspaceBashTools({
         workspaceRootDirectory,
@@ -197,12 +296,39 @@ export const createRuntimeChatService = (
       model,
       system: await buildSystemPrompt(deps, toolNames),
       messages: await convertMessages(messages),
-      stopWhen: stepCountIs(8),
+      stopWhen: stepCountIs(12),
       tools,
     });
 
     return result.toUIMessageStreamResponse({
-      headers: input?.headers,
+      headers: withChatHeaders(input?.headers, chatId),
+      originalMessages: messages,
+      onFinish: ({ messages: finalMessages }) => {
+        const updatedAt = Date.now();
+        const conversation = deps.stateStore.getConversation(chatId);
+        deps.stateStore.saveConversation({
+          id: chatId,
+          sessionId: conversation?.sessionId ?? trimOrUndefinedValue(input?.sessionId),
+          title: conversation?.title ?? sanitizeConversationTitle(input?.conversationTitle, finalMessages),
+          summary: conversation?.summary,
+          createdAt: conversation?.createdAt ?? updatedAt,
+          updatedAt,
+        });
+
+        for (const [index, message] of finalMessages.entries()) {
+          deps.stateStore.saveChatMessage({
+            id: message.id,
+            conversationId: chatId,
+            role: message.role,
+            content: extractUiMessageText(message),
+            metadata:
+              message.metadata && typeof message.metadata === "object"
+                ? (message.metadata as Record<string, unknown>)
+                : undefined,
+            createdAt: updatedAt + index,
+          });
+        }
+      },
     });
   };
 

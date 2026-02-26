@@ -66,14 +66,24 @@ const mapJobToView = (job: ReturnType<RuntimeBootstrap["stateStore"]["listJobs"]
   cyclesCompleted: job.cyclesCompleted,
 });
 
-const parseUiChatRequest = async (request: Request): Promise<{ messages: UIMessage[] } | null> => {
+const parseUiChatRequest = async (
+  request: Request,
+): Promise<{ messages: UIMessage[]; chatId?: string; conversationTitle?: string } | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || !Array.isArray(payload.messages)) {
       return null;
     }
+    const chatId =
+      typeof payload.chatId === "string" && payload.chatId.trim().length > 0 ? payload.chatId.trim() : undefined;
+    const conversationTitle =
+      typeof payload.conversationTitle === "string" && payload.conversationTitle.trim().length > 0
+        ? payload.conversationTitle.trim()
+        : undefined;
     return {
       messages: payload.messages as UIMessage[],
+      chatId,
+      conversationTitle,
     };
   } catch {
     return null;
@@ -233,6 +243,7 @@ export class RuntimeGuiTransport {
   private readonly activity: GuiActivityEntry[] = [];
   private readonly unsubscribers: Array<() => void> = [];
   private activeInstance: GuiInstanceProfileView | null = null;
+  private activeChatId: string | null = null;
 
   constructor(private readonly runtime: RuntimeBootstrap) {
     this.addActivity("runtime", "Runtime transport initialized");
@@ -266,6 +277,18 @@ export class RuntimeGuiTransport {
     for (const unsubscribe of this.unsubscribers) {
       unsubscribe();
     }
+  }
+
+  private resolveDefaultChatId(): string {
+    if (this.activeChatId) {
+      return this.activeChatId;
+    }
+    if (this.activeInstance) {
+      this.activeChatId = `instance-${this.activeInstance.localInstanceId}-main`;
+      return this.activeChatId;
+    }
+    this.activeChatId = `chat-${crypto.randomUUID()}`;
+    return this.activeChatId;
   }
 
   getBootstrap(): GuiBootstrapResponse {
@@ -323,6 +346,7 @@ export class RuntimeGuiTransport {
     await writeFile(path.join(INSTANCE_DIRECTORY, fileName), `${JSON.stringify(document, null, 2)}\n`, "utf8");
     const instance = toInstanceView(fileName, document);
     this.activeInstance = instance;
+    this.activeChatId = `instance-${instance.localInstanceId}-main`;
     process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
     process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
     this.addActivity("runtime", `Instance created: ${instance.name} (${instance.localInstanceId})`);
@@ -344,15 +368,23 @@ export class RuntimeGuiTransport {
 
     const instance = toInstanceView(target.fileName, target.document);
     this.activeInstance = instance;
+    this.activeChatId = `instance-${instance.localInstanceId}-main`;
     process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
     process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
     this.addActivity("runtime", `Instance signed in: ${instance.name} (${instance.localInstanceId})`);
     return { instance };
   }
 
-  async streamChat(messages: UIMessage[]): Promise<Response> {
+  async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string }): Promise<Response> {
+    const chatId = input?.chatId?.trim() || this.resolveDefaultChatId();
+    this.activeChatId = chatId;
     this.addActivity("chat", `Streaming prompt received (${messages.length} message${messages.length === 1 ? "" : "s"})`);
-    return this.runtime.chat.stream(messages, { headers: CORS_HEADERS });
+    return this.runtime.chat.stream(messages, {
+      headers: CORS_HEADERS,
+      chatId,
+      sessionId: this.activeInstance?.localInstanceId,
+      conversationTitle: input?.conversationTitle,
+    });
   }
 
   async runDispatcherQueueTest(input: DispatcherTestRequest): Promise<{
@@ -406,7 +438,10 @@ export class RuntimeGuiTransport {
         }
 
         try {
-          return await this.streamChat(payload.messages);
+          return await this.streamChat(payload.messages, {
+            chatId: payload.chatId,
+            conversationTitle: payload.conversationTitle,
+          });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });

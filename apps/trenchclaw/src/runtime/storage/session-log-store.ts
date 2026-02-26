@@ -110,16 +110,15 @@ export class SessionLogStore {
 
   async open(): Promise<ActiveSessionInfo> {
     const store = await this.readStore();
-    const existing = store.sessions[this.sessionKey];
     const now = nowIso();
 
-    const sessionId = existing?.sessionId ?? crypto.randomUUID();
+    const sessionId = crypto.randomUUID();
     const sessionEntry: SessionStoreEntry = {
       sessionId,
-      createdAt: existing?.createdAt ?? now,
+      createdAt: now,
       updatedAt: now,
-      messageCount: existing?.messageCount ?? 0,
-      eventCount: existing?.eventCount ?? 0,
+      messageCount: 0,
+      eventCount: 0,
       source: this.source,
     };
     store.sessions[this.sessionKey] = sessionEntry;

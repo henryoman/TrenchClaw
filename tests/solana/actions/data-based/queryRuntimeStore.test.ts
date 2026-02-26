@@ -70,4 +70,83 @@ describe("queryRuntimeStoreAction", () => {
     expect(result.ok).toBe(false);
     expect(result.code).toBe("STATE_STORE_UNAVAILABLE");
   });
+
+  test("supports multi-surface text search for conversations/messages/jobs/receipts", async () => {
+    const dbPath = `/tmp/trenchclaw-query-runtime-${crypto.randomUUID()}.db`;
+    dbPaths.push(dbPath);
+
+    const store = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+
+    const now = Date.now();
+    store.saveConversation({
+      id: "conv-search-1",
+      sessionId: "session-search-1",
+      title: "Alpha Plan",
+      summary: "Track banana signals",
+      createdAt: now,
+      updatedAt: now,
+    });
+    store.saveChatMessage({
+      id: "msg-search-1",
+      conversationId: "conv-search-1",
+      role: "assistant",
+      content: "banana breakout detected",
+      createdAt: now,
+    });
+    store.saveJob({
+      id: "job-search-1",
+      botId: "banana-bot",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {},
+      cyclesCompleted: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    store.saveReceipt({
+      ok: true,
+      retryable: false,
+      idempotencyKey: "receipt-search-1",
+      timestamp: now,
+      durationMs: 1,
+      data: {
+        note: "banana receipt",
+      },
+    });
+
+    const ctx = createActionContext({ actor: "agent", stateStore: store });
+    const result = await queryRuntimeStoreAction.execute(ctx, {
+      request: {
+        type: "searchRuntimeText",
+        query: "banana",
+        scope: "all",
+        limit: 10,
+        messageScanLimit: 100,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      requestType: string;
+      result: {
+        totalMatches: number;
+        conversations: Array<{ id: string }>;
+        messages: Array<{ id: string }>;
+        jobs: Array<{ id: string }>;
+        receipts: Array<{ idempotencyKey: string }>;
+      };
+    };
+    expect(payload.requestType).toBe("searchRuntimeText");
+    expect(payload.result.totalMatches).toBeGreaterThan(0);
+    expect(payload.result.conversations.some((entry) => entry.id === "conv-search-1")).toBe(true);
+    expect(payload.result.messages.some((entry) => entry.id === "msg-search-1")).toBe(true);
+    expect(payload.result.jobs.some((entry) => entry.id === "job-search-1")).toBe(true);
+    expect(payload.result.receipts.some((entry) => entry.idempotencyKey === "receipt-search-1")).toBe(true);
+
+    store.close();
+  });
 });

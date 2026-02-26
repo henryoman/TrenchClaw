@@ -130,8 +130,6 @@ storage:
     longTermFile: memory.md
   retention:
     receiptsDays: 7
-    policyHitsDays: 7
-    decisionLogsDays: 7
 
 ui:
   cli:

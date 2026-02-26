@@ -6,6 +6,8 @@ defaults:
   system: write
 
 rules:
+  - path: src/ai/brain/db/events
+    model: read
   - path: src/ai/brain/db/sessions
     model: read
   - path: src/ai/brain/db/system

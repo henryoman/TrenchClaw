@@ -75,6 +75,62 @@ const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i,
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
 
+const trimOrUndefined = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim();
+  return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const envFlagEnabled = (name: string, fallback: boolean): boolean => {
+  const configured = trimOrUndefined(process.env[name]);
+  if (!configured) {
+    return fallback;
+  }
+  return configured === "1" || configured.toLowerCase() === "true";
+};
+
+const runBootstrapScript = async (logger: RuntimeLogger, relativeScriptPath: string): Promise<void> => {
+  const proc = Bun.spawn([process.execPath, "run", relativeScriptPath], {
+    cwd: process.cwd(),
+    stdout: "pipe",
+    stderr: "pipe",
+    env: process.env,
+  });
+  const [exitCode, stdout, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+
+  if (exitCode !== 0) {
+    logger.warn("context:refresh_failed", {
+      script: relativeScriptPath,
+      exitCode,
+      stderr: stderr.trim(),
+    });
+    return;
+  }
+
+  const output = stdout.trim();
+  if (output) {
+    logger.info("context:refresh", {
+      script: relativeScriptPath,
+      output,
+    });
+  }
+};
+
+const runBootContextRefresh = async (logger: RuntimeLogger): Promise<void> => {
+  if (!envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_CONTEXT", false)) {
+    return;
+  }
+
+  await runBootstrapScript(logger, "src/lib/agent-scripts/refresh-workspace-context.ts");
+
+  if (envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE", true)) {
+    await runBootstrapScript(logger, "src/lib/agent-scripts/refresh-knowledge-manifest.ts");
+  }
+};
+
 const toSupportedActionMap = (actions: RuntimeAction[]): Map<string, RuntimeAction> => {
   const map = new Map<string, RuntimeAction>();
   for (const action of actions) {
@@ -566,6 +622,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
   const logger = createRuntimeLogger(settings);
+  await runBootContextRefresh(logger);
   const eventBus = new InMemoryRuntimeEventBus();
   const sqliteStore = settings.storage.sqlite.enabled
     ? new SqliteStateStore({
@@ -617,24 +674,16 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       stateStore as StateStore & {
         pruneRuntimeData: (input: {
           receiptsDays: number;
-          policyHitsDays: number;
-          decisionLogsDays: number;
         }) => {
           receiptsDeleted: number;
-          policyHitsDeleted: number;
-          decisionLogsDeleted: number;
           cacheDeleted: number;
         };
       }
     ).pruneRuntimeData({
       receiptsDays: settings.storage.retention.receiptsDays,
-      policyHitsDays: settings.storage.retention.policyHitsDays,
-      decisionLogsDays: settings.storage.retention.decisionLogsDays,
     });
     logger.info("storage:prune", {
       receipts: pruneResult.receiptsDeleted,
-      policyHits: pruneResult.policyHitsDeleted,
-      decisionLogs: pruneResult.decisionLogsDeleted,
       cache: pruneResult.cacheDeleted,
     });
   }

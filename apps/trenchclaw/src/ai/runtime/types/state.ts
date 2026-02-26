@@ -1,5 +1,4 @@
 import type { ActionResult } from "./action";
-import type { PolicyResult } from "./policy";
 
 export type JobStatus = "pending" | "running" | "paused" | "stopped" | "failed";
 
@@ -16,21 +15,6 @@ export interface JobState {
   lastResult?: ActionResult;
   createdAt: number;
   updatedAt: number;
-}
-
-export interface DecisionLog {
-  id: string;
-  jobId?: string;
-  actionName: string;
-  trace: string[];
-  createdAt: number;
-}
-
-export interface PolicyHit {
-  id: string;
-  actionName: string;
-  result: PolicyResult;
-  createdAt: number;
 }
 
 export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
@@ -60,8 +44,6 @@ export interface StateStore {
   updateJobStatus(id: string, status: JobStatus, meta?: Partial<JobState>): void;
   saveReceipt(receipt: ActionResult): void;
   getReceipt(idempotencyKey: string): ActionResult | null;
-  savePolicyHit(hit: PolicyHit): void;
-  saveDecisionLog(log: DecisionLog): void;
   getRecentReceipts(limit: number): ActionResult[];
   saveConversation(conversation: ConversationState): void;
   getConversation(id: string): ConversationState | null;

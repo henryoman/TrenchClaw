@@ -7,6 +7,8 @@ describe("RuntimeGuiTransport", () => {
   test("streamChat delegates to runtime.chat.stream with CORS headers", async () => {
     let streamCallCount = 0;
     let capturedHeaders: HeadersInit | undefined;
+    let capturedChatId: string | undefined;
+    let capturedSessionId: string | undefined;
 
     const runtime = {
       llm: null,
@@ -14,9 +16,14 @@ describe("RuntimeGuiTransport", () => {
       chat: {
         listToolNames: () => [],
         generateText: async () => ({ text: "ok", finishReason: "stop" }),
-        stream: async (_messages: unknown[], input?: { headers?: HeadersInit }) => {
+        stream: async (
+          _messages: unknown[],
+          input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
+        ) => {
           streamCallCount += 1;
           capturedHeaders = input?.headers;
+          capturedChatId = input?.chatId;
+          capturedSessionId = input?.sessionId;
           return new Response("ok", { status: 200, headers: { "x-test-stream": "1" } });
         },
       },
@@ -36,12 +43,14 @@ describe("RuntimeGuiTransport", () => {
     } as unknown as RuntimeBootstrap;
 
     const transport = new RuntimeGuiTransport(runtime);
-    const response = await transport.streamChat([]);
+    const response = await transport.streamChat([], { chatId: "chat-test-1" });
 
     expect(streamCallCount).toBe(1);
     const headers = new Headers(capturedHeaders);
     expect(headers.get("access-control-allow-origin")).toBe("*");
     expect(headers.get("access-control-allow-methods")).toBe("GET,POST,OPTIONS");
+    expect(capturedChatId).toBe("chat-test-1");
+    expect(capturedSessionId).toBeUndefined();
     expect(response.headers.get("x-test-stream")).toBe("1");
   });
 

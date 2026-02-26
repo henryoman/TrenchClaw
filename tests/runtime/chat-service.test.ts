@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import type { UIMessage } from "ai";
 import { z } from "zod";
 
 import type { ActionDispatcher, ActionResult, LlmClient } from "../../apps/trenchclaw/src/ai";
@@ -133,5 +134,84 @@ describe("RuntimeChatService", () => {
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });
     expect(capturedSystemPrompt).toContain("Filesystem policy for model");
+  });
+
+  test("creates and persists conversation/messages from streamed chat", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: {
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+          messages?: UIMessage[];
+        }) => {
+          return {
+            toUIMessageStreamResponse: (options?: {
+              originalMessages?: UIMessage[];
+              onFinish?: (event: {
+                messages: UIMessage[];
+                isContinuation: boolean;
+                isAborted: boolean;
+                responseMessage: UIMessage;
+                finishReason?: string;
+              }) => void;
+            }) => {
+              const assistantMessage: UIMessage = {
+                id: "assistant-1",
+                role: "assistant",
+                parts: [{ type: "text", text: "acknowledged" }],
+              };
+              const original = options?.originalMessages ?? [];
+              options?.onFinish?.({
+                messages: [...original, assistantMessage],
+                isContinuation: false,
+                isAborted: false,
+                responseMessage: assistantMessage,
+                finishReason: "stop",
+              });
+              return new Response("ok");
+            },
+          };
+        }) as never,
+      },
+    );
+
+    const messages: UIMessage[] = [
+      {
+        id: "user-1",
+        role: "user",
+        parts: [{ type: "text", text: "hello runtime" }],
+      },
+    ];
+
+    await service.stream(messages, {
+      chatId: "chat-persist-1",
+      sessionId: "session-1234",
+      conversationTitle: "Main Thread",
+    });
+
+    const conversation = stateStore.getConversation("chat-persist-1");
+    expect(conversation).not.toBeNull();
+    expect(conversation?.sessionId).toBe("session-1234");
+    expect(conversation?.title).toBe("Main Thread");
+
+    const persisted = stateStore.listChatMessages("chat-persist-1", 10);
+    expect(persisted.length).toBe(2);
+    expect(persisted[0]?.id).toBe("user-1");
+    expect(persisted[0]?.content).toContain("hello runtime");
+    expect(persisted[1]?.id).toBe("assistant-1");
+    expect(persisted[1]?.content).toContain("acknowledged");
   });
 });

@@ -7,8 +7,9 @@ Canonical runtime persistence root for TrenchClaw.
 - `runtime.sqlite` (+ `-wal`/`-shm`): Bun SQLite state
 - `events/`: structured runtime event files
 - `sessions/`:
-  - `sessions.json`: session index and counters
-  - `<sessionId>.jsonl`: per-session transcript/event stream
+  - `sessions.json`: active session index and counters (per `sessionKey`)
+  - `<sessionId>.jsonl`: per-runtime-session transcript/event stream
+    - Runtime restart creates a new `sessionId` and new `.jsonl` file
 - `summaries/`:
   - `<sessionId>.md`: compact session summary generated at runtime stop
 - `summary/`:

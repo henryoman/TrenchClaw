@@ -2,18 +2,14 @@ import type {
   ActionResult,
   ChatMessageState,
   ConversationState,
-  DecisionLog,
   JobState,
   JobStatus,
-  PolicyHit,
   StateStore as IStateStore,
 } from "../runtime/types";
 
 export class InMemoryStateStore implements IStateStore {
   private readonly jobs = new Map<string, JobState>();
   private readonly receipts = new Map<string, ActionResult>();
-  private readonly policyHits: PolicyHit[] = [];
-  private readonly decisionLogs: DecisionLog[] = [];
   private readonly conversations = new Map<string, ConversationState>();
   private readonly chatMessages = new Map<string, ChatMessageState[]>();
 
@@ -57,14 +53,6 @@ export class InMemoryStateStore implements IStateStore {
     return this.receipts.get(idempotencyKey) ?? null;
   }
 
-  savePolicyHit(hit: PolicyHit): void {
-    this.policyHits.push(hit);
-  }
-
-  saveDecisionLog(log: DecisionLog): void {
-    this.decisionLogs.push(log);
-  }
-
   getRecentReceipts(limit: number): ActionResult[] {
     return Array.from(this.receipts.values())
       .toSorted((a, b) => b.timestamp - a.timestamp)
@@ -87,7 +75,12 @@ export class InMemoryStateStore implements IStateStore {
 
   saveChatMessage(message: ChatMessageState): void {
     const messages = this.chatMessages.get(message.conversationId) ?? [];
-    messages.push({ ...message });
+    const existingIndex = messages.findIndex((existing) => existing.id === message.id);
+    if (existingIndex >= 0) {
+      messages[existingIndex] = { ...message };
+    } else {
+      messages.push({ ...message });
+    }
     this.chatMessages.set(message.conversationId, messages);
   }
 

@@ -121,35 +121,6 @@ const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
     indexes: [{ name: "idx_action_receipts_timestamp", columns: ["timestamp"] }],
   },
   {
-    name: "policy_hits",
-    rowSchema: sqliteTables.policy_hits,
-    columns: [
-      { name: "id", type: "TEXT", primaryKey: true },
-      { name: "action_name", type: "TEXT", notNull: true },
-      { name: "result_json", type: "TEXT", notNull: true },
-      { name: "created_at", type: "INTEGER", notNull: true },
-    ],
-    indexes: [
-      { name: "idx_policy_hits_created_at", columns: ["created_at"] },
-      { name: "idx_policy_hits_action_name_created_at", columns: ["action_name", "created_at"] },
-    ],
-  },
-  {
-    name: "decision_logs",
-    rowSchema: sqliteTables.decision_logs,
-    columns: [
-      { name: "id", type: "TEXT", primaryKey: true },
-      { name: "job_id", type: "TEXT", references: { table: "jobs", column: "id", onDelete: "SET NULL" } },
-      { name: "action_name", type: "TEXT", notNull: true },
-      { name: "trace_json", type: "TEXT", notNull: true },
-      { name: "created_at", type: "INTEGER", notNull: true },
-    ],
-    indexes: [
-      { name: "idx_decision_logs_created_at", columns: ["created_at"] },
-      { name: "idx_decision_logs_job_id_created_at", columns: ["job_id", "created_at"] },
-    ],
-  },
-  {
     name: "conversations",
     rowSchema: sqliteTables.conversations,
     columns: [
@@ -268,6 +239,8 @@ const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
   },
 ];
 
+const DEPRECATED_TABLE_NAMES = ["policy_hits", "decision_logs"] as const;
+
 const TABLE_SPEC_BY_NAME = new Map(SQLITE_TABLE_SPECS.map((spec) => [spec.name, spec]));
 
 const renderCreateTableStatement = (table: TableSpec): string => {
@@ -323,6 +296,13 @@ export const syncSqliteSchema = (db: Database): SqliteSchemaSyncReport => {
   };
 
   const apply = db.transaction(() => {
+    for (const deprecatedTableName of DEPRECATED_TABLE_NAMES) {
+      if (!tableExists(db, deprecatedTableName)) {
+        continue;
+      }
+      db.exec(`DROP TABLE ${quoteIdentifier(deprecatedTableName)};`);
+    }
+
     for (const table of SQLITE_TABLE_SPECS) {
       const existed = tableExists(db, table.name);
       db.exec(renderCreateTableStatement(table));

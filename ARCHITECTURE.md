@@ -126,8 +126,6 @@ Default normalized settings currently point to:
 SQLite tables include:
 - `jobs`
 - `action_receipts`
-- `policy_hits`
-- `decision_logs`
 - `conversations`
 - `chat_messages`
 - `market_instruments`

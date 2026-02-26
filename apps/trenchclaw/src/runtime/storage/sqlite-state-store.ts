@@ -6,17 +6,14 @@ import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
   ConversationState,
-  DecisionLog,
   JobState,
   JobStatus,
-  PolicyHit,
   StateStore,
 } from "../../ai/runtime/types/state";
 import {
   actionResultSchema,
   chatMessageStateSchema,
   conversationStateSchema,
-  decisionLogSchema,
   httpCacheEntryInputSchema,
   httpCacheEntryRecordSchema,
   jobStateSchema,
@@ -24,7 +21,6 @@ import {
   marketSnapshotInputSchema,
   marketSnapshotRecordSchema,
   ohlcvBarRecordSchema,
-  policyHitSchema,
   runtimeRetentionInputSchema,
   runtimeRetentionResultSchema,
   saveOhlcvBarsInputSchema,
@@ -233,36 +229,6 @@ export class SqliteStateStore implements StateStore {
     );
   }
 
-  savePolicyHit(hit: PolicyHit): void {
-    const parsedHit = policyHitSchema.parse(hit);
-    this.db
-      .query(
-        `
-        INSERT INTO policy_hits (id, action_name, result_json, created_at)
-        VALUES (?, ?, ?, ?)
-      `,
-      )
-      .run(parsedHit.id, parsedHit.actionName, JSON.stringify(parsedHit.result), parsedHit.createdAt);
-  }
-
-  saveDecisionLog(log: DecisionLog): void {
-    const parsedLog = decisionLogSchema.parse(log);
-    this.db
-      .query(
-        `
-        INSERT INTO decision_logs (id, job_id, action_name, trace_json, created_at)
-        VALUES (?, ?, ?, ?, ?)
-      `,
-      )
-      .run(
-        parsedLog.id,
-        parsedLog.jobId ?? null,
-        parsedLog.actionName,
-        JSON.stringify(parsedLog.trace),
-        parsedLog.createdAt,
-      );
-  }
-
   getRecentReceipts(limit: number): ActionResult[] {
     const rows = this.db
       .query(
@@ -362,6 +328,12 @@ export class SqliteStateStore implements StateStore {
         `
         INSERT INTO chat_messages (id, conversation_id, role, content, metadata_json, created_at)
         VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+          conversation_id = excluded.conversation_id,
+          role = excluded.role,
+          content = excluded.content,
+          metadata_json = excluded.metadata_json,
+          created_at = excluded.created_at
       `,
       )
       .run(
@@ -745,14 +717,10 @@ export class SqliteStateStore implements StateStore {
 
   pruneRuntimeData(retention: {
     receiptsDays: number;
-    policyHitsDays: number;
-    decisionLogsDays: number;
-  }): { receiptsDeleted: number; policyHitsDeleted: number; decisionLogsDeleted: number; cacheDeleted: number } {
+  }): { receiptsDeleted: number; cacheDeleted: number } {
     const parsedRetention = runtimeRetentionInputSchema.parse(retention);
     const now = Date.now();
     const receiptsCutoff = now - Math.max(1, Math.trunc(parsedRetention.receiptsDays)) * 24 * 60 * 60 * 1000;
-    const policyCutoff = now - Math.max(1, Math.trunc(parsedRetention.policyHitsDays)) * 24 * 60 * 60 * 1000;
-    const decisionCutoff = now - Math.max(1, Math.trunc(parsedRetention.decisionLogsDays)) * 24 * 60 * 60 * 1000;
 
     const prune = this.db.transaction(() => {
       const receiptsDeleted = Number(
@@ -766,34 +734,10 @@ export class SqliteStateStore implements StateStore {
           .run(receiptsCutoff).changes ?? 0,
       );
 
-      const policyHitsDeleted = Number(
-        this.db
-          .query(
-            `
-            DELETE FROM policy_hits
-            WHERE created_at < ?
-          `,
-          )
-          .run(policyCutoff).changes ?? 0,
-      );
-
-      const decisionLogsDeleted = Number(
-        this.db
-          .query(
-            `
-            DELETE FROM decision_logs
-            WHERE created_at < ?
-          `,
-          )
-          .run(decisionCutoff).changes ?? 0,
-      );
-
       const cacheDeleted = this.pruneExpiredCache(now);
 
       return {
         receiptsDeleted,
-        policyHitsDeleted,
-        decisionLogsDeleted,
         cacheDeleted,
       };
     });
