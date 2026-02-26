@@ -13,7 +13,7 @@ export interface LlmProviderConfig {
 
 const defaultModelByProvider: Record<LlmProvider, string> = {
   openai: "gpt-4.1-mini",
-  openrouter: "stepfun-ai/step-3.5-mini:free",
+  openrouter: "stepfun/step-3.5-flash:free",
   "openai-compatible": "gpt-4.1-mini",
 };
 

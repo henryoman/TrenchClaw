@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("resolveLlmProviderConfigFromEnv", () => {
-  test("defaults to OpenRouter Step 3.5 free", () => {
+  test("defaults to OpenRouter Step 3.5 Flash free", () => {
     process.env.OPENROUTER_API_KEY = "or-key";
 
     const resolved = resolveLlmProviderConfigFromEnv();
@@ -30,7 +30,7 @@ describe("resolveLlmProviderConfigFromEnv", () => {
     expect(resolved).toEqual({
       provider: "openrouter",
       apiKey: "or-key",
-      model: "stepfun-ai/step-3.5-mini:free",
+      model: "stepfun/step-3.5-flash:free",
       baseURL: "https://openrouter.ai/api/v1",
     });
   });

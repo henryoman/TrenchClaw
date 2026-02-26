@@ -51,4 +51,4 @@ TrenchClaw uses a provider-agnostic OpenAI-compatible standard via AI SDK. Confi
 - `OPENAI_API_KEY`: used for `openai`.
 - `TRENCHCLAW_AI_API_KEY`: used for `openai-compatible`.
 
-Default provider/model is OpenRouter + Step 3.5 free: `stepfun-ai/step-3.5-mini:free`.
+Default provider/model is OpenRouter + Step 3.5 Flash free: `stepfun/step-3.5-flash:free`.
