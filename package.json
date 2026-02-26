@@ -39,9 +39,11 @@
     "generate": "bun run --cwd apps/trenchclaw generate",
     "context:refresh": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run context:refresh --filter=@trenchclaw/core",
     "cleanup:runtime": "bun run --cwd apps/trenchclaw cleanup:runtime",
+    "cleanup:build": "bun run scripts/clean-build-artifacts.ts",
     "refresh": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run refresh --filter=@trenchclaw/core",
     "verify:generate": "bun run lint && bun run build && bun run typecheck && bun run test && bun run generate",
     "deps:dupes": "bun run scripts/check-dependency-duplicates.ts",
+    "knowledge:skills:add": "bun run scripts/install-knowledge-skills.ts",
     "deps:root-install": "bun install && bun run deps:dupes",
     "systemd:install": "bun run --cwd apps/trenchclaw systemd:install",
     "ci": "bun run lint && bun run typecheck && bun run test && bun run build"

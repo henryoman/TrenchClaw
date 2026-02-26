@@ -1,6 +1,7 @@
 import path from "node:path";
 
 import type { RuntimeActor } from "../../../ai/runtime/types/context";
+import { assertFilesystemAccessAllowed } from "../../../runtime/security/filesystem-manifest";
 
 const BRAIN_PROTECTED_ROOT_DIRECTORY = path.resolve(process.cwd(), "src/ai/brain/protected");
 
@@ -33,14 +34,30 @@ export interface ProtectedWriteRequest {
   operation: string;
 }
 
-export const assertProtectedWriteAllowed = (request: ProtectedWriteRequest): void => {
+export const assertProtectedWriteAllowed = async (request: ProtectedWriteRequest): Promise<void> => {
   const normalizedTarget = path.resolve(request.targetPath);
   assertWithinBrainProtectedDirectory(normalizedTarget);
 
-  if (request.actor === "agent") {
-    throw new ProtectedWriteForbiddenError(
-      `Blocked ${request.operation}: actor="agent" cannot write protected path "${normalizedTarget}"`,
-    );
-  }
+  await assertFilesystemAccessAllowed({
+    actor: request.actor,
+    targetPath: normalizedTarget,
+    operation: "write",
+    reason: request.operation,
+  });
 };
 
+export interface ProtectedReadRequest {
+  actor?: RuntimeActor;
+  targetPath: string;
+  operation: string;
+}
+
+export const assertProtectedReadAllowed = async (request: ProtectedReadRequest): Promise<void> => {
+  const normalizedTarget = path.resolve(request.targetPath);
+  await assertFilesystemAccessAllowed({
+    actor: request.actor,
+    targetPath: normalizedTarget,
+    operation: "read",
+    reason: request.operation,
+  });
+};

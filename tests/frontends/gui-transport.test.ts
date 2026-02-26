@@ -4,54 +4,6 @@ import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstr
 import { RuntimeGuiTransport } from "../../apps/frontends/cli/gui-transport";
 
 describe("RuntimeGuiTransport", () => {
-  test("sendChat delegates to runtime.chat.generateText and persists messages", async () => {
-    const messages: Array<{ role: string; content: string }> = [];
-    const conversations = new Map<string, { id: string; createdAt: number; updatedAt: number }>();
-    let generatedPrompt = "";
-
-    const runtime = {
-      settings: { profile: "dangerous" },
-      llm: null,
-      chat: {
-        listToolNames: () => [],
-        generateText: async (input: { prompt: string }) => {
-          generatedPrompt = input.prompt;
-          return { text: "assistant reply", finishReason: "stop" };
-        },
-        stream: async () => new Response("stream"),
-      },
-      eventBus: {
-        on: () => () => {},
-      },
-      stateStore: {
-        getConversation: (id: string) => conversations.get(id) ?? null,
-        saveConversation: (conversation: { id: string; createdAt: number; updatedAt: number }) => {
-          conversations.set(conversation.id, conversation);
-        },
-        saveChatMessage: (message: { role: string; content: string }) => {
-          messages.push({ role: message.role, content: message.content });
-        },
-        listJobs: () => [],
-      },
-      describe: () => ({
-        profile: "dangerous",
-        registeredActions: [],
-        pendingJobs: 0,
-        schedulerTickMs: 1000,
-        llmEnabled: false,
-      }),
-    } as unknown as RuntimeBootstrap;
-
-    const transport = new RuntimeGuiTransport(runtime);
-    const result = await transport.sendChat("hello runtime");
-
-    expect(generatedPrompt).toBe("hello runtime");
-    expect(result.reply).toBe("assistant reply");
-    expect(result.llmEnabled).toBe(false);
-    expect(messages.map((entry) => entry.role)).toEqual(["user", "assistant"]);
-    expect(messages.map((entry) => entry.content)).toEqual(["hello runtime", "assistant reply"]);
-  });
-
   test("streamChat delegates to runtime.chat.stream with CORS headers", async () => {
     let streamCallCount = 0;
     let capturedHeaders: HeadersInit | undefined;
@@ -91,5 +43,113 @@ describe("RuntimeGuiTransport", () => {
     expect(headers.get("access-control-allow-origin")).toBe("*");
     expect(headers.get("access-control-allow-methods")).toBe("GET,POST,OPTIONS");
     expect(response.headers.get("x-test-stream")).toBe("1");
+  });
+
+  test("legacy /api/gui/chat endpoint is removed", async () => {
+    const runtime = {
+      llm: null,
+      settings: { profile: "dangerous" },
+      chat: {
+        listToolNames: () => [],
+        generateText: async () => ({ text: "ok", finishReason: "stop" }),
+        stream: async () => new Response("ok"),
+      },
+      eventBus: {
+        on: () => () => {},
+      },
+      stateStore: {
+        listJobs: () => [],
+      },
+      describe: () => ({
+        profile: "dangerous",
+        registeredActions: [],
+        pendingJobs: 0,
+        schedulerTickMs: 1000,
+        llmEnabled: false,
+      }),
+    } as unknown as RuntimeBootstrap;
+
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+    const response = await handler(
+      new Request("http://localhost/api/gui/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: "hello" }),
+      }),
+    );
+    expect(response.status).toBe(404);
+  });
+
+  test("dispatcher test endpoint enqueues queue work and returns action output", async () => {
+    const jobs = new Map<string, { id: string; status: string; lastResult?: { data?: unknown } }>();
+
+    const runtime = {
+      llm: null,
+      settings: { profile: "dangerous" },
+      chat: {
+        listToolNames: () => [],
+        generateText: async () => ({ text: "ok", finishReason: "stop" }),
+        stream: async () => new Response("ok"),
+      },
+      enqueueJob: (input: { botId: string; routineName: string; config: { steps: Array<{ input: { message: string } }> } }) => {
+        const id = "job-test-1";
+        jobs.set(id, {
+          id,
+          status: "pending",
+          lastResult: {
+            data: {
+              message: input.config.steps[0]?.input.message ?? "",
+              actor: "system",
+            },
+          },
+        });
+        return {
+          id,
+          botId: input.botId,
+          routineName: input.routineName,
+          status: "pending",
+          config: input.config,
+          cyclesCompleted: 0,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          nextRunAt: Date.now(),
+        };
+      },
+      eventBus: {
+        on: () => () => {},
+      },
+      stateStore: {
+        listJobs: () => [],
+        getJob: (id: string) => jobs.get(id) ?? null,
+      },
+      describe: () => ({
+        profile: "dangerous",
+        registeredActions: [],
+        pendingJobs: 0,
+        schedulerTickMs: 1000,
+        llmEnabled: false,
+      }),
+    } as unknown as RuntimeBootstrap;
+
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+    const response = await handler(
+      new Request("http://localhost/api/gui/tests/dispatcher", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: "queue-model-test", waitMs: 1 }),
+      }),
+    );
+
+    const payload = (await response.json()) as {
+      completed: boolean;
+      status: string;
+      result: { message: string };
+    };
+    expect(response.status).toBe(200);
+    expect(payload.completed).toBe(true);
+    expect(payload.status).toBe("pending");
+    expect(payload.result.message).toBe("queue-model-test");
   });
 });

@@ -148,15 +148,6 @@ export interface GuiActivityResponse {
   entries: GuiActivityEntry[];
 }
 
-export interface GuiChatRequest {
-  message: string;
-}
-
-export interface GuiChatResponse {
-  reply: string;
-  llmEnabled: boolean;
-}
-
 export interface GuiInstanceProfileView {
   fileName: string;
   localInstanceId: string;

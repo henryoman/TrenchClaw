@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import path from "node:path";
 
 import { createActionContext } from "../../apps/trenchclaw/src/ai";
 import { bootstrapRuntime } from "../../apps/trenchclaw/src/runtime/bootstrap";
@@ -273,7 +274,10 @@ wallet:
     await applyDefaultEnv();
 
     const runtime = await bootstrapRuntime();
-    const alertsFile = `/tmp/trenchclaw-alerts-${crypto.randomUUID()}.json`;
+    const alertsFile = path.resolve(
+      process.cwd(),
+      `src/ai/brain/workspace/strategies/.tests/bootstrap-alerts-${crypto.randomUUID()}.json`,
+    );
     try {
       const result = await runtime.dispatcher.dispatchStep(
         createActionContext({ actor: "agent" }),

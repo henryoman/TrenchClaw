@@ -1,0 +1,26 @@
+version: 1
+
+defaults:
+  model: none
+  user: write
+  system: write
+
+rules:
+  - path: src/ai/brain/db/sessions
+    model: read
+  - path: src/ai/brain/db/system
+    model: read
+  - path: src/ai/brain/db/summary
+    model: read
+  - path: src/ai/brain/db/summaries
+    model: read
+  - path: src/ai/brain/db/memory
+    model: read
+  - path: src/ai/brain/workspace
+    model: write
+  - path: src/ai/brain/protected/notes
+    model: write
+  - path: src/ai/brain/protected/keypairs
+    model: none
+  - path: src/ai/brain/protected/no-read
+    model: none

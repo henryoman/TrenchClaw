@@ -32,6 +32,7 @@ describe("RuntimeChatService", () => {
       eventBus: new InMemoryRuntimeEventBus(),
       stateStore: new InMemoryStateStore(),
       llm: null,
+      workspaceToolsEnabled: false,
     });
 
     const result = await service.generateText({ prompt: "hello" });
@@ -61,6 +62,7 @@ describe("RuntimeChatService", () => {
       eventBus: new InMemoryRuntimeEventBus(),
       stateStore: new InMemoryStateStore(),
       llm: null,
+      workspaceToolsEnabled: false,
     });
 
     expect(service.listToolNames()).toEqual(["withSchema"]);
@@ -75,12 +77,13 @@ describe("RuntimeChatService", () => {
       execute: async () => makeActionResult({ ok: true }),
     });
 
-    const dispatchCalls: Array<{ actionName: string; input: unknown }> = [];
+    const dispatchCalls: Array<{ actor: string | undefined; actionName: string; input: unknown }> = [];
+    let capturedSystemPrompt = "";
     const service = createRuntimeChatService(
       {
         dispatcher: {
           dispatchStep: async (_ctx: ActionContext, step: ActionStep) => {
-            dispatchCalls.push({ actionName: step.actionName, input: step.input });
+            dispatchCalls.push({ actor: _ctx.actor, actionName: step.actionName, input: step.input });
             return {
               results: [makeActionResult({ ok: true, data: { echoed: step.input } })],
               policyHits: [],
@@ -98,11 +101,16 @@ describe("RuntimeChatService", () => {
           generate: async () => ({ text: "ok", finishReason: "stop" }),
           stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
         } as unknown as LlmClient,
+        workspaceToolsEnabled: false,
       },
       {
         resolveStreamingModel: () => ({}) as never,
         convertToModelMessages: async () => [],
-        streamText: ((args: { tools: Record<string, { execute: (input: unknown) => Promise<unknown> }> }) => {
+        streamText: ((args: {
+          system?: string;
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+        }) => {
+          capturedSystemPrompt = args.system ?? "";
           return {
             toUIMessageStreamResponse: async () => {
               const echoTool = args.tools.echo;
@@ -121,8 +129,9 @@ describe("RuntimeChatService", () => {
     const payload = (await response.json()) as { ok: boolean; data: { echoed: { value: number } } };
 
     expect(dispatchCalls).toHaveLength(1);
-    expect(dispatchCalls[0]).toEqual({ actionName: "echo", input: { value: 42 } });
+    expect(dispatchCalls[0]).toEqual({ actor: "agent", actionName: "echo", input: { value: 42 } });
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });
+    expect(capturedSystemPrompt).toContain("Filesystem policy for model");
   });
 });

@@ -168,7 +168,7 @@ CLI package:
 
 Web GUI package:
 - Svelte + Vite app in `apps/frontends/gui/src/*`
-- build output currently committed in `apps/frontends/gui/dist/*`
+- build output generated locally in `apps/frontends/gui/dist/*` (not tracked)
 
 ## Tests Present
 

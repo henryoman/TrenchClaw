@@ -3,6 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
+import { assertFilesystemAccessAllowed } from "../../../../runtime/security/filesystem-manifest";
 
 const alertConditionSchema = z.discriminatedUnion("type", [
   z.object({
@@ -83,6 +84,19 @@ export const createBlockchainAlertAction: Action<CreateBlockchainAlertInput, Cre
       const storageFilePath = path.isAbsolute(input.storageFilePath)
         ? input.storageFilePath
         : path.join(process.cwd(), input.storageFilePath);
+
+      await assertFilesystemAccessAllowed({
+        actor: _ctx.actor,
+        targetPath: storageFilePath,
+        operation: "read",
+        reason: "read blockchain alert storage file",
+      });
+      await assertFilesystemAccessAllowed({
+        actor: _ctx.actor,
+        targetPath: storageFilePath,
+        operation: "write",
+        reason: "write blockchain alert storage file",
+      });
 
       const existing = await readExistingAlerts(storageFilePath);
       const alert: StoredBlockchainAlert = {

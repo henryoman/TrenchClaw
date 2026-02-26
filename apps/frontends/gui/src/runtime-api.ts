@@ -1,8 +1,6 @@
 import type {
   GuiActivityResponse,
   GuiBootstrapResponse,
-  GuiChatRequest,
-  GuiChatResponse,
   GuiCreateInstanceRequest,
   GuiCreateInstanceResponse,
   GuiInstancesResponse,
@@ -60,12 +58,6 @@ export const runtimeApi = {
   queue: (): Promise<GuiQueueResponse> => fetchJson<GuiQueueResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/queue`)),
   activity: (limit = 100): Promise<GuiActivityResponse> =>
     fetchJson<GuiActivityResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/activity?limit=${Math.max(1, Math.trunc(limit))}`)),
-  chat: (message: string): Promise<GuiChatResponse> =>
-    fetchJson<GuiChatResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/chat`), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message } satisfies GuiChatRequest),
-    }),
   instances: (): Promise<GuiInstancesResponse> => fetchJson<GuiInstancesResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`)),
   createInstance: (input: GuiCreateInstanceRequest): Promise<GuiCreateInstanceResponse> =>
     fetchJson<GuiCreateInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`), {

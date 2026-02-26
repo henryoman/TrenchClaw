@@ -1,4 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
+import { fileURLToPath } from "node:url";
 import {
   convertToModelMessages,
   createGateway,
@@ -20,6 +21,13 @@ import type {
   LlmGenerateResult,
 } from "../ai";
 import { resolveLlmProviderConfigFromEnv } from "../ai/llm/config";
+import {
+  createWorkspaceBashTools,
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
+} from "./workspace-bash";
+import { buildFilesystemPolicyPrompt } from "./security/filesystem-manifest";
 
 export interface RuntimeChatService {
   listToolNames: () => string[];
@@ -33,6 +41,8 @@ interface RuntimeChatServiceDeps {
   eventBus: RuntimeEventBus;
   stateStore: StateStore;
   llm: LlmClient | null;
+  workspaceToolsEnabled?: boolean;
+  workspaceRootDirectory?: string;
 }
 
 interface RuntimeChatServiceOverrides {
@@ -65,20 +75,29 @@ const resolveStreamingModel = (): LanguageModel => {
   return openai.responses(llmConfig.model);
 };
 
-const buildSystemPrompt = (deps: RuntimeChatServiceDeps, toolNames: string[]): string => {
+const buildSystemPrompt = async (deps: RuntimeChatServiceDeps, toolNames: string[]): Promise<string> => {
   const base = deps.llm?.defaultSystemPrompt ?? "You are TrenchClaw's runtime assistant.";
   const toolCatalog = toolNames.length > 0 ? toolNames.join(", ") : "none";
+  let filesystemPolicy = "Filesystem policy is enforced server-side; if a path is blocked, ask for an allowed target path.";
+  try {
+    filesystemPolicy = await buildFilesystemPolicyPrompt({ actor: "agent" });
+  } catch {
+    // Keep runtime chat available even if manifest cannot be loaded.
+  }
   return [
     base,
     "Use tools for real execution. Do not claim execution unless a tool call confirms success.",
     `Available runtime tools: ${toolCatalog}`,
+    filesystemPolicy,
   ].join("\n\n");
 };
 
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
-const buildTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
+const DEFAULT_WORKSPACE_ROOT_DIRECTORY = fileURLToPath(new URL("../ai/brain/workspace", import.meta.url));
+
+const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
   const tools: Record<string, any> = {};
 
   for (const registered of deps.registry.list()) {
@@ -93,7 +112,7 @@ const buildTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
       execute: async (rawInput: unknown) => {
         const dispatchResult = await deps.dispatcher.dispatchStep(
           createActionContext({
-            actor: "user",
+            actor: "agent",
             eventBus: deps.eventBus,
             stateStore: deps.stateStore,
           }),
@@ -136,13 +155,21 @@ export const createRuntimeChatService = (
   const resolveModel = overrides.resolveStreamingModel ?? resolveStreamingModel;
   const convertMessages = overrides.convertToModelMessages ?? convertToModelMessages;
   const streamWithModel = overrides.streamText ?? streamText;
+  const workspaceToolsEnabled = deps.workspaceToolsEnabled ?? (process.env.TRENCHCLAW_ENABLE_WORKSPACE_BASH ?? "1") !== "0";
+  const workspaceRootDirectory = deps.workspaceRootDirectory ?? DEFAULT_WORKSPACE_ROOT_DIRECTORY;
+  let workspaceToolPromise: Promise<Record<string, unknown>> | null = null;
 
   const listToolNames = (): string[] =>
-    deps.registry
+    [
+      ...deps.registry
       .list()
       .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
       .map((entry) => entry.name)
-      .toSorted((a, b) => a.localeCompare(b));
+      .toSorted((a, b) => a.localeCompare(b)),
+      ...(workspaceToolsEnabled
+        ? [WORKSPACE_BASH_TOOL_NAME, WORKSPACE_READ_FILE_TOOL_NAME, WORKSPACE_WRITE_FILE_TOOL_NAME]
+        : []),
+    ].toSorted((a, b) => a.localeCompare(b));
 
   const generateText = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
     if (!deps.llm) {
@@ -158,10 +185,17 @@ export const createRuntimeChatService = (
   const stream = async (messages: UIMessage[], input?: { headers?: HeadersInit }): Promise<Response> => {
     const model = resolveModel();
     const toolNames = listToolNames();
-    const tools = buildTools(deps);
+    const tools: Record<string, any> = buildActionTools(deps);
+    if (workspaceToolsEnabled) {
+      workspaceToolPromise ??= createWorkspaceBashTools({
+        workspaceRootDirectory,
+        actor: "agent",
+      });
+      Object.assign(tools, await workspaceToolPromise);
+    }
     const result = streamWithModel({
       model,
-      system: buildSystemPrompt(deps, toolNames),
+      system: await buildSystemPrompt(deps, toolNames),
       messages: await convertMessages(messages),
       stopWhen: stepCountIs(8),
       tools,

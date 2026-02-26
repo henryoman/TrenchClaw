@@ -120,8 +120,8 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
 
       assertWithinBrainProtectedDirectory(outputDirectory);
       assertWithinBrainProtectedDirectory(walletLibraryFilePath);
-      assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: outputDirectory, operation: "create wallets" });
-      assertProtectedWriteAllowed({
+      await assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: outputDirectory, operation: "create wallets" });
+      await assertProtectedWriteAllowed({
         actor: _ctx.actor,
         targetPath: walletLibraryFilePath,
         operation: "append wallet library",
@@ -146,7 +146,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
         if (await Bun.file(keypairFilePath).exists()) {
           throw new Error(`Refusing to overwrite existing wallet file: ${keypairFilePath}`);
         }
-        assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: keypairFilePath, operation: "write keypair file" });
+        await assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: keypairFilePath, operation: "write keypair file" });
 
         const privateKey = input.includePrivateKey
           ? encodePrivateKey(privateKeyBytes, input.privateKeyEncoding)

@@ -1,10 +1,20 @@
 {
   "version": 1,
   "skills": {
+    "Bun SQLite": {
+      "source": "secondsky/claude-skills",
+      "sourceType": "github",
+      "computedHash": "8aee71ab2c086f4c721baa25e16e417fd46d1fb619b70031bab7749a5cf57657"
+    },
     "ai-sdk": {
       "source": "vercel/ai",
       "sourceType": "github",
       "computedHash": "58ce68f628890c3925aea2b5435a649251ac182057541045c68fc19a27aaa0ec"
+    },
+    "svelte-code-writer": {
+      "source": "sveltejs/mcp",
+      "sourceType": "github",
+      "computedHash": "c0e2cce9855f8e312cbb0a05aef164b4659c672d7723e4e598ffa6bc94890542"
     }
   }
 }

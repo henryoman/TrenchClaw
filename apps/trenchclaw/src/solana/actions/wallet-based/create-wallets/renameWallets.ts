@@ -66,7 +66,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
       const input = renameWalletsInputSchema.parse(rawInput);
       const walletLibraryFilePath = resolveAbsolutePath(input.walletLibraryFile);
       assertWithinBrainProtectedDirectory(walletLibraryFilePath);
-      assertProtectedWriteAllowed({
+      await assertProtectedWriteAllowed({
         actor: _ctx.actor,
         targetPath: walletLibraryFilePath,
         operation: "rename wallets in library",
@@ -145,7 +145,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         if (input.updateKeypairFiles && keypairFilePath) {
           const absoluteKeypairFilePath = resolveAbsolutePath(keypairFilePath);
           assertWithinBrainProtectedDirectory(absoluteKeypairFilePath);
-          assertProtectedWriteAllowed({
+          await assertProtectedWriteAllowed({
             actor: _ctx.actor,
             targetPath: absoluteKeypairFilePath,
             operation: "rewrite keypair metadata",
@@ -171,7 +171,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
       }
 
       const nextLibrary = entries.map((entry) => JSON.stringify(entry)).join("\n");
-      assertProtectedWriteAllowed({
+      await assertProtectedWriteAllowed({
         actor: _ctx.actor,
         targetPath: walletLibraryFilePath,
         operation: "rewrite wallet library",

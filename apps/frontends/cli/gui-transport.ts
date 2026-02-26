@@ -5,8 +5,6 @@ import type {
   GuiActivityEntry,
   GuiActivityResponse,
   GuiBootstrapResponse,
-  GuiChatRequest,
-  GuiChatResponse,
   GuiCreateInstanceRequest,
   GuiCreateInstanceResponse,
   GuiInstanceProfileView,
@@ -20,7 +18,6 @@ import type { UIMessage } from "ai";
 import type { RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
 import { CORE_APP_ROOT } from "./runtime-paths";
 
-const GUI_CONVERSATION_ID = "gui-main";
 const MAX_ACTIVITY_ITEMS = 250;
 const GUI_QUEUE_INCLUDE_HISTORY = process.env.GUI_QUEUE_INCLUDE_HISTORY === "1";
 const ACTIVE_JOB_STATUSES = new Set(["pending", "running", "paused"]);
@@ -30,6 +27,8 @@ const CORS_HEADERS = {
   "access-control-allow-headers": "content-type,accept",
 };
 const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
+const DISPATCH_TEST_DEFAULT_WAIT_MS = 4000;
+const DISPATCH_TEST_MAX_WAIT_MS = 20000;
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
 
@@ -44,6 +43,11 @@ interface InstanceDocument {
     createdAt: string;
     updatedAt: string;
   };
+}
+
+interface DispatcherTestRequest {
+  message: string;
+  waitMs: number;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -61,22 +65,6 @@ const mapJobToView = (job: ReturnType<RuntimeBootstrap["stateStore"]["listJobs"]
   nextRunAt: typeof job.nextRunAt === "number" ? job.nextRunAt : null,
   cyclesCompleted: job.cyclesCompleted,
 });
-
-const parseChatRequest = async (request: Request): Promise<GuiChatRequest | null> => {
-  try {
-    const payload = await request.json();
-    if (!isRecord(payload) || typeof payload.message !== "string") {
-      return null;
-    }
-    const message = payload.message.trim();
-    if (message.length === 0) {
-      return null;
-    }
-    return { message };
-  } catch {
-    return null;
-  }
-};
 
 const parseUiChatRequest = async (request: Request): Promise<{ messages: UIMessage[] } | null> => {
   try {
@@ -131,6 +119,28 @@ const parseSignInRequest = async (request: Request): Promise<GuiSignInInstanceRe
 
     const userPin = typeof payload.userPin === "string" && payload.userPin.trim().length > 0 ? payload.userPin.trim() : undefined;
     return { localInstanceId, userPin };
+  } catch {
+    return null;
+  }
+};
+
+const parseDispatcherTestRequest = async (request: Request): Promise<DispatcherTestRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload)) {
+      return {
+        message: "dispatcher-test",
+        waitMs: DISPATCH_TEST_DEFAULT_WAIT_MS,
+      };
+    }
+
+    const message =
+      typeof payload.message === "string" && payload.message.trim().length > 0
+        ? payload.message.trim()
+        : "dispatcher-test";
+    const waitMsRaw = typeof payload.waitMs === "number" ? payload.waitMs : DISPATCH_TEST_DEFAULT_WAIT_MS;
+    const waitMs = Math.max(0, Math.min(DISPATCH_TEST_MAX_WAIT_MS, Math.trunc(waitMsRaw)));
+    return { message, waitMs };
   } catch {
     return null;
   }
@@ -340,66 +350,42 @@ export class RuntimeGuiTransport {
     return { instance };
   }
 
-  async sendChat(message: string): Promise<GuiChatResponse> {
-    const now = Date.now();
-    const conversation =
-      this.runtime.stateStore.getConversation(GUI_CONVERSATION_ID) ??
-      (() => {
-        const created = {
-          id: GUI_CONVERSATION_ID,
-          title: "GUI Main",
-          createdAt: now,
-          updatedAt: now,
-        };
-        this.runtime.stateStore.saveConversation(created);
-        return created;
-      })();
-
-    this.runtime.stateStore.saveChatMessage({
-      id: createMessageId(),
-      conversationId: conversation.id,
-      role: "user",
-      content: message,
-      createdAt: now,
-    });
-    this.runtime.stateStore.saveConversation({
-      ...conversation,
-      updatedAt: now,
-    });
-    this.addActivity("chat", `Prompt received: ${message.slice(0, 72)}${message.length > 72 ? "..." : ""}`);
-
-    try {
-      const result = await this.runtime.chat.generateText({
-        prompt: message,
-        maxOutputTokens: 900,
-      });
-      const responseTime = Date.now();
-      this.runtime.stateStore.saveChatMessage({
-        id: createMessageId(),
-        conversationId: conversation.id,
-        role: "assistant",
-        content: result.text,
-        createdAt: responseTime,
-      });
-      this.runtime.stateStore.saveConversation({
-        ...conversation,
-        updatedAt: responseTime,
-      });
-      this.addActivity("chat", "Response confirmed");
-      return {
-        reply: result.text,
-        llmEnabled: this.runtime.llm !== null,
-      };
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.addActivity("chat", `Response failed: ${errorMessage.slice(0, 100)}`);
-      throw error;
-    }
-  }
-
   async streamChat(messages: UIMessage[]): Promise<Response> {
     this.addActivity("chat", `Streaming prompt received (${messages.length} message${messages.length === 1 ? "" : "s"})`);
     return this.runtime.chat.stream(messages, { headers: CORS_HEADERS });
+  }
+
+  async runDispatcherQueueTest(input: DispatcherTestRequest): Promise<{
+    jobId: string;
+    completed: boolean;
+    status: string;
+    result: unknown;
+  }> {
+    const job = this.runtime.enqueueJob({
+      botId: "gui-dispatch-test",
+      routineName: "actionSequence",
+      config: {
+        intervalMs: 60_000,
+        steps: [
+          {
+            key: "ping",
+            actionName: "pingRuntime",
+            input: {
+              message: input.message,
+            },
+          },
+        ],
+      },
+    });
+    this.addActivity("queue", `Dispatcher test enqueued (${job.id})`);
+
+    const finalJob = await this.waitForJobResult(job.id, input.waitMs);
+    return {
+      jobId: job.id,
+      completed: finalJob?.lastResult !== undefined,
+      status: finalJob?.status ?? "unknown",
+      result: finalJob?.lastResult?.data ?? null,
+    };
   }
 
   createApiHandler(): (request: Request) => Promise<Response> {
@@ -421,6 +407,20 @@ export class RuntimeGuiTransport {
 
         try {
           return await this.streamChat(payload.messages);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });
+        }
+      }
+
+      if (request.method === "POST" && url.pathname === "/api/gui/tests/dispatcher") {
+        const payload = await parseDispatcherTestRequest(request);
+        if (!payload) {
+          return Response.json({ error: "Invalid dispatcher test payload" }, { status: 400, headers: CORS_HEADERS });
+        }
+
+        try {
+          return Response.json(await this.runDispatcherQueueTest(payload), { headers: CORS_HEADERS });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });
@@ -478,20 +478,6 @@ export class RuntimeGuiTransport {
         }
       }
 
-      if (request.method === "POST" && url.pathname === "/api/gui/chat") {
-        const payload = await parseChatRequest(request);
-        if (!payload) {
-          return Response.json({ error: "Missing message" }, { status: 400, headers: CORS_HEADERS });
-        }
-
-        try {
-          return Response.json(await this.sendChat(payload.message), { headers: CORS_HEADERS });
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });
-        }
-      }
-
       return new Response("Not Found", { status: 404, headers: CORS_HEADERS });
     };
   }
@@ -504,6 +490,19 @@ export class RuntimeGuiTransport {
       timestamp: Date.now(),
     });
     this.activity.splice(MAX_ACTIVITY_ITEMS);
+  }
+
+  private async waitForJobResult(jobId: string, waitMs: number): Promise<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>> {
+    const timeoutAt = Date.now() + waitMs;
+    let job = this.runtime.stateStore.getJob(jobId);
+    while (Date.now() < timeoutAt) {
+      if (job?.lastResult) {
+        return job;
+      }
+      await Bun.sleep(100);
+      job = this.runtime.stateStore.getJob(jobId);
+    }
+    return job;
   }
 }
 
