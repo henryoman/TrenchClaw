@@ -1,9 +1,16 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Database } from "bun:sqlite";
 
+import { loadRuntimeSettings } from "../../runtime/load";
+import { buildActionCatalog } from "../../runtime/bootstrap";
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
+import {
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
+} from "../../runtime/workspace-bash";
 
 const APP_ROOT_DIR = fileURLToPath(new URL("../../../", import.meta.url));
 const CONTEXT_ROOT_LABEL = "apps/trenchclaw";
@@ -11,6 +18,7 @@ const PROTECTED_CONTEXT_FILE = fileURLToPath(
   new URL("../../ai/brain/protected/context/workspace-and-schema.md", import.meta.url),
 );
 const SQLITE_SQL_SNAPSHOT_FILE = fileURLToPath(new URL("../../../../../docs/storage-schema.snapshot.sql", import.meta.url));
+const GUI_TRANSPORT_FILE = fileURLToPath(new URL("../../../../frontends/cli/gui-transport.ts", import.meta.url));
 const CONTEXT_DB_PATH_ENV = "TRENCHCLAW_CONTEXT_DB_PATH";
 const DEFAULT_LIVE_DB_PATH_CANDIDATES = [
   join(APP_ROOT_DIR, "src/ai/brain/db/runtime.sqlite"),
@@ -130,11 +138,60 @@ const getLiveSchemaSqlDump = async (): Promise<{ dbPath: string; sql: string } |
   }
 };
 
+const toMarkdownTable = (headers: string[], rows: string[][]): string => {
+  const headerLine = `| ${headers.join(" | ")} |`;
+  const dividerLine = `| ${headers.map(() => "---").join(" | ")} |`;
+  const body = rows.map((row) => `| ${row.join(" | ")} |`).join("\n");
+  return [headerLine, dividerLine, body].filter((line) => line.length > 0).join("\n");
+};
+
+const getRuntimeActionCatalogTable = async (): Promise<string> => {
+  const settings = await loadRuntimeSettings();
+  const actions = buildActionCatalog(settings)
+    .map((action) => [
+      action.name,
+      action.category,
+      action.subcategory ?? "",
+      action.inputSchema ? "yes" : "no",
+      action.outputSchema ? "yes" : "no",
+    ])
+    .sort((a, b) => a[0]!.localeCompare(b[0]!));
+
+  return toMarkdownTable(
+    ["actionName", "category", "subcategory", "inputSchema", "outputSchema"],
+    actions,
+  );
+};
+
+const getChatToolCatalogTable = async (): Promise<string> => {
+  const settings = await loadRuntimeSettings();
+  const actions = buildActionCatalog(settings).map((action) => action.name);
+  const runtimeTools = settings.agent.dangerously.allowFilesystemWrites
+    ? [WORKSPACE_BASH_TOOL_NAME, WORKSPACE_READ_FILE_TOOL_NAME, WORKSPACE_WRITE_FILE_TOOL_NAME]
+    : [];
+
+  const tools = [...actions, ...runtimeTools].toSorted((a, b) => a.localeCompare(b)).map((toolName) => [toolName]);
+  return toMarkdownTable(["toolName"], tools);
+};
+
+const getGuiApiRoutesTable = async (): Promise<string> => {
+  const source = await readFile(GUI_TRANSPORT_FILE, "utf8");
+  const matches = source.matchAll(/pathname\s*===\s*"([^"]+)"/g);
+  const routeCandidates = Array.from(matches, (match) => match[1]);
+  const routes = Array.from(
+    new Set(routeCandidates.filter((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0)),
+  ).toSorted((a, b) => a.localeCompare(b));
+  return toMarkdownTable(["routePath"], routes.map((route) => [route]));
+};
+
 const generatedAt = new Date().toISOString();
 const sourceTree = await buildTree(APP_ROOT_DIR, CONTEXT_ROOT_LABEL);
 const sqliteSchemaSnapshot = getSqliteSchemaSnapshot();
 const canonicalSchemaSql = getCanonicalSchemaSqlDump();
 const liveSchemaSql = await getLiveSchemaSqlDump();
+const runtimeActionCatalogTable = await getRuntimeActionCatalogTable();
+const runtimeChatToolCatalogTable = await getChatToolCatalogTable();
+const guiApiRoutesTable = await getGuiApiRoutesTable();
 
 const markdown = `# Workspace Context Snapshot
 
@@ -151,6 +208,15 @@ ${sourceTree}
 \`\`\`
 
 Omitted generated/vendor directories: ${Array.from(OMITTED_DIR_NAMES).join(", ")}
+
+## Runtime Action Catalog (Generated)
+${runtimeActionCatalogTable}
+
+## Runtime Chat Tool Catalog (Generated)
+${runtimeChatToolCatalogTable}
+
+## GUI API Route Catalog (Generated)
+${guiApiRoutesTable}
 
 ## SQLite Schema Snapshot
 \`\`\`text

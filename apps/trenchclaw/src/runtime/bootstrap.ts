@@ -325,7 +325,7 @@ const instrumentLlmClient = (
   };
 };
 
-const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
+export const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
   const actions: RuntimeAction[] = [createWalletsAction, renameWalletsAction, queryRuntimeStoreAction, pingRuntimeAction];
 
   if (settings.trading.enabled) {

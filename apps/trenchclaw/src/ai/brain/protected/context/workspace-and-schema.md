@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-02-25T04:41:02.127Z
+Generated at: 2026-02-26T21:44:02.913Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -16,25 +16,138 @@ apps/trenchclaw/
 |   |   |   |-- db/
 |   |   |   |   |-- events/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   |-- 1771994462014-policy_block-74612c50-150f-40c2-b586-3768594ed4cc.json
-|   |   |   |   |   |-- 1771994462018-action_start-7ac4b526-0150-4d58-b211-6d036598a0e6.json
-|   |   |   |   |   `-- 1771994462019-action_success-22aa5e0a-8f44-4a1c-bfb5-55eabc08b055.json
+|   |   |   |   |   |-- 1772059498660-queue_enqueue-bd240a8d-aa60-4578-a00c-81cd489e4619.json
+|   |   |   |   |   |-- 1772059499659-bot_start-be8930ee-f3e9-436c-9e8c-6de8ef526499.json
+|   |   |   |   |   |-- 1772059499659-queue_dequeue-f653583b-d572-42cc-ae7f-c50b834cfff4.json
+|   |   |   |   |   |-- 1772059499661-action_start-1916a2c5-e7c4-4c3c-8b08-d2b561888ed4.json
+|   |   |   |   |   |-- 1772059499662-action_success-092b062b-129e-4818-8565-d36c8a0e8ab9.json
+|   |   |   |   |   |-- 1772059499662-bot_stop-8e440a86-c68a-4a5a-9c72-6b5ceafafa6c.json
+|   |   |   |   |   |-- 1772059499662-queue_complete-427f31c8-ae3d-410b-932c-9800de82c3a1.json
+|   |   |   |   |   |-- 1772061308582-queue_enqueue-fc1dd5a1-24ef-474c-8855-87885f994415.json
+|   |   |   |   |   |-- 1772061309583-bot_start-8d4840ce-2883-4741-898c-812f37625061.json
+|   |   |   |   |   |-- 1772061309583-queue_dequeue-18aab3a7-971e-42d7-bad0-2f920f50fa82.json
+|   |   |   |   |   |-- 1772061309587-action_start-9ff06060-d728-41a9-be12-c890802b4e3c.json
+|   |   |   |   |   |-- 1772061309588-action_success-849cb624-d7d3-406f-a525-3a6074692cf9.json
+|   |   |   |   |   |-- 1772061309590-bot_stop-d371ceac-4f28-4bc8-b77e-807ef7f6aae8.json
+|   |   |   |   |   |-- 1772061309590-queue_complete-932186da-962a-4e28-98e4-428b06dc845b.json
+|   |   |   |   |   |-- 1772061451301-queue_enqueue-6f729467-2bf6-4af8-9866-32a68ddd5a37.json
+|   |   |   |   |   |-- 1772061452301-queue_dequeue-df647a33-defa-4c33-8e47-5013010ca9b4.json
+|   |   |   |   |   |-- 1772061452302-bot_start-43d88fce-0fb1-406d-aacd-92c17e864d81.json
+|   |   |   |   |   |-- 1772061452306-action_start-d6862b5c-6a86-4f95-ace0-df4e202c79b1.json
+|   |   |   |   |   |-- 1772061452308-action_success-00d6a215-8ec3-4825-a94c-f0d875521555.json
+|   |   |   |   |   |-- 1772061452310-bot_stop-372e1f89-7b54-44bf-81c6-f6e07e645013.json
+|   |   |   |   |   |-- 1772061452310-queue_complete-7b995482-88d8-4f1b-97ae-6e118093794b.json
+|   |   |   |   |   |-- 1772061552174-queue_enqueue-1f18ef7b-2abe-4b5b-aa14-8a852995af4e.json
+|   |   |   |   |   |-- 1772061553175-queue_dequeue-29e1d3b2-74c5-456f-b747-ef0d0f9c2030.json
+|   |   |   |   |   |-- 1772061553177-bot_start-0f4ea2e7-aad6-4b35-9d05-13f1c05f507d.json
+|   |   |   |   |   |-- 1772061553183-action_start-ff2a218a-4c71-4bb4-8683-49d7094cc959.json
+|   |   |   |   |   |-- 1772061553185-action_success-5c4e2636-af3c-4608-8ffb-7f45c57f2591.json
+|   |   |   |   |   |-- 1772061553187-bot_stop-6def3f98-d5f4-4dff-90e1-75c95c1092de.json
+|   |   |   |   |   |-- 1772061553187-queue_complete-3fa26824-7983-422f-9b41-5957e93baa60.json
+|   |   |   |   |   |-- 1772062619261-queue_enqueue-754584b6-de48-4ace-82be-bb05e34cedd4.json
+|   |   |   |   |   |-- 1772062620261-bot_start-21b7c8ee-7caf-44f0-b8b2-fc8fc2240216.json
+|   |   |   |   |   |-- 1772062620261-queue_dequeue-f604fe5a-1503-4d72-bef5-c4f6a3ae5eb1.json
+|   |   |   |   |   |-- 1772062620264-action_start-0c191cb9-8cb2-4474-bc7a-fe46712e8f08.json
+|   |   |   |   |   |-- 1772062620265-action_success-06ffac97-cbe3-49ac-ab3a-583f73e3082c.json
+|   |   |   |   |   |-- 1772062620266-bot_stop-54164564-1d65-40f4-8d90-df58f456c0ed.json
+|   |   |   |   |   |-- 1772062620266-queue_complete-5ed05138-b537-40b1-9a0d-8d75ea5c862f.json
+|   |   |   |   |   |-- 1772062670797-queue_enqueue-40d2b679-85b4-4dd5-9126-a8199e748a63.json
+|   |   |   |   |   |-- 1772062671798-queue_dequeue-aef6c736-0413-4c9e-9e52-45345dc1f152.json
+|   |   |   |   |   |-- 1772062671799-bot_start-15dd98f0-1935-4709-94c9-94508e53a4b7.json
+|   |   |   |   |   |-- 1772062671804-action_start-58f3f7e8-6393-4622-9642-b5fb78e543ae.json
+|   |   |   |   |   |-- 1772062671806-action_success-cff33bfc-3424-4698-8b35-48d189a342c5.json
+|   |   |   |   |   |-- 1772062671808-bot_stop-549a3fb4-071c-4b2a-8442-61a5afc86673.json
+|   |   |   |   |   |-- 1772062671808-queue_complete-72ed1a7b-6daa-4cd8-bafa-99b5544bd8d0.json
+|   |   |   |   |   |-- 1772062736069-queue_enqueue-d06c5542-d826-4119-a9d0-17504370343b.json
+|   |   |   |   |   |-- 1772062737070-bot_start-266776dc-911d-4484-8eeb-9235d4895168.json
+|   |   |   |   |   |-- 1772062737070-queue_dequeue-7c7d325c-af75-46f6-848d-32c67432ff7f.json
+|   |   |   |   |   |-- 1772062737074-action_start-13d4127c-16ae-4e5b-8875-3810ff1a3a64.json
+|   |   |   |   |   |-- 1772062737075-action_success-2e0b5c32-6582-489e-8125-b3b4c06831ef.json
+|   |   |   |   |   |-- 1772062737077-bot_stop-bf295e1a-46dd-42f0-96e1-2763cf9533c0.json
+|   |   |   |   |   |-- 1772062737077-queue_complete-a7096b16-e6b8-4f11-8c08-925b5ca7257a.json
+|   |   |   |   |   |-- 1772063032199-queue_enqueue-6b7dca5b-cc8b-476c-adc2-cdf70e68b8ed.json
+|   |   |   |   |   |-- 1772063033199-bot_start-5172a12a-9d5f-4600-9233-1e68a96eed1c.json
+|   |   |   |   |   |-- 1772063033199-queue_dequeue-abe51262-dc5f-4b41-a6e1-ae577a66466e.json
+|   |   |   |   |   |-- 1772063033201-action_start-31af0ffa-b83b-4c13-bcd5-94789950aaaa.json
+|   |   |   |   |   |-- 1772063033202-action_success-a7094063-86a4-4af6-b3f5-93b06cab54f9.json
+|   |   |   |   |   |-- 1772063033203-bot_stop-0a586202-ed97-452d-afc8-c5f655e41d87.json
+|   |   |   |   |   |-- 1772063033203-queue_complete-c1337a89-8ab0-497f-bf30-cb0ac944596b.json
+|   |   |   |   |   |-- 1772063138657-queue_enqueue-51462d6d-9643-4cb2-a9f2-365e1256003a.json
+|   |   |   |   |   |-- 1772063139657-bot_start-6a4ed447-d63a-40a7-9009-b78c360076ec.json
+|   |   |   |   |   |-- 1772063139657-queue_dequeue-5fe6d636-3e53-4c87-a10b-c2c7efd9fa60.json
+|   |   |   |   |   |-- 1772063139660-action_start-c876e5f9-2635-46be-9c7f-57bb1a4e7d45.json
+|   |   |   |   |   |-- 1772063139661-action_success-86caa7cf-e780-46b5-83e2-f2474b68f039.json
+|   |   |   |   |   |-- 1772063139662-bot_stop-a06ffd78-7659-459e-acd4-7025066378c3.json
+|   |   |   |   |   |-- 1772063139662-queue_complete-97eb3a24-f363-48ba-852e-c0b95ef1bac4.json
+|   |   |   |   |   |-- 1772067151908-queue_enqueue-230da5a6-5581-4bda-9675-000034aac9cb.json
+|   |   |   |   |   |-- 1772067152067-bot_start-deaac637-5e8e-4213-a501-c1d55a9d0886.json
+|   |   |   |   |   |-- 1772067152067-queue_dequeue-fe85eb19-3b93-4d00-ad3f-091a69b53bdb.json
+|   |   |   |   |   |-- 1772067152070-action_start-8de47573-eaeb-482b-bf05-299578f89da2.json
+|   |   |   |   |   |-- 1772067152071-action_success-b09d6448-48a4-400a-8c6f-0fab5fd0f497.json
+|   |   |   |   |   |-- 1772067152072-bot_stop-f970b1da-68c7-44c4-8a31-e552a9ab9db4.json
+|   |   |   |   |   |-- 1772067152072-queue_complete-bcfb3f8e-bca6-4bbd-9c64-31c2eb2412ce.json
+|   |   |   |   |   |-- 1772067430984-queue_enqueue-09cf8c94-405c-4e38-99ed-6b99624576f4.json
+|   |   |   |   |   |-- 1772067431398-bot_start-9fc17948-96fa-42df-9053-e818cac4888a.json
+|   |   |   |   |   |-- 1772067431398-queue_dequeue-d8fb053b-0536-4084-86ea-f680e061b5fb.json
+|   |   |   |   |   |-- 1772067431402-action_start-4705d248-af27-4861-b54a-ae0f0e52ebc0.json
+|   |   |   |   |   |-- 1772067431403-action_fail-b0eee365-a042-42c6-bb91-032ed835dd6a.json
+|   |   |   |   |   |-- 1772067431404-bot_stop-d6e50261-e3fb-481a-bf46-ba19f9b56177.json
+|   |   |   |   |   |-- 1772067431404-queue_complete-40a5fc0e-619f-413d-a2fd-d54eacbcf662.json
+|   |   |   |   |   |-- 1772133625667-policy_block-4754d02d-8cac-4667-a9b4-b18abc743e64.json
+|   |   |   |   |   |-- 1772133625671-action_start-38bec5ea-8b9b-4c3c-a7a3-371ae3b49478.json
+|   |   |   |   |   |-- 1772133625672-action_success-3d584b6c-aace-4f95-bc4a-6afc6841c48e.json
+|   |   |   |   |   |-- 1772134286253-policy_block-d555731b-9a1a-49cc-a012-6e5a475179f4.json
+|   |   |   |   |   |-- 1772134286257-action_start-f65c886a-e231-496f-a297-cdd8ebafeb08.json
+|   |   |   |   |   |-- 1772134286258-action_success-0d740978-deeb-4ec3-9da1-6aab8e4eaa2d.json
+|   |   |   |   |   |-- 1772137298552-policy_block-55375e35-6109-4852-8e0d-f944e913660a.json
+|   |   |   |   |   |-- 1772137298556-action_start-da20d15f-719e-4230-b7d3-a6a6f6e5864f.json
+|   |   |   |   |   |-- 1772137298557-action_success-3b00515f-b45a-444a-b353-98fe10274c6e.json
+|   |   |   |   |   |-- 1772137422014-policy_block-7d2a5d82-7318-4679-b0ac-4cc7c70e497e.json
+|   |   |   |   |   |-- 1772137422018-action_start-0b8867e6-2372-493c-83b3-9eea1ab08f3d.json
+|   |   |   |   |   |-- 1772137422019-action_success-048f8a5e-ab9b-4f4f-ab57-d78665c15742.json
+|   |   |   |   |   |-- 1772137988779-policy_block-90cadd70-6d13-4729-a4c1-c4099e0e40a0.json
+|   |   |   |   |   |-- 1772137988783-action_start-01b1131a-c87f-4ffd-a62a-29d87ced172e.json
+|   |   |   |   |   |-- 1772137988785-action_success-ee0c717b-535d-48f7-8b1a-73c41b2f799f.json
+|   |   |   |   |   |-- 1772138625552-policy_block-ee87fc36-4814-4885-948f-e5403bbb6e51.json
+|   |   |   |   |   |-- 1772138625556-action_start-0602c30c-e00a-4247-a0cd-76e9efd30204.json
+|   |   |   |   |   |-- 1772138625557-action_success-a97d5c8d-fa46-4b7a-a75a-f4b197b95524.json
+|   |   |   |   |   |-- 1772138930853-policy_block-b517ddd9-d0d0-4169-b90c-2d3f7a0f5fee.json
+|   |   |   |   |   |-- 1772138930857-action_start-770fd59b-0620-4a96-a263-a788c390e064.json
+|   |   |   |   |   |-- 1772138930858-action_success-60011c66-cef0-43af-9a1a-413fb1791565.json
+|   |   |   |   |   |-- 1772138938563-policy_block-36275d6b-913a-441e-9523-d9b010c898e3.json
+|   |   |   |   |   |-- 1772138938567-action_start-651a0fd4-9989-44b0-9e5f-7cc114e8182d.json
+|   |   |   |   |   |-- 1772138938568-action_success-5d5c9204-589b-4959-81bf-9468986b8d7e.json
+|   |   |   |   |   |-- 1772138966333-policy_block-a46fa5d3-27a3-48c7-88ef-56663429d682.json
+|   |   |   |   |   |-- 1772138966337-action_start-58c4b551-5694-46c1-beda-cc626fb94552.json
+|   |   |   |   |   |-- 1772138966338-action_success-ebd0d4d3-0f45-42dc-8ae3-419a2b8f9231.json
+|   |   |   |   |   |-- 1772140370218-policy_block-7883420e-405b-42b2-a91d-f13d2322baee.json
+|   |   |   |   |   |-- 1772140370223-action_start-fc2a7f6f-1e77-406f-a210-c74cd1204a66.json
+|   |   |   |   |   |-- 1772140370224-action_success-12df1abf-2808-4717-9bcb-98f8a1f9bcee.json
+|   |   |   |   |   |-- 1772140641145-policy_block-f161b8b9-bcda-4217-99aa-5e62cfbff97f.json
+|   |   |   |   |   |-- 1772140641150-action_fail-2ca29cc2-d898-49ba-b97d-a7298cbb1d3c.json
+|   |   |   |   |   |-- 1772140641150-action_start-9bd162e0-b9f1-49c5-962e-6752e4a06998.json
+|   |   |   |   |   |-- 1772140663740-policy_block-0294b657-49a3-4160-b364-85a5b60ab66a.json
+|   |   |   |   |   |-- 1772140663746-action_start-af245f02-92df-4a0c-bfce-53761e24a4f2.json
+|   |   |   |   |   `-- 1772140663747-action_success-2ac1b807-e999-4e19-a597-a1c3d67b62bc.json
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-02-25.md
+|   |   |   |   |   |-- 2026-02-26.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   |-- 5831ae72-0ee8-4313-ab7f-83c51197c71e.jsonl
+|   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.jsonl
 |   |   |   |   |   `-- sessions.json
 |   |   |   |   |-- summaries/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   `-- 5831ae72-0ee8-4313-ab7f-83c51197c71e.md
+|   |   |   |   |   `-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.md
 |   |   |   |   |-- summary/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   `-- 2026-02-25.log
+|   |   |   |   |   |-- 2026-02-25.log
+|   |   |   |   |   `-- 2026-02-26.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   `-- 2026-02-25.log
+|   |   |   |   |   |-- 2026-02-25.log
+|   |   |   |   |   `-- 2026-02-26.log
 |   |   |   |   |-- .gitignore
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
@@ -45,6 +158,21 @@ apps/trenchclaw/
 |   |   |   |   |   |-- dexscreener-actions.md
 |   |   |   |   |   `-- dexscreener-api-reference.md
 |   |   |   |   |-- skills/
+|   |   |   |   |   |-- agent-browser/
+|   |   |   |   |   |   |-- references/
+|   |   |   |   |   |   |   |-- authentication.md
+|   |   |   |   |   |   |   |-- commands.md
+|   |   |   |   |   |   |   |-- profiling.md
+|   |   |   |   |   |   |   |-- proxy-support.md
+|   |   |   |   |   |   |   |-- session-management.md
+|   |   |   |   |   |   |   |-- snapshot-refs.md
+|   |   |   |   |   |   |   `-- video-recording.md
+|   |   |   |   |   |   |-- templates/
+|   |   |   |   |   |   |   |-- authenticated-session.sh
+|   |   |   |   |   |   |   |-- capture-workflow.sh
+|   |   |   |   |   |   |   `-- form-automation.sh
+|   |   |   |   |   |   `-- SKILL.md
+|   |   |   |   |   `-- skills-lock.json
 |   |   |   |   |-- data-structures-as-json.md
 |   |   |   |   |-- helius.md
 |   |   |   |   |-- KNOWLEDGE_MANIFEST.md
@@ -66,6 +194,7 @@ apps/trenchclaw/
 |   |   |   |       |   |-- dangerous.yaml
 |   |   |   |       |   |-- safe.yaml
 |   |   |   |       |   `-- veryDangerous.yaml
+|   |   |   |       |-- filesystem-manifest.yaml
 |   |   |   |       |-- payload-manifest.yaml
 |   |   |   |       `-- system.md
 |   |   |   |-- user-settings/
@@ -74,8 +203,14 @@ apps/trenchclaw/
 |   |   |   |   |-- settings.yaml
 |   |   |   |   `-- swap.yaml
 |   |   |   |-- workspace/
+|   |   |   |   |-- .tests/
 |   |   |   |   |-- misc-scripts/
 |   |   |   |   |-- notes/
+|   |   |   |   |-- strategies/
+|   |   |   |   |   |-- .tests/
+|   |   |   |   |   `-- .keep
+|   |   |   |   |-- typescript/
+|   |   |   |   |   `-- .keep
 |   |   |   |   |-- ui/
 |   |   |   |   `-- rules.md
 |   |   |   |-- rules.md
@@ -125,6 +260,8 @@ apps/trenchclaw/
 |   |   |-- logging/
 |   |   |   |-- index.ts
 |   |   |   `-- runtime-logger.ts
+|   |   |-- security/
+|   |   |   `-- filesystem-manifest.ts
 |   |   |-- storage/
 |   |   |   |-- file-event-log.ts
 |   |   |   |-- index.ts
@@ -139,7 +276,9 @@ apps/trenchclaw/
 |   |   |   |-- summary-log-store.ts
 |   |   |   `-- system-log-store.ts
 |   |   |-- bootstrap.ts
-|   |   `-- index.ts
+|   |   |-- chat.ts
+|   |   |-- index.ts
+|   |   `-- workspace-bash.ts
 |   |-- solana/
 |   |   |-- actions/
 |   |   |   |-- data-fetch/
@@ -158,6 +297,7 @@ apps/trenchclaw/
 |   |   |   |   |   `-- shared.ts
 |   |   |   |   |-- runtime/
 |   |   |   |   |   |-- index.ts
+|   |   |   |   |   |-- pingRuntime.ts
 |   |   |   |   |   `-- queryRuntimeStore.ts
 |   |   |   |   `-- index.ts
 |   |   |   |-- wallet-based/
@@ -238,6 +378,44 @@ apps/trenchclaw/
 ```
 
 Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelte-kit, dist, build, coverage
+
+## Runtime Action Catalog (Generated)
+| actionName | category | subcategory | inputSchema | outputSchema |
+| --- | --- | --- | --- | --- |
+| createBlockchainAlert | data-based | read-only | yes | no |
+| createWallets | wallet-based |  | yes | no |
+| pingRuntime | data-based | read-only | yes | no |
+| privacyAirdrop | wallet-based | transfer | yes | no |
+| privacyTransfer | wallet-based | transfer | yes | no |
+| queryRuntimeStore | data-based | read-only | yes | no |
+| renameWallets | wallet-based |  | yes | no |
+| transfer | wallet-based | transfer | yes | no |
+
+## Runtime Chat Tool Catalog (Generated)
+| toolName |
+| --- |
+| createBlockchainAlert |
+| createWallets |
+| pingRuntime |
+| privacyAirdrop |
+| privacyTransfer |
+| queryRuntimeStore |
+| renameWallets |
+| transfer |
+| workspaceBash |
+| workspaceReadFile |
+| workspaceWriteFile |
+
+## GUI API Route Catalog (Generated)
+| routePath |
+| --- |
+| /api/chat |
+| /api/gui/activity |
+| /api/gui/bootstrap |
+| /api/gui/instances |
+| /api/gui/instances/sign-in |
+| /api/gui/queue |
+| /api/gui/tests/dispatcher |
 
 ## SQLite Schema Snapshot
 ```text
