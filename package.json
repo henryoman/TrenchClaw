@@ -35,6 +35,7 @@
     "lint": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run lint",
     "lint:fix": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run lint:fix",
     "test": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run test",
+    "test:runtime-chat": "bun test tests/runtime/chat-service.test.ts tests/frontends/gui-transport.test.ts",
     "generate": "bun run --cwd apps/trenchclaw generate",
     "context:refresh": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run context:refresh --filter=@trenchclaw/core",
     "cleanup:runtime": "bun run --cwd apps/trenchclaw cleanup:runtime",

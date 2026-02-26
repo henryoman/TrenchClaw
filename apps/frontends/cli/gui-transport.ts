@@ -1,7 +1,6 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { createOpenAI } from "@ai-sdk/openai";
 import type {
   GuiActivityEntry,
   GuiActivityResponse,
@@ -17,11 +16,8 @@ import type {
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
 } from "@trenchclaw/types";
-import { convertToModelMessages, createGateway, stepCountIs, streamText, tool, type LanguageModel, type UIMessage } from "ai";
+import type { UIMessage } from "ai";
 import type { RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
-import { createActionContext } from "../../trenchclaw/src/ai/runtime/types/context";
-import { resolveLlmProviderConfigFromEnv } from "../../trenchclaw/src/ai/llm/config";
-import { z } from "zod";
 import { CORE_APP_ROOT } from "./runtime-paths";
 
 const GUI_CONVERSATION_ID = "gui-main";
@@ -34,9 +30,6 @@ const CORS_HEADERS = {
   "access-control-allow-headers": "content-type,accept",
 };
 const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
-const DEFAULT_WALLET_OUTPUT_DIRECTORY = "src/ai/brain/protected/keypairs";
-const DEFAULT_WALLET_LIBRARY_FILE = "src/ai/brain/protected/wallet-library.jsonl";
-const WALLET_PATH_PATTERN = /^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/u;
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
 
@@ -57,32 +50,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 const createMessageId = (): string => crypto.randomUUID();
-
-const trimOrUndefined = (value: string | undefined): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const resolveStreamingModel = (): LanguageModel => {
-  const gatewayApiKey = trimOrUndefined(process.env.AI_GATEWAY_API_KEY);
-  if (gatewayApiKey) {
-    const gateway = createGateway({ apiKey: gatewayApiKey });
-    return gateway(trimOrUndefined(process.env.TRENCHCLAW_AI_MODEL) ?? "anthropic/claude-sonnet-4.5");
-  }
-
-  const llmConfig = resolveLlmProviderConfigFromEnv();
-  if (!llmConfig) {
-    throw new Error(
-      "No model provider configured. Set AI_GATEWAY_API_KEY or your TRENCHCLAW/OpenAI provider env vars.",
-    );
-  }
-
-  const openai = createOpenAI({
-    apiKey: llmConfig.apiKey,
-    baseURL: llmConfig.baseURL,
-  });
-  return openai.responses(llmConfig.model);
-};
 
 const mapJobToView = (job: ReturnType<RuntimeBootstrap["stateStore"]["listJobs"]>[number]): GuiQueueJobView => ({
   id: job.id,
@@ -124,36 +91,6 @@ const parseUiChatRequest = async (request: Request): Promise<{ messages: UIMessa
     return null;
   }
 };
-
-const createWalletsToolInputSchema = z.object({
-  count: z.number().int().min(1).max(25).default(1),
-  includePrivateKey: z.boolean().default(true),
-  privateKeyEncoding: z.enum(["base64", "hex", "bytes"]).default("base64"),
-  walletPath: z.string().trim().regex(WALLET_PATH_PATTERN).optional(),
-  walletLocator: z
-    .object({
-      group: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/u).default("default"),
-      wallet: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/u).optional(),
-      startIndex: z.number().int().positive().default(1),
-    })
-    .default({
-      group: "default",
-      startIndex: 1,
-    }),
-  output: z
-    .object({
-      directory: z.string().min(1).default(DEFAULT_WALLET_OUTPUT_DIRECTORY),
-      filePrefix: z.string().min(1).default("wallet"),
-      includeIndexInFileName: z.boolean().default(true),
-      walletLibraryFile: z.string().min(1).default(DEFAULT_WALLET_LIBRARY_FILE),
-    })
-    .default({
-      directory: DEFAULT_WALLET_OUTPUT_DIRECTORY,
-      filePrefix: "wallet",
-      includeIndexInFileName: true,
-      walletLibraryFile: DEFAULT_WALLET_LIBRARY_FILE,
-    }),
-});
 
 const parseCreateInstanceRequest = async (request: Request): Promise<GuiCreateInstanceRequest | null> => {
   try {
@@ -431,29 +368,8 @@ export class RuntimeGuiTransport {
     });
     this.addActivity("chat", `Prompt received: ${message.slice(0, 72)}${message.length > 72 ? "..." : ""}`);
 
-    if (!this.runtime.llm) {
-      const fallback = "LLM is not configured. Set provider credentials to enable live chat responses.";
-      const responseTime = Date.now();
-      this.runtime.stateStore.saveChatMessage({
-        id: createMessageId(),
-        conversationId: conversation.id,
-        role: "assistant",
-        content: fallback,
-        createdAt: responseTime,
-      });
-      this.runtime.stateStore.saveConversation({
-        ...conversation,
-        updatedAt: responseTime,
-      });
-      this.addActivity("chat", "Response confirmed (LLM disabled)");
-      return {
-        reply: fallback,
-        llmEnabled: false,
-      };
-    }
-
     try {
-      const result = await this.runtime.llm.generate({
+      const result = await this.runtime.chat.generateText({
         prompt: message,
         maxOutputTokens: 900,
       });
@@ -472,7 +388,7 @@ export class RuntimeGuiTransport {
       this.addActivity("chat", "Response confirmed");
       return {
         reply: result.text,
-        llmEnabled: true,
+        llmEnabled: this.runtime.llm !== null,
       };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -482,86 +398,8 @@ export class RuntimeGuiTransport {
   }
 
   async streamChat(messages: UIMessage[]): Promise<Response> {
-    const model = resolveStreamingModel();
-    const result = streamText({
-      model,
-      system: [
-        "You are TrenchClaw's runtime assistant.",
-        "When the user asks to create Solana wallets or wallet JSON files, call the createWallets tool.",
-        "Do not claim wallets were created unless the tool confirms success.",
-      ].join(" "),
-      messages: await convertToModelMessages(messages),
-      stopWhen: stepCountIs(5),
-      tools: {
-        createWallets: tool({
-          description:
-            "Create Solana wallets and write keypair JSON files plus wallet-library.jsonl in the protected runtime directory.",
-          inputSchema: createWalletsToolInputSchema,
-          execute: async (rawInput) => {
-            const input = createWalletsToolInputSchema.parse(rawInput);
-            this.addActivity("chat", `Tool createWallets requested (count=${input.count})`);
-
-            const dispatchResult = await this.runtime.dispatcher.dispatchStep(
-              createActionContext({
-                actor: "user",
-                eventBus: this.runtime.eventBus,
-                stateStore: this.runtime.stateStore,
-              }),
-              {
-                actionName: "createWallets",
-                input,
-              },
-            );
-
-            const actionResult = dispatchResult.results[0];
-            if (!actionResult) {
-              this.addActivity("chat", "Tool createWallets failed: missing dispatcher result");
-              return {
-                ok: false,
-                error: "createWallets dispatcher returned no result",
-              };
-            }
-
-            if (!actionResult.ok) {
-              const error = actionResult.error ?? "createWallets failed";
-              this.addActivity("chat", `Tool createWallets failed: ${error.slice(0, 120)}`);
-              return {
-                ok: false,
-                error,
-              };
-            }
-
-            const payload = actionResult.data as
-              | {
-                  wallets?: Array<{
-                    walletPath: string;
-                    address: string;
-                    keypairFilePath?: string;
-                  }>;
-                  outputDirectory?: string;
-                  files?: string[];
-                  walletLibraryFilePath?: string;
-                }
-              | undefined;
-            const createdCount = payload?.wallets?.length ?? 0;
-            this.addActivity("chat", `Tool createWallets confirmed (${createdCount} wallet${createdCount === 1 ? "" : "s"})`);
-
-            return {
-              ok: true,
-              createdCount,
-              outputDirectory: payload?.outputDirectory ?? null,
-              walletLibraryFilePath: payload?.walletLibraryFilePath ?? null,
-              files: payload?.files ?? [],
-              wallets: payload?.wallets ?? [],
-            };
-          },
-        }),
-      },
-    });
-
-    return result.toUIMessageStreamResponse({
-      headers: CORS_HEADERS,
-    });
+    this.addActivity("chat", `Streaming prompt received (${messages.length} message${messages.length === 1 ? "" : "s"})`);
+    return this.runtime.chat.stream(messages, { headers: CORS_HEADERS });
   }
 
   createApiHandler(): (request: Request) => Promise<Response> {

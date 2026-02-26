@@ -55,6 +55,7 @@ import {
   SystemLogStore,
   type ActiveSessionInfo,
 } from "./storage";
+import { createRuntimeChatService, type RuntimeChatService } from "./chat";
 
 type RuntimeAction = Action<any, any>;
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = new Set([
@@ -540,6 +541,7 @@ export interface RuntimeBootstrap {
   scheduler: Scheduler;
   dispatcher: ActionDispatcher;
   registry: ActionRegistry;
+  chat: RuntimeChatService;
   session: ActiveSessionInfo | null;
   stop: () => void;
   enqueueJob: (input: { botId: string; routineName: string; config?: Record<string, unknown> }) => JobState;
@@ -763,6 +765,13 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     scheduler,
     dispatcher,
     registry,
+    chat: createRuntimeChatService({
+      dispatcher,
+      registry,
+      eventBus,
+      stateStore,
+      llm,
+    }),
     session,
     stop: () => {
       scheduler.stop();
