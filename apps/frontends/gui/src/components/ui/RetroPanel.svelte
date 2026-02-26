@@ -12,6 +12,7 @@
     border: var(--tc-border);
     background: var(--tc-color-black);
     min-height: 0;
+    height: 100%;
     display: grid;
     grid-template-rows: auto 1fr;
   }
@@ -29,5 +30,7 @@
     min-height: 0;
     padding: 10px;
     overflow: auto;
+    display: flex;
+    flex-direction: column;
   }
 </style>

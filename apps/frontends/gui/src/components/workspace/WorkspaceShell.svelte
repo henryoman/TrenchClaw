@@ -13,9 +13,10 @@
 
 <style>
   .layout {
-    min-height: 100vh;
+    height: 100%;
     display: grid;
     grid-template-columns: 110px 1fr;
+    grid-template-rows: 1fr;
     gap: var(--tc-space-3);
     padding: var(--tc-space-3);
     box-sizing: border-box;
@@ -25,6 +26,7 @@
     min-height: 0;
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
     gap: var(--tc-space-3);
   }
 

@@ -7,7 +7,7 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
   color: var(--tc-color-gray-3);
   background: var(--tc-color-black);
   font-family: var(--tc-font-ui);
@@ -24,5 +24,5 @@ textarea {
 }
 
 #app {
-  min-height: 100vh;
+  height: 100vh;
 }
