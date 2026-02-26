@@ -142,6 +142,45 @@ export class ActionDispatcher {
         const output = await action.execute(ctx, input);
         await action.postcheck?.(ctx, input, output);
 
+        // Actions may return a structured failure result without throwing.
+        // Treat that as a failure path (with optional retry), not success.
+        if (!output.ok) {
+          const durationMs = output.durationMs || Date.now() - start;
+          const timestamp = output.timestamp || Date.now();
+          const message = output.error || `Action "${action.name}" returned an unsuccessful result`;
+          const retryable = Boolean(output.retryable);
+          const canRetry = retryable && attempt < maxAttempts;
+
+          if (canRetry) {
+            const nextRetryMs = computeBackoffMs(retry, attempt);
+            this.deps.eventBus.emit("action:retry", {
+              actionName: action.name,
+              idempotencyKey,
+              attempt,
+              nextRetryMs,
+            });
+            await sleep(nextRetryMs);
+            continue;
+          }
+
+          this.deps.eventBus.emit("action:fail", {
+            actionName: action.name,
+            idempotencyKey,
+            error: message,
+            retryable,
+            attempts: attempt,
+          });
+
+          return {
+            ...output,
+            error: message,
+            retryable,
+            durationMs,
+            timestamp,
+            idempotencyKey,
+          };
+        }
+
         const result: ActionResult = {
           ...output,
           durationMs: output.durationMs || Date.now() - start,

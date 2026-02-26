@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@ai-sdk/svelte": "^4.0.99",
+    "@openrouter/ai-sdk-provider": "^2.2.3",
     "@trenchclaw/types": "workspace:*",
     "ai": "^6.0.99",
     "zod": "^4.3.6"

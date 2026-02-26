@@ -1,5 +1,14 @@
+<script lang="ts">
+  export let runtimeStatus = "";
+</script>
+
 <main class="loading-shell">
-  <div class="loading-card">Bootstrapping runtime connection...</div>
+  <div class="loading-card">
+    <span>Connecting to runtime...</span>
+    {#if runtimeStatus}
+      <span class="status">{runtimeStatus}</span>
+    {/if}
+  </div>
 </main>
 
 <style>
@@ -18,5 +27,13 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-size: 0.82rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--tc-space-2);
+  }
+
+  .status {
+    color: var(--tc-color-gray-1);
+    font-size: 0.75rem;
   }
 </style>

@@ -49,10 +49,6 @@ const walletSchema = z.object({
 const tradingSchema = z.object({
   enabled: z.boolean(),
   programId: z.union([z.string().min(1), z.null()]),
-  mode: z.object({
-    simulation: z.boolean(),
-    paperTrading: z.boolean(),
-  }),
   confirmations: z.object({
     requireUserConfirmationForDangerousActions: z.boolean(),
     userConfirmationToken: z.string().min(1),

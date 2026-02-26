@@ -26,6 +26,8 @@ import { CORE_APP_ROOT } from "./runtime-paths";
 
 const GUI_CONVERSATION_ID = "gui-main";
 const MAX_ACTIVITY_ITEMS = 250;
+const GUI_QUEUE_INCLUDE_HISTORY = process.env.GUI_QUEUE_INCLUDE_HISTORY === "1";
+const ACTIVE_JOB_STATUSES = new Set(["pending", "running", "paused"]);
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET,POST,OPTIONS",
@@ -329,7 +331,11 @@ export class RuntimeGuiTransport {
   }
 
   getQueue(): GuiQueueResponse {
-    const jobs = this.runtime.stateStore.listJobs().toSorted((a, b) => b.updatedAt - a.updatedAt).map(mapJobToView);
+    const jobs = this.runtime.stateStore
+      .listJobs()
+      .toSorted((a, b) => b.updatedAt - a.updatedAt)
+      .map(mapJobToView)
+      .filter((job) => GUI_QUEUE_INCLUDE_HISTORY || ACTIVE_JOB_STATUSES.has(job.status));
     return { jobs };
   }
 

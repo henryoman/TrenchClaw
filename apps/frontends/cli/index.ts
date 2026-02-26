@@ -21,6 +21,7 @@ export interface RuntimeServerInfo {
 }
 
 const DEFAULT_RUNTIME_PROFILE: RuntimeSafetyProfile = "dangerous";
+const DEV_BOOTSTRAP_CREATE_WALLETS_ENABLED = process.env.DEV_BOOTSTRAP_CREATE_WALLETS === "1";
 
 export const parseCliArgs = (argv: string[]): ParsedCliArgs => {
   const [, , ...rest] = argv;
@@ -153,7 +154,7 @@ export const startCli = async (argv: string[] = Bun.argv): Promise<ParsedCliArgs
 
   installShutdownHooks(runtime);
 
-  if (parsedArgs.mode === "dev") {
+  if (parsedArgs.mode === "dev" && DEV_BOOTSTRAP_CREATE_WALLETS_ENABLED) {
     runtime.enqueueJob({
       botId: "dev-bootstrap",
       routineName: "createWallets",

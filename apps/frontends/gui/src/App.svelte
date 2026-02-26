@@ -1,12 +1,10 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
-  import { CREATE_NEW_OPTION, STARTUP_GUARD_TIMEOUT_MS } from "./config";
+  import { onDestroy } from "svelte";
+  import { CREATE_NEW_OPTION } from "./config";
   import {
     ChatPanel,
     CreateInstanceModal,
     LandingSplash,
-    LoadingSplash,
-    LoginSplash,
     QueuePanel,
     SummaryPanel,
     WorkspaceShell,
@@ -15,11 +13,11 @@
   import { createRuntimeController, formatTime } from "./features/runtime/runtime-controller.svelte";
 
   const runtime = createRuntimeController();
+  void runtime.initializeSplash();
   type ChatController = ReturnType<typeof CreateChatController>;
 
-  let chat: ChatController | null = null;
-  let chatInitError = "";
-  let startupGuardTimer: ReturnType<typeof setTimeout> | null = null;
+  let chat: ChatController | null = $state(null);
+  let chatInitError = $state("");
 
   const ensureChatController = async (): Promise<void> => {
     if (chat) {
@@ -35,77 +33,29 @@
     }
   };
 
-  $: if (runtime.state.phase === "app" && !chat) {
-    void ensureChatController();
-  }
-
-  const clearStartupGuard = (): void => {
-    if (!startupGuardTimer) {
-      return;
+  $effect(() => {
+    if (runtime.state.phase === "app" && !chat) {
+      void ensureChatController();
     }
-    clearTimeout(startupGuardTimer);
-    startupGuardTimer = null;
-  };
-
-  const armStartupGuard = (): void => {
-    clearStartupGuard();
-    startupGuardTimer = setTimeout(() => {
-      if (runtime.state.phase !== "loading") {
-        return;
-      }
-
-      runtime.state.runtimeStatus = "runtime: offline";
-      runtime.state.splashError = "Startup timed out. Runtime did not respond. Check `bun run dev` logs and retry.";
-      runtime.state.phase = "landing";
-    }, STARTUP_GUARD_TIMEOUT_MS);
-  };
-
-  $: if (runtime.state.phase !== "loading") {
-    clearStartupGuard();
-  }
-
-  onMount(() => {
-    armStartupGuard();
-    void runtime.initializeSplash().finally(() => {
-      if (runtime.state.phase !== "loading") {
-        clearStartupGuard();
-      }
-    });
   });
 
   onDestroy(() => {
-    clearStartupGuard();
     runtime.stopPolling();
   });
 </script>
 
-{#if runtime.state.phase === "loading"}
-  <LoadingSplash />
-{:else if runtime.state.phase === "landing"}
+{#if runtime.state.phase === "landing"}
   <LandingSplash
     runtimeStatus={runtime.state.runtimeStatus}
     error={runtime.state.splashError}
+    busy={runtime.state.splashBusy}
+    onRetry={() => {
+      void runtime.initializeSplash();
+    }}
     onCreate={runtime.openCreateModal}
   />
-{:else if runtime.state.phase === "login"}
-  <LoginSplash
-    instances={runtime.state.availableInstances}
-    bind:selectedId={runtime.state.signInInstanceId}
-    bind:pin={runtime.state.signInPin}
-    runtimeStatus={runtime.state.runtimeStatus}
-    error={runtime.state.splashError}
-    busy={runtime.state.splashBusy}
-    createNewOption={CREATE_NEW_OPTION}
-    onSubmit={() => {
-      void runtime.submitSignIn(CREATE_NEW_OPTION).then(() => {
-        if (runtime.state.phase === "app") {
-          void ensureChatController();
-        }
-      });
-    }}
-  />
 {:else}
-  <WorkspaceShell instanceName={runtime.state.activeInstance?.name ?? "operator"} runtimeStatus={runtime.state.runtimeStatus}>
+  <WorkspaceShell runtimeStatus={runtime.state.runtimeStatus}>
     {#if chat}
       <ChatPanel
         messages={chat.chat.messages}

@@ -4,12 +4,17 @@
 
   export let runtimeStatus = "";
   export let error = "";
+  export let busy = false;
+  export let onRetry: () => void;
   export let onCreate: () => void;
 </script>
 
 <main class="splash-shell">
   <RetroCard center={true}>
     <h1>TrenchClaw</h1>
+    <RetroButton variant="secondary" disabled={busy} on:click={onRetry}>
+      {busy ? "Checking Runtime..." : "Retry Runtime Check"}
+    </RetroButton>
     <RetroButton on:click={onCreate}>Create New Instance</RetroButton>
     {#if error}
       <p class="error">{error}</p>

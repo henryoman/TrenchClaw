@@ -11,40 +11,49 @@
 </script>
 
 <RetroPanel title="Chat">
-  <div class="chat-wrap">
-    {#if messages.length === 0}
-      <p class="hint">Console linked. Ask for actions, then verify queue and confirmations in the right panels.</p>
-    {/if}
+  <div class="chat-panel">
+    <div class="chat-wrap">
+      {#if messages.length === 0}
+        <p class="hint">Console linked. Ask for actions, then verify queue and confirmations in the right panels.</p>
+      {/if}
 
-    {#each messages as message}
-      <div class={`row ${message.role}`}>
-        <span>{message.role === "assistant" ? "TrenchClaw" : message.role === "user" ? "You" : "System"}</span>
-        <br />
-        {#each message.parts as part}
-          {#if part.type === "text"}
-            <span>{part.text}</span>
-          {:else if part.type.startsWith("tool-")}
-            <pre>{JSON.stringify(part, null, 2)}</pre>
-          {/if}
-        {/each}
-      </div>
-    {/each}
+      {#each messages as message}
+        <div class={`row ${message.role}`}>
+          <span>{message.role === "assistant" ? "TrenchClaw" : message.role === "user" ? "You" : "System"}</span>
+          <br />
+          {#each message.parts as part}
+            {#if part.type === "text"}
+              <span>{part.text}</span>
+            {:else if part.type.startsWith("tool-")}
+              <pre>{JSON.stringify(part, null, 2)}</pre>
+            {/if}
+          {/each}
+        </div>
+      {/each}
+    </div>
+    <form
+      class="chat-form"
+      on:submit|preventDefault={() => {
+        onSubmit();
+      }}
+    >
+      <RetroInput bind:value={input} placeholder="Ask TrenchClaw..." />
+      <RetroButton type="submit" disabled={sending}>Send</RetroButton>
+    </form>
   </div>
-  <form
-    class="chat-form"
-    on:submit|preventDefault={() => {
-      onSubmit();
-    }}
-  >
-    <RetroInput bind:value={input} placeholder="Ask TrenchClaw..." />
-    <RetroButton type="submit" disabled={sending}>Send</RetroButton>
-  </form>
 </RetroPanel>
 
 <style>
+  .chat-panel {
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
   .chat-wrap {
     border: var(--tc-border-muted);
     min-height: 0;
+    flex: 1;
     overflow: auto;
     padding: var(--tc-space-2);
     background: var(--tc-color-black);
@@ -95,5 +104,10 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: var(--tc-space-2);
+  }
+
+  :global(.chat-form .retro-input) {
+    font-size: 0.8rem;
+    line-height: 1.4;
   }
 </style>

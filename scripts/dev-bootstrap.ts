@@ -84,6 +84,12 @@ const waitForExit = async (proc: Bun.Subprocess): Promise<number> => {
   return code ?? 0;
 };
 
+const waitForExitOrTimeout = async (proc: Bun.Subprocess, timeoutMs: number): Promise<boolean> =>
+  await Promise.race([
+    proc.exited.then(() => true),
+    Bun.sleep(timeoutMs).then(() => false),
+  ]);
+
 const signalStop = (proc: Bun.Subprocess): void => {
   if (proc.killed || proc.exitCode !== null) {
     return;
@@ -145,53 +151,65 @@ const run = async (): Promise<void> => {
 
   let guiProc: Bun.Subprocess | null = null;
   let shuttingDown = false;
-  let shutdownTimer: ReturnType<typeof setTimeout> | null = null;
+  let shutdownPromise: Promise<void> | null = null;
+  const shutdownGraceMs = Number.parseInt(process.env.BOOTSTRAP_SHUTDOWN_GRACE_MS || "2500", 10);
 
-  const stopChildren = (): void => {
-    signalStop(runtimeProc);
-    if (guiProc) {
-      signalStop(guiProc);
+  const shutdown = (exitCode: number): Promise<void> => {
+    if (shutdownPromise) {
+      return shutdownPromise;
     }
-  };
 
-  const forceStopChildren = (): void => {
-    forceStop(runtimeProc);
-    if (guiProc) {
-      forceStop(guiProc);
-    }
-  };
-
-  const shutdown = (exitCode: number): void => {
-    if (shuttingDown) {
-      return;
-    }
     shuttingDown = true;
-
-    stopChildren();
     process.exitCode = exitCode;
 
-    shutdownTimer = setTimeout(() => {
-      forceStopChildren();
-      process.exit(exitCode);
-    }, 1500);
-    shutdownTimer.unref();
+    shutdownPromise = (async () => {
+      const procs: Array<{ label: string; proc: Bun.Subprocess | null }> = [
+        { label: "runtime", proc: runtimeProc },
+        { label: "gui", proc: guiProc },
+      ];
+
+      for (const item of procs) {
+        if (!item.proc) {
+          continue;
+        }
+        signalStop(item.proc);
+      }
+
+      for (const item of procs) {
+        if (!item.proc) {
+          continue;
+        }
+
+        const exitedGracefully = await waitForExitOrTimeout(item.proc, shutdownGraceMs);
+        if (exitedGracefully) {
+          continue;
+        }
+
+        console.warn(`[bootstrap] ${item.label} did not exit after ${shutdownGraceMs}ms; force-killing`);
+        forceStop(item.proc);
+        await waitForExitOrTimeout(item.proc, 1000);
+      }
+    })();
+
+    return shutdownPromise;
   };
 
   const handleFatal = (label: string, error: unknown): void => {
     const message = error instanceof Error ? error.stack ?? error.message : String(error);
     console.error(`[bootstrap] ${label}: ${message}`);
-    shutdown(1);
+    void shutdown(1);
   };
 
-  process.once("SIGINT", () => shutdown(0));
-  process.once("SIGTERM", () => shutdown(0));
-  process.once("SIGHUP", () => shutdown(0));
+  process.once("SIGINT", () => void shutdown(0));
+  process.once("SIGTERM", () => void shutdown(0));
+  process.once("SIGHUP", () => void shutdown(0));
   process.once("exit", () => {
-    if (shutdownTimer) {
-      clearTimeout(shutdownTimer);
-      shutdownTimer = null;
+    if (!shuttingDown) {
+      signalStop(runtimeProc);
+      if (guiProc) {
+        signalStop(guiProc);
+      }
     }
-    stopChildren();
   });
   process.once("uncaughtException", (error) => {
     handleFatal("uncaught exception", error);
@@ -211,7 +229,7 @@ const run = async (): Promise<void> => {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[bootstrap] ${message}`);
-    shutdown(1);
+    await shutdown(1);
     return;
   }
 
@@ -236,11 +254,11 @@ const run = async (): Promise<void> => {
 
   if (result.code !== 0) {
     console.error(`[bootstrap] ${result.source} exited with code ${result.code}`);
-    shutdown(result.code);
+    await shutdown(result.code);
     return;
   }
 
-  shutdown(0);
+  await shutdown(0);
 };
 
 await run();

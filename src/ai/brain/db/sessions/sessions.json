@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "sessions": {
+    "agent:trenchclaw:main": {
+      "sessionId": "5fea7d94-b525-4890-a585-44dafcbe712f",
+      "createdAt": "2026-02-25T23:42:59.781Z",
+      "updatedAt": "2026-02-25T23:42:59.804Z",
+      "messageCount": 12,
+      "eventCount": 2,
+      "source": "cli"
+    }
+  }
+}

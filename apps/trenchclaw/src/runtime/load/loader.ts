@@ -185,10 +185,6 @@ const normalizeRuntimeSettings = (
     trading: {
       enabled: toBooleanValue(trading.enabled, profile !== "safe"),
       programId: null,
-      mode: {
-        simulation: profile === "safe",
-        paperTrading: profile === "safe",
-      },
       confirmations: {
         requireUserConfirmationForDangerousActions: toBooleanValue(
           trading.requireUserConfirmationForDangerousActions,

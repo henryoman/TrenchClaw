@@ -294,7 +294,7 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 
 ## v1.0 Checklist
 
-- [ ] Simulation and paper-trading execution paths (config flags exist under `trading.mode`)
+- [ ] Simulation and paper-trading execution paths
 - [ ] Metrics and tracing wiring (config flags exist under `observability.metrics` and `observability.tracing`)
 - [ ] Trigger-to-routine execution flow for timer/price/on-chain triggers
 - [ ] Integration and end-to-end test layers (beyond current unit-focused suite)

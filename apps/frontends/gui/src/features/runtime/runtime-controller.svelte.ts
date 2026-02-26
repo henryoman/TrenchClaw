@@ -36,7 +36,7 @@ export const formatTime = (unixMs: number): string =>
 
 export const createRuntimeController = () => {
   const state = $state<RuntimeUiState>({
-    phase: "loading",
+    phase: "landing",
     runtimeStatus: RUNTIME_STATUS_CHECKING,
     activeInstance: null,
     availableInstances: [],
@@ -100,8 +100,10 @@ export const createRuntimeController = () => {
   const initializeSplash = async (): Promise<void> => {
     state.splashError = "";
     state.phase = "loading";
+    state.splashBusy = true;
+    state.runtimeStatus = RUNTIME_STATUS_CHECKING;
 
-    const startupPromise = Promise.all([runtimeApi.bootstrap(), runtimeApi.instances()]);
+    const bootstrapPromise = runtimeApi.bootstrap();
     const timeoutPromise = new Promise<never>((_resolve, reject) => {
       setTimeout(() => {
         reject(new Error(`Startup timed out after ${STARTUP_GUARD_TIMEOUT_MS}ms`));
@@ -109,11 +111,14 @@ export const createRuntimeController = () => {
     });
 
     try {
-      const [bootstrap, instances] = await Promise.race([startupPromise, timeoutPromise]);
+      const bootstrap = await Promise.race([bootstrapPromise, timeoutPromise]);
       state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
-      state.availableInstances = instances.instances;
-      state.phase = "landing";
-      stopPolling();
+      if (bootstrap.activeInstance) {
+        state.activeInstance = bootstrap.activeInstance;
+      }
+      state.phase = "app";
+      await loadAppData();
+      startPolling();
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_RUNTIME_ERROR;
       state.runtimeStatus = RUNTIME_STATUS_OFFLINE;
@@ -121,12 +126,7 @@ export const createRuntimeController = () => {
       state.phase = "landing";
       stopPolling();
     } finally {
-      if (state.phase === "loading") {
-        state.runtimeStatus = RUNTIME_STATUS_OFFLINE;
-        state.splashError = "Startup stalled. Runtime did not complete initialization. Start runtime and retry.";
-        state.phase = "landing";
-        stopPolling();
-      }
+      state.splashBusy = false;
     }
   };
 
