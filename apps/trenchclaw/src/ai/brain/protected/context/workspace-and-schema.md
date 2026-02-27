@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-02-27T04:41:43.239Z
+Generated at: 2026-02-27T05:30:48.994Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -14,6 +14,7 @@ apps/trenchclaw/
 |   |-- ai/
 |   |   |-- brain/
 |   |   |   |-- db/
+|   |   |   |   |-- .tests/
 |   |   |   |   |-- events/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 1772059498660-queue_enqueue-bd240a8d-aa60-4578-a00c-81cd489e4619.json
@@ -155,7 +156,19 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 1772162213480-action_success-0fb43a2b-c792-479b-8925-5f453b269397.json
 |   |   |   |   |   |-- 1772162231729-policy_block-e244b8e0-f287-4cb9-b288-40490cf2171a.json
 |   |   |   |   |   |-- 1772162231734-action_start-aa3306bc-67a9-4eb3-b250-85f08d353189.json
-|   |   |   |   |   `-- 1772162231735-action_success-0cd0db54-5e19-4af3-a207-337f77517d91.json
+|   |   |   |   |   |-- 1772162231735-action_success-0cd0db54-5e19-4af3-a207-337f77517d91.json
+|   |   |   |   |   |-- 1772167663689-policy_block-15f68f03-6c07-4850-a7b3-9b110f60ca7a.json
+|   |   |   |   |   |-- 1772167663693-action_start-1f038f20-7116-472a-a304-67174d7d85f3.json
+|   |   |   |   |   |-- 1772167663694-action_fail-fd8f0147-f770-4b83-9535-2c3d4511170d.json
+|   |   |   |   |   |-- 1772167695887-policy_block-d0941cf2-ab40-4dc1-a6c0-913e9f4db71e.json
+|   |   |   |   |   |-- 1772167695893-action_start-eab5c11a-a0bd-45fc-993c-f14aeb929a55.json
+|   |   |   |   |   |-- 1772167695894-action_success-bee89565-ee64-42b3-bd26-7be895a771c8.json
+|   |   |   |   |   |-- 1772167833516-policy_block-c45f3701-2348-4bd2-a9f0-225bfe5c134d.json
+|   |   |   |   |   |-- 1772167833521-action_start-fe60aa79-087c-4ccd-acc4-e19f906e0e11.json
+|   |   |   |   |   |-- 1772167833522-action_success-f0dc874d-7e4a-401f-9a77-5022ea76d74b.json
+|   |   |   |   |   |-- 1772167888011-policy_block-27ffe5ea-7d59-4ce6-b67e-1543f2972e47.json
+|   |   |   |   |   |-- 1772167888015-action_start-507642c0-1ab0-43ff-be7a-d7fcfdc206e8.json
+|   |   |   |   |   `-- 1772167888016-action_success-d909a017-6877-4e31-94be-16eded6400f2.json
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-02-25.md
 |   |   |   |   |   |-- 2026-02-26.md
@@ -167,28 +180,45 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 15ace701-d47e-4577-81d6-dddd19f50a16.jsonl
 |   |   |   |   |   |-- 1a9eedfc-a6df-494e-b63b-dd8c24235784.jsonl
 |   |   |   |   |   |-- 1e6cf9e4-6e02-4b5a-afa8-19acd88909d9.jsonl
+|   |   |   |   |   |-- 1f266e17-113f-4d76-9d93-82a154a0a07f.jsonl
 |   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.jsonl
 |   |   |   |   |   |-- 28276a04-9a44-4cc0-b7d8-54550cf8d559.jsonl
 |   |   |   |   |   |-- 34276a5a-42fa-440c-8637-d4a1342159eb.jsonl
 |   |   |   |   |   |-- 358fb481-c841-4586-acc9-54a35bcf3b13.jsonl
+|   |   |   |   |   |-- 38e2d4ec-1895-43e3-9bc2-e1b089841bb5.jsonl
+|   |   |   |   |   |-- 4579d110-de90-4570-83a1-8b61b13544c6.jsonl
+|   |   |   |   |   |-- 462533ff-684a-4b60-8263-e170ef94134a.jsonl
 |   |   |   |   |   |-- 4cf2dbbe-a3a6-49c3-ac05-ad5343067082.jsonl
 |   |   |   |   |   |-- 50dad041-7826-497f-9ef5-20c52a503063.jsonl
 |   |   |   |   |   |-- 5fd7cba5-0e40-4ed7-90b0-05a1a03fe383.jsonl
 |   |   |   |   |   |-- 6060dcea-d4be-44f6-879a-5b627ebbaf15.jsonl
+|   |   |   |   |   |-- 625dc361-fcc1-4ba7-a124-103421f5ba02.jsonl
+|   |   |   |   |   |-- 6ca3f256-0fa3-40f6-98c3-da0212e97aca.jsonl
 |   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.jsonl
+|   |   |   |   |   |-- 7998da66-a848-4060-a95a-ec0f6000354e.jsonl
 |   |   |   |   |   |-- 8895f7fd-f3c7-4d46-984f-44679a165b3b.jsonl
+|   |   |   |   |   |-- 88d756f7-99be-4749-b5fc-c96a3317562d.jsonl
 |   |   |   |   |   |-- 8a55db1a-865d-429a-ac67-5fbb58e2d791.jsonl
+|   |   |   |   |   |-- a11c116b-e89c-48e3-a1b2-28e04cd7d889.jsonl
+|   |   |   |   |   |-- a1bfdee9-e977-4b4f-8cd2-f825a7f230ae.jsonl
+|   |   |   |   |   |-- a5a41d5c-f801-461c-b9ec-71b461b36791.jsonl
 |   |   |   |   |   |-- a7d2fe1b-4cad-4d87-b4d6-7acb5c30a2d9.jsonl
 |   |   |   |   |   |-- a86e1d2e-5ead-4d2f-8b04-a2d99414d609.jsonl
 |   |   |   |   |   |-- b0ae0e6e-adb6-459a-bffa-9a6b70d3d985.jsonl
 |   |   |   |   |   |-- b314cc5d-3ee7-4b9c-a92e-e3b4520c7110.jsonl
+|   |   |   |   |   |-- c025b5cc-4466-4b5f-beab-295464826ac4.jsonl
+|   |   |   |   |   |-- c511aa2e-8505-406b-9c9f-c3a44976c9d8.jsonl
+|   |   |   |   |   |-- d71d672e-5f5e-4b34-8675-a028848eb7fe.jsonl
 |   |   |   |   |   |-- e6eabf21-2e17-4879-a067-cef94dd71041.jsonl
+|   |   |   |   |   |-- e8761e65-0a82-48f4-ac71-a062e8577add.jsonl
 |   |   |   |   |   |-- e88dc017-cbca-4ec4-a04b-05ab9f81ce73.jsonl
 |   |   |   |   |   |-- e9ae1b91-0256-4397-bd23-8c831ed4818c.jsonl
+|   |   |   |   |   |-- ee4667e7-5b63-4b09-a1b2-4bd0d2bde326.jsonl
 |   |   |   |   |   |-- f259a179-cecf-4d2d-9df6-ab0583195fd1.jsonl
 |   |   |   |   |   |-- f69d067f-04f6-4e9e-90a5-31b7f10a50ee.jsonl
 |   |   |   |   |   |-- f6c10e94-92fb-4b0a-86ac-c53cbbbf710d.jsonl
 |   |   |   |   |   |-- fa408dae-ec78-49eb-b0cd-7954e0423337.jsonl
+|   |   |   |   |   |-- fa5db766-7459-44bf-82b8-270622196254.jsonl
 |   |   |   |   |   |-- fbe23d01-80c4-4764-bdf4-396c6a424cf9.jsonl
 |   |   |   |   |   `-- sessions.json
 |   |   |   |   |-- summaries/
@@ -197,26 +227,42 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 15ace701-d47e-4577-81d6-dddd19f50a16.md
 |   |   |   |   |   |-- 1a9eedfc-a6df-494e-b63b-dd8c24235784.md
 |   |   |   |   |   |-- 1e6cf9e4-6e02-4b5a-afa8-19acd88909d9.md
+|   |   |   |   |   |-- 1f266e17-113f-4d76-9d93-82a154a0a07f.md
 |   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.md
 |   |   |   |   |   |-- 28276a04-9a44-4cc0-b7d8-54550cf8d559.md
 |   |   |   |   |   |-- 34276a5a-42fa-440c-8637-d4a1342159eb.md
+|   |   |   |   |   |-- 38e2d4ec-1895-43e3-9bc2-e1b089841bb5.md
+|   |   |   |   |   |-- 4579d110-de90-4570-83a1-8b61b13544c6.md
+|   |   |   |   |   |-- 462533ff-684a-4b60-8263-e170ef94134a.md
 |   |   |   |   |   |-- 4cf2dbbe-a3a6-49c3-ac05-ad5343067082.md
 |   |   |   |   |   |-- 50dad041-7826-497f-9ef5-20c52a503063.md
 |   |   |   |   |   |-- 5fd7cba5-0e40-4ed7-90b0-05a1a03fe383.md
 |   |   |   |   |   |-- 6060dcea-d4be-44f6-879a-5b627ebbaf15.md
+|   |   |   |   |   |-- 625dc361-fcc1-4ba7-a124-103421f5ba02.md
+|   |   |   |   |   |-- 6ca3f256-0fa3-40f6-98c3-da0212e97aca.md
 |   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.md
+|   |   |   |   |   |-- 7998da66-a848-4060-a95a-ec0f6000354e.md
 |   |   |   |   |   |-- 8895f7fd-f3c7-4d46-984f-44679a165b3b.md
+|   |   |   |   |   |-- 88d756f7-99be-4749-b5fc-c96a3317562d.md
 |   |   |   |   |   |-- 8a55db1a-865d-429a-ac67-5fbb58e2d791.md
+|   |   |   |   |   |-- a11c116b-e89c-48e3-a1b2-28e04cd7d889.md
+|   |   |   |   |   |-- a1bfdee9-e977-4b4f-8cd2-f825a7f230ae.md
 |   |   |   |   |   |-- a7d2fe1b-4cad-4d87-b4d6-7acb5c30a2d9.md
 |   |   |   |   |   |-- a86e1d2e-5ead-4d2f-8b04-a2d99414d609.md
 |   |   |   |   |   |-- b0ae0e6e-adb6-459a-bffa-9a6b70d3d985.md
 |   |   |   |   |   |-- b314cc5d-3ee7-4b9c-a92e-e3b4520c7110.md
+|   |   |   |   |   |-- c025b5cc-4466-4b5f-beab-295464826ac4.md
+|   |   |   |   |   |-- c511aa2e-8505-406b-9c9f-c3a44976c9d8.md
+|   |   |   |   |   |-- d71d672e-5f5e-4b34-8675-a028848eb7fe.md
 |   |   |   |   |   |-- e6eabf21-2e17-4879-a067-cef94dd71041.md
+|   |   |   |   |   |-- e8761e65-0a82-48f4-ac71-a062e8577add.md
 |   |   |   |   |   |-- e88dc017-cbca-4ec4-a04b-05ab9f81ce73.md
 |   |   |   |   |   |-- e9ae1b91-0256-4397-bd23-8c831ed4818c.md
+|   |   |   |   |   |-- ee4667e7-5b63-4b09-a1b2-4bd0d2bde326.md
 |   |   |   |   |   |-- f259a179-cecf-4d2d-9df6-ab0583195fd1.md
 |   |   |   |   |   |-- f69d067f-04f6-4e9e-90a5-31b7f10a50ee.md
 |   |   |   |   |   |-- f6c10e94-92fb-4b0a-86ac-c53cbbbf710d.md
+|   |   |   |   |   |-- fa5db766-7459-44bf-82b8-270622196254.md
 |   |   |   |   |   `-- fbe23d01-80c4-4764-bdf4-396c6a424cf9.md
 |   |   |   |   |-- summary/
 |   |   |   |   |   |-- .keep
@@ -265,9 +311,13 @@ apps/trenchclaw/
 |   |   |   |   |   `-- operator.md
 |   |   |   |   |-- instance/
 |   |   |   |   |   `-- .gitkeep
+|   |   |   |   |-- keypairs/
+|   |   |   |   |   `-- .keep
 |   |   |   |   |-- no-read/
 |   |   |   |   |   |-- ai.json
 |   |   |   |   |   `-- vault.json
+|   |   |   |   |-- notes/
+|   |   |   |   |   `-- .keep
 |   |   |   |   `-- system/
 |   |   |   |       |-- modes/
 |   |   |   |       |   `-- operator.md
@@ -345,7 +395,8 @@ apps/trenchclaw/
 |   |   |   |-- index.ts
 |   |   |   `-- runtime-logger.ts
 |   |   |-- security/
-|   |   |   `-- filesystem-manifest.ts
+|   |   |   |-- filesystem-manifest.ts
+|   |   |   `-- write-scope.ts
 |   |   |-- storage/
 |   |   |   |-- file-event-log.ts
 |   |   |   |-- index.ts

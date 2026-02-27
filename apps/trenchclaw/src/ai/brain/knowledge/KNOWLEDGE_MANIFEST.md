@@ -1,6 +1,6 @@
 # Knowledge Manifest
 
-Generated at: 2026-02-27T04:41:43.270Z
+Generated at: 2026-02-27T05:30:49.025Z
 Root: src/ai/brain/knowledge
 
 Use this inventory to decide which files to read.

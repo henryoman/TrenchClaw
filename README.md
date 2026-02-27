@@ -37,6 +37,12 @@ SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 
 ---
 
+## Dashboard UI
+
+![TrenchClaw main dashboard UI](./public/ui.png)
+
+---
+
 ## Why TypeScript?
 
 The TypeScript repo is heavier than minimalist alternatives. It is currently the best and most accurate agent orchestrator for this stack. Here is why.
