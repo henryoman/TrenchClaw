@@ -4,6 +4,7 @@ import path from "node:path";
 
 import {
   WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_LAYOUT_DIRECTORIES,
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
   createWorkspaceBashTools,
@@ -52,5 +53,31 @@ describe("workspace bash tools", () => {
     expect(pwd.stdout.trim()).toBe(workspaceRoot);
 
     await expect(bashTool.execute({ command: "sudo ls" })).rejects.toThrow();
+  });
+
+  test("creates default workspace layout and blocks mutating bash commands by default", async () => {
+    const workspaceRoot = path.join(TEST_ROOT, crypto.randomUUID());
+    createdPaths.push(workspaceRoot);
+    const tools = await createWorkspaceBashTools({
+      workspaceRootDirectory: workspaceRoot,
+      actor: "agent",
+    });
+    const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
+    const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
+
+    for (const directory of WORKSPACE_LAYOUT_DIRECTORIES) {
+      const listing = (await bashTool.execute({ command: `test -d ${directory} && echo ok` })) as {
+        exitCode: number;
+        stdout: string;
+      };
+      expect(listing.exitCode).toBe(0);
+      expect(listing.stdout.trim()).toBe("ok");
+    }
+
+    await expect(bashTool.execute({ command: "echo hello > notes/from-bash.txt" })).rejects.toThrow(
+      "Mutating shell commands are disabled",
+    );
+
+    await expect(readTool.execute({ path: "notes/from-bash.txt" })).rejects.toThrow();
   });
 });

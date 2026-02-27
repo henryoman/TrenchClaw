@@ -102,12 +102,17 @@ const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
       { name: "cycles_completed", type: "INTEGER", notNull: true, check: "cycles_completed >= 0" },
       { name: "total_cycles", type: "INTEGER", check: "total_cycles IS NULL OR total_cycles >= 0" },
       { name: "last_result_json", type: "TEXT" },
+      { name: "attempt_count", type: "INTEGER", check: "attempt_count IS NULL OR attempt_count >= 0" },
+      { name: "lease_owner", type: "TEXT" },
+      { name: "lease_expires_at", type: "INTEGER", check: "lease_expires_at IS NULL OR lease_expires_at >= 0" },
+      { name: "last_error", type: "TEXT" },
       { name: "created_at", type: "INTEGER", notNull: true },
       { name: "updated_at", type: "INTEGER", notNull: true },
     ],
     indexes: [
       { name: "idx_jobs_status_next_run_at", columns: ["status", "next_run_at"] },
       { name: "idx_jobs_bot_id_status", columns: ["bot_id", "status"] },
+      { name: "idx_jobs_lease_expires_at", columns: ["status", "lease_expires_at"] },
     ],
   },
   {

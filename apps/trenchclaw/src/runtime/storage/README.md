@@ -16,7 +16,9 @@ Primary database: `storage.sqlite.path` (from runtime settings).
 - `jobs`
 : Scheduler state for bot jobs.
   - Key: `id`
-  - Indexed: `(status, next_run_at)`, `(bot_id, status)`
+  - Indexed: `(status, next_run_at)`, `(bot_id, status)`, `(status, lease_expires_at)`
+  - Queue metadata columns: `attempt_count`, `lease_owner`, `lease_expires_at`, `last_error`
+  - Restart behavior: jobs left in `running` are recovered to `pending` on boot
 
 - `action_receipts`
 : Idempotency receipts and action outcomes.
@@ -98,6 +100,14 @@ Primary database: `storage.sqlite.path` (from runtime settings).
 - Latest computed market state: `market_snapshots`
 - Raw API cacheable responses: `http_cache`
 - Human-readable operator history: session/memory file stores
+
+## Model query surface
+
+The model-facing read API for runtime state is `queryRuntimeStore`:
+
+- Central request/response schema: `src/solana/actions/data-fetch/runtime/queryRuntimeStore.ts`
+- Search endpoint: `searchRuntimeText` (conversations/messages/jobs/receipts)
+- Context endpoint: `getRuntimeKnowledgeSurface` (schema snapshot, counts, recent runtime history)
 
 ## Retention
 

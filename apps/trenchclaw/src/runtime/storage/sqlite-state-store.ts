@@ -8,6 +8,9 @@ import type {
   ConversationState,
   JobState,
   JobStatus,
+  RuntimeKnowledgeSurface,
+  RuntimeSearchResult,
+  RuntimeSearchScope,
   StateStore,
 } from "../../ai/runtime/types/state";
 import {
@@ -95,13 +98,31 @@ export class SqliteStateStore implements StateStore {
     this.schemaSyncReport = syncSqliteSchema(this.db);
   }
 
+  recoverInterruptedJobs(now = Date.now()): number {
+    const recovered = this.db
+      .query(
+        `
+        UPDATE jobs
+        SET
+          status = 'pending',
+          next_run_at = COALESCE(next_run_at, ?),
+          lease_owner = NULL,
+          lease_expires_at = NULL,
+          updated_at = ?
+        WHERE status = 'running'
+      `,
+      )
+      .run(now, now);
+    return Number(recovered.changes ?? 0);
+  }
+
   saveJob(job: JobState): void {
     const parsedJob = jobStateSchema.parse(job);
     const statement = this.db.query(`
       INSERT INTO jobs (
         id, bot_id, routine_name, status, config_json, next_run_at, last_run_at, cycles_completed,
-        total_cycles, last_result_json, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        total_cycles, last_result_json, attempt_count, lease_owner, lease_expires_at, last_error, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
         bot_id = excluded.bot_id,
         routine_name = excluded.routine_name,
@@ -112,6 +133,10 @@ export class SqliteStateStore implements StateStore {
         cycles_completed = excluded.cycles_completed,
         total_cycles = excluded.total_cycles,
         last_result_json = excluded.last_result_json,
+        attempt_count = excluded.attempt_count,
+        lease_owner = excluded.lease_owner,
+        lease_expires_at = excluded.lease_expires_at,
+        last_error = excluded.last_error,
         updated_at = excluded.updated_at
     `);
 
@@ -126,6 +151,10 @@ export class SqliteStateStore implements StateStore {
       parsedJob.cyclesCompleted,
       parsedJob.totalCycles ?? null,
       parsedJob.lastResult ? JSON.stringify(parsedJob.lastResult) : null,
+      parsedJob.attemptCount ?? 0,
+      parsedJob.leaseOwner ?? null,
+      parsedJob.leaseExpiresAt ?? null,
+      parsedJob.lastError ?? null,
       parsedJob.createdAt,
       parsedJob.updatedAt,
     );
@@ -187,9 +216,193 @@ export class SqliteStateStore implements StateStore {
       ...current,
       ...meta,
       status,
+      attemptCount:
+        meta.attemptCount ??
+        (status === "running" ? Math.max(0, Math.trunc((current.attemptCount ?? 0) + 1)) : current.attemptCount),
+      leaseOwner: status === "running" ? meta.leaseOwner ?? "local-runtime" : undefined,
+      leaseExpiresAt: status === "running" ? meta.leaseExpiresAt : undefined,
+      lastError: meta.lastError ?? (status === "running" ? undefined : current.lastError),
       updatedAt: Date.now(),
     };
     this.saveJob(next);
+  }
+
+  searchRuntimeText(input: {
+    query: string;
+    scope?: RuntimeSearchScope;
+    limit?: number;
+    messageScanLimit?: number;
+  }): RuntimeSearchResult {
+    const query = input.query.trim();
+    const scope = input.scope ?? "all";
+    const limit = Math.max(1, Math.trunc(input.limit ?? 25));
+    const messageScanLimit = Math.max(limit, Math.trunc(input.messageScanLimit ?? 100));
+    const like = `%${query}%`;
+    const includeConversations = scope === "all" || scope === "conversations";
+    const includeMessages = scope === "all" || scope === "messages";
+    const includeJobs = scope === "all" || scope === "jobs";
+    const includeReceipts = scope === "all" || scope === "receipts";
+
+    const conversations = includeConversations
+      ? (
+          this.db
+            .query(
+              `
+              SELECT id, session_id, title, summary, created_at, updated_at
+              FROM conversations
+              WHERE id LIKE ? OR COALESCE(session_id, '') LIKE ? OR COALESCE(title, '') LIKE ? OR COALESCE(summary, '') LIKE ?
+              ORDER BY updated_at DESC
+              LIMIT ?
+            `,
+            )
+            .all(like, like, like, like, limit) as Record<string, unknown>[]
+        ).map((row) =>
+          conversationStateSchema.parse({
+            id: String(row.id),
+            sessionId: toNullableString(row.session_id),
+            title: toNullableString(row.title),
+            summary: toNullableString(row.summary),
+            createdAt: Number(row.created_at),
+            updatedAt: Number(row.updated_at),
+          }),
+        )
+      : [];
+
+    const messages = includeMessages
+      ? (
+          this.db
+            .query(
+              `
+              SELECT id, conversation_id, role, content, metadata_json, created_at
+              FROM chat_messages
+              WHERE id LIKE ? OR role LIKE ? OR content LIKE ?
+              ORDER BY created_at DESC
+              LIMIT ?
+            `,
+            )
+            .all(like, like, like, messageScanLimit) as Record<string, unknown>[]
+        )
+          .map((row) =>
+            chatMessageStateSchema.parse({
+              id: String(row.id),
+              conversationId: String(row.conversation_id),
+              role: String(row.role),
+              content: String(row.content),
+              metadata:
+                row.metadata_json == null
+                  ? undefined
+                  : parseJson<Record<string, unknown> | undefined>(String(row.metadata_json), undefined),
+              createdAt: Number(row.created_at),
+            }),
+          )
+          .slice(0, limit)
+      : [];
+
+    const jobs = includeJobs
+      ? (
+          this.db
+            .query(
+              `
+              SELECT *
+              FROM jobs
+              WHERE
+                id LIKE ?
+                OR bot_id LIKE ?
+                OR routine_name LIKE ?
+                OR status LIKE ?
+                OR COALESCE(last_error, '') LIKE ?
+                OR COALESCE(last_result_json, '') LIKE ?
+              ORDER BY updated_at DESC
+              LIMIT ?
+            `,
+            )
+            .all(like, like, like, like, like, like, limit) as Record<string, unknown>[]
+        ).map((row) => this.mapJobRow(row))
+      : [];
+
+    const receipts = includeReceipts
+      ? (
+          this.db
+            .query(
+              `
+              SELECT payload_json
+              FROM action_receipts
+              WHERE idempotency_key LIKE ? OR payload_json LIKE ?
+              ORDER BY timestamp DESC
+              LIMIT ?
+            `,
+            )
+            .all(like, like, limit) as { payload_json: string }[]
+        )
+          .map((row) => parseJsonWithSchema<ActionResult | null>(row.payload_json, actionResultSchema, null))
+          .filter((entry): entry is ActionResult => entry !== null)
+      : [];
+
+    return {
+      query,
+      scope,
+      totalMatches: conversations.length + messages.length + jobs.length + receipts.length,
+      conversations,
+      messages,
+      jobs,
+      receipts,
+    };
+  }
+
+  getRuntimeKnowledgeSurface(input?: {
+    recentConversationsLimit?: number;
+    recentJobsLimit?: number;
+    recentReceiptsLimit?: number;
+  }): RuntimeKnowledgeSurface {
+    const recentConversationsLimit = Math.max(1, Math.trunc(input?.recentConversationsLimit ?? 20));
+    const recentJobsLimit = Math.max(1, Math.trunc(input?.recentJobsLimit ?? 20));
+    const recentReceiptsLimit = Math.max(1, Math.trunc(input?.recentReceiptsLimit ?? 20));
+
+    const counts = this.db
+      .query(
+        `
+        SELECT
+          (SELECT COUNT(*) FROM conversations) AS conversations_count,
+          (SELECT COUNT(*) FROM chat_messages) AS messages_count,
+          (SELECT COUNT(*) FROM jobs) AS jobs_count,
+          (SELECT COUNT(*) FROM action_receipts) AS receipts_count
+      `,
+      )
+      .get() as {
+      conversations_count: number;
+      messages_count: number;
+      jobs_count: number;
+      receipts_count: number;
+    };
+
+    const rawStatusCounts = this.db
+      .query(
+        `
+        SELECT status, COUNT(*) AS count
+        FROM jobs
+        GROUP BY status
+      `,
+      )
+      .all() as { status: JobStatus; count: number }[];
+    const jobStatusCounts: Partial<Record<JobStatus, number>> = {};
+    for (const row of rawStatusCounts) {
+      jobStatusCounts[row.status] = Number(row.count);
+    }
+
+    return {
+      schemaSnapshot: this.getSchemaSnapshot(),
+      generatedAt: Date.now(),
+      counts: {
+        conversations: Number(counts.conversations_count ?? 0),
+        messages: Number(counts.messages_count ?? 0),
+        jobs: Number(counts.jobs_count ?? 0),
+        receipts: Number(counts.receipts_count ?? 0),
+      },
+      jobStatusCounts,
+      recentConversations: this.listConversations(recentConversationsLimit),
+      recentJobs: this.listJobs().slice(0, recentJobsLimit),
+      recentReceipts: this.getRecentReceipts(recentReceiptsLimit),
+    };
   }
 
   saveReceipt(receipt: ActionResult): void {
@@ -778,6 +991,10 @@ export class SqliteStateStore implements StateStore {
               actionResultSchema,
               undefined,
             ),
+      attemptCount: parsedRow.attempt_count ?? 0,
+      leaseOwner: parsedRow.lease_owner ?? undefined,
+      leaseExpiresAt: parsedRow.lease_expires_at ?? undefined,
+      lastError: parsedRow.last_error ?? undefined,
       createdAt: parsedRow.created_at,
       updatedAt: parsedRow.updated_at,
     });

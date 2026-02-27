@@ -4,6 +4,9 @@ import type {
   ConversationState,
   JobState,
   JobStatus,
+  RuntimeKnowledgeSurface,
+  RuntimeSearchResult,
+  RuntimeSearchScope,
   StateStore as IStateStore,
 } from "../runtime/types";
 
@@ -88,5 +91,104 @@ export class InMemoryStateStore implements IStateStore {
     return (this.chatMessages.get(conversationId) ?? [])
       .toSorted((a, b) => a.createdAt - b.createdAt)
       .slice(0, Math.max(1, Math.trunc(limit)));
+  }
+
+  searchRuntimeText(input: {
+    query: string;
+    scope?: RuntimeSearchScope;
+    limit?: number;
+    messageScanLimit?: number;
+  }): RuntimeSearchResult {
+    const queryLower = input.query.trim().toLowerCase();
+    const scope = input.scope ?? "all";
+    const limit = Math.max(1, Math.trunc(input.limit ?? 25));
+    const messageScanLimit = Math.max(limit, Math.trunc(input.messageScanLimit ?? 100));
+    const includes = (value: unknown) =>
+      value != null && String(typeof value === "string" ? value : JSON.stringify(value)).toLowerCase().includes(queryLower);
+    const includeConversations = scope === "all" || scope === "conversations";
+    const includeMessages = scope === "all" || scope === "messages";
+    const includeJobs = scope === "all" || scope === "jobs";
+    const includeReceipts = scope === "all" || scope === "receipts";
+    const conversationPool = includeConversations || includeMessages ? this.listConversations(200) : [];
+
+    const conversations = includeConversations
+      ? conversationPool
+          .filter(
+            (conversation) =>
+              includes(conversation.id) ||
+              includes(conversation.sessionId) ||
+              includes(conversation.title) ||
+              includes(conversation.summary),
+          )
+          .slice(0, limit)
+      : [];
+    const messages = includeMessages
+      ? conversationPool
+          .flatMap((conversation) => this.listChatMessages(conversation.id, messageScanLimit))
+          .filter((message) => includes(message.id) || includes(message.role) || includes(message.content))
+          .slice(0, limit)
+      : [];
+    const jobs = includeJobs
+      ? this.listJobs()
+          .filter(
+            (job) =>
+              includes(job.id) ||
+              includes(job.botId) ||
+              includes(job.routineName) ||
+              includes(job.status) ||
+              includes(job.lastResult),
+          )
+          .slice(0, limit)
+      : [];
+    const receipts = includeReceipts
+      ? this.getRecentReceipts(200)
+          .filter(
+            (receipt) =>
+              includes(receipt.idempotencyKey) ||
+              includes(receipt.code) ||
+              includes(receipt.error) ||
+              includes(receipt.txSignature) ||
+              includes(receipt.data),
+          )
+          .slice(0, limit)
+      : [];
+
+    return {
+      query: input.query.trim(),
+      scope,
+      totalMatches: conversations.length + messages.length + jobs.length + receipts.length,
+      conversations,
+      messages,
+      jobs,
+      receipts,
+    };
+  }
+
+  getRuntimeKnowledgeSurface(input?: {
+    recentConversationsLimit?: number;
+    recentJobsLimit?: number;
+    recentReceiptsLimit?: number;
+  }): RuntimeKnowledgeSurface {
+    const conversations = this.listConversations(10_000);
+    const messages = conversations.reduce((total, conversation) => total + this.listChatMessages(conversation.id, 10_000).length, 0);
+    const jobs = this.listJobs();
+    const jobStatusCounts: Partial<Record<JobStatus, number>> = {};
+    for (const job of jobs) {
+      jobStatusCounts[job.status] = (jobStatusCounts[job.status] ?? 0) + 1;
+    }
+
+    return {
+      generatedAt: Date.now(),
+      counts: {
+        conversations: conversations.length,
+        messages,
+        jobs: jobs.length,
+        receipts: this.receipts.size,
+      },
+      jobStatusCounts,
+      recentConversations: conversations.slice(0, Math.max(1, Math.trunc(input?.recentConversationsLimit ?? 20))),
+      recentJobs: jobs.slice(0, Math.max(1, Math.trunc(input?.recentJobsLimit ?? 20))),
+      recentReceipts: this.getRecentReceipts(Math.max(1, Math.trunc(input?.recentReceiptsLimit ?? 20))),
+    };
   }
 }

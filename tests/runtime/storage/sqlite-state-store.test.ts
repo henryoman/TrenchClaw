@@ -258,6 +258,81 @@ describe("SqliteStateStore", () => {
     db.close(false);
   });
 
+  test("auto-sync adds queue metadata columns on existing jobs tables", () => {
+    const dbPath = `/tmp/trenchclaw-auto-sync-jobs-${crypto.randomUUID()}.db`;
+    dbPaths.push(dbPath);
+
+    const seedDb = new Database(dbPath, { create: true, strict: true });
+    seedDb.exec(`
+      CREATE TABLE jobs (
+        id TEXT PRIMARY KEY,
+        bot_id TEXT NOT NULL,
+        routine_name TEXT NOT NULL,
+        status TEXT NOT NULL,
+        config_json TEXT NOT NULL,
+        next_run_at INTEGER,
+        last_run_at INTEGER,
+        cycles_completed INTEGER NOT NULL,
+        total_cycles INTEGER,
+        last_result_json TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    seedDb.close(false);
+
+    const store = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const syncReport = store.getSchemaSyncReport();
+    expect(syncReport.addedColumns.includes("jobs.attempt_count")).toBe(true);
+    expect(syncReport.addedColumns.includes("jobs.lease_owner")).toBe(true);
+    expect(syncReport.addedColumns.includes("jobs.lease_expires_at")).toBe(true);
+    expect(syncReport.addedColumns.includes("jobs.last_error")).toBe(true);
+    store.close();
+  });
+
+  test("recovers interrupted running jobs on restart", () => {
+    const dbPath = `/tmp/trenchclaw-recover-running-${crypto.randomUUID()}.db`;
+    dbPaths.push(dbPath);
+    const now = Date.now();
+
+    const storeA = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    storeA.saveJob({
+      id: "job-running-1",
+      botId: "bot-1",
+      routineName: "actionSequence",
+      status: "running",
+      config: {},
+      cyclesCompleted: 0,
+      attemptCount: 1,
+      leaseOwner: "runtime-A",
+      leaseExpiresAt: now + 60_000,
+      createdAt: now,
+      updatedAt: now,
+    });
+    storeA.close();
+
+    const storeB = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const recovered = storeB.recoverInterruptedJobs(now + 1_000);
+    expect(recovered).toBe(1);
+    const recoveredJob = storeB.getJob("job-running-1");
+    expect(recoveredJob?.status).toBe("pending");
+    expect(recoveredJob?.leaseOwner).toBeUndefined();
+    expect(recoveredJob?.leaseExpiresAt).toBeUndefined();
+    storeB.close();
+  });
+
   test("schema snapshot is available from store", () => {
     const dbPath = `/tmp/trenchclaw-schema-snapshot-${crypto.randomUUID()}.db`;
     dbPaths.push(dbPath);

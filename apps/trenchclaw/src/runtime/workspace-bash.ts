@@ -11,10 +11,21 @@ interface WorkspaceBashOptions {
   workspaceRootDirectory: string;
   actor?: "agent" | "user" | "system";
   commandTimeoutMs?: number;
+  allowMutatingCommands?: boolean;
 }
 
 const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
 const MAX_COMMAND_LENGTH = 8_000;
+const DEFAULT_ALLOW_MUTATING_COMMANDS = (process.env.TRENCHCLAW_WORKSPACE_BASH_ALLOW_MUTATIONS ?? "0") === "1";
+
+export const WORKSPACE_LAYOUT_DIRECTORIES = [
+  "strategies",
+  "configs",
+  "typescript",
+  "notes",
+  "scratch",
+  "output",
+] as const;
 
 const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   /\bsudo\b/iu,
@@ -23,6 +34,23 @@ const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   /\bdd\s+if=/iu,
   /\bshutdown\b/iu,
   /\breboot\b/iu,
+];
+
+const MUTATING_COMMAND_PATTERNS: RegExp[] = [
+  /(^|[^0-9<])>>?/u,
+  /\btee\b/iu,
+  /\btouch\b/iu,
+  /\bmkdir\b/iu,
+  /\bcp\b/iu,
+  /\bmv\b/iu,
+  /\brm\b/iu,
+  /\btruncate\b/iu,
+  /\bsed\s+-i\b/iu,
+  /\bperl\s+-i\b/iu,
+  /\bbun\s+install\b/iu,
+  /\bnpm\s+install\b/iu,
+  /\bpnpm\s+install\b/iu,
+  /\byarn\s+add\b/iu,
 ];
 
 const assertWorkspacePath = (workspaceRoot: string, targetPath: string): string => {
@@ -52,23 +80,34 @@ const sanitizeCommand = (command: string): string => {
   return trimmed;
 };
 
+const isMutatingCommand = (command: string): boolean =>
+  MUTATING_COMMAND_PATTERNS.some((pattern) => pattern.test(command));
+
 class HostWorkspaceSandbox {
   private readonly workspaceRoot: string;
   private readonly actor: "agent" | "user" | "system";
   private readonly commandTimeoutMs: number;
+  private readonly allowMutatingCommands: boolean;
 
   constructor(options: WorkspaceBashOptions) {
     this.workspaceRoot = path.resolve(options.workspaceRootDirectory);
     this.actor = options.actor ?? "agent";
     this.commandTimeoutMs = Math.max(1_000, Math.trunc(options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS));
+    this.allowMutatingCommands = options.allowMutatingCommands ?? DEFAULT_ALLOW_MUTATING_COMMANDS;
   }
 
   async executeCommand(command: string): Promise<{ stdout: string; stderr: string; exitCode: number }> {
     const sanitizedCommand = sanitizeCommand(command);
+    const mutatingCommand = isMutatingCommand(sanitizedCommand);
+    if (mutatingCommand && !this.allowMutatingCommands) {
+      throw new Error(
+        "Mutating shell commands are disabled. Use workspaceWriteFile for file writes, or enable TRENCHCLAW_WORKSPACE_BASH_ALLOW_MUTATIONS=1 for trusted sessions.",
+      );
+    }
     await assertFilesystemAccessAllowed({
       actor: this.actor,
       targetPath: this.workspaceRoot,
-      operation: "write",
+      operation: mutatingCommand ? "write" : "read",
       reason: "execute workspace bash command",
     });
 
@@ -138,6 +177,11 @@ export const WORKSPACE_WRITE_FILE_TOOL_NAME = "workspaceWriteFile";
 export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): Promise<Record<string, unknown>> => {
   const workspaceRootDirectory = path.resolve(options.workspaceRootDirectory);
   await mkdir(workspaceRootDirectory, { recursive: true });
+  await Promise.all(
+    WORKSPACE_LAYOUT_DIRECTORIES.map((directory) =>
+      mkdir(path.join(workspaceRootDirectory, directory), { recursive: true }),
+    ),
+  );
 
   const toolkit = await createBashTool({
     sandbox: new HostWorkspaceSandbox({
@@ -145,7 +189,11 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
       workspaceRootDirectory,
     }),
     destination: workspaceRootDirectory,
-    extraInstructions: `Only access files under ${workspaceRootDirectory}.`,
+    extraInstructions: [
+      `Only access files under ${workspaceRootDirectory}.`,
+      `Primary writable directories: ${WORKSPACE_LAYOUT_DIRECTORIES.join(", ")}.`,
+      "Prefer workspaceWriteFile for creating/updating files; use workspaceBash for discovery, search, and read-only execution.",
+    ].join(" "),
     onBeforeBashCall: ({ command }) => ({
       command: sanitizeCommand(command),
     }),

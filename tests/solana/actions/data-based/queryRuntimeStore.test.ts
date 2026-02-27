@@ -149,4 +149,56 @@ describe("queryRuntimeStoreAction", () => {
 
     store.close();
   });
+
+  test("returns runtime knowledge surface summary", async () => {
+    const dbPath = `/tmp/trenchclaw-query-runtime-${crypto.randomUUID()}.db`;
+    dbPaths.push(dbPath);
+
+    const store = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const now = Date.now();
+    store.saveConversation({
+      id: "conv-surface-1",
+      sessionId: "session-surface-1",
+      title: "Surface",
+      summary: "summary",
+      createdAt: now,
+      updatedAt: now,
+    });
+    store.saveChatMessage({
+      id: "msg-surface-1",
+      conversationId: "conv-surface-1",
+      role: "user",
+      content: "surface hello",
+      createdAt: now,
+    });
+
+    const ctx = createActionContext({ actor: "agent", stateStore: store });
+    const result = await queryRuntimeStoreAction.execute(ctx, {
+      request: {
+        type: "getRuntimeKnowledgeSurface",
+        recentConversationsLimit: 5,
+        recentJobsLimit: 5,
+        recentReceiptsLimit: 5,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      requestType: string;
+      result: {
+        schemaSnapshot?: string;
+        counts: { conversations: number; messages: number };
+      };
+    };
+    expect(payload.requestType).toBe("getRuntimeKnowledgeSurface");
+    expect(payload.result.counts.conversations).toBeGreaterThanOrEqual(1);
+    expect(payload.result.counts.messages).toBeGreaterThanOrEqual(1);
+    expect(payload.result.schemaSnapshot?.includes("chat_messages")).toBe(true);
+
+    store.close();
+  });
 });

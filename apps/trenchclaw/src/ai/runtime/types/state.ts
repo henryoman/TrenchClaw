@@ -13,6 +13,10 @@ export interface JobState {
   cyclesCompleted: number;
   totalCycles?: number;
   lastResult?: ActionResult;
+  attemptCount?: number;
+  leaseOwner?: string;
+  leaseExpiresAt?: number;
+  lastError?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -37,6 +41,33 @@ export interface ChatMessageState {
   createdAt: number;
 }
 
+export type RuntimeSearchScope = "all" | "conversations" | "messages" | "jobs" | "receipts";
+
+export interface RuntimeSearchResult {
+  query: string;
+  scope: RuntimeSearchScope;
+  totalMatches: number;
+  conversations: ConversationState[];
+  messages: ChatMessageState[];
+  jobs: JobState[];
+  receipts: ActionResult[];
+}
+
+export interface RuntimeKnowledgeSurface {
+  schemaSnapshot?: string;
+  generatedAt: number;
+  counts: {
+    conversations: number;
+    messages: number;
+    jobs: number;
+    receipts: number;
+  };
+  jobStatusCounts: Partial<Record<JobStatus, number>>;
+  recentConversations: ConversationState[];
+  recentJobs: JobState[];
+  recentReceipts: ActionResult[];
+}
+
 export interface StateStore {
   saveJob(job: JobState): void;
   getJob(id: string): JobState | null;
@@ -50,4 +81,15 @@ export interface StateStore {
   listConversations(limit?: number): ConversationState[];
   saveChatMessage(message: ChatMessageState): void;
   listChatMessages(conversationId: string, limit?: number): ChatMessageState[];
+  searchRuntimeText?(input: {
+    query: string;
+    scope?: RuntimeSearchScope;
+    limit?: number;
+    messageScanLimit?: number;
+  }): RuntimeSearchResult;
+  getRuntimeKnowledgeSurface?(input?: {
+    recentConversationsLimit?: number;
+    recentJobsLimit?: number;
+    recentReceiptsLimit?: number;
+  }): RuntimeKnowledgeSurface;
 }

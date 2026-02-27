@@ -655,6 +655,12 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     },
   });
   if (sqliteStore) {
+    const recoveredJobs = sqliteStore.recoverInterruptedJobs();
+    if (recoveredJobs > 0) {
+      logger.warn("storage:queue_recovery", {
+        recoveredJobs,
+      });
+    }
     const syncReport = sqliteStore.getSchemaSyncReport();
     logger.info("storage:schema_sync", {
       createdTables: syncReport.createdTables.length,

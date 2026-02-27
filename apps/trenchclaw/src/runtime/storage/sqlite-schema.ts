@@ -23,6 +23,10 @@ export const sqliteJobRowSchema = z.object({
   cycles_completed: nonNegativeInt,
   total_cycles: nonNegativeInt.nullable(),
   last_result_json: z.string().nullable(),
+  attempt_count: nonNegativeInt.nullable(),
+  lease_owner: z.string().nullable(),
+  lease_expires_at: nonNegativeInt.nullable(),
+  last_error: z.string().nullable(),
   created_at: unixMs,
   updated_at: unixMs,
 });

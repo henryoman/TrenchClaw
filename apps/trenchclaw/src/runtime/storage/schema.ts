@@ -41,6 +41,10 @@ export const jobStateSchema: z.ZodType<JobState> = z.object({
   cyclesCompleted: z.number().int().nonnegative(),
   totalCycles: z.number().int().nonnegative().optional(),
   lastResult: actionResultSchema.optional(),
+  attemptCount: z.number().int().nonnegative().optional(),
+  leaseOwner: nonEmpty.optional(),
+  leaseExpiresAt: optionalUnixMs,
+  lastError: z.string().optional(),
   createdAt: unixMs,
   updatedAt: unixMs,
 });
