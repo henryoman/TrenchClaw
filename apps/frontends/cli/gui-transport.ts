@@ -5,6 +5,9 @@ import type {
   GuiActivityEntry,
   GuiActivityResponse,
   GuiBootstrapResponse,
+  GuiConversationMessagesResponse,
+  GuiConversationsResponse,
+  GuiConversationView,
   GuiCreateInstanceRequest,
   GuiCreateInstanceResponse,
   GuiInstanceProfileView,
@@ -13,10 +16,17 @@ import type {
   GuiQueueResponse,
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
+  GuiUpdateVaultRequest,
+  GuiUpdateVaultResponse,
+  GuiVaultResponse,
 } from "@trenchclaw/types";
 import type { UIMessage } from "ai";
+import { ensureVaultFileExists, parseVaultJsonText } from "../../trenchclaw/src/ai/llm/vault-file";
 import type { RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
-import { assertInstanceSystemWritePath } from "../../trenchclaw/src/runtime/security/write-scope";
+import {
+  assertInstanceSystemWritePath,
+  assertProtectedNoReadWritePath,
+} from "../../trenchclaw/src/runtime/security/write-scope";
 import { CORE_APP_ROOT } from "./runtime-paths";
 
 const MAX_ACTIVITY_ITEMS = 250;
@@ -24,10 +34,13 @@ const GUI_QUEUE_INCLUDE_HISTORY = process.env.GUI_QUEUE_INCLUDE_HISTORY === "1";
 const ACTIVE_JOB_STATUSES = new Set(["pending", "running", "paused"]);
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,OPTIONS",
+  "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
   "access-control-allow-headers": "content-type,accept",
 };
 const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
+const NO_READ_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/no-read");
+const VAULT_FILE_PATH = path.join(NO_READ_DIRECTORY, "vault.json");
+const VAULT_TEMPLATE_FILE_PATH = path.join(NO_READ_DIRECTORY, "vault.template.json");
 const DISPATCH_TEST_DEFAULT_WAIT_MS = 4000;
 const DISPATCH_TEST_MAX_WAIT_MS = 20000;
 
@@ -76,7 +89,11 @@ const parseUiChatRequest = async (
       return null;
     }
     const chatId =
-      typeof payload.chatId === "string" && payload.chatId.trim().length > 0 ? payload.chatId.trim() : undefined;
+      (typeof payload.chatId === "string" && payload.chatId.trim().length > 0
+        ? payload.chatId.trim()
+        : typeof payload.id === "string" && payload.id.trim().length > 0
+          ? payload.id.trim()
+          : undefined);
     const conversationTitle =
       typeof payload.conversationTitle === "string" && payload.conversationTitle.trim().length > 0
         ? payload.conversationTitle.trim()
@@ -152,6 +169,20 @@ const parseDispatcherTestRequest = async (request: Request): Promise<DispatcherT
     const waitMsRaw = typeof payload.waitMs === "number" ? payload.waitMs : DISPATCH_TEST_DEFAULT_WAIT_MS;
     const waitMs = Math.max(0, Math.min(DISPATCH_TEST_MAX_WAIT_MS, Math.trunc(waitMsRaw)));
     return { message, waitMs };
+  } catch {
+    return null;
+  }
+};
+
+const parseUpdateVaultRequest = async (request: Request): Promise<GuiUpdateVaultRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.content !== "string") {
+      return null;
+    }
+    return {
+      content: payload.content,
+    };
   } catch {
     return null;
   }
@@ -281,12 +312,39 @@ export class RuntimeGuiTransport {
     }
   }
 
+  private toConversationTitle(timestamp: number): string {
+    return new Date(timestamp).toISOString();
+  }
+
+  private listInstanceConversations(limit = 100): GuiConversationView[] {
+    const normalizedLimit = Math.max(1, Math.trunc(limit));
+    const activeInstanceId = this.activeInstance?.localInstanceId;
+
+    return this.runtime.stateStore
+      .listConversations(normalizedLimit * 2)
+      .filter((conversation) => !activeInstanceId || conversation.sessionId === activeInstanceId)
+      .slice(0, normalizedLimit)
+      .map((conversation) => ({
+        id: conversation.id,
+        title: this.toConversationTitle(conversation.createdAt),
+        createdAt: conversation.createdAt,
+        updatedAt: conversation.updatedAt,
+      }));
+  }
+
   private resolveDefaultChatId(): string {
     if (this.activeChatId) {
       return this.activeChatId;
     }
+
+    const recentConversation = this.listInstanceConversations(1)[0];
+    if (recentConversation) {
+      this.activeChatId = recentConversation.id;
+      return this.activeChatId;
+    }
+
     if (this.activeInstance) {
-      this.activeChatId = `instance-${this.activeInstance.localInstanceId}-main`;
+      this.activeChatId = `instance-${this.activeInstance.localInstanceId}-${crypto.randomUUID()}`;
       return this.activeChatId;
     }
     this.activeChatId = `chat-${crypto.randomUUID()}`;
@@ -315,6 +373,44 @@ export class RuntimeGuiTransport {
     const normalizedLimit = Math.max(1, Math.trunc(limit));
     return {
       entries: this.activity.slice(0, normalizedLimit),
+    };
+  }
+
+  getConversations(limit = 100): GuiConversationsResponse {
+    return {
+      conversations: this.listInstanceConversations(limit),
+    };
+  }
+
+  getConversationMessages(conversationId: string, limit = 500): GuiConversationMessagesResponse {
+    const normalizedConversationId = conversationId.trim();
+    if (!normalizedConversationId) {
+      throw new Error("Conversation id is required");
+    }
+
+    const conversation = this.runtime.stateStore.getConversation(normalizedConversationId);
+    if (!conversation) {
+      throw new Error(`Conversation not found: ${normalizedConversationId}`);
+    }
+
+    const activeInstanceId = this.activeInstance?.localInstanceId;
+    if (activeInstanceId && conversation.sessionId !== activeInstanceId) {
+      throw new Error("Conversation is not accessible for the current instance");
+    }
+
+    const normalizedLimit = Math.max(1, Math.trunc(limit));
+    const messages = this.runtime.stateStore
+      .listChatMessages(normalizedConversationId, normalizedLimit)
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        createdAt: message.createdAt,
+      }));
+
+    return {
+      conversationId: normalizedConversationId,
+      messages,
     };
   }
 
@@ -351,7 +447,7 @@ export class RuntimeGuiTransport {
     await writeFile(nextInstanceFilePath, `${JSON.stringify(document, null, 2)}\n`, "utf8");
     const instance = toInstanceView(fileName, document);
     this.activeInstance = instance;
-    this.activeChatId = `instance-${instance.localInstanceId}-main`;
+    this.activeChatId = null;
     process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
     process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
     this.addActivity("runtime", `Instance created: ${instance.name} (${instance.localInstanceId})`);
@@ -373,11 +469,47 @@ export class RuntimeGuiTransport {
 
     const instance = toInstanceView(target.fileName, target.document);
     this.activeInstance = instance;
-    this.activeChatId = `instance-${instance.localInstanceId}-main`;
+    this.activeChatId = null;
     process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
     process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
     this.addActivity("runtime", `Instance signed in: ${instance.name} (${instance.localInstanceId})`);
     return { instance };
+  }
+
+  async getVault(): Promise<GuiVaultResponse> {
+    assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
+    await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
+    const created = await ensureVaultFileExists({
+      vaultPath: VAULT_FILE_PATH,
+      templatePath: VAULT_TEMPLATE_FILE_PATH,
+    });
+    assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
+    const content = await readFile(VAULT_FILE_PATH, "utf8");
+    parseVaultJsonText(content);
+    return {
+      filePath: VAULT_FILE_PATH,
+      templatePath: VAULT_TEMPLATE_FILE_PATH,
+      initializedFromTemplate: created.initializedFromTemplate,
+      content,
+    };
+  }
+
+  async updateVault(payload: GuiUpdateVaultRequest): Promise<GuiUpdateVaultResponse> {
+    assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
+    await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
+    await ensureVaultFileExists({
+      vaultPath: VAULT_FILE_PATH,
+      templatePath: VAULT_TEMPLATE_FILE_PATH,
+    });
+    const parsed = parseVaultJsonText(payload.content);
+    const serialized = `${JSON.stringify(parsed, null, 2)}\n`;
+    assertProtectedNoReadWritePath(VAULT_FILE_PATH, "write vault file");
+    await writeFile(VAULT_FILE_PATH, serialized, { encoding: "utf8", mode: 0o600 });
+    this.addActivity("runtime", "Vault updated");
+    return {
+      filePath: VAULT_FILE_PATH,
+      savedAt: new Date().toISOString(),
+    };
   }
 
   async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string }): Promise<Response> {
@@ -481,6 +613,28 @@ export class RuntimeGuiTransport {
         return Response.json(this.getActivity(limit), { headers: CORS_HEADERS });
       }
 
+      if (request.method === "GET" && url.pathname === "/api/gui/conversations") {
+        const limitParam = Number(url.searchParams.get("limit") ?? 100);
+        const limit = Number.isFinite(limitParam) ? limitParam : 100;
+        return Response.json(this.getConversations(limit), { headers: CORS_HEADERS });
+      }
+
+      if (request.method === "GET" && url.pathname.startsWith("/api/gui/conversations/") && url.pathname.endsWith("/messages")) {
+        const prefix = "/api/gui/conversations/";
+        const suffix = "/messages";
+        const encodedConversationId = url.pathname.slice(prefix.length, -suffix.length);
+        const conversationId = decodeURIComponent(encodedConversationId);
+        const limitParam = Number(url.searchParams.get("limit") ?? 500);
+        const limit = Number.isFinite(limitParam) ? limitParam : 500;
+
+        try {
+          return Response.json(this.getConversationMessages(conversationId, limit), { headers: CORS_HEADERS });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 404, headers: CORS_HEADERS });
+        }
+      }
+
       if (request.method === "GET" && url.pathname === "/api/gui/instances") {
         try {
           return Response.json(await this.listInstances(), { headers: CORS_HEADERS });
@@ -515,6 +669,29 @@ export class RuntimeGuiTransport {
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           return Response.json({ error: errorMessage }, { status: 401, headers: CORS_HEADERS });
+        }
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/gui/vault") {
+        try {
+          return Response.json(await this.getVault(), { headers: CORS_HEADERS });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });
+        }
+      }
+
+      if (request.method === "PUT" && url.pathname === "/api/gui/vault") {
+        const payload = await parseUpdateVaultRequest(request);
+        if (!payload) {
+          return Response.json({ error: "Invalid vault payload" }, { status: 400, headers: CORS_HEADERS });
+        }
+
+        try {
+          return Response.json(await this.updateVault(payload), { headers: CORS_HEADERS });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 400, headers: CORS_HEADERS });
         }
       }
 

@@ -1,12 +1,17 @@
 import type {
   GuiActivityResponse,
   GuiBootstrapResponse,
+  GuiConversationMessagesResponse,
+  GuiConversationsResponse,
   GuiCreateInstanceRequest,
   GuiCreateInstanceResponse,
   GuiInstancesResponse,
   GuiQueueResponse,
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
+  GuiUpdateVaultRequest,
+  GuiUpdateVaultResponse,
+  GuiVaultResponse,
 } from "@trenchclaw/types";
 import { GUI_API_BASE_PATH, REQUEST_TIMEOUT_MS } from "./config";
 
@@ -58,6 +63,16 @@ export const runtimeApi = {
   queue: (): Promise<GuiQueueResponse> => fetchJson<GuiQueueResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/queue`)),
   activity: (limit = 100): Promise<GuiActivityResponse> =>
     fetchJson<GuiActivityResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/activity?limit=${Math.max(1, Math.trunc(limit))}`)),
+  conversations: (limit = 100): Promise<GuiConversationsResponse> =>
+    fetchJson<GuiConversationsResponse>(
+      toRuntimeUrl(`${GUI_API_BASE_PATH}/conversations?limit=${Math.max(1, Math.trunc(limit))}`),
+    ),
+  conversationMessages: (conversationId: string, limit = 500): Promise<GuiConversationMessagesResponse> =>
+    fetchJson<GuiConversationMessagesResponse>(
+      toRuntimeUrl(
+        `${GUI_API_BASE_PATH}/conversations/${encodeURIComponent(conversationId)}/messages?limit=${Math.max(1, Math.trunc(limit))}`,
+      ),
+    ),
   instances: (): Promise<GuiInstancesResponse> => fetchJson<GuiInstancesResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`)),
   createInstance: (input: GuiCreateInstanceRequest): Promise<GuiCreateInstanceResponse> =>
     fetchJson<GuiCreateInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`), {
@@ -68,6 +83,13 @@ export const runtimeApi = {
   signInInstance: (input: GuiSignInInstanceRequest): Promise<GuiSignInInstanceResponse> =>
     fetchJson<GuiSignInInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances/sign-in`), {
       method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  vault: (): Promise<GuiVaultResponse> => fetchJson<GuiVaultResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/vault`)),
+  updateVault: (input: GuiUpdateVaultRequest): Promise<GuiUpdateVaultResponse> =>
+    fetchJson<GuiUpdateVaultResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/vault`), {
+      method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),

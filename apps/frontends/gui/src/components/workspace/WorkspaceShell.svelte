@@ -2,10 +2,12 @@
   import Sidebar from "./Sidebar.svelte";
 
   export let runtimeStatus = "";
+  export let activeTab: "chat" | "wallet-manager" = "chat";
+  export let onTabChange: (tab: "chat" | "wallet-manager") => void;
 </script>
 
 <main class="layout">
-  <Sidebar {runtimeStatus} />
+  <Sidebar {runtimeStatus} {activeTab} {onTabChange} />
   <section class="workspace">
     <slot />
   </section>

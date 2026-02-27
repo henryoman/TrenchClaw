@@ -19,8 +19,8 @@ trading:
 
 
 wallet:
-  activeWalletRef: vault://wallets/main/active-address
-  signerRef: vault://wallets/main/signer
+  activeWalletRef: ""
+  signerRef: ""
 
 integrations:
   dexscreenerApiKeyRef: vault://integrations/dexscreener/api-key

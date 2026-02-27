@@ -23,7 +23,6 @@ report.*.*.*.*.json
 .env.local
 
 # caches
-.eslintcache
 .cache
 *.tsbuildinfo
 
@@ -36,6 +35,8 @@ report.*.*.*.*.json
 # Secrets
 src/ai/brain/protected/no-read/*
 !src/ai/brain/protected/no-read/.gitkeep
+!src/ai/brain/protected/no-read/README.md
+!src/ai/brain/protected/no-read/vault.template.json
 
 # Local runtime instances
 src/ai/brain/protected/instance/user-*.json

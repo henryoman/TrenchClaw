@@ -23,7 +23,6 @@
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "6.2.4",
     "@types/json-schema": "^7.0.15",
-    "@typescript-eslint/types": "^8.41.0",
     "oxlint": "^1.49.0",
     "svelte": "5.53.3",
     "svelte-check": "^4.4.3",

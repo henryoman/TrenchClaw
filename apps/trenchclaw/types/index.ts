@@ -148,6 +148,29 @@ export interface GuiActivityResponse {
   entries: GuiActivityEntry[];
 }
 
+export interface GuiConversationView {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GuiConversationsResponse {
+  conversations: GuiConversationView[];
+}
+
+export interface GuiConversationMessageView {
+  id: string;
+  role: "system" | "user" | "assistant" | "tool";
+  content: string;
+  createdAt: number;
+}
+
+export interface GuiConversationMessagesResponse {
+  conversationId: string;
+  messages: GuiConversationMessageView[];
+}
+
 export interface GuiInstanceProfileView {
   fileName: string;
   localInstanceId: string;
@@ -179,4 +202,20 @@ export interface GuiSignInInstanceRequest {
 
 export interface GuiSignInInstanceResponse {
   instance: GuiInstanceProfileView;
+}
+
+export interface GuiVaultResponse {
+  filePath: string;
+  templatePath: string;
+  initializedFromTemplate: boolean;
+  content: string;
+}
+
+export interface GuiUpdateVaultRequest {
+  content: string;
+}
+
+export interface GuiUpdateVaultResponse {
+  filePath: string;
+  savedAt: string;
 }

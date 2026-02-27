@@ -1,10 +1,52 @@
 <script lang="ts">
   export let runtimeStatus = "";
+  export let activeTab: "chat" | "wallet-manager" = "chat";
+  export let onTabChange: (tab: "chat" | "wallet-manager") => void;
+
+  const getSidebarStatus = (status: string): string => {
+    const runtimeMatch = /^runtime:\s*([^|]+?)(?:\s*\|.*)?$/i.exec(status.trim());
+    if (runtimeMatch) {
+      return `mode:\n${runtimeMatch[1].trim()}`;
+    }
+
+    return status;
+  };
+
+  const getSidebarLiveStatus = (status: string): string => {
+    const normalized = status.trim().toLowerCase();
+    if (normalized.includes("offline")) {
+      return "status: offline";
+    }
+    if (normalized.includes("checking")) {
+      return "status: checking";
+    }
+
+    return "status: live";
+  };
 </script>
 
 <aside class="sidebar">
   <p class="instance">trenchclaw</p>
-  <p class="status">{runtimeStatus}</p>
+  <nav class="tabs" aria-label="Workspace tabs">
+    <button
+      type="button"
+      class="tab-button {activeTab === 'chat' ? 'active' : ''}"
+      on:click={() => {
+        onTabChange("chat");
+      }}>Chat</button
+    >
+    <button
+      type="button"
+      class="tab-button {activeTab === 'wallet-manager' ? 'active' : ''}"
+      on:click={() => {
+        onTabChange("wallet-manager");
+      }}>Wallet Manager</button
+    >
+  </nav>
+  <div class="status-stack">
+    <p class="status">{getSidebarStatus(runtimeStatus)}</p>
+    <p class="status live-status">{getSidebarLiveStatus(runtimeStatus)}</p>
+  </div>
 </aside>
 
 <style>
@@ -18,6 +60,30 @@
     min-width: 110px;
   }
 
+  .tabs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tc-space-2);
+  }
+
+  .tab-button {
+    border: var(--tc-border-muted);
+    background: transparent;
+    color: var(--tc-color-gray-1);
+    padding: var(--tc-space-2);
+    font-family: inherit;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .tab-button.active {
+    border-color: var(--tc-color-turquoise);
+    color: var(--tc-color-turquoise);
+  }
+
   .instance {
     margin: 0;
     color: var(--tc-color-gray-3);
@@ -25,13 +91,23 @@
     text-transform: uppercase;
   }
 
+  .status-stack {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--tc-space-2);
+  }
+
   .status {
-    margin: auto 0 0 0;
     border: var(--tc-border-muted);
     padding: var(--tc-space-2);
     color: var(--tc-color-gray-1);
     font-size: 0.68rem;
     text-transform: uppercase;
     line-height: 1.35;
+  }
+
+  .live-status {
+    margin: 0;
   }
 </style>

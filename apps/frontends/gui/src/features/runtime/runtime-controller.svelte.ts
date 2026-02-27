@@ -26,6 +26,12 @@ interface RuntimeUiState {
   signInPin: string;
   queueJobs: GuiQueueJobView[];
   activityEntries: GuiActivityEntry[];
+  vaultContent: string;
+  vaultFilePath: string;
+  vaultTemplatePath: string;
+  vaultBusy: boolean;
+  vaultError: string;
+  vaultNotice: string;
 }
 
 const formatRuntimeStatus = (profile: string, llmEnabled: boolean): string =>
@@ -48,6 +54,12 @@ export const createRuntimeController = () => {
     signInPin: "",
     queueJobs: [],
     activityEntries: [],
+    vaultContent: "",
+    vaultFilePath: "",
+    vaultTemplatePath: "",
+    vaultBusy: false,
+    vaultError: "",
+    vaultNotice: "",
   });
 
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -118,6 +130,7 @@ export const createRuntimeController = () => {
       }
       state.phase = "app";
       await loadAppData();
+      await loadVault();
       startPolling();
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_RUNTIME_ERROR;
@@ -183,11 +196,44 @@ export const createRuntimeController = () => {
       state.activeInstance = signedIn.instance;
       state.phase = "app";
       await loadAppData();
+      await loadVault();
       startPolling();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_SIGN_IN_ERROR;
     } finally {
       state.splashBusy = false;
+    }
+  };
+
+  const loadVault = async (): Promise<void> => {
+    state.vaultBusy = true;
+    state.vaultError = "";
+    try {
+      const vault = await runtimeApi.vault();
+      state.vaultContent = vault.content;
+      state.vaultFilePath = vault.filePath;
+      state.vaultTemplatePath = vault.templatePath;
+      state.vaultNotice = vault.initializedFromTemplate ? "Created vault.json from template." : "";
+    } catch (error) {
+      state.vaultError = error instanceof Error ? error.message : "Failed to load vault.";
+    } finally {
+      state.vaultBusy = false;
+    }
+  };
+
+  const saveVault = async (): Promise<void> => {
+    state.vaultBusy = true;
+    state.vaultError = "";
+    state.vaultNotice = "";
+    try {
+      const result = await runtimeApi.updateVault({ content: state.vaultContent });
+      state.vaultFilePath = result.filePath;
+      state.vaultNotice = `Saved at ${new Date(result.savedAt).toLocaleTimeString()}`;
+      await loadAppData();
+    } catch (error) {
+      state.vaultError = error instanceof Error ? error.message : "Failed to save vault.";
+    } finally {
+      state.vaultBusy = false;
     }
   };
 
@@ -198,6 +244,8 @@ export const createRuntimeController = () => {
     closeCreateModal,
     submitCreateInstance,
     submitSignIn,
+    loadVault,
+    saveVault,
     refreshRuntimePanels,
     startPolling,
     stopPolling,

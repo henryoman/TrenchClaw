@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-02-27T05:30:48.994Z
+Generated at: 2026-02-27T21:49:07.673Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -168,7 +168,9 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 1772167833522-action_success-f0dc874d-7e4a-401f-9a77-5022ea76d74b.json
 |   |   |   |   |   |-- 1772167888011-policy_block-27ffe5ea-7d59-4ce6-b67e-1543f2972e47.json
 |   |   |   |   |   |-- 1772167888015-action_start-507642c0-1ab0-43ff-be7a-d7fcfdc206e8.json
-|   |   |   |   |   `-- 1772167888016-action_success-d909a017-6877-4e31-94be-16eded6400f2.json
+|   |   |   |   |   |-- 1772167888016-action_success-d909a017-6877-4e31-94be-16eded6400f2.json
+|   |   |   |   |   |-- 1772170776012-action_start-b8fa3c5e-d807-4e4a-b058-13dfb1e4a574.json
+|   |   |   |   |   `-- 1772170776014-action_success-8bb09bc4-af37-4bad-97cf-1da72010ee79.json
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-02-25.md
 |   |   |   |   |   |-- 2026-02-26.md
@@ -177,8 +179,11 @@ apps/trenchclaw/
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 062da82a-89ee-44ce-b2ba-d0344d47ffc5.jsonl
+|   |   |   |   |   |-- 0e20b352-bdc5-4433-b48e-9551bd75c626.jsonl
 |   |   |   |   |   |-- 15ace701-d47e-4577-81d6-dddd19f50a16.jsonl
+|   |   |   |   |   |-- 18e2a548-34df-41b9-a38b-b6218f5b52ed.jsonl
 |   |   |   |   |   |-- 1a9eedfc-a6df-494e-b63b-dd8c24235784.jsonl
+|   |   |   |   |   |-- 1b58240b-8168-4d28-9549-7e4f61636701.jsonl
 |   |   |   |   |   |-- 1e6cf9e4-6e02-4b5a-afa8-19acd88909d9.jsonl
 |   |   |   |   |   |-- 1f266e17-113f-4d76-9d93-82a154a0a07f.jsonl
 |   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.jsonl
@@ -193,9 +198,11 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 5fd7cba5-0e40-4ed7-90b0-05a1a03fe383.jsonl
 |   |   |   |   |   |-- 6060dcea-d4be-44f6-879a-5b627ebbaf15.jsonl
 |   |   |   |   |   |-- 625dc361-fcc1-4ba7-a124-103421f5ba02.jsonl
+|   |   |   |   |   |-- 6b5dcc42-76af-4ab6-86c8-b655f62fd549.jsonl
 |   |   |   |   |   |-- 6ca3f256-0fa3-40f6-98c3-da0212e97aca.jsonl
 |   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.jsonl
 |   |   |   |   |   |-- 7998da66-a848-4060-a95a-ec0f6000354e.jsonl
+|   |   |   |   |   |-- 81213b93-7937-485a-ab35-768bf364e404.jsonl
 |   |   |   |   |   |-- 8895f7fd-f3c7-4d46-984f-44679a165b3b.jsonl
 |   |   |   |   |   |-- 88d756f7-99be-4749-b5fc-c96a3317562d.jsonl
 |   |   |   |   |   |-- 8a55db1a-865d-429a-ac67-5fbb58e2d791.jsonl
@@ -314,8 +321,11 @@ apps/trenchclaw/
 |   |   |   |   |-- keypairs/
 |   |   |   |   |   `-- .keep
 |   |   |   |   |-- no-read/
+|   |   |   |   |   |-- .gitkeep
 |   |   |   |   |   |-- ai.json
-|   |   |   |   |   `-- vault.json
+|   |   |   |   |   |-- README.md
+|   |   |   |   |   |-- vault.json
+|   |   |   |   |   `-- vault.template.json
 |   |   |   |   |-- notes/
 |   |   |   |   |   `-- .keep
 |   |   |   |   `-- system/
@@ -328,8 +338,7 @@ apps/trenchclaw/
 |   |   |   |       |-- filesystem-manifest.yaml
 |   |   |   |       |-- payload-manifest.yaml
 |   |   |   |       `-- system.md
-|   |   |   |-- user-settings/
-|   |   |   |   |-- custom-modes/
+|   |   |   |-- user-blockchain-settings/
 |   |   |   |   |-- notifications.yaml
 |   |   |   |   |-- settings.yaml
 |   |   |   |   `-- swap.yaml
@@ -366,6 +375,7 @@ apps/trenchclaw/
 |   |   |   |-- shared.ts
 |   |   |   |-- types.ts
 |   |   |   |-- user-settings-loader.ts
+|   |   |   |-- vault-file.ts
 |   |   |   `-- workspace-map.ts
 |   |   |-- runtime/
 |   |   |   |-- types/
@@ -547,10 +557,12 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | /api/chat |
 | /api/gui/activity |
 | /api/gui/bootstrap |
+| /api/gui/conversations |
 | /api/gui/instances |
 | /api/gui/instances/sign-in |
 | /api/gui/queue |
 | /api/gui/tests/dispatcher |
+| /api/gui/vault |
 
 ## SQLite Schema Snapshot
 ```text

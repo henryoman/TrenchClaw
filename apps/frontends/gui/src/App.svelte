@@ -18,6 +18,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
+  let activeTab: "chat" | "wallet-manager" = $state("chat");
 
   const ensureChatController = async (): Promise<void> => {
     if (chat) {
@@ -26,6 +27,7 @@
     try {
       const { createChatController } = await import("./features/chat/chat-controller.svelte");
       chat = createChatController();
+      await chat.initialize();
       chatInitError = "";
     } catch (error) {
       chatInitError = error instanceof Error ? error.message : "Failed to initialize chat module.";
@@ -55,20 +57,38 @@
     onCreate={runtime.openCreateModal}
   />
 {:else}
-  <WorkspaceShell runtimeStatus={runtime.state.runtimeStatus}>
-    {#if chat}
-      <ChatPanel
-        messages={chat.chat.messages}
-        bind:input={chat.state.input}
-        sending={chat.isSending()}
-        onSubmit={() => {
-          void chat!.submitChat(runtime.refreshRuntimePanels);
-        }}
-      />
+  <WorkspaceShell
+    runtimeStatus={runtime.state.runtimeStatus}
+    {activeTab}
+    onTabChange={(tab) => {
+      activeTab = tab;
+    }}
+  >
+    {#if activeTab === "chat"}
+      {#if chat}
+        <ChatPanel
+          messages={chat.chat.messages}
+          bind:input={chat.state.input}
+          conversations={chat.state.conversations}
+          activeConversationId={chat.state.activeConversationId}
+          sending={chat.isSending()}
+          onSelectConversation={(conversationId) => {
+            void chat!.selectConversation(conversationId);
+          }}
+          onCreateConversation={() => {
+            chat!.createNewConversation();
+          }}
+          onSubmit={() => {
+            void chat!.submitChat(runtime.refreshRuntimePanels);
+          }}
+        />
+      {:else}
+        <section class="chat-init-error">
+          <p>{chatInitError || "Initializing chat..."}</p>
+        </section>
+      {/if}
     {:else}
-      <section class="chat-init-error">
-        <p>{chatInitError || "Initializing chat..."}</p>
-      </section>
+      <section class="wallet-manager-placeholder" aria-label="Wallet manager panel"></section>
     {/if}
     <section class="right-column">
       <QueuePanel jobs={runtime.state.queueJobs} />
@@ -107,5 +127,11 @@
 
   .chat-init-error p {
     margin: 0;
+  }
+
+  .wallet-manager-placeholder {
+    border: var(--tc-border);
+    background: var(--tc-color-black);
+    min-height: 0;
   }
 </style>

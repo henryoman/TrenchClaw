@@ -6,4 +6,5 @@ export { default as LoginSplash } from "./splash/LoginSplash.svelte";
 export { default as ChatPanel } from "./workspace/ChatPanel.svelte";
 export { default as QueuePanel } from "./workspace/QueuePanel.svelte";
 export { default as SummaryPanel } from "./workspace/SummaryPanel.svelte";
+export { default as VaultPanel } from "./workspace/VaultPanel.svelte";
 export { default as WorkspaceShell } from "./workspace/WorkspaceShell.svelte";

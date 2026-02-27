@@ -127,6 +127,42 @@ const extractUiMessageText = (message: UIMessage): string => {
   return JSON.stringify(message.parts);
 };
 
+const normalizeUiMessages = (messages: UIMessage[]): UIMessage[] => {
+  const normalized: UIMessage[] = [];
+
+  for (const message of messages) {
+    const sourceRole = message.role;
+    if (sourceRole !== "system" && sourceRole !== "user" && sourceRole !== "assistant") {
+      continue;
+    }
+
+    const text = message.parts
+      .map((part) => {
+        if (part.type === "text") {
+          return part.text ?? "";
+        }
+        return JSON.stringify(part);
+      })
+      .join("\n")
+      .trim();
+
+    if (!text) {
+      continue;
+    }
+
+    const role = sourceRole === "assistant" ? "user" : sourceRole;
+    const normalizedText = sourceRole === "assistant" ? `[assistant]\n${text}` : text;
+
+    normalized.push({
+      id: trimOrUndefinedValue(message.id) ?? `msg-${crypto.randomUUID()}`,
+      role,
+      parts: [{ type: "text", text: normalizedText }],
+    });
+  }
+
+  return normalized;
+};
+
 const sanitizeConversationTitle = (title: string | undefined, fallbackMessages: UIMessage[]): string | undefined => {
   const explicit = trimOrUndefinedValue(title);
   if (explicit) {
@@ -271,6 +307,7 @@ export const createRuntimeChatService = (
     messages: UIMessage[],
     input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
   ): Promise<Response> => {
+    const normalizedMessages = normalizeUiMessages(messages);
     const model = resolveModel();
     const toolNames = listToolNames();
     const tools: Record<string, any> = buildActionTools(deps);
@@ -280,7 +317,7 @@ export const createRuntimeChatService = (
     deps.stateStore.saveConversation({
       id: chatId,
       sessionId: trimOrUndefinedValue(input?.sessionId) ?? existingConversation?.sessionId,
-      title: sanitizeConversationTitle(input?.conversationTitle, messages) ?? existingConversation?.title,
+      title: sanitizeConversationTitle(input?.conversationTitle, normalizedMessages) ?? existingConversation?.title,
       summary: existingConversation?.summary,
       createdAt: existingConversation?.createdAt ?? now,
       updatedAt: now,
@@ -295,14 +332,14 @@ export const createRuntimeChatService = (
     const result = streamWithModel({
       model,
       system: await buildSystemPrompt(deps, toolNames),
-      messages: await convertMessages(messages),
+      messages: await convertMessages(normalizedMessages),
       stopWhen: stepCountIs(12),
       tools,
     });
 
     return result.toUIMessageStreamResponse({
       headers: withChatHeaders(input?.headers, chatId),
-      originalMessages: messages,
+      originalMessages: normalizedMessages,
       onFinish: ({ messages: finalMessages }) => {
         const updatedAt = Date.now();
         const conversation = deps.stateStore.getConversation(chatId);
@@ -317,7 +354,7 @@ export const createRuntimeChatService = (
 
         for (const [index, message] of finalMessages.entries()) {
           deps.stateStore.saveChatMessage({
-            id: message.id,
+            id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
             conversationId: chatId,
             role: message.role,
             content: extractUiMessageText(message),

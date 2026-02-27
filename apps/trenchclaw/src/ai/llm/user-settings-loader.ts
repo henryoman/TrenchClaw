@@ -1,11 +1,14 @@
 import path from "node:path";
 import { isRecord, parseStructuredFile, resolvePathFromModule } from "./shared";
+import { ensureVaultFileExists } from "./vault-file";
 
-const DEFAULT_USER_SETTINGS_FILE = "../brain/user-settings/settings.yaml";
+const DEFAULT_USER_SETTINGS_FILE = "../brain/user-blockchain-settings/settings.yaml";
 const DEFAULT_VAULT_FILE = "../brain/protected/no-read/vault.json";
+const DEFAULT_VAULT_TEMPLATE_FILE = "../brain/protected/no-read/vault.template.json";
 
 const USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
+const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 
 const getByPath = (root: unknown, segments: string[]): unknown => {
   let current = root;
@@ -120,6 +123,16 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     process.env[USER_SETTINGS_FILE_ENV],
   );
   const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
+  const vaultTemplatePath = resolvePathFromModule(
+    import.meta.url,
+    DEFAULT_VAULT_TEMPLATE_FILE,
+    process.env[VAULT_TEMPLATE_FILE_ENV],
+  );
+
+  await ensureVaultFileExists({
+    vaultPath,
+    templatePath: vaultTemplatePath,
+  });
 
   const rawSettings = await parseStructuredFile(userSettingsPath);
   const vaultData = await parseStructuredFile(vaultPath);

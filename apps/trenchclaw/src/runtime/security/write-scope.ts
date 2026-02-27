@@ -27,6 +27,10 @@ export const INSTANCE_SYSTEM_WRITE_ROOTS = [
   "src/ai/brain/protected/instance",
 ] as const;
 
+export const PROTECTED_NO_READ_WRITE_ROOTS = [
+  "src/ai/brain/protected/no-read",
+] as const;
+
 export const assertWritePathInRoots = (input: {
   targetPath: string;
   roots: readonly string[];
@@ -63,3 +67,11 @@ export const assertInstanceSystemWritePath = (targetPath: string, operation: str
   });
 };
 
+export const assertProtectedNoReadWritePath = (targetPath: string, operation: string): void => {
+  assertWritePathInRoots({
+    targetPath,
+    roots: PROTECTED_NO_READ_WRITE_ROOTS,
+    scope: "protected-no-read-write",
+    operation,
+  });
+};
