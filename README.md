@@ -261,43 +261,33 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 
 ---
 
-## v0.1 Checklist (CLI release)
+## v0.1 Checklist
 
-- [x] Runtime core contracts and orchestration foundation
-- [x] Action registry + dispatcher + scheduler + event bus
-- [x] Bun SQLite state store foundation
-- [x] SQLite hardening (auto schema sync, indexes, retention pruning)
-- [x] Live storage schema with Zod + typed runtime validation
-- [x] Market + chat storage schema (`market_instruments`, `ohlcv_bars`, `market_snapshots`, `http_cache`, `conversations`, `chat_messages`)
-- [x] Runtime log split (`system` daily logs + `session` JSONL + session summaries)
-- [x] Jupiter Ultra action path (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`)
-- [x] Runtime settings profiles and policy guardrails
-- [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) wired into runtime bootstrap
-- [x] Automatic current time/date injection into every LLM system prompt
-- [x] CLI runtime entrypoints (`dev`, `start`, `headless`, `cli`) + HTTP health/status routes
-- [x] Tests centralized under `tests/`
-- [ ] Fix current failing test in `tests/runtime/config/authority.test.ts` (`dangerous` profile partial-override expectation)
-- [ ] Implement currently stub-only modules:
-  - `src/solana/routines/dca.ts`
-  - `src/solana/triggers/timer.ts`
-  - `src/solana/triggers/price.ts`
-  - `src/solana/triggers/on-chain.ts`
-  - `src/solana/actions/wallet-based/swap/rpc/quoteSwap.ts`
-  - `src/solana/actions/wallet-based/swap/rpc/executeSwap.ts`
-  - `src/solana/actions/wallet-based/token/mint/createToken.ts`
-  - `src/solana/actions/data-fetch/rpc/getTokenPrice.ts`
-  - `src/solana/actions/data-fetch/rpc/getMarketData.ts`
-  - `src/solana/actions/data-fetch/rpc/getTokenMetadata.ts`
-  - `src/solana/actions/wallet-based/read-only/checkSolBalance.ts`
-  - `src/solana/actions/wallet-based/read-only/getWalletState.ts`
-- [ ] Wire additional routines into runtime bootstrap (currently `createWallets` + `actionSequence` only)
+- [x] Runtime core contracts + orchestration foundation
+- [x] Action registry, dispatcher, scheduler, and typed event bus
+- [x] Bun SQLite state store + auto schema sync from Zod
+- [x] Storage hardening (indexes, retention pruning, schema snapshot support)
+- [x] Runtime log split (`system`, `sessions`, `summaries`, `memory`)
+- [x] Runtime profile/policy guardrails + protected settings merge
+- [x] Filesystem manifest policy + actor-aware read/write permission checks
+- [x] Runtime/system write-scope enforcement for db and protected instance paths
+- [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) in bootstrap
+- [x] Automatic current date/time injection into system prompts
+- [x] Solana action surface for wallet/data flows (including Jupiter Ultra path)
+- [x] CLI and runtime entrypoints (`dev`, `start`, `headless`, `cli`) + health/status routes
+- [x] Test suite centralized under `tests/` with runtime/storage/action coverage
+- [ ] Stabilize runtime profile behavior test in `tests/runtime/config/authority.test.ts` (`dangerous` partial-override expectation)
+- [ ] Wire additional routines into runtime bootstrap (beyond `createWallets` and `actionSequence`)
+- [ ] Finish protected write-policy rollout across runtime + wallet action paths
+- [ ] Finalize storage schema/docs refresh (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`)
+- [ ] Complete runtime storage/log store refactor touchpoints and corresponding tests
 
 ## v1.0 Checklist
 
 - [ ] Simulation and paper-trading execution paths
-- [ ] Metrics and tracing wiring (config flags exist under `observability.metrics` and `observability.tracing`)
+- [ ] Metrics/tracing wiring (`observability.metrics`, `observability.tracing`)
 - [ ] Trigger-to-routine execution flow for timer/price/on-chain triggers
-- [ ] Integration and end-to-end test layers (beyond current unit-focused suite)
+- [ ] Broader integration and end-to-end test layers
 - [ ] Web GUI production rollout (`src/apps/web-gui` scaffold exists)
 
 ---
