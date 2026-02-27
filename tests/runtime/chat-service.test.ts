@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import type { UIMessage } from "ai";
 import { z } from "zod";
 
@@ -6,6 +6,7 @@ import type { ActionDispatcher, ActionResult, LlmClient } from "../../apps/trenc
 import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/runtime/types";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import { createRuntimeChatService } from "../../apps/trenchclaw/src/runtime/chat";
+import { SqliteStateStore } from "../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 
 const makeActionResult = (input: {
   ok: boolean;
@@ -20,6 +21,16 @@ const makeActionResult = (input: {
   durationMs: 1,
   ...(input.data === undefined ? {} : { data: input.data }),
   ...(input.error === undefined ? {} : { error: input.error }),
+});
+
+const sqliteDbPaths: string[] = [];
+
+afterEach(() => {
+  for (const dbPath of sqliteDbPaths.splice(0)) {
+    void Bun.file(dbPath).delete();
+    void Bun.file(`${dbPath}-wal`).delete();
+    void Bun.file(`${dbPath}-shm`).delete();
+  }
 });
 
 describe("RuntimeChatService", () => {
@@ -133,7 +144,7 @@ describe("RuntimeChatService", () => {
     expect(dispatchCalls[0]).toEqual({ actor: "agent", actionName: "echo", input: { value: 42 } });
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });
-    expect(capturedSystemPrompt).toContain("Filesystem policy for model");
+    expect(capturedSystemPrompt).toContain("Filesystem policy");
   });
 
   test("creates and persists conversation/messages from streamed chat", async () => {
@@ -213,5 +224,89 @@ describe("RuntimeChatService", () => {
     expect(persisted[0]?.content).toContain("hello runtime");
     expect(persisted[1]?.id).toBe("assistant-1");
     expect(persisted[1]?.content).toContain("acknowledged");
+  });
+
+  test("persists chat history in SQLite across store reopen", async () => {
+    const dbPath = `/tmp/trenchclaw-chat-runtime-${crypto.randomUUID()}.db`;
+    sqliteDbPaths.push(dbPath);
+    const stateStore = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const registry = new ActionRegistry();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStreamResponse: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) => {
+            const assistantMessage: UIMessage = {
+              id: "assistant-sqlite-1",
+              role: "assistant",
+              parts: [{ type: "text", text: "sqlite persisted" }],
+            };
+            const original = options?.originalMessages ?? [];
+            options?.onFinish?.({
+              messages: [...original, assistantMessage],
+              isContinuation: false,
+              isAborted: false,
+              responseMessage: assistantMessage,
+              finishReason: "stop",
+            });
+            return new Response("ok");
+          },
+        })) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "user-sqlite-1",
+          role: "user",
+          parts: [{ type: "text", text: "persist this chat" }],
+        },
+      ],
+      {
+        chatId: "chat-sqlite-1",
+        sessionId: "session-sqlite-1",
+        conversationTitle: "SQLite Thread",
+      },
+    );
+    stateStore.close();
+
+    const reopened = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const conversation = reopened.getConversation("chat-sqlite-1");
+    const messages = reopened.listChatMessages("chat-sqlite-1", 10);
+    expect(conversation?.sessionId).toBe("session-sqlite-1");
+    expect(conversation?.title).toBe("SQLite Thread");
+    expect(messages.length).toBe(2);
+    expect(messages.some((entry) => entry.id === "user-sqlite-1")).toBe(true);
+    expect(messages.some((entry) => entry.id === "assistant-sqlite-1")).toBe(true);
+    reopened.close();
   });
 });

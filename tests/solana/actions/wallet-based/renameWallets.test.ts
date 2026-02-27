@@ -19,7 +19,7 @@ describe("renameWalletsAction", () => {
     const scopeName = `test-rename-wallets-${crypto.randomUUID()}`;
     const directory = path.join("src/ai/brain/protected", scopeName, "keypairs");
     const walletLibraryFile = path.join("src/ai/brain/protected", scopeName, "wallet-library.jsonl");
-    const scopeRoot = path.join(process.cwd(), "src/ai/brain/protected", scopeName);
+    const scopeRoot = path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected", scopeName);
     createdPaths.add(scopeRoot);
 
     const createResult = await createWalletsAction.execute({} as never, {
@@ -87,7 +87,7 @@ describe("renameWalletsAction", () => {
     const scopeName = `test-rename-wallets-conflict-${crypto.randomUUID()}`;
     const directory = path.join("src/ai/brain/protected", scopeName, "keypairs");
     const walletLibraryFile = path.join("src/ai/brain/protected", scopeName, "wallet-library.jsonl");
-    const scopeRoot = path.join(process.cwd(), "src/ai/brain/protected", scopeName);
+    const scopeRoot = path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected", scopeName);
     createdPaths.add(scopeRoot);
 
     await createWalletsAction.execute({} as never, {

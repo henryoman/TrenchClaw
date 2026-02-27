@@ -4,7 +4,8 @@ import { createBashTool } from "bash-tool";
 
 import {
   FilesystemPermissionDeniedError,
-  assertFilesystemAccessAllowed,
+  assertModelFilesystemReadAllowed,
+  assertModelFilesystemWriteAllowed,
 } from "./security/filesystem-manifest";
 
 interface WorkspaceBashOptions {
@@ -104,12 +105,19 @@ class HostWorkspaceSandbox {
         "Mutating shell commands are disabled. Use workspaceWriteFile for file writes, or enable TRENCHCLAW_WORKSPACE_BASH_ALLOW_MUTATIONS=1 for trusted sessions.",
       );
     }
-    await assertFilesystemAccessAllowed({
-      actor: this.actor,
-      targetPath: this.workspaceRoot,
-      operation: mutatingCommand ? "write" : "read",
-      reason: "execute workspace bash command",
-    });
+    if (mutatingCommand) {
+      await assertModelFilesystemWriteAllowed({
+        actor: this.actor,
+        targetPath: this.workspaceRoot,
+        reason: "execute workspace bash command",
+      });
+    } else {
+      await assertModelFilesystemReadAllowed({
+        actor: this.actor,
+        targetPath: this.workspaceRoot,
+        reason: "execute workspace bash command",
+      });
+    }
 
     await mkdir(this.workspaceRoot, { recursive: true });
     const child = Bun.spawn(["bash", "-lc", sanitizedCommand], {
@@ -146,10 +154,9 @@ class HostWorkspaceSandbox {
 
   async readFile(filePath: string): Promise<string> {
     const absolutePath = assertWorkspacePath(this.workspaceRoot, filePath);
-    await assertFilesystemAccessAllowed({
+    await assertModelFilesystemReadAllowed({
       actor: this.actor,
       targetPath: absolutePath,
-      operation: "read",
       reason: "read workspace file",
     });
     return readFile(absolutePath, "utf8");
@@ -158,10 +165,9 @@ class HostWorkspaceSandbox {
   async writeFiles(files: Array<{ path: string; content: string | Buffer }>): Promise<void> {
     for (const file of files) {
       const absolutePath = assertWorkspacePath(this.workspaceRoot, file.path);
-      await assertFilesystemAccessAllowed({
+      await assertModelFilesystemWriteAllowed({
         actor: this.actor,
         targetPath: absolutePath,
-        operation: "write",
         reason: "write workspace file",
       });
       await mkdir(path.dirname(absolutePath), { recursive: true });

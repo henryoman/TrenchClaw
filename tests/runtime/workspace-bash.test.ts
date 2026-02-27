@@ -10,7 +10,7 @@ import {
   createWorkspaceBashTools,
 } from "../../apps/trenchclaw/src/runtime/workspace-bash";
 
-const TEST_ROOT = path.resolve(process.cwd(), "src/ai/brain/workspace/.tests");
+const TEST_ROOT = path.resolve(process.cwd(), "apps/trenchclaw/src/ai/brain/workspace/.tests");
 const createdPaths: string[] = [];
 
 afterEach(async () => {

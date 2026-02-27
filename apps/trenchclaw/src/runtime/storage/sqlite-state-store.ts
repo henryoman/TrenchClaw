@@ -1,6 +1,8 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { Database } from "bun:sqlite";
+import { fileURLToPath } from "node:url";
+import { assertRuntimeSystemWritePath } from "../security/write-scope";
 
 import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
@@ -67,8 +69,10 @@ const parseJsonWithSchema = <T>(
   return result.data;
 };
 
+const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+
 const toAbsolutePath = (filePath: string): string =>
-  path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
+  path.isAbsolute(filePath) ? filePath : path.join(APP_ROOT_DIRECTORY, filePath);
 
 const toFiniteNumber = (value: unknown): number | null => {
   const parsed = Number(value);
@@ -91,6 +95,7 @@ export class SqliteStateStore implements StateStore {
   constructor(config: SqliteStateStoreConfig) {
     this.config = sqliteStateStoreConfigSchema.parse(config);
     const absolutePath = toAbsolutePath(this.config.path);
+    assertRuntimeSystemWritePath(absolutePath, "initialize sqlite runtime store");
     mkdirSync(path.dirname(absolutePath), { recursive: true });
     this.db = new Database(absolutePath, { create: true, strict: true });
 

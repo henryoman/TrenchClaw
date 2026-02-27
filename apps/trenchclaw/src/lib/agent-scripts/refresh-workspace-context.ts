@@ -6,6 +6,7 @@ import { Database } from "bun:sqlite";
 import { loadRuntimeSettings } from "../../runtime/load";
 import { buildActionCatalog } from "../../runtime/bootstrap";
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
+import { assertWritePathInRoots } from "../../runtime/security/write-scope";
 import {
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
@@ -243,8 +244,20 @@ ${DEFAULT_LIVE_DB_PATH_CANDIDATES.map((pathCandidate) => `- \`${pathCandidate}\`
 `;
 
 await mkdir(dirname(PROTECTED_CONTEXT_FILE), { recursive: true });
+assertWritePathInRoots({
+  targetPath: PROTECTED_CONTEXT_FILE,
+  roots: ["src/ai/brain/protected/context"],
+  scope: "system-context-refresh",
+  operation: "write workspace context snapshot",
+});
 await writeFile(PROTECTED_CONTEXT_FILE, markdown, "utf8");
 await mkdir(dirname(SQLITE_SQL_SNAPSHOT_FILE), { recursive: true });
+assertWritePathInRoots({
+  targetPath: SQLITE_SQL_SNAPSHOT_FILE,
+  roots: [fileURLToPath(new URL("../../../../../docs", import.meta.url))],
+  scope: "system-context-refresh",
+  operation: "write sqlite schema sql snapshot",
+});
 await writeFile(SQLITE_SQL_SNAPSHOT_FILE, canonicalSchemaSql, "utf8");
 
 console.log(`Workspace context refreshed: ${PROTECTED_CONTEXT_FILE}`);

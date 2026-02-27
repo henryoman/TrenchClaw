@@ -1,5 +1,7 @@
 import { appendFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { assertRuntimeSystemWritePath } from "../security/write-scope";
 
 type SessionMessageRole = "system" | "user" | "assistant" | "toolResult";
 
@@ -78,8 +80,10 @@ export interface ActiveSessionStats {
   eventCount: number;
 }
 
+const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+
 const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
+  path.isAbsolute(targetPath) ? targetPath : path.join(APP_ROOT_DIRECTORY, targetPath);
 
 const indexFileName = "sessions.json";
 
@@ -102,6 +106,8 @@ export class SessionLogStore {
   constructor(config: SessionLogStoreConfig) {
     this.directory = toAbsolutePath(config.directory);
     this.indexFilePath = path.join(this.directory, indexFileName);
+    assertRuntimeSystemWritePath(this.directory, "initialize session log directory");
+    assertRuntimeSystemWritePath(this.indexFilePath, "initialize sessions index file");
     this.agentId = config.agentId.trim() || "main";
     this.sessionKey = config.sessionKey.trim() || `agent:${this.agentId}:main`;
     this.source = config.source.trim() || "cli";
@@ -125,6 +131,7 @@ export class SessionLogStore {
     await this.writeStore(store);
 
     const sessionFilePath = path.join(this.directory, `${sessionId}.jsonl`);
+    assertRuntimeSystemWritePath(sessionFilePath, "create session log file");
     this.active = {
       agentId: this.agentId,
       sessionKey: this.sessionKey,
@@ -239,6 +246,7 @@ export class SessionLogStore {
   }
 
   private async writeStore(store: SessionStoreData): Promise<void> {
+    assertRuntimeSystemWritePath(this.indexFilePath, "write sessions index file");
     await Bun.write(this.indexFilePath, `${JSON.stringify(store, null, 2)}\n`);
   }
 
@@ -246,6 +254,7 @@ export class SessionLogStore {
     const active = await this.ensureOpen();
     const encoded = `${JSON.stringify(line)}\n`;
     this.writeChain = this.writeChain.then(async () => {
+      assertRuntimeSystemWritePath(active.sessionFilePath, "append session log entry");
       appendFileSync(active.sessionFilePath, encoded, "utf8");
     });
     await this.writeChain;

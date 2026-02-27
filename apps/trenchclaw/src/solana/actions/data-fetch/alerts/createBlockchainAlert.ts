@@ -1,9 +1,13 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import { assertFilesystemAccessAllowed } from "../../../../runtime/security/filesystem-manifest";
+import {
+  assertModelFilesystemReadAllowed,
+  assertModelFilesystemWriteAllowed,
+} from "../../../../runtime/security/filesystem-manifest";
 
 const alertConditionSchema = z.discriminatedUnion("type", [
   z.object({
@@ -52,6 +56,8 @@ interface CreateBlockchainAlertOutput {
   alertCount: number;
 }
 
+const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
+
 const readExistingAlerts = async (storageFilePath: string): Promise<StoredBlockchainAlert[]> => {
   try {
     const raw = await readFile(storageFilePath, "utf-8");
@@ -83,18 +89,16 @@ export const createBlockchainAlertAction: Action<CreateBlockchainAlertInput, Cre
       const now = new Date().toISOString();
       const storageFilePath = path.isAbsolute(input.storageFilePath)
         ? input.storageFilePath
-        : path.join(process.cwd(), input.storageFilePath);
+        : path.join(APP_ROOT_DIRECTORY, input.storageFilePath);
 
-      await assertFilesystemAccessAllowed({
+      await assertModelFilesystemReadAllowed({
         actor: _ctx.actor,
         targetPath: storageFilePath,
-        operation: "read",
         reason: "read blockchain alert storage file",
       });
-      await assertFilesystemAccessAllowed({
+      await assertModelFilesystemWriteAllowed({
         actor: _ctx.actor,
         targetPath: storageFilePath,
-        operation: "write",
         reason: "write blockchain alert storage file",
       });
 

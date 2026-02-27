@@ -16,7 +16,7 @@ describe("createBlockchainAlertAction", () => {
   test("creates and stores an alert rule", async () => {
     const storageFilePath = path.resolve(
       process.cwd(),
-      `src/ai/brain/workspace/strategies/.tests/alerts-${crypto.randomUUID()}.json`,
+      `apps/trenchclaw/src/ai/brain/workspace/strategies/.tests/alerts-${crypto.randomUUID()}.json`,
     );
     createdFiles.push(storageFilePath);
 

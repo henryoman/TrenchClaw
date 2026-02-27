@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-02-26T23:11:54.250Z
+Generated at: 2026-02-27T04:41:43.239Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -143,42 +143,91 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 1772147128369-action_success-906b8ed4-b464-4f1c-81f2-b1eac8f3eaf9.json
 |   |   |   |   |   |-- 1772147485044-policy_block-01cb7ac3-a282-428f-b0bc-2c9768abd03d.json
 |   |   |   |   |   |-- 1772147485049-action_start-731e229e-1840-40c1-9900-eae553092812.json
-|   |   |   |   |   `-- 1772147485051-action_success-d41d177b-e2bc-4710-86e8-6d805eea9212.json
+|   |   |   |   |   |-- 1772147485051-action_success-d41d177b-e2bc-4710-86e8-6d805eea9212.json
+|   |   |   |   |   |-- 1772147524609-policy_block-92b9ed14-b414-47b0-8734-540917a69573.json
+|   |   |   |   |   |-- 1772147524614-action_start-903210c1-d2f6-4de3-aa9d-9e8c45981046.json
+|   |   |   |   |   |-- 1772147524615-action_success-2a68e69c-c62d-4c3a-9186-ff5525a94d44.json
+|   |   |   |   |   |-- 1772148934588-policy_block-e074ca23-2e0c-4012-a4d6-22a56e7b6363.json
+|   |   |   |   |   |-- 1772148934593-action_start-41b9f23b-d788-4c4b-99f7-05bcfb4e46f7.json
+|   |   |   |   |   |-- 1772148934594-action_success-498d7b40-2aea-4408-bba6-38682b86eaac.json
+|   |   |   |   |   |-- 1772162213475-policy_block-4cbba198-30ae-432d-8df6-0910cfef1a8a.json
+|   |   |   |   |   |-- 1772162213479-action_start-556df273-a47a-44b2-b735-bfc8e296da32.json
+|   |   |   |   |   |-- 1772162213480-action_success-0fb43a2b-c792-479b-8925-5f453b269397.json
+|   |   |   |   |   |-- 1772162231729-policy_block-e244b8e0-f287-4cb9-b288-40490cf2171a.json
+|   |   |   |   |   |-- 1772162231734-action_start-aa3306bc-67a9-4eb3-b250-85f08d353189.json
+|   |   |   |   |   `-- 1772162231735-action_success-0cd0db54-5e19-4af3-a207-337f77517d91.json
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-02-25.md
 |   |   |   |   |   |-- 2026-02-26.md
+|   |   |   |   |   |-- 2026-02-27.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
+|   |   |   |   |   |-- 062da82a-89ee-44ce-b2ba-d0344d47ffc5.jsonl
+|   |   |   |   |   |-- 15ace701-d47e-4577-81d6-dddd19f50a16.jsonl
+|   |   |   |   |   |-- 1a9eedfc-a6df-494e-b63b-dd8c24235784.jsonl
 |   |   |   |   |   |-- 1e6cf9e4-6e02-4b5a-afa8-19acd88909d9.jsonl
 |   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.jsonl
+|   |   |   |   |   |-- 28276a04-9a44-4cc0-b7d8-54550cf8d559.jsonl
 |   |   |   |   |   |-- 34276a5a-42fa-440c-8637-d4a1342159eb.jsonl
+|   |   |   |   |   |-- 358fb481-c841-4586-acc9-54a35bcf3b13.jsonl
+|   |   |   |   |   |-- 4cf2dbbe-a3a6-49c3-ac05-ad5343067082.jsonl
+|   |   |   |   |   |-- 50dad041-7826-497f-9ef5-20c52a503063.jsonl
+|   |   |   |   |   |-- 5fd7cba5-0e40-4ed7-90b0-05a1a03fe383.jsonl
 |   |   |   |   |   |-- 6060dcea-d4be-44f6-879a-5b627ebbaf15.jsonl
 |   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.jsonl
+|   |   |   |   |   |-- 8895f7fd-f3c7-4d46-984f-44679a165b3b.jsonl
+|   |   |   |   |   |-- 8a55db1a-865d-429a-ac67-5fbb58e2d791.jsonl
+|   |   |   |   |   |-- a7d2fe1b-4cad-4d87-b4d6-7acb5c30a2d9.jsonl
+|   |   |   |   |   |-- a86e1d2e-5ead-4d2f-8b04-a2d99414d609.jsonl
+|   |   |   |   |   |-- b0ae0e6e-adb6-459a-bffa-9a6b70d3d985.jsonl
+|   |   |   |   |   |-- b314cc5d-3ee7-4b9c-a92e-e3b4520c7110.jsonl
 |   |   |   |   |   |-- e6eabf21-2e17-4879-a067-cef94dd71041.jsonl
 |   |   |   |   |   |-- e88dc017-cbca-4ec4-a04b-05ab9f81ce73.jsonl
+|   |   |   |   |   |-- e9ae1b91-0256-4397-bd23-8c831ed4818c.jsonl
 |   |   |   |   |   |-- f259a179-cecf-4d2d-9df6-ab0583195fd1.jsonl
+|   |   |   |   |   |-- f69d067f-04f6-4e9e-90a5-31b7f10a50ee.jsonl
 |   |   |   |   |   |-- f6c10e94-92fb-4b0a-86ac-c53cbbbf710d.jsonl
+|   |   |   |   |   |-- fa408dae-ec78-49eb-b0cd-7954e0423337.jsonl
+|   |   |   |   |   |-- fbe23d01-80c4-4764-bdf4-396c6a424cf9.jsonl
 |   |   |   |   |   `-- sessions.json
 |   |   |   |   |-- summaries/
 |   |   |   |   |   |-- .keep
+|   |   |   |   |   |-- 062da82a-89ee-44ce-b2ba-d0344d47ffc5.md
+|   |   |   |   |   |-- 15ace701-d47e-4577-81d6-dddd19f50a16.md
+|   |   |   |   |   |-- 1a9eedfc-a6df-494e-b63b-dd8c24235784.md
 |   |   |   |   |   |-- 1e6cf9e4-6e02-4b5a-afa8-19acd88909d9.md
 |   |   |   |   |   |-- 220f51a7-81e2-431c-b8fe-9494fc9aefa9.md
+|   |   |   |   |   |-- 28276a04-9a44-4cc0-b7d8-54550cf8d559.md
 |   |   |   |   |   |-- 34276a5a-42fa-440c-8637-d4a1342159eb.md
+|   |   |   |   |   |-- 4cf2dbbe-a3a6-49c3-ac05-ad5343067082.md
+|   |   |   |   |   |-- 50dad041-7826-497f-9ef5-20c52a503063.md
+|   |   |   |   |   |-- 5fd7cba5-0e40-4ed7-90b0-05a1a03fe383.md
 |   |   |   |   |   |-- 6060dcea-d4be-44f6-879a-5b627ebbaf15.md
 |   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.md
+|   |   |   |   |   |-- 8895f7fd-f3c7-4d46-984f-44679a165b3b.md
+|   |   |   |   |   |-- 8a55db1a-865d-429a-ac67-5fbb58e2d791.md
+|   |   |   |   |   |-- a7d2fe1b-4cad-4d87-b4d6-7acb5c30a2d9.md
+|   |   |   |   |   |-- a86e1d2e-5ead-4d2f-8b04-a2d99414d609.md
+|   |   |   |   |   |-- b0ae0e6e-adb6-459a-bffa-9a6b70d3d985.md
+|   |   |   |   |   |-- b314cc5d-3ee7-4b9c-a92e-e3b4520c7110.md
 |   |   |   |   |   |-- e6eabf21-2e17-4879-a067-cef94dd71041.md
 |   |   |   |   |   |-- e88dc017-cbca-4ec4-a04b-05ab9f81ce73.md
+|   |   |   |   |   |-- e9ae1b91-0256-4397-bd23-8c831ed4818c.md
 |   |   |   |   |   |-- f259a179-cecf-4d2d-9df6-ab0583195fd1.md
-|   |   |   |   |   `-- f6c10e94-92fb-4b0a-86ac-c53cbbbf710d.md
+|   |   |   |   |   |-- f69d067f-04f6-4e9e-90a5-31b7f10a50ee.md
+|   |   |   |   |   |-- f6c10e94-92fb-4b0a-86ac-c53cbbbf710d.md
+|   |   |   |   |   `-- fbe23d01-80c4-4764-bdf4-396c6a424cf9.md
 |   |   |   |   |-- summary/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-02-25.log
-|   |   |   |   |   `-- 2026-02-26.log
+|   |   |   |   |   |-- 2026-02-26.log
+|   |   |   |   |   `-- 2026-02-27.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-02-25.log
-|   |   |   |   |   `-- 2026-02-26.log
+|   |   |   |   |   |-- 2026-02-26.log
+|   |   |   |   |   `-- 2026-02-27.log
 |   |   |   |   |-- .gitignore
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
@@ -204,6 +253,7 @@ apps/trenchclaw/
 |   |   |   |   |   |   |   `-- form-automation.sh
 |   |   |   |   |   |   `-- SKILL.md
 |   |   |   |   |   `-- skills-lock.json
+|   |   |   |   |-- bun-shell.md
 |   |   |   |   |-- data-structures-as-json.md
 |   |   |   |   |-- helius.md
 |   |   |   |   |-- KNOWLEDGE_MANIFEST.md
@@ -235,8 +285,11 @@ apps/trenchclaw/
 |   |   |   |   `-- swap.yaml
 |   |   |   |-- workspace/
 |   |   |   |   |-- .tests/
+|   |   |   |   |-- configs/
 |   |   |   |   |-- misc-scripts/
 |   |   |   |   |-- notes/
+|   |   |   |   |-- output/
+|   |   |   |   |-- scratch/
 |   |   |   |   |-- strategies/
 |   |   |   |   |   |-- .tests/
 |   |   |   |   |   `-- .keep
@@ -452,7 +505,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 ```text
 SQLite schema snapshot (9 tables)
 - schema_migrations: version:INTEGER[pk], applied_at:INTEGER[not_null]
-- jobs: id:TEXT[pk], bot_id:TEXT[not_null], routine_name:TEXT[not_null], status:TEXT[not_null], config_json:TEXT[not_null], next_run_at:INTEGER, last_run_at:INTEGER, cycles_completed:INTEGER[not_null], total_cycles:INTEGER, last_result_json:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
+- jobs: id:TEXT[pk], bot_id:TEXT[not_null], routine_name:TEXT[not_null], status:TEXT[not_null], config_json:TEXT[not_null], next_run_at:INTEGER, last_run_at:INTEGER, cycles_completed:INTEGER[not_null], total_cycles:INTEGER, last_result_json:TEXT, attempt_count:INTEGER, lease_owner:TEXT, lease_expires_at:INTEGER, last_error:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - action_receipts: idempotency_key:TEXT[pk], payload_json:TEXT[not_null], timestamp:INTEGER[not_null]
 - conversations: id:TEXT[pk], session_id:TEXT, title:TEXT, summary:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - chat_messages: id:TEXT[pk], conversation_id:TEXT[not_null,fk->conversations.id], role:TEXT[not_null], content:TEXT[not_null], metadata_json:TEXT, created_at:INTEGER[not_null]
@@ -512,6 +565,10 @@ CREATE TABLE "jobs" (
   "cycles_completed" INTEGER NOT NULL CHECK (cycles_completed >= 0),
   "total_cycles" INTEGER CHECK (total_cycles IS NULL OR total_cycles >= 0),
   "last_result_json" TEXT,
+  "attempt_count" INTEGER CHECK (attempt_count IS NULL OR attempt_count >= 0),
+  "lease_owner" TEXT,
+  "lease_expires_at" INTEGER CHECK (lease_expires_at IS NULL OR lease_expires_at >= 0),
+  "last_error" TEXT,
   "created_at" INTEGER NOT NULL,
   "updated_at" INTEGER NOT NULL
 );
@@ -571,6 +628,8 @@ CREATE INDEX "idx_http_cache_expires_at" ON "http_cache"("expires_at");
 CREATE INDEX "idx_http_cache_source_endpoint" ON "http_cache"("source", "endpoint");
 
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
+
+CREATE INDEX "idx_jobs_lease_expires_at" ON "jobs"("status", "lease_expires_at");
 
 CREATE INDEX "idx_jobs_status_next_run_at" ON "jobs"("status", "next_run_at");
 
@@ -636,7 +695,7 @@ CREATE TABLE "jobs" (
   "last_result_json" TEXT,
   "created_at" INTEGER NOT NULL,
   "updated_at" INTEGER NOT NULL
-);
+, "attempt_count" INTEGER CHECK (attempt_count IS NULL OR attempt_count >= 0), "lease_owner" TEXT, "lease_expires_at" INTEGER CHECK (lease_expires_at IS NULL OR lease_expires_at >= 0), "last_error" TEXT);
 
 CREATE TABLE "market_instruments" (
   "id" INTEGER PRIMARY KEY,
@@ -693,6 +752,8 @@ CREATE INDEX "idx_http_cache_expires_at" ON "http_cache"("expires_at");
 CREATE INDEX "idx_http_cache_source_endpoint" ON "http_cache"("source", "endpoint");
 
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
+
+CREATE INDEX "idx_jobs_lease_expires_at" ON "jobs"("status", "lease_expires_at");
 
 CREATE INDEX "idx_jobs_status_next_run_at" ON "jobs"("status", "next_run_at");
 

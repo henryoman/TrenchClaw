@@ -16,6 +16,7 @@ import type {
 } from "@trenchclaw/types";
 import type { UIMessage } from "ai";
 import type { RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
+import { assertInstanceSystemWritePath } from "../../trenchclaw/src/runtime/security/write-scope";
 import { CORE_APP_ROOT } from "./runtime-paths";
 
 const MAX_ACTIVITY_ITEMS = 250;
@@ -206,6 +207,7 @@ const parseInstanceDocument = (raw: string): InstanceDocument | null => {
 };
 
 const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: InstanceDocument }>> => {
+  assertInstanceSystemWritePath(INSTANCE_DIRECTORY, "initialize instance profile directory");
   await mkdir(INSTANCE_DIRECTORY, { recursive: true });
   const entries = await readdir(INSTANCE_DIRECTORY, { withFileTypes: true, encoding: "utf8" });
   const files = entries
@@ -322,6 +324,7 @@ export class RuntimeGuiTransport {
   }
 
   async createInstance(payload: GuiCreateInstanceRequest): Promise<GuiCreateInstanceResponse> {
+    assertInstanceSystemWritePath(INSTANCE_DIRECTORY, "initialize instance profile directory");
     await mkdir(INSTANCE_DIRECTORY, { recursive: true });
     const existing = await readInstanceFiles();
     const nextNumber = nextInstanceNumberFromFiles(existing.map((entry) => entry.fileName));
@@ -343,7 +346,9 @@ export class RuntimeGuiTransport {
       },
     };
 
-    await writeFile(path.join(INSTANCE_DIRECTORY, fileName), `${JSON.stringify(document, null, 2)}\n`, "utf8");
+    const nextInstanceFilePath = path.join(INSTANCE_DIRECTORY, fileName);
+    assertInstanceSystemWritePath(nextInstanceFilePath, "write instance profile");
+    await writeFile(nextInstanceFilePath, `${JSON.stringify(document, null, 2)}\n`, "utf8");
     const instance = toInstanceView(fileName, document);
     this.activeInstance = instance;
     this.activeChatId = `instance-${instance.localInstanceId}-main`;

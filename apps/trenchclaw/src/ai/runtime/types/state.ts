@@ -81,13 +81,13 @@ export interface StateStore {
   listConversations(limit?: number): ConversationState[];
   saveChatMessage(message: ChatMessageState): void;
   listChatMessages(conversationId: string, limit?: number): ChatMessageState[];
-  searchRuntimeText?(input: {
+  searchRuntimeText(input: {
     query: string;
     scope?: RuntimeSearchScope;
     limit?: number;
     messageScanLimit?: number;
   }): RuntimeSearchResult;
-  getRuntimeKnowledgeSurface?(input?: {
+  getRuntimeKnowledgeSurface(input?: {
     recentConversationsLimit?: number;
     recentJobsLimit?: number;
     recentReceiptsLimit?: number;

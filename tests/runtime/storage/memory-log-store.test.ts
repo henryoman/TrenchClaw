@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import path from "node:path";
 
 import { MemoryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/memory-log-store";
 
@@ -12,7 +13,10 @@ afterEach(async () => {
 
 describe("MemoryLogStore", () => {
   test("writes daily and long-term memory logs", async () => {
-    const root = `/tmp/trenchclaw-memory-${crypto.randomUUID()}`;
+    const root = path.resolve(
+      process.cwd(),
+      `apps/trenchclaw/src/ai/brain/db/.tests/memory-${crypto.randomUUID()}`,
+    );
     tmpTargets.push(root);
 
     const store = new MemoryLogStore({
@@ -30,4 +34,3 @@ describe("MemoryLogStore", () => {
     expect(longTermText.includes("learned thing")).toBe(true);
   });
 });
-

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import path from "node:path";
 
 import { RuntimeLogger } from "../../../apps/trenchclaw/src/runtime/logging";
 import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/session-log-store";
@@ -16,7 +17,10 @@ afterEach(async () => {
 
 describe("SystemLogStore + SessionSummaryStore", () => {
   test("writes runtime logger entries to daily system log files", async () => {
-    const root = `/tmp/trenchclaw-system-log-${crypto.randomUUID()}`;
+    const root = path.resolve(
+      process.cwd(),
+      `apps/trenchclaw/src/ai/brain/db/.tests/system-log-${crypto.randomUUID()}`,
+    );
     tmpTargets.push(root);
 
     const logger = new RuntimeLogger({
@@ -41,7 +45,10 @@ describe("SystemLogStore + SessionSummaryStore", () => {
   });
 
   test("creates compact markdown summaries for sessions", async () => {
-    const root = `/tmp/trenchclaw-session-summary-${crypto.randomUUID()}`;
+    const root = path.resolve(
+      process.cwd(),
+      `apps/trenchclaw/src/ai/brain/db/.tests/session-summary-${crypto.randomUUID()}`,
+    );
     tmpTargets.push(root);
 
     const sessions = new SessionLogStore({
@@ -79,7 +86,10 @@ describe("SystemLogStore + SessionSummaryStore", () => {
   });
 
   test("writes concise summary entries to daily files", async () => {
-    const root = `/tmp/trenchclaw-runtime-summary-${crypto.randomUUID()}`;
+    const root = path.resolve(
+      process.cwd(),
+      `apps/trenchclaw/src/ai/brain/db/.tests/runtime-summary-${crypto.randomUUID()}`,
+    );
     tmpTargets.push(root);
 
     const summaryStore = new SummaryLogStore({

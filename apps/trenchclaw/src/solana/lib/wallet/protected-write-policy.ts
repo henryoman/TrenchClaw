@@ -1,9 +1,14 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { RuntimeActor } from "../../../ai/runtime/types/context";
-import { assertFilesystemAccessAllowed } from "../../../runtime/security/filesystem-manifest";
+import {
+  assertModelFilesystemReadAllowed,
+  assertModelFilesystemWriteAllowed,
+} from "../../../runtime/security/filesystem-manifest";
 
-const BRAIN_PROTECTED_ROOT_DIRECTORY = path.resolve(process.cwd(), "src/ai/brain/protected");
+const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
+const BRAIN_PROTECTED_ROOT_DIRECTORY = path.resolve(APP_ROOT_DIRECTORY, "src/ai/brain/protected");
 
 export class ProtectedWriteForbiddenError extends Error {
   constructor(message: string) {
@@ -13,7 +18,7 @@ export class ProtectedWriteForbiddenError extends Error {
 }
 
 export const resolveAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
+  path.isAbsolute(targetPath) ? targetPath : path.join(APP_ROOT_DIRECTORY, targetPath);
 
 export const assertWithinBrainProtectedDirectory = (targetPath: string): void => {
   const normalizedTarget = path.resolve(targetPath);
@@ -35,13 +40,12 @@ export interface ProtectedWriteRequest {
 }
 
 export const assertProtectedWriteAllowed = async (request: ProtectedWriteRequest): Promise<void> => {
-  const normalizedTarget = path.resolve(request.targetPath);
+  const normalizedTarget = resolveAbsolutePath(request.targetPath);
   assertWithinBrainProtectedDirectory(normalizedTarget);
 
-  await assertFilesystemAccessAllowed({
+  await assertModelFilesystemWriteAllowed({
     actor: request.actor,
     targetPath: normalizedTarget,
-    operation: "write",
     reason: request.operation,
   });
 };
@@ -53,11 +57,10 @@ export interface ProtectedReadRequest {
 }
 
 export const assertProtectedReadAllowed = async (request: ProtectedReadRequest): Promise<void> => {
-  const normalizedTarget = path.resolve(request.targetPath);
-  await assertFilesystemAccessAllowed({
+  const normalizedTarget = resolveAbsolutePath(request.targetPath);
+  await assertModelFilesystemReadAllowed({
     actor: request.actor,
     targetPath: normalizedTarget,
-    operation: "read",
     reason: request.operation,
   });
 };

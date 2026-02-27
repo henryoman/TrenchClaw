@@ -46,6 +46,10 @@ CREATE TABLE "jobs" (
   "cycles_completed" INTEGER NOT NULL CHECK (cycles_completed >= 0),
   "total_cycles" INTEGER CHECK (total_cycles IS NULL OR total_cycles >= 0),
   "last_result_json" TEXT,
+  "attempt_count" INTEGER CHECK (attempt_count IS NULL OR attempt_count >= 0),
+  "lease_owner" TEXT,
+  "lease_expires_at" INTEGER CHECK (lease_expires_at IS NULL OR lease_expires_at >= 0),
+  "last_error" TEXT,
   "created_at" INTEGER NOT NULL,
   "updated_at" INTEGER NOT NULL
 );
@@ -105,6 +109,8 @@ CREATE INDEX "idx_http_cache_expires_at" ON "http_cache"("expires_at");
 CREATE INDEX "idx_http_cache_source_endpoint" ON "http_cache"("source", "endpoint");
 
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
+
+CREATE INDEX "idx_jobs_lease_expires_at" ON "jobs"("status", "lease_expires_at");
 
 CREATE INDEX "idx_jobs_status_next_run_at" ON "jobs"("status", "next_run_at");
 

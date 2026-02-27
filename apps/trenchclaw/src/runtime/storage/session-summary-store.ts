@@ -1,5 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { assertRuntimeSystemWritePath } from "../security/write-scope";
 
 export interface SessionSummaryInput {
   sessionId: string;
@@ -19,14 +21,17 @@ export interface SessionSummaryStoreConfig {
   directory: string;
 }
 
+const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+
 const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
+  path.isAbsolute(targetPath) ? targetPath : path.join(APP_ROOT_DIRECTORY, targetPath);
 
 export class SessionSummaryStore {
   private readonly directory: string;
 
   constructor(config: SessionSummaryStoreConfig) {
     this.directory = toAbsolutePath(config.directory);
+    assertRuntimeSystemWritePath(this.directory, "initialize session summary directory");
     mkdirSync(this.directory, { recursive: true });
   }
 
@@ -54,6 +59,7 @@ export class SessionSummaryStore {
     ].join("\n");
 
     const filePath = path.join(this.directory, `${summary.sessionId}.md`);
+    assertRuntimeSystemWritePath(filePath, "write session summary");
     await Bun.write(filePath, body);
     return filePath;
   }

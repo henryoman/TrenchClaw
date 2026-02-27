@@ -1,3 +1,4 @@
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
@@ -16,6 +17,9 @@ const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
 const SETTINGS_BASE_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_BASE_FILE";
 const SETTINGS_USER_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_USER_FILE";
 const SETTINGS_AGENT_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_AGENT_FILE";
+const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+
+const resolveFromAppRoot = (targetPath: string): string => path.resolve(APP_ROOT_DIRECTORY, targetPath);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
@@ -259,24 +263,24 @@ const normalizeRuntimeSettings = (
     storage: {
       sqlite: {
         enabled: true,
-        path: "src/ai/brain/db/runtime.sqlite",
+        path: resolveFromAppRoot("src/ai/brain/db/runtime.sqlite"),
         walMode: true,
         busyTimeoutMs: 5_000,
       },
       files: {
         enabled: true,
-        eventsDirectory: "src/ai/brain/db/events",
+        eventsDirectory: resolveFromAppRoot("src/ai/brain/db/events"),
       },
       sessions: {
         enabled: true,
-        directory: "src/ai/brain/db/sessions",
+        directory: resolveFromAppRoot("src/ai/brain/db/sessions"),
         agentId: "trenchclaw",
         source: "cli",
       },
       memory: {
         enabled: true,
-        directory: "src/ai/brain/db/memory",
-        longTermFile: "memory.md",
+        directory: resolveFromAppRoot("src/ai/brain/db/memory"),
+        longTermFile: resolveFromAppRoot("src/ai/brain/db/memory/MEMORY.md"),
       },
       retention: {
         receiptsDays: 14,

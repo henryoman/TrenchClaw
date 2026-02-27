@@ -1,4 +1,5 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
   ActionDispatcher,
@@ -71,6 +72,7 @@ const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = new Set([
 ]);
 const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "privacySwap"]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
+const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
@@ -90,7 +92,7 @@ const envFlagEnabled = (name: string, fallback: boolean): boolean => {
 
 const runBootstrapScript = async (logger: RuntimeLogger, relativeScriptPath: string): Promise<void> => {
   const proc = Bun.spawn([process.execPath, "run", relativeScriptPath], {
-    cwd: process.cwd(),
+    cwd: APP_ROOT_DIRECTORY,
     stdout: "pipe",
     stderr: "pipe",
     env: process.env,
@@ -292,7 +294,9 @@ const hasUserConfirmation = (payload: unknown, requiredToken: string): boolean =
 
 const resolveStorageRootDirectory = (settings: RuntimeSettings): string => {
   const sqlitePath = settings.storage.sqlite.path;
-  const sqliteDir = path.isAbsolute(sqlitePath) ? path.dirname(sqlitePath) : path.join(process.cwd(), path.dirname(sqlitePath));
+  const sqliteDir = path.isAbsolute(sqlitePath)
+    ? path.dirname(sqlitePath)
+    : path.join(APP_ROOT_DIRECTORY, path.dirname(sqlitePath));
   return path.basename(sqliteDir) === "runtime" ? path.dirname(sqliteDir) : sqliteDir;
 };
 

@@ -1,6 +1,6 @@
 # Knowledge Manifest
 
-Generated at: 2026-02-25T04:41:02.153Z
+Generated at: 2026-02-27T04:41:43.270Z
 Root: src/ai/brain/knowledge
 
 Use this inventory to decide which files to read.
@@ -11,6 +11,22 @@ knowledge/
 |   |-- dexscreener-actions.md
 |   `-- dexscreener-api-reference.md
 |-- skills/
+|   |-- agent-browser/
+|   |   |-- references/
+|   |   |   |-- authentication.md
+|   |   |   |-- commands.md
+|   |   |   |-- profiling.md
+|   |   |   |-- proxy-support.md
+|   |   |   |-- session-management.md
+|   |   |   |-- snapshot-refs.md
+|   |   |   `-- video-recording.md
+|   |   |-- templates/
+|   |   |   |-- authenticated-session.sh
+|   |   |   |-- capture-workflow.sh
+|   |   |   `-- form-automation.sh
+|   |   `-- SKILL.md
+|   `-- skills-lock.json
+|-- bun-shell.md
 |-- data-structures-as-json.md
 |-- helius.md
 |-- KNOWLEDGE_MANIFEST.md

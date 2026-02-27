@@ -274,7 +274,7 @@ wallet:
     const runtime = await bootstrapRuntime();
     const alertsFile = path.resolve(
       process.cwd(),
-      `src/ai/brain/workspace/strategies/.tests/bootstrap-alerts-${crypto.randomUUID()}.json`,
+      `apps/trenchclaw/src/ai/brain/workspace/strategies/.tests/bootstrap-alerts-${crypto.randomUUID()}.json`,
     );
     try {
       const result = await runtime.dispatcher.dispatchStep(

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import type { RuntimeSearchScope, StateStore } from "../../../../ai/runtime/types/state";
+import type { StateStore } from "../../../../ai/runtime/types/state";
 
 const maxLimit = 200;
 
@@ -69,96 +69,6 @@ const asRuntimeStore = (value: unknown): StateStore | null => {
   return value as StateStore;
 };
 
-const stringContainsQuery = (value: unknown, queryLower: string): boolean => {
-  if (value == null) {
-    return false;
-  }
-  const text = typeof value === "string" ? value : JSON.stringify(value);
-  return text.toLowerCase().includes(queryLower);
-};
-
-const searchRuntimeTextFallback = (
-  store: StateStore,
-  input: {
-    query: string;
-    scope: RuntimeSearchScope;
-    limit: number;
-    messageScanLimit: number;
-  },
-) => {
-  const queryLower = input.query.toLowerCase();
-  const includeConversations = input.scope === "all" || input.scope === "conversations";
-  const includeMessages = input.scope === "all" || input.scope === "messages";
-  const includeJobs = input.scope === "all" || input.scope === "jobs";
-  const includeReceipts = input.scope === "all" || input.scope === "receipts";
-
-  const conversationPool = includeConversations || includeMessages ? store.listConversations(maxLimit) : [];
-  const matchedConversations = includeConversations
-    ? conversationPool
-        .filter(
-          (conversation) =>
-            stringContainsQuery(conversation.id, queryLower) ||
-            stringContainsQuery(conversation.sessionId, queryLower) ||
-            stringContainsQuery(conversation.title, queryLower) ||
-            stringContainsQuery(conversation.summary, queryLower),
-        )
-        .slice(0, input.limit)
-    : [];
-
-  const matchedMessages = includeMessages
-    ? conversationPool
-        .flatMap((conversation) =>
-          store
-            .listChatMessages(conversation.id, input.messageScanLimit)
-            .filter(
-              (message) =>
-                stringContainsQuery(message.id, queryLower) ||
-                stringContainsQuery(message.content, queryLower) ||
-                stringContainsQuery(message.role, queryLower),
-            ),
-        )
-        .slice(0, input.limit)
-    : [];
-
-  const matchedJobs = includeJobs
-    ? store
-        .listJobs()
-        .filter(
-          (job) =>
-            stringContainsQuery(job.id, queryLower) ||
-            stringContainsQuery(job.botId, queryLower) ||
-            stringContainsQuery(job.routineName, queryLower) ||
-            stringContainsQuery(job.status, queryLower) ||
-            stringContainsQuery(job.lastResult, queryLower),
-        )
-        .slice(0, input.limit)
-    : [];
-
-  const matchedReceipts = includeReceipts
-    ? store
-        .getRecentReceipts(maxLimit)
-        .filter(
-          (receipt) =>
-            stringContainsQuery(receipt.idempotencyKey, queryLower) ||
-            stringContainsQuery(receipt.error, queryLower) ||
-            stringContainsQuery(receipt.code, queryLower) ||
-            stringContainsQuery(receipt.txSignature, queryLower) ||
-            stringContainsQuery(receipt.data, queryLower),
-        )
-        .slice(0, input.limit)
-    : [];
-
-  return {
-    query: input.query,
-    scope: input.scope,
-    totalMatches: matchedConversations.length + matchedMessages.length + matchedJobs.length + matchedReceipts.length,
-    conversations: matchedConversations,
-    messages: matchedMessages,
-    jobs: matchedJobs,
-    receipts: matchedReceipts,
-  };
-};
-
 export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = {
   name: "queryRuntimeStore",
   category: "data-based",
@@ -197,45 +107,18 @@ export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = 
           botId: request.botId,
         }).slice(0, request.limit);
       } else if (request.type === "searchRuntimeText") {
-        data = store.searchRuntimeText
-          ? store.searchRuntimeText({
-              query: request.query,
-              scope: request.scope,
-              limit: request.limit,
-              messageScanLimit: request.messageScanLimit,
-            })
-          : searchRuntimeTextFallback(store, {
-              query: request.query,
-              scope: request.scope,
-              limit: request.limit,
-              messageScanLimit: request.messageScanLimit,
-            });
+        data = store.searchRuntimeText({
+          query: request.query,
+          scope: request.scope,
+          limit: request.limit,
+          messageScanLimit: request.messageScanLimit,
+        });
       } else if (request.type === "getRuntimeKnowledgeSurface") {
-        data = store.getRuntimeKnowledgeSurface
-          ? store.getRuntimeKnowledgeSurface({
-              recentConversationsLimit: request.recentConversationsLimit,
-              recentJobsLimit: request.recentJobsLimit,
-              recentReceiptsLimit: request.recentReceiptsLimit,
-            })
-          : {
-              schemaSnapshot: undefined,
-              generatedAt: Date.now(),
-              counts: {
-                conversations: store.listConversations(maxLimit).length,
-                messages: store
-                  .listConversations(maxLimit)
-                  .reduce((total, conversation) => total + store.listChatMessages(conversation.id, maxLimit).length, 0),
-                jobs: store.listJobs().length,
-                receipts: store.getRecentReceipts(maxLimit).length,
-              },
-              jobStatusCounts: store.listJobs().reduce<Record<string, number>>((acc, job) => {
-                acc[job.status] = (acc[job.status] ?? 0) + 1;
-                return acc;
-              }, {}),
-              recentConversations: store.listConversations(request.recentConversationsLimit),
-              recentJobs: store.listJobs().slice(0, request.recentJobsLimit),
-              recentReceipts: store.getRecentReceipts(request.recentReceiptsLimit),
-            };
+        data = store.getRuntimeKnowledgeSurface({
+          recentConversationsLimit: request.recentConversationsLimit,
+          recentJobsLimit: request.recentJobsLimit,
+          recentReceiptsLimit: request.recentReceiptsLimit,
+        });
       } else {
         data = store.getRecentReceipts(request.limit);
       }
