@@ -287,8 +287,25 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - [ ] Simulation and paper-trading execution paths
 - [ ] Metrics/tracing wiring (`observability.metrics`, `observability.tracing`)
 - [ ] Trigger-to-routine execution flow for timer/price/on-chain triggers
-- [ ] Broader integration and end-to-end test layers
-- [ ] Web GUI production rollout (`src/apps/web-gui` scaffold exists)
+- [ ] Promote DCA/swing/percentage/sniper routines from definitions to fully wired runtime execution
+- [ ] Complete RPC swap path parity with Ultra path (`quoteSwap`, `executeSwap`, orchestration + retries)
+- [ ] Production-ready trigger engine (durable scheduling, debounce/cooldown, replay protection)
+- [ ] Deterministic idempotency guarantees across action retries and process restarts
+- [ ] Multi-wallet and wallet-group orchestration with per-wallet limits/allocations
+- [ ] Full portfolio state model (positions, cost basis, realized/unrealized PnL, exposure by token)
+- [ ] Risk engine expansion (max slippage/size, drawdown guardrails, per-strategy risk budgets)
+- [ ] Alerting pipeline (runtime/strategy/trade alerts to operator channels)
+- [ ] Operator runbook commands for pause/resume/kill-switch/recovery flows
+- [ ] API surface for external control + automation (auth, rate limits, typed contracts)
+- [ ] Secrets and key management hardening for prod operators (rotation + secure loading paths)
+- [ ] Storage retention/archival tooling (prune, compact, export/import, backup/restore verification)
+- [ ] Historical market ingestion + backtest dataset management workflow
+- [ ] Strategy simulation/backtest runner with reproducible configs and result snapshots
+- [ ] Structured performance reporting (fill quality, slippage stats, strategy-level KPIs)
+- [ ] Expanded Solana data adapters (price/metadata/liquidity sources with fallback priority)
+- [ ] Failure recovery tooling (stuck transaction reconciliation, resumable jobs, dead-letter handling)
+- [ ] Comprehensive test matrix (unit + integration + scenario + long-running soak tests)
+- [ ] Release engineering baseline (versioning, changelog, CI quality gates, reproducible builds)
 
 ---
 
