@@ -121,5 +121,6 @@
   :global(.secret-row .retro-select) {
     min-width: 0;
     box-sizing: border-box;
+    font-size: var(--tc-chat-text-size);
   }
 </style>

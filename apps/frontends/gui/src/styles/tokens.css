@@ -22,30 +22,41 @@
   --tc-space-4: 16px;
   --tc-space-5: 20px;
 
+  --tc-type-xs: 0.75rem;
+  --tc-type-sm: 0.875rem;
+  --tc-type-md: 0.95rem;
+  --tc-chat-text-size: 0.8rem;
+  --tc-track-wide: 0.06em;
+  --tc-track-normal: 0.05em;
+
   --tc-control-padding-y: 10px;
   --tc-control-padding-x: 12px;
-  --tc-control-font-size: 0.95rem;
-  --tc-control-letter-spacing: 0.06em;
+  --tc-control-font-size: var(--tc-type-md);
+  --tc-control-letter-spacing: var(--tc-track-wide);
+  --tc-button-padding-y: 6px;
+  --tc-button-padding-x: 10px;
+  --tc-button-font-size: var(--tc-type-xs);
+  --tc-button-letter-spacing: var(--tc-track-normal);
 
   --tc-field-gap: 6px;
-  --tc-field-label-size: 0.74rem;
-  --tc-field-label-letter-spacing: 0.05em;
+  --tc-field-label-size: var(--tc-type-xs);
+  --tc-field-label-letter-spacing: var(--tc-track-normal);
 
   --tc-panel-header-padding-y: 10px;
   --tc-panel-header-padding-x: 12px;
   --tc-panel-content-padding: 10px;
-  --tc-panel-header-size: 0.86rem;
-  --tc-panel-header-letter-spacing: 0.08em;
+  --tc-panel-header-size: var(--tc-type-sm);
+  --tc-panel-header-letter-spacing: var(--tc-track-wide);
 
-  --tc-kicker-size: 0.68rem;
-  --tc-kicker-letter-spacing: 0.05em;
-  --tc-title-size: 0.9rem;
-  --tc-title-letter-spacing: 0.06em;
-  --tc-section-title-size: 0.8rem;
-  --tc-section-title-letter-spacing: 0.05em;
+  --tc-kicker-size: var(--tc-type-xs);
+  --tc-kicker-letter-spacing: var(--tc-track-normal);
+  --tc-title-size: var(--tc-type-sm);
+  --tc-title-letter-spacing: var(--tc-track-wide);
+  --tc-section-title-size: var(--tc-type-sm);
+  --tc-section-title-letter-spacing: var(--tc-track-normal);
 
-  --tc-status-font-size: 0.78rem;
-  --tc-status-letter-spacing: 0.04em;
+  --tc-status-font-size: var(--tc-type-xs);
+  --tc-status-letter-spacing: var(--tc-track-normal);
 
   --tc-row-box-padding: var(--tc-space-2);
   --tc-row-box-bg: var(--tc-color-black-2);
@@ -55,7 +66,7 @@
   --tc-layout-breakpoint: 980px;
   --tc-right-column-rows: 1fr 1fr;
 
-  --tc-sidebar-label-size: 0.68rem;
-  --tc-sidebar-title-size: 0.72rem;
-  --tc-sidebar-letter-spacing: 0.05em;
+  --tc-sidebar-label-size: var(--tc-type-xs);
+  --tc-sidebar-title-size: var(--tc-type-sm);
+  --tc-sidebar-letter-spacing: var(--tc-track-normal);
 }

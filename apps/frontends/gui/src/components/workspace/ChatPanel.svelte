@@ -246,7 +246,7 @@
     max-width: 90%;
     border: var(--tc-border-muted);
     padding: var(--tc-space-2) var(--tc-space-3);
-    font-size: 0.8rem;
+    font-size: var(--tc-chat-text-size);
     line-height: 1.4;
     white-space: pre-wrap;
   }
@@ -291,7 +291,7 @@
   }
 
   :global(.chat-form .retro-input) {
-    font-size: 0.8rem;
+    font-size: var(--tc-chat-text-size);
     line-height: 1.4;
   }
 

@@ -38,13 +38,13 @@
   .retro-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.82rem;
+    font-size: var(--tc-type-sm);
   }
 
   .retro-table th,
   .retro-table td {
     border: var(--tc-border-muted);
-    padding: 6px 8px;
+    padding: var(--tc-space-2);
     text-align: left;
   }
 
@@ -52,7 +52,7 @@
     color: var(--tc-color-turquoise);
     background: var(--tc-color-black);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-size: 0.74rem;
+    letter-spacing: var(--tc-track-normal);
+    font-size: var(--tc-type-xs);
   }
 </style>

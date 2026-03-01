@@ -25,27 +25,27 @@
   .empty {
     margin: 0;
     color: var(--tc-color-gray-1);
-    font-size: 0.82rem;
+    font-size: var(--tc-type-sm);
     text-transform: uppercase;
   }
 
   .row {
     margin: 0 0 var(--tc-space-2) 0;
     color: var(--tc-color-gray-3);
-    font-size: 0.8rem;
+    font-size: var(--tc-type-sm);
     line-height: 1.35;
   }
 
   .row span {
     color: var(--tc-color-turquoise);
     text-transform: uppercase;
-    font-size: 0.72rem;
-    letter-spacing: 0.06em;
+    font-size: var(--tc-type-xs);
+    letter-spacing: var(--tc-track-wide);
   }
 
   .row small {
-    margin-left: 8px;
+    margin-left: var(--tc-space-2);
     color: var(--tc-color-gray-2);
-    font-size: 0.7rem;
+    font-size: var(--tc-type-xs);
   }
 </style>
