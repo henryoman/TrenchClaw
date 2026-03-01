@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
@@ -30,4 +30,15 @@ body {
   font-family: 'Space Grotesk', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.logo-white {
+  filter: brightness(0) invert(1) saturate(0);
+}
+
+.min-h-screen h1,
+.min-h-screen h2 {
+  font-family: 'Archivo Black', 'Arial Black', 'Space Grotesk', sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.01em;
 }

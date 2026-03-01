@@ -1,4 +1,11 @@
-import type { GuiActivityEntry, GuiInstanceProfileView, GuiQueueJobView } from "@trenchclaw/types";
+import type {
+  GuiActivityEntry,
+  GuiInstanceProfileView,
+  GuiPublicRpcOptionView,
+  GuiQueueJobView,
+  GuiSecretEntryView,
+  GuiSecretOptionView,
+} from "@trenchclaw/types";
 import {
   DEFAULT_CREATE_INSTANCE_ERROR,
   DEFAULT_RUNTIME_ERROR,
@@ -26,12 +33,14 @@ interface RuntimeUiState {
   signInPin: string;
   queueJobs: GuiQueueJobView[];
   activityEntries: GuiActivityEntry[];
-  vaultContent: string;
   vaultFilePath: string;
   vaultTemplatePath: string;
-  vaultBusy: boolean;
-  vaultError: string;
-  vaultNotice: string;
+  secretsOptions: GuiSecretOptionView[];
+  secretEntries: GuiSecretEntryView[];
+  publicRpcOptions: GuiPublicRpcOptionView[];
+  secretsBusy: boolean;
+  secretsError: string;
+  secretsNotice: string;
 }
 
 const formatRuntimeStatus = (profile: string, llmEnabled: boolean): string =>
@@ -54,12 +63,14 @@ export const createRuntimeController = () => {
     signInPin: "",
     queueJobs: [],
     activityEntries: [],
-    vaultContent: "",
     vaultFilePath: "",
     vaultTemplatePath: "",
-    vaultBusy: false,
-    vaultError: "",
-    vaultNotice: "",
+    secretsOptions: [],
+    secretEntries: [],
+    publicRpcOptions: [],
+    secretsBusy: false,
+    secretsError: "",
+    secretsNotice: "",
   });
 
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -130,7 +141,7 @@ export const createRuntimeController = () => {
       }
       state.phase = "app";
       await loadAppData();
-      await loadVault();
+      await loadSecrets();
       startPolling();
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_RUNTIME_ERROR;
@@ -196,7 +207,7 @@ export const createRuntimeController = () => {
       state.activeInstance = signedIn.instance;
       state.phase = "app";
       await loadAppData();
-      await loadVault();
+      await loadSecrets();
       startPolling();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_SIGN_IN_ERROR;
@@ -205,35 +216,69 @@ export const createRuntimeController = () => {
     }
   };
 
-  const loadVault = async (): Promise<void> => {
-    state.vaultBusy = true;
-    state.vaultError = "";
+  const loadSecrets = async (): Promise<void> => {
+    state.secretsBusy = true;
+    state.secretsError = "";
     try {
-      const vault = await runtimeApi.vault();
-      state.vaultContent = vault.content;
-      state.vaultFilePath = vault.filePath;
-      state.vaultTemplatePath = vault.templatePath;
-      state.vaultNotice = vault.initializedFromTemplate ? "Created vault.json from template." : "";
+      const payload = await runtimeApi.secrets();
+      state.vaultFilePath = payload.filePath;
+      state.vaultTemplatePath = payload.templatePath;
+      state.secretsOptions = payload.options;
+      state.secretEntries = payload.entries;
+      state.publicRpcOptions = payload.publicRpcOptions;
+      state.secretsNotice = payload.initializedFromTemplate ? "Created vault.json from template." : "";
     } catch (error) {
-      state.vaultError = error instanceof Error ? error.message : "Failed to load vault.";
+      state.secretsError = error instanceof Error ? error.message : "Failed to load secrets.";
     } finally {
-      state.vaultBusy = false;
+      state.secretsBusy = false;
     }
   };
 
-  const saveVault = async (): Promise<void> => {
-    state.vaultBusy = true;
-    state.vaultError = "";
-    state.vaultNotice = "";
+  const upsertSecret = async (input: {
+    optionId: string;
+    value: string;
+    source?: "custom" | "public";
+    publicRpcId?: string | null;
+  }): Promise<void> => {
+    state.secretsBusy = true;
+    state.secretsError = "";
+    state.secretsNotice = "";
     try {
-      const result = await runtimeApi.updateVault({ content: state.vaultContent });
+      const result = await runtimeApi.upsertSecret(input);
       state.vaultFilePath = result.filePath;
-      state.vaultNotice = `Saved at ${new Date(result.savedAt).toLocaleTimeString()}`;
-      await loadAppData();
+      state.secretEntries = state.secretEntries.map((entry) =>
+        entry.optionId === result.entry.optionId ? result.entry : entry,
+      );
+      state.secretsNotice = `Saved ${result.entry.label} at ${new Date(result.savedAt).toLocaleTimeString()}`;
     } catch (error) {
-      state.vaultError = error instanceof Error ? error.message : "Failed to save vault.";
+      state.secretsError = error instanceof Error ? error.message : "Failed to save secret.";
     } finally {
-      state.vaultBusy = false;
+      state.secretsBusy = false;
+    }
+  };
+
+  const clearSecret = async (optionId: string): Promise<void> => {
+    state.secretsBusy = true;
+    state.secretsError = "";
+    state.secretsNotice = "";
+    try {
+      const result = await runtimeApi.deleteSecret({ optionId });
+      state.vaultFilePath = result.filePath;
+      state.secretEntries = state.secretEntries.map((entry) =>
+        entry.optionId === optionId
+          ? {
+              ...entry,
+              value: "",
+              source: "custom",
+              publicRpcId: null,
+            }
+          : entry,
+      );
+      state.secretsNotice = `Cleared secret at ${new Date(result.savedAt).toLocaleTimeString()}`;
+    } catch (error) {
+      state.secretsError = error instanceof Error ? error.message : "Failed to clear secret.";
+    } finally {
+      state.secretsBusy = false;
     }
   };
 
@@ -244,8 +289,9 @@ export const createRuntimeController = () => {
     closeCreateModal,
     submitCreateInstance,
     submitSignIn,
-    loadVault,
-    saveVault,
+    loadSecrets,
+    upsertSecret,
+    clearSecret,
     refreshRuntimePanels,
     startPolling,
     stopPolling,

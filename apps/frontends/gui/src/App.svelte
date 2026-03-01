@@ -1,11 +1,13 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
+  import type { GuiUpsertSecretRequest } from "@trenchclaw/types";
   import { CREATE_NEW_OPTION } from "./config";
   import {
     ChatPanel,
     CreateInstanceModal,
     LandingSplash,
     QueuePanel,
+    SecretsPanel,
     SummaryPanel,
     WorkspaceShell,
   } from "./components";
@@ -18,7 +20,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
-  let activeTab: "chat" | "wallet-manager" = $state("chat");
+  let activeTab: "chat" | "keys-secrets" = $state("chat");
 
   const ensureChatController = async (): Promise<void> => {
     if (chat) {
@@ -88,7 +90,25 @@
         </section>
       {/if}
     {:else}
-      <section class="wallet-manager-placeholder" aria-label="Wallet manager panel"></section>
+      <SecretsPanel
+        options={runtime.state.secretsOptions}
+        entries={runtime.state.secretEntries}
+        publicRpcOptions={runtime.state.publicRpcOptions}
+        busy={runtime.state.secretsBusy}
+        error={runtime.state.secretsError}
+        notice={runtime.state.secretsNotice}
+        filePath={runtime.state.vaultFilePath}
+        templatePath={runtime.state.vaultTemplatePath}
+        onReload={() => {
+          void runtime.loadSecrets();
+        }}
+        onSave={(input: GuiUpsertSecretRequest) => {
+          void runtime.upsertSecret(input);
+        }}
+        onClear={(optionId: string) => {
+          void runtime.clearSecret(optionId);
+        }}
+      />
     {/if}
     <section class="right-column">
       <QueuePanel jobs={runtime.state.queueJobs} />
@@ -129,9 +149,4 @@
     margin: 0;
   }
 
-  .wallet-manager-placeholder {
-    border: var(--tc-border);
-    background: var(--tc-color-black);
-    min-height: 0;
-  }
 </style>

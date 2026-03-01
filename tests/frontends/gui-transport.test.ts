@@ -48,7 +48,7 @@ describe("RuntimeGuiTransport", () => {
     expect(streamCallCount).toBe(1);
     const headers = new Headers(capturedHeaders);
     expect(headers.get("access-control-allow-origin")).toBe("*");
-    expect(headers.get("access-control-allow-methods")).toBe("GET,POST,PUT,OPTIONS");
+    expect(headers.get("access-control-allow-methods")).toBe("GET,POST,PUT,DELETE,OPTIONS");
     expect(capturedChatId).toBe("chat-test-1");
     expect(capturedSessionId).toBeUndefined();
     expect(response.headers.get("x-test-stream")).toBe("1");

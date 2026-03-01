@@ -78,7 +78,7 @@
   <nav class="fixed top-0 w-full z-50 bg-background border-b border-border-subtle">
     <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
       <div class="flex items-center">
-        <img src="/logo.png" alt="TrenchClaw" class="w-8 h-8 object-contain invert" width="32" height="32" />
+        <img src="/logo.png" alt="TrenchClaw" class="w-8 h-8 object-contain logo-white" width="32" height="32" />
       </div>
       <div class="flex items-center gap-8">
         <a
@@ -111,8 +111,7 @@
         <img
           src="/logo.png"
           alt="TrenchClaw"
-          class="w-72 md:w-[480px] object-contain"
-          style="filter: invert(1) sepia(1) saturate(5) hue-rotate(240deg);"
+          class="w-72 md:w-[480px] object-contain logo-white"
           width="480"
           height="160"
         />

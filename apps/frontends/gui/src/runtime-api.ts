@@ -5,10 +5,15 @@ import type {
   GuiConversationsResponse,
   GuiCreateInstanceRequest,
   GuiCreateInstanceResponse,
+  GuiDeleteSecretRequest,
+  GuiDeleteSecretResponse,
   GuiInstancesResponse,
   GuiQueueResponse,
+  GuiSecretsResponse,
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
+  GuiUpsertSecretRequest,
+  GuiUpsertSecretResponse,
   GuiUpdateVaultRequest,
   GuiUpdateVaultResponse,
   GuiVaultResponse,
@@ -90,6 +95,19 @@ export const runtimeApi = {
   updateVault: (input: GuiUpdateVaultRequest): Promise<GuiUpdateVaultResponse> =>
     fetchJson<GuiUpdateVaultResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/vault`), {
       method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  secrets: (): Promise<GuiSecretsResponse> => fetchJson<GuiSecretsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/secrets`)),
+  upsertSecret: (input: GuiUpsertSecretRequest): Promise<GuiUpsertSecretResponse> =>
+    fetchJson<GuiUpsertSecretResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/secrets`), {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  deleteSecret: (input: GuiDeleteSecretRequest): Promise<GuiDeleteSecretResponse> =>
+    fetchJson<GuiDeleteSecretResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/secrets`), {
+      method: "DELETE",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),

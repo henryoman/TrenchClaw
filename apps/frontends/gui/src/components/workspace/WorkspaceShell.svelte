@@ -2,8 +2,8 @@
   import Sidebar from "./Sidebar.svelte";
 
   export let runtimeStatus = "";
-  export let activeTab: "chat" | "wallet-manager" = "chat";
-  export let onTabChange: (tab: "chat" | "wallet-manager") => void;
+  export let activeTab: "chat" | "keys-secrets" = "chat";
+  export let onTabChange: (tab: "chat" | "keys-secrets") => void;
 </script>
 
 <main class="layout">

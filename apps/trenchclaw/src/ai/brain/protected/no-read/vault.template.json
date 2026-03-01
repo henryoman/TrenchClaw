@@ -1,5 +1,10 @@
 {
   "rpc": {
+    "default": {
+      "http-url": "",
+      "source": "custom",
+      "public-id": ""
+    },
     "helius": {
       "http-url": "",
       "ws-url": "",
@@ -8,6 +13,15 @@
     "quicknode": {
       "http-url": "",
       "ws-url": "",
+      "api-key": ""
+    },
+    "solana-vibestation": {
+      "api-key": ""
+    },
+    "chainstack": {
+      "api-key": ""
+    },
+    "temporal": {
       "api-key": ""
     }
   },
@@ -30,6 +44,12 @@
     "gateway": {
       "api-key": "",
       "model": "anthropic/claude-sonnet-4.5"
+    },
+    "anthropic": {
+      "api-key": ""
+    },
+    "google": {
+      "api-key": ""
     }
   },
   "integrations": {

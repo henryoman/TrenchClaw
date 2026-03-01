@@ -3,6 +3,11 @@ import path from "node:path";
 
 export const DEFAULT_VAULT_JSON = {
   rpc: {
+    default: {
+      "http-url": "",
+      source: "custom",
+      "public-id": "",
+    },
     helius: {
       "http-url": "",
       "ws-url": "",
@@ -11,6 +16,15 @@ export const DEFAULT_VAULT_JSON = {
     quicknode: {
       "http-url": "",
       "ws-url": "",
+      "api-key": "",
+    },
+    "solana-vibestation": {
+      "api-key": "",
+    },
+    chainstack: {
+      "api-key": "",
+    },
+    temporal: {
       "api-key": "",
     },
   },
@@ -33,6 +47,12 @@ export const DEFAULT_VAULT_JSON = {
     gateway: {
       "api-key": "",
       model: "anthropic/claude-sonnet-4.5",
+    },
+    anthropic: {
+      "api-key": "",
+    },
+    google: {
+      "api-key": "",
     },
   },
   integrations: {

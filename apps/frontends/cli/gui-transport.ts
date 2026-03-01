@@ -10,12 +10,20 @@ import type {
   GuiConversationView,
   GuiCreateInstanceRequest,
   GuiCreateInstanceResponse,
+  GuiDeleteSecretRequest,
+  GuiDeleteSecretResponse,
   GuiInstanceProfileView,
+  GuiPublicRpcOptionView,
   GuiInstancesResponse,
   GuiQueueJobView,
   GuiQueueResponse,
+  GuiSecretEntryView,
+  GuiSecretOptionView,
+  GuiSecretsResponse,
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
+  GuiUpsertSecretRequest,
+  GuiUpsertSecretResponse,
   GuiUpdateVaultRequest,
   GuiUpdateVaultResponse,
   GuiVaultResponse,
@@ -34,7 +42,7 @@ const GUI_QUEUE_INCLUDE_HISTORY = process.env.GUI_QUEUE_INCLUDE_HISTORY === "1";
 const ACTIVE_JOB_STATUSES = new Set(["pending", "running", "paused"]);
 const CORS_HEADERS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET,POST,PUT,OPTIONS",
+  "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
   "access-control-allow-headers": "content-type,accept",
 };
 const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
@@ -43,6 +51,126 @@ const VAULT_FILE_PATH = path.join(NO_READ_DIRECTORY, "vault.json");
 const VAULT_TEMPLATE_FILE_PATH = path.join(NO_READ_DIRECTORY, "vault.template.json");
 const DISPATCH_TEST_DEFAULT_WAIT_MS = 4000;
 const DISPATCH_TEST_MAX_WAIT_MS = 20000;
+
+const PUBLIC_RPC_OPTIONS: GuiPublicRpcOptionView[] = [
+  { id: "solana-mainnet-beta", label: "Solana Mainnet (public)", url: "https://api.mainnet-beta.solana.com" },
+  { id: "solana-devnet", label: "Solana Devnet (public)", url: "https://api.devnet.solana.com" },
+];
+
+const SECRET_OPTIONS: GuiSecretOptionView[] = [
+  {
+    id: "solana-rpc-url",
+    category: "blockchain",
+    label: "Solana RPC URL",
+    vaultPath: "rpc/default/http-url",
+    placeholder: "https://your-rpc-provider.example",
+    supportsPublicRpc: true,
+  },
+  {
+    id: "helius-api-key",
+    category: "blockchain",
+    label: "Helius API Key",
+    vaultPath: "rpc/helius/api-key",
+    placeholder: "Enter Helius API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "quicknode-api-key",
+    category: "blockchain",
+    label: "QuickNode API Key",
+    vaultPath: "rpc/quicknode/api-key",
+    placeholder: "Enter QuickNode API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "solana-vibestation-api-key",
+    category: "blockchain",
+    label: "Solana Vibe Station API Key",
+    vaultPath: "rpc/solana-vibestation/api-key",
+    placeholder: "Enter Solana Vibe Station API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "chainstack-api-key",
+    category: "blockchain",
+    label: "Chainstack API Key",
+    vaultPath: "rpc/chainstack/api-key",
+    placeholder: "Enter Chainstack API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "temporal-api-key",
+    category: "blockchain",
+    label: "Temporal API Key",
+    vaultPath: "rpc/temporal/api-key",
+    placeholder: "Enter Temporal API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "jupiter-api-key",
+    category: "blockchain",
+    label: "Jupiter API Key",
+    vaultPath: "integrations/jupiter/api-key",
+    placeholder: "Enter Jupiter API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "dexscreener-api-key",
+    category: "blockchain",
+    label: "Dexscreener API Key",
+    vaultPath: "integrations/dexscreener/api-key",
+    placeholder: "Enter Dexscreener API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "openrouter-api-key",
+    category: "ai",
+    label: "OpenRouter API Key",
+    vaultPath: "llm/openrouter/api-key",
+    placeholder: "Enter OpenRouter API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "vercel-ai-gateway-api-key",
+    category: "ai",
+    label: "Vercel AI Gateway API Key",
+    vaultPath: "llm/gateway/api-key",
+    placeholder: "Enter Vercel AI Gateway key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "openai-api-key",
+    category: "ai",
+    label: "OpenAI API Key",
+    vaultPath: "llm/openai/api-key",
+    placeholder: "Enter OpenAI API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "anthropic-api-key",
+    category: "ai",
+    label: "Anthropic API Key",
+    vaultPath: "llm/anthropic/api-key",
+    placeholder: "Enter Anthropic API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "google-ai-api-key",
+    category: "ai",
+    label: "Google AI API Key",
+    vaultPath: "llm/google/api-key",
+    placeholder: "Enter Google AI API key",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "openai-compatible-api-key",
+    category: "ai",
+    label: "OpenAI-Compatible API Key",
+    vaultPath: "llm/openai-compatible/api-key",
+    placeholder: "Enter provider API key",
+    supportsPublicRpc: false,
+  },
+];
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
 
@@ -64,10 +192,90 @@ interface DispatcherTestRequest {
   waitMs: number;
 }
 
+interface SecretOptionInternal extends GuiSecretOptionView {
+  pathSegments: string[];
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 const createMessageId = (): string => crypto.randomUUID();
+
+const SECRET_OPTIONS_INTERNAL: SecretOptionInternal[] = SECRET_OPTIONS.map((option) => ({
+  ...option,
+  pathSegments: option.vaultPath.split("/").filter(Boolean),
+}));
+
+const SECRET_OPTION_BY_ID = new Map(SECRET_OPTIONS_INTERNAL.map((option) => [option.id, option]));
+
+const getByPath = (root: unknown, pathSegments: string[]): unknown => {
+  let current = root;
+  for (const segment of pathSegments) {
+    if (!isRecord(current)) {
+      return undefined;
+    }
+    current = current[segment];
+  }
+  return current;
+};
+
+const setByPath = (root: Record<string, unknown>, pathSegments: string[], value: unknown): void => {
+  if (pathSegments.length === 0) {
+    return;
+  }
+  let current: Record<string, unknown> = root;
+  for (let index = 0; index < pathSegments.length - 1; index += 1) {
+    const key = pathSegments[index];
+    if (!key) {
+      continue;
+    }
+    const next = current[key];
+    if (!isRecord(next)) {
+      const replacement: Record<string, unknown> = {};
+      current[key] = replacement;
+      current = replacement;
+      continue;
+    }
+    current = next;
+  }
+  const leafKey = pathSegments[pathSegments.length - 1];
+  if (!leafKey) {
+    return;
+  }
+  current[leafKey] = value;
+};
+
+const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionInternal): GuiSecretEntryView => {
+  const rawValue = getByPath(vaultData, option.pathSegments);
+  const value = typeof rawValue === "string" ? rawValue : "";
+
+  if (!option.supportsPublicRpc) {
+    return {
+      optionId: option.id,
+      category: option.category,
+      label: option.label,
+      vaultPath: option.vaultPath,
+      value,
+      source: "custom",
+      publicRpcId: null,
+    };
+  }
+
+  const sourceRaw = getByPath(vaultData, ["rpc", "default", "source"]);
+  const source = sourceRaw === "public" ? "public" : "custom";
+  const publicRpcRaw = getByPath(vaultData, ["rpc", "default", "public-id"]);
+  const publicRpcId = typeof publicRpcRaw === "string" && publicRpcRaw.trim().length > 0 ? publicRpcRaw : null;
+
+  return {
+    optionId: option.id,
+    category: option.category,
+    label: option.label,
+    vaultPath: option.vaultPath,
+    value,
+    source,
+    publicRpcId,
+  };
+};
 
 const mapJobToView = (job: ReturnType<RuntimeBootstrap["stateStore"]["listJobs"]>[number]): GuiQueueJobView => ({
   id: job.id,
@@ -183,6 +391,46 @@ const parseUpdateVaultRequest = async (request: Request): Promise<GuiUpdateVault
     return {
       content: payload.content,
     };
+  } catch {
+    return null;
+  }
+};
+
+const parseUpsertSecretRequest = async (request: Request): Promise<GuiUpsertSecretRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.optionId !== "string" || typeof payload.value !== "string") {
+      return null;
+    }
+    const optionId = payload.optionId.trim();
+    if (!optionId) {
+      return null;
+    }
+    const source = payload.source === "public" || payload.source === "custom" ? payload.source : undefined;
+    const publicRpcId =
+      payload.publicRpcId === null || typeof payload.publicRpcId === "string" ? payload.publicRpcId : undefined;
+    return {
+      optionId,
+      value: payload.value,
+      source,
+      publicRpcId,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const parseDeleteSecretRequest = async (request: Request): Promise<GuiDeleteSecretRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.optionId !== "string") {
+      return null;
+    }
+    const optionId = payload.optionId.trim();
+    if (!optionId) {
+      return null;
+    }
+    return { optionId };
   } catch {
     return null;
   }
@@ -512,6 +760,106 @@ export class RuntimeGuiTransport {
     };
   }
 
+  async getSecrets(): Promise<GuiSecretsResponse> {
+    assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
+    await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
+    const created = await ensureVaultFileExists({
+      vaultPath: VAULT_FILE_PATH,
+      templatePath: VAULT_TEMPLATE_FILE_PATH,
+    });
+    assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
+    const content = await readFile(VAULT_FILE_PATH, "utf8");
+    const vaultData = parseVaultJsonText(content);
+    const entries = SECRET_OPTIONS_INTERNAL.map((option) => toSecretEntry(vaultData, option));
+    return {
+      filePath: VAULT_FILE_PATH,
+      templatePath: VAULT_TEMPLATE_FILE_PATH,
+      initializedFromTemplate: created.initializedFromTemplate,
+      options: SECRET_OPTIONS,
+      entries,
+      publicRpcOptions: PUBLIC_RPC_OPTIONS,
+    };
+  }
+
+  async upsertSecret(payload: GuiUpsertSecretRequest): Promise<GuiUpsertSecretResponse> {
+    assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
+    await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
+    await ensureVaultFileExists({
+      vaultPath: VAULT_FILE_PATH,
+      templatePath: VAULT_TEMPLATE_FILE_PATH,
+    });
+
+    const option = SECRET_OPTION_BY_ID.get(payload.optionId);
+    if (!option) {
+      throw new Error(`Unsupported secret option: ${payload.optionId}`);
+    }
+
+    assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
+    const content = await readFile(VAULT_FILE_PATH, "utf8");
+    const vaultData = parseVaultJsonText(content);
+    const trimmedValue = payload.value.trim();
+    setByPath(vaultData, option.pathSegments, trimmedValue);
+
+    if (option.supportsPublicRpc) {
+      const source = payload.source === "public" ? "public" : "custom";
+      setByPath(vaultData, ["rpc", "default", "source"], source);
+      if (source === "public") {
+        const publicRpcOption = PUBLIC_RPC_OPTIONS.find((entry) => entry.id === payload.publicRpcId);
+        if (!publicRpcOption) {
+          throw new Error("publicRpcId must reference a supported public Solana RPC option");
+        }
+        setByPath(vaultData, option.pathSegments, publicRpcOption.url);
+        setByPath(vaultData, ["rpc", "default", "public-id"], publicRpcOption.id);
+      } else {
+        setByPath(vaultData, ["rpc", "default", "public-id"], "");
+      }
+    }
+
+    const serialized = `${JSON.stringify(vaultData, null, 2)}\n`;
+    assertProtectedNoReadWritePath(VAULT_FILE_PATH, "write vault file");
+    await writeFile(VAULT_FILE_PATH, serialized, { encoding: "utf8", mode: 0o600 });
+
+    const entry = toSecretEntry(vaultData, option);
+    this.addActivity("runtime", `Secret updated: ${entry.label}`);
+    return {
+      filePath: VAULT_FILE_PATH,
+      savedAt: new Date().toISOString(),
+      entry,
+    };
+  }
+
+  async deleteSecret(payload: GuiDeleteSecretRequest): Promise<GuiDeleteSecretResponse> {
+    assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
+    await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
+    await ensureVaultFileExists({
+      vaultPath: VAULT_FILE_PATH,
+      templatePath: VAULT_TEMPLATE_FILE_PATH,
+    });
+
+    const option = SECRET_OPTION_BY_ID.get(payload.optionId);
+    if (!option) {
+      throw new Error(`Unsupported secret option: ${payload.optionId}`);
+    }
+
+    assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
+    const content = await readFile(VAULT_FILE_PATH, "utf8");
+    const vaultData = parseVaultJsonText(content);
+    setByPath(vaultData, option.pathSegments, "");
+    if (option.supportsPublicRpc) {
+      setByPath(vaultData, ["rpc", "default", "source"], "custom");
+      setByPath(vaultData, ["rpc", "default", "public-id"], "");
+    }
+
+    const serialized = `${JSON.stringify(vaultData, null, 2)}\n`;
+    assertProtectedNoReadWritePath(VAULT_FILE_PATH, "write vault file");
+    await writeFile(VAULT_FILE_PATH, serialized, { encoding: "utf8", mode: 0o600 });
+    this.addActivity("runtime", `Secret cleared: ${option.label}`);
+    return {
+      filePath: VAULT_FILE_PATH,
+      savedAt: new Date().toISOString(),
+    };
+  }
+
   async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string }): Promise<Response> {
     const chatId = input?.chatId?.trim() || this.resolveDefaultChatId();
     this.activeChatId = chatId;
@@ -689,6 +1037,41 @@ export class RuntimeGuiTransport {
 
         try {
           return Response.json(await this.updateVault(payload), { headers: CORS_HEADERS });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 400, headers: CORS_HEADERS });
+        }
+      }
+
+      if (request.method === "GET" && url.pathname === "/api/gui/secrets") {
+        try {
+          return Response.json(await this.getSecrets(), { headers: CORS_HEADERS });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 500, headers: CORS_HEADERS });
+        }
+      }
+
+      if (request.method === "PUT" && url.pathname === "/api/gui/secrets") {
+        const payload = await parseUpsertSecretRequest(request);
+        if (!payload) {
+          return Response.json({ error: "Invalid secrets payload" }, { status: 400, headers: CORS_HEADERS });
+        }
+        try {
+          return Response.json(await this.upsertSecret(payload), { headers: CORS_HEADERS });
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          return Response.json({ error: errorMessage }, { status: 400, headers: CORS_HEADERS });
+        }
+      }
+
+      if (request.method === "DELETE" && url.pathname === "/api/gui/secrets") {
+        const payload = await parseDeleteSecretRequest(request);
+        if (!payload) {
+          return Response.json({ error: "Invalid delete secret payload" }, { status: 400, headers: CORS_HEADERS });
+        }
+        try {
+          return Response.json(await this.deleteSecret(payload), { headers: CORS_HEADERS });
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           return Response.json({ error: errorMessage }, { status: 400, headers: CORS_HEADERS });

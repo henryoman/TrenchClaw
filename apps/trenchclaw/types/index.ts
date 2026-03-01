@@ -219,3 +219,61 @@ export interface GuiUpdateVaultResponse {
   filePath: string;
   savedAt: string;
 }
+
+export type GuiSecretCategory = "ai" | "blockchain";
+
+export interface GuiSecretOptionView {
+  id: string;
+  category: GuiSecretCategory;
+  label: string;
+  vaultPath: string;
+  placeholder: string;
+  supportsPublicRpc: boolean;
+}
+
+export interface GuiSecretEntryView {
+  optionId: string;
+  category: GuiSecretCategory;
+  label: string;
+  vaultPath: string;
+  value: string;
+  source: "custom" | "public";
+  publicRpcId: string | null;
+}
+
+export interface GuiPublicRpcOptionView {
+  id: string;
+  label: string;
+  url: string;
+}
+
+export interface GuiSecretsResponse {
+  filePath: string;
+  templatePath: string;
+  initializedFromTemplate: boolean;
+  options: GuiSecretOptionView[];
+  entries: GuiSecretEntryView[];
+  publicRpcOptions: GuiPublicRpcOptionView[];
+}
+
+export interface GuiUpsertSecretRequest {
+  optionId: string;
+  value: string;
+  source?: "custom" | "public";
+  publicRpcId?: string | null;
+}
+
+export interface GuiUpsertSecretResponse {
+  filePath: string;
+  savedAt: string;
+  entry: GuiSecretEntryView;
+}
+
+export interface GuiDeleteSecretRequest {
+  optionId: string;
+}
+
+export interface GuiDeleteSecretResponse {
+  filePath: string;
+  savedAt: string;
+}
