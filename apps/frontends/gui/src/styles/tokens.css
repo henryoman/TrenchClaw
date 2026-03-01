@@ -33,6 +33,9 @@
   --tc-control-padding-x: 12px;
   --tc-control-font-size: var(--tc-type-md);
   --tc-control-letter-spacing: var(--tc-track-wide);
+  --tc-select-padding-right: calc(var(--tc-control-padding-x) + var(--tc-space-4));
+  --tc-select-option-padding-y: var(--tc-space-2);
+  --tc-select-option-padding-x: var(--tc-control-padding-x);
   --tc-button-padding-y: 6px;
   --tc-button-padding-x: 10px;
   --tc-button-font-size: var(--tc-type-xs);
