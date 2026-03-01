@@ -147,6 +147,59 @@ describe("RuntimeChatService", () => {
     expect(capturedSystemPrompt).toContain("Filesystem policy");
   });
 
+  test("preserves assistant role/history when preparing streaming messages", async () => {
+    const registry = new ActionRegistry();
+    let capturedMessages: UIMessage[] = [];
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: {
+          provider: "test",
+          model: "test-model",
+          defaultSystemPrompt: "test system prompt",
+          defaultMode: "test",
+          generate: async () => ({ text: "ok", finishReason: "stop" }),
+          stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
+        } as unknown as LlmClient,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async (messages: UIMessage[]) => {
+          capturedMessages = messages;
+          return [];
+        },
+        streamText: (() => ({
+          toUIMessageStreamResponse: () => new Response("ok"),
+        })) as never,
+      },
+    );
+
+    await service.stream([
+      {
+        id: "user-1",
+        role: "user",
+        parts: [{ type: "text", text: "ping runtime" }],
+      },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [{ type: "text", text: "calling tool now" }],
+      },
+    ]);
+
+    expect(capturedMessages).toHaveLength(2);
+    expect(capturedMessages[0]?.role).toBe("user");
+    expect(capturedMessages[1]?.role).toBe("assistant");
+    expect(capturedMessages[1]?.parts[0]).toEqual({ type: "text", text: "calling tool now" });
+  });
+
   test("creates and persists conversation/messages from streamed chat", async () => {
     const registry = new ActionRegistry();
     const stateStore = new InMemoryStateStore();

@@ -237,6 +237,137 @@ describe("RuntimeGuiTransport", () => {
     expect(payload.result.message).toBe("queue-model-test");
   });
 
+  test("chat-triggered model flow surfaces queue + activity log updates", async () => {
+    const listeners = new Map<string, Array<(event: { payload: Record<string, unknown> }) => void>>();
+    const jobs: Array<{
+      id: string;
+      botId: string;
+      routineName: string;
+      status: "pending" | "running" | "paused" | "failed" | "stopped";
+      createdAt: number;
+      updatedAt: number;
+      nextRunAt: number;
+      cyclesCompleted: number;
+    }> = [];
+
+    const emit = (type: string, payload: Record<string, unknown>): void => {
+      const handlers = listeners.get(type) ?? [];
+      for (const handler of handlers) {
+        handler({ payload });
+      }
+    };
+
+    const runtime = {
+      llm: null,
+      settings: { profile: "dangerous" },
+      chat: {
+        listToolNames: () => ["pingRuntime"],
+        generateText: async () => ({ text: "ok", finishReason: "stop" }),
+        stream: async () => {
+          const now = Date.now();
+          jobs.splice(0, jobs.length, {
+            id: "job-model-1",
+            botId: "chat-bot",
+            routineName: "model-dispatch",
+            status: "running",
+            createdAt: now,
+            updatedAt: now,
+            nextRunAt: now,
+            cyclesCompleted: 0,
+          });
+
+          emit("queue:enqueue", {
+            jobId: "job-model-1",
+            botId: "chat-bot",
+            routineName: "model-dispatch",
+            queueSize: 1,
+            queuePosition: 1,
+          });
+          emit("queue:dequeue", {
+            jobId: "job-model-1",
+            botId: "chat-bot",
+            routineName: "model-dispatch",
+            queueSize: 1,
+            queuePosition: 1,
+            waitMs: 5,
+          });
+          emit("queue:complete", {
+            jobId: "job-model-1",
+            botId: "chat-bot",
+            routineName: "model-dispatch",
+            status: "pending",
+            durationMs: 6,
+            cyclesCompleted: 1,
+          });
+          return new Response("ok", { status: 200 });
+        },
+      },
+      eventBus: {
+        on: (type: string, handler: (event: { payload: Record<string, unknown> }) => void) => {
+          const existing = listeners.get(type) ?? [];
+          existing.push(handler);
+          listeners.set(type, existing);
+          return () => {};
+        },
+      },
+      stateStore: {
+        listJobs: () => jobs,
+        listConversations: () => [],
+      },
+      describe: () => ({
+        profile: "dangerous",
+        registeredActions: [],
+        pendingJobs: jobs.length,
+        schedulerTickMs: 1000,
+        llmEnabled: false,
+      }),
+    } as unknown as RuntimeBootstrap;
+
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+
+    const chatResponse = await handler(
+      new Request("http://localhost/api/chat", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          chatId: "chat-model-queue-1",
+          messages: [{ id: "m1", role: "user", parts: [{ type: "text", text: "please ping the server" }] }],
+        }),
+      }),
+    );
+    expect(chatResponse.status).toBe(200);
+
+    const queueResponse = await handler(new Request("http://localhost/api/gui/queue", { method: "GET" }));
+    const queuePayload = (await queueResponse.json()) as {
+      jobs: Array<{ id: string; botId: string; routineName: string; status: string }>;
+    };
+    expect(queuePayload.jobs.length).toBe(1);
+    expect(queuePayload.jobs[0]).toMatchObject({
+      id: "job-model-1",
+      botId: "chat-bot",
+      routineName: "model-dispatch",
+      status: "running",
+    });
+
+    const activityResponse = await handler(new Request("http://localhost/api/gui/activity?limit=20", { method: "GET" }));
+    const activityPayload = (await activityResponse.json()) as {
+      entries: Array<{ source: string; summary: string }>;
+    };
+    expect(activityPayload.entries.some((entry) => entry.source === "chat" && entry.summary.includes("Streaming prompt"))).toBe(
+      true,
+    );
+    expect(
+      activityPayload.entries.some((entry) => entry.source === "queue" && entry.summary.includes("Queued model-dispatch")),
+    ).toBe(true);
+    expect(
+      activityPayload.entries.some((entry) => entry.source === "queue" && entry.summary.includes("Started model-dispatch")),
+    ).toBe(true);
+    expect(
+      activityPayload.entries.some((entry) => entry.source === "queue" && entry.summary.includes("Confirmed model-dispatch")),
+    ).toBe(true);
+  });
+
   test("secrets endpoint persists trimmed custom key to vault.json", async () => {
     const transport = buildTransport();
     const handler = transport.createApiHandler();

@@ -131,27 +131,21 @@ const normalizeUiMessages = (messages: UIMessage[]): UIMessage[] => {
       continue;
     }
 
-    const text = message.parts
-      .map((part) => {
-        if (part.type === "text") {
-          return part.text ?? "";
-        }
-        return JSON.stringify(part);
-      })
-      .join("\n")
-      .trim();
+    const normalizedParts = message.parts.filter((part) => {
+      if (part.type !== "text") {
+        return true;
+      }
+      return (part.text ?? "").trim().length > 0;
+    });
 
-    if (!text) {
+    if (normalizedParts.length === 0) {
       continue;
     }
 
-    const role = sourceRole === "assistant" ? "user" : sourceRole;
-    const normalizedText = sourceRole === "assistant" ? `[assistant]\n${text}` : text;
-
     normalized.push({
       id: trimOrUndefinedValue(message.id) ?? `msg-${crypto.randomUUID()}`,
-      role,
-      parts: [{ type: "text", text: normalizedText }],
+      role: sourceRole,
+      parts: normalizedParts,
     });
   }
 

@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-02-27T21:49:07.673Z
+Generated at: 2026-03-01T03:03:36.108Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -175,6 +175,7 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-02-25.md
 |   |   |   |   |   |-- 2026-02-26.md
 |   |   |   |   |   |-- 2026-02-27.md
+|   |   |   |   |   |-- 2026-03-01.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
@@ -200,6 +201,7 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 625dc361-fcc1-4ba7-a124-103421f5ba02.jsonl
 |   |   |   |   |   |-- 6b5dcc42-76af-4ab6-86c8-b655f62fd549.jsonl
 |   |   |   |   |   |-- 6ca3f256-0fa3-40f6-98c3-da0212e97aca.jsonl
+|   |   |   |   |   |-- 6e054206-08a7-47ab-aeda-00be561f9526.jsonl
 |   |   |   |   |   |-- 768dc51a-b8f1-4535-93fa-71d6b1696b5f.jsonl
 |   |   |   |   |   |-- 7998da66-a848-4060-a95a-ec0f6000354e.jsonl
 |   |   |   |   |   |-- 81213b93-7937-485a-ab35-768bf364e404.jsonl
@@ -275,7 +277,8 @@ apps/trenchclaw/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-02-25.log
 |   |   |   |   |   |-- 2026-02-26.log
-|   |   |   |   |   `-- 2026-02-27.log
+|   |   |   |   |   |-- 2026-02-27.log
+|   |   |   |   |   `-- 2026-03-01.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-02-25.log
@@ -561,6 +564,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | /api/gui/instances |
 | /api/gui/instances/sign-in |
 | /api/gui/queue |
+| /api/gui/secrets |
 | /api/gui/tests/dispatcher |
 | /api/gui/vault |
 

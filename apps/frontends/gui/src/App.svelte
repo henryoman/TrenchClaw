@@ -97,8 +97,6 @@
         busy={runtime.state.secretsBusy}
         error={runtime.state.secretsError}
         notice={runtime.state.secretsNotice}
-        filePath={runtime.state.vaultFilePath}
-        templatePath={runtime.state.vaultTemplatePath}
         onReload={() => {
           void runtime.loadSecrets();
         }}
