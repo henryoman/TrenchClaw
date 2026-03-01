@@ -40,7 +40,6 @@ interface RuntimeUiState {
   publicRpcOptions: GuiPublicRpcOptionView[];
   secretsBusy: boolean;
   secretsError: string;
-  secretsNotice: string;
 }
 
 const formatRuntimeStatus = (profile: string, llmEnabled: boolean): string =>
@@ -70,7 +69,6 @@ export const createRuntimeController = () => {
     publicRpcOptions: [],
     secretsBusy: false,
     secretsError: "",
-    secretsNotice: "",
   });
 
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
@@ -226,7 +224,24 @@ export const createRuntimeController = () => {
       state.secretsOptions = payload.options;
       state.secretEntries = payload.entries;
       state.publicRpcOptions = payload.publicRpcOptions;
-      state.secretsNotice = payload.initializedFromTemplate ? "Created vault.json from template." : "";
+
+      const defaultRpcOptionId = payload.publicRpcOptions.find((rpc) => rpc.id === "solana-mainnet-beta")?.id
+        ?? payload.publicRpcOptions[0]?.id
+        ?? "";
+      const defaultRpcUrl = payload.publicRpcOptions.find((rpc) => rpc.id === defaultRpcOptionId)?.url ?? "";
+      const rpcEntry = payload.entries.find((entry) => entry.optionId === "solana-rpc-url");
+      if (rpcEntry && !rpcEntry.value.trim() && defaultRpcOptionId && defaultRpcUrl) {
+        const seeded = await runtimeApi.upsertSecret({
+          optionId: "solana-rpc-url",
+          value: defaultRpcUrl,
+          source: "public",
+          publicRpcId: defaultRpcOptionId,
+        });
+        state.vaultFilePath = seeded.filePath;
+        state.secretEntries = state.secretEntries.map((entry) =>
+          entry.optionId === seeded.entry.optionId ? seeded.entry : entry,
+        );
+      }
     } catch (error) {
       state.secretsError = error instanceof Error ? error.message : "Failed to load secrets.";
     } finally {
@@ -242,14 +257,12 @@ export const createRuntimeController = () => {
   }): Promise<void> => {
     state.secretsBusy = true;
     state.secretsError = "";
-    state.secretsNotice = "";
     try {
       const result = await runtimeApi.upsertSecret(input);
       state.vaultFilePath = result.filePath;
       state.secretEntries = state.secretEntries.map((entry) =>
         entry.optionId === result.entry.optionId ? result.entry : entry,
       );
-      state.secretsNotice = `Saved ${result.entry.label} at ${new Date(result.savedAt).toLocaleTimeString()}`;
     } catch (error) {
       state.secretsError = error instanceof Error ? error.message : "Failed to save secret.";
     } finally {
@@ -260,7 +273,6 @@ export const createRuntimeController = () => {
   const clearSecret = async (optionId: string): Promise<void> => {
     state.secretsBusy = true;
     state.secretsError = "";
-    state.secretsNotice = "";
     try {
       const result = await runtimeApi.deleteSecret({ optionId });
       state.vaultFilePath = result.filePath;
@@ -274,7 +286,6 @@ export const createRuntimeController = () => {
             }
           : entry,
       );
-      state.secretsNotice = `Cleared secret at ${new Date(result.savedAt).toLocaleTimeString()}`;
     } catch (error) {
       state.secretsError = error instanceof Error ? error.message : "Failed to clear secret.";
     } finally {

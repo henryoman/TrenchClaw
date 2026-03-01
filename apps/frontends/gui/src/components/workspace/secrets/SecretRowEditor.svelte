@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GuiPublicRpcOptionView, GuiSecretOptionView } from "@trenchclaw/types";
+  import type { GuiSecretOptionView } from "@trenchclaw/types";
   import RetroButton from "../../ui/RetroButton.svelte";
   import RetroField from "../../ui/RetroField.svelte";
   import RetroInput from "../../ui/RetroInput.svelte";
@@ -11,73 +11,43 @@
   export let option: GuiSecretOptionView | undefined;
   export let options: GuiSecretOptionView[] = [];
   export let selectedOptionIds: Set<string> = new Set();
-  export let publicRpcOptions: GuiPublicRpcOptionView[] = [];
   export let busy = false;
   export let removable = false;
 
   export let onOptionChange: (rowKey: string, optionId: string) => void;
   export let onValueChange: (rowKey: string, value: string) => void;
-  export let onSourceChange: (rowKey: string, source: "custom" | "public") => void;
-  export let onPublicRpcChange: (rowKey: string, publicRpcId: string) => void;
   export let onSave: (row: SecretDraftRow) => void;
   export let onClear: (category: SecretCategory, row: SecretDraftRow) => void;
   export let onRemove: (category: SecretCategory, rowKey: string) => void;
 </script>
 
 <article class="secret-row">
-  <RetroField label="Key type">
-    <RetroSelect
-      value={row.optionId}
-      disabled={busy}
-      on:change={(event) => {
-        const target = event.currentTarget as HTMLSelectElement;
-        onOptionChange(row.rowKey, target.value);
-      }}
-    >
-      <option value="">Select key type</option>
-      {#each options as item (item.id)}
-        <option value={item.id} disabled={selectedOptionIds.has(item.id)}>{item.label}</option>
-      {/each}
-    </RetroSelect>
-  </RetroField>
-
   {#if option?.supportsPublicRpc && category === "blockchain"}
-    <RetroField label="RPC source">
+    <RetroField label="Key type">
+      <RetroInput value="RPC" disabled={true} />
+    </RetroField>
+  {:else}
+    <RetroField label="Key type">
       <RetroSelect
-        value={row.source}
-        disabled={busy || !row.optionId}
+        value={row.optionId}
+        disabled={busy}
         on:change={(event) => {
           const target = event.currentTarget as HTMLSelectElement;
-          onSourceChange(row.rowKey, target.value === "public" ? "public" : "custom");
+          onOptionChange(row.rowKey, target.value);
         }}
       >
-        <option value="custom">Custom RPC URL</option>
-        <option value="public">Use public Solana RPC</option>
+        <option value="">Select key type</option>
+        {#each options as item (item.id)}
+          <option value={item.id} disabled={selectedOptionIds.has(item.id)}>{item.label}</option>
+        {/each}
       </RetroSelect>
     </RetroField>
-
-    {#if row.source === "public"}
-      <RetroField label="Public RPC">
-        <RetroSelect
-          value={row.publicRpcId}
-          disabled={busy || !row.optionId}
-          on:change={(event) => {
-            const target = event.currentTarget as HTMLSelectElement;
-            onPublicRpcChange(row.rowKey, target.value);
-          }}
-        >
-          {#each publicRpcOptions as rpc (rpc.id)}
-            <option value={rpc.id}>{rpc.label}</option>
-          {/each}
-        </RetroSelect>
-      </RetroField>
-    {/if}
   {/if}
 
   <RetroField label="Value">
     <RetroInput
       value={row.value}
-      disabled={busy || !row.optionId || (option?.supportsPublicRpc && row.source === "public")}
+      disabled={busy || !row.optionId || (option?.supportsPublicRpc && category === "blockchain")}
       placeholder={option?.placeholder ?? "Enter value"}
       on:input={(event) => {
         const target = event.currentTarget as HTMLInputElement;
@@ -88,7 +58,11 @@
 
   <div class="row-actions">
     <RetroButton disabled={busy || !row.optionId} on:click={() => onSave(row)}>Save</RetroButton>
-    <RetroButton variant="secondary" disabled={busy || !row.optionId} on:click={() => onClear(category, row)}>
+    <RetroButton
+      variant="secondary"
+      disabled={busy || !row.optionId || (option?.supportsPublicRpc && category === "blockchain")}
+      on:click={() => onClear(category, row)}
+    >
       Clear
     </RetroButton>
     <RetroButton variant="secondary" disabled={busy || !removable} on:click={() => onRemove(category, row.rowKey)}>

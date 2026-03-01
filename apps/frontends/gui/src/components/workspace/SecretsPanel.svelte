@@ -10,14 +10,13 @@
   import RetroSectionHeader from "../ui/RetroSectionHeader.svelte";
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
   import SecretCategorySection from "./secrets/SecretCategorySection.svelte";
-  import type { SecretDraftRow, SecretStatusMessage } from "./secrets/secret-editor-types";
+  import type { SecretDraftRow } from "./secrets/secret-editor-types";
 
   export let options: GuiSecretOptionView[] = [];
   export let entries: GuiSecretEntryView[] = [];
   export let publicRpcOptions: GuiPublicRpcOptionView[] = [];
   export let busy = false;
   export let error = "";
-  export let notice = "";
   export let onReload: () => void = () => {};
   export let onSave: (input: {
     optionId: string;
@@ -31,6 +30,8 @@
   let blockchainRows: SecretDraftRow[] = [];
   let rowCounter = 0;
   let hydrationSignature = "";
+  const DEFAULT_BLOCKCHAIN_OPTION_ID = "solana-rpc-url";
+  const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
 
   const nextRowKey = (): string => {
     rowCounter += 1;
@@ -48,18 +49,20 @@
 
   const firstRpcId = (): string => publicRpcOptions[0]?.id ?? "";
 
+  const defaultPublicRpcId = (): string => {
+    const preferred = publicRpcOptions.find((rpc) => rpc.id === DEFAULT_MAINNET_RPC_ID);
+    return preferred?.id ?? firstRpcId();
+  };
+
   const valueForPublicRpc = (rpcId: string): string =>
     publicRpcOptions.find((rpc) => rpc.id === rpcId)?.url ?? "";
 
   const createRowFromOptionId = (optionId = ""): SecretDraftRow => {
     const entry = optionId ? entryFor(optionId) : undefined;
     const option = optionId ? optionFor(optionId) : undefined;
-    const source = entry?.source ?? "custom";
-    const publicRpcId = entry?.publicRpcId ?? firstRpcId();
-    const value =
-      option?.supportsPublicRpc && source === "public"
-        ? valueForPublicRpc(publicRpcId)
-        : (entry?.value ?? "");
+    const source = option?.supportsPublicRpc ? "public" : (entry?.source ?? "custom");
+    const publicRpcId = option?.supportsPublicRpc ? (entry?.publicRpcId ?? defaultPublicRpcId()) : firstRpcId();
+    const value = option?.supportsPublicRpc ? valueForPublicRpc(publicRpcId) : (entry?.value ?? "");
 
     return {
       rowKey: nextRowKey(),
@@ -80,6 +83,12 @@
       const entry = entryFor(option.id);
       return (entry?.value ?? "").trim().length > 0;
     });
+
+    if (category === "blockchain") {
+      const rpcOption = categoryOptions.find((option) => option.id === DEFAULT_BLOCKCHAIN_OPTION_ID) ?? categoryOptions[0];
+      const seed = [rpcOption, ...withValues.filter((option) => option.id !== rpcOption.id)];
+      return seed.filter(Boolean).map((option) => createRowFromOptionId(option.id));
+    }
 
     const seed = withValues.length > 0 ? withValues : [categoryOptions[0]];
     return seed.filter(Boolean).map((option) => createRowFromOptionId(option.id));
@@ -132,12 +141,9 @@
   const onOptionChange = (category: GuiSecretCategory, rowKey: string, optionId: string): void => {
     const entry = entryFor(optionId);
     const option = optionFor(optionId);
-    const source = entry?.source ?? "custom";
-    const publicRpcId = entry?.publicRpcId ?? firstRpcId();
-    const value =
-      option?.supportsPublicRpc && source === "public"
-        ? valueForPublicRpc(publicRpcId)
-        : (entry?.value ?? "");
+    const source = option?.supportsPublicRpc ? "public" : (entry?.source ?? "custom");
+    const publicRpcId = option?.supportsPublicRpc ? (entry?.publicRpcId ?? defaultPublicRpcId()) : firstRpcId();
+    const value = option?.supportsPublicRpc ? valueForPublicRpc(publicRpcId) : (entry?.value ?? "");
 
     updateRow(category, rowKey, (row) => ({
       ...row,
@@ -152,34 +158,15 @@
     updateRow(category, rowKey, (row) => ({ ...row, value }));
   };
 
-  const onSourceChange = (rowKey: string, source: "custom" | "public"): void => {
-    updateRow("blockchain", rowKey, (row) => {
-      const publicRpcId = row.publicRpcId || firstRpcId();
-      return {
-        ...row,
-        source,
-        publicRpcId,
-        value: source === "public" ? valueForPublicRpc(publicRpcId) : row.value,
-      };
-    });
-  };
-
-  const onPublicRpcChange = (rowKey: string, publicRpcId: string): void => {
-    updateRow("blockchain", rowKey, (row) => ({
-      ...row,
-      publicRpcId,
-      value: valueForPublicRpc(publicRpcId),
-    }));
-  };
-
   const saveRow = (row: SecretDraftRow): void => {
     const option = optionFor(row.optionId);
     if (!option) {
       return;
     }
 
-    if (option.supportsPublicRpc && row.source === "public") {
-      const rpc = publicRpcOptions.find((candidate) => candidate.id === row.publicRpcId);
+    if (option.supportsPublicRpc) {
+      const rpcId = row.publicRpcId || defaultPublicRpcId();
+      const rpc = publicRpcOptions.find((candidate) => candidate.id === rpcId);
       if (!rpc) {
         return;
       }
@@ -204,6 +191,17 @@
     if (!row.optionId) {
       return;
     }
+    const option = optionFor(row.optionId);
+    if (option?.supportsPublicRpc && category === "blockchain") {
+      const publicRpcId = defaultPublicRpcId();
+      updateRow(category, row.rowKey, (current) => ({
+        ...current,
+        source: "public",
+        publicRpcId,
+        value: valueForPublicRpc(publicRpcId),
+      }));
+      return;
+    }
     updateRow(category, row.rowKey, (current) => ({
       ...current,
       value: "",
@@ -222,15 +220,7 @@
     }
   }
 
-  $: statusMessage = ((): SecretStatusMessage | null => {
-    if (error.trim()) {
-      return { tone: "error", text: error.trim() };
-    }
-    if (notice.trim()) {
-      return { tone: "ok", text: notice.trim() };
-    }
-    return null;
-  })();
+  $: statusErrorText = error.trim();
 </script>
 
 <section class="secrets-panel" aria-label="Manage keys and secrets panel">
@@ -247,14 +237,11 @@
       category="ai"
       rows={aiRows}
       options={optionsForCategory("ai")}
-      {publicRpcOptions}
       {busy}
       {optionFor}
       onAdd={addRow}
       {onOptionChange}
       {onValueChange}
-      {onSourceChange}
-      {onPublicRpcChange}
       onSave={saveRow}
       onClear={clearRow}
       onRemove={removeRow}
@@ -267,21 +254,18 @@
       category="blockchain"
       rows={blockchainRows}
       options={optionsForCategory("blockchain")}
-      {publicRpcOptions}
       {busy}
       {optionFor}
       onAdd={addRow}
       {onOptionChange}
       {onValueChange}
-      {onSourceChange}
-      {onPublicRpcChange}
       onSave={saveRow}
       onClear={clearRow}
       onRemove={removeRow}
     />
   </div>
 
-  <RetroStatusMessage tone={statusMessage?.tone ?? "ok"} text={statusMessage?.text ?? ""} />
+  <RetroStatusMessage tone="error" text={statusErrorText} />
 </section>
 
 <style>

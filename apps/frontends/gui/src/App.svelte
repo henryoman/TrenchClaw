@@ -96,7 +96,6 @@
         publicRpcOptions={runtime.state.publicRpcOptions}
         busy={runtime.state.secretsBusy}
         error={runtime.state.secretsError}
-        notice={runtime.state.secretsNotice}
         onReload={() => {
           void runtime.loadSecrets();
         }}

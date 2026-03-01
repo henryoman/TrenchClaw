@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { GuiPublicRpcOptionView, GuiSecretOptionView } from "@trenchclaw/types";
+  import type { GuiSecretOptionView } from "@trenchclaw/types";
   import RetroButton from "../../ui/RetroButton.svelte";
   import SecretRowEditor from "./SecretRowEditor.svelte";
   import type { SecretCategory, SecretDraftRow } from "./secret-editor-types";
@@ -8,15 +8,12 @@
   export let category: SecretCategory;
   export let rows: SecretDraftRow[] = [];
   export let options: GuiSecretOptionView[] = [];
-  export let publicRpcOptions: GuiPublicRpcOptionView[] = [];
   export let busy = false;
 
   export let optionFor: (optionId: string) => GuiSecretOptionView | undefined;
   export let onAdd: (category: SecretCategory) => void;
   export let onOptionChange: (category: SecretCategory, rowKey: string, optionId: string) => void;
   export let onValueChange: (category: SecretCategory, rowKey: string, value: string) => void;
-  export let onSourceChange: (rowKey: string, source: "custom" | "public") => void;
-  export let onPublicRpcChange: (rowKey: string, publicRpcId: string) => void;
   export let onSave: (row: SecretDraftRow) => void;
   export let onClear: (category: SecretCategory, row: SecretDraftRow) => void;
   export let onRemove: (category: SecretCategory, rowKey: string) => void;
@@ -40,15 +37,12 @@
       {category}
       {row}
       option={optionFor(row.optionId)}
-      {publicRpcOptions}
       {busy}
-      removable={rows.length > 1}
+      removable={rows.length > 1 && row.optionId !== "solana-rpc-url"}
       options={options}
       selectedOptionIds={selectedOptionIds(rows, row.rowKey)}
       onOptionChange={(rowKey, optionId) => onOptionChange(category, rowKey, optionId)}
       onValueChange={(rowKey, value) => onValueChange(category, rowKey, value)}
-      {onSourceChange}
-      {onPublicRpcChange}
       {onSave}
       {onClear}
       {onRemove}
