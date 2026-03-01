@@ -235,7 +235,7 @@
 
 <section class="secrets-panel" aria-label="Manage keys and secrets panel">
   <header class="secrets-header">
-    <RetroSectionHeader kicker="Manage keys and secrets" title="Vault-backed credentials" />
+    <RetroSectionHeader title="Manage keys and secrets" />
     <div class="actions">
       <RetroButton variant="secondary" disabled={busy} on:click={onReload}>Reload</RetroButton>
     </div>
