@@ -17,7 +17,7 @@
   .layout {
     height: 100%;
     display: grid;
-    grid-template-columns: 110px 1fr;
+    grid-template-columns: var(--tc-sidebar-width) 1fr;
     grid-template-rows: 1fr;
     gap: var(--tc-space-3);
     padding: var(--tc-space-3);
@@ -32,7 +32,7 @@
     gap: var(--tc-space-3);
   }
 
-  @media (max-width: 980px) {
+  @media (max-width: var(--tc-layout-breakpoint)) {
     .layout {
       grid-template-columns: 1fr;
     }

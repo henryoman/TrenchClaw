@@ -9,3 +9,7 @@ export { default as SecretsPanel } from "./workspace/SecretsPanel.svelte";
 export { default as SummaryPanel } from "./workspace/SummaryPanel.svelte";
 export { default as VaultPanel } from "./workspace/VaultPanel.svelte";
 export { default as WorkspaceShell } from "./workspace/WorkspaceShell.svelte";
+
+export { default as RetroDivider } from "./ui/RetroDivider.svelte";
+export { default as RetroSectionHeader } from "./ui/RetroSectionHeader.svelte";
+export { default as RetroStatusMessage } from "./ui/RetroStatusMessage.svelte";

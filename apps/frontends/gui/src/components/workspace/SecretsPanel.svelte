@@ -6,6 +6,9 @@
     GuiSecretOptionView,
   } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
+  import RetroDivider from "../ui/RetroDivider.svelte";
+  import RetroSectionHeader from "../ui/RetroSectionHeader.svelte";
+  import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
   import SecretCategorySection from "./secrets/SecretCategorySection.svelte";
   import type { SecretDraftRow, SecretStatusMessage } from "./secrets/secret-editor-types";
 
@@ -232,10 +235,7 @@
 
 <section class="secrets-panel" aria-label="Manage keys and secrets panel">
   <header class="secrets-header">
-    <div>
-      <p class="kicker">Manage keys and secrets</p>
-      <h2>Vault-backed credentials</h2>
-    </div>
+    <RetroSectionHeader kicker="Manage keys and secrets" title="Vault-backed credentials" />
     <div class="actions">
       <RetroButton variant="secondary" disabled={busy} on:click={onReload}>Reload</RetroButton>
     </div>
@@ -260,7 +260,7 @@
       onRemove={removeRow}
     />
 
-    <hr class="section-divider" />
+    <RetroDivider />
 
     <SecretCategorySection
       title="Blockchain"
@@ -281,11 +281,7 @@
     />
   </div>
 
-  {#if statusMessage}
-    <p class={`status ${statusMessage.tone}`} role={statusMessage.tone === "error" ? "alert" : "status"} aria-live="polite">
-      {statusMessage.text}
-    </p>
-  {/if}
+  <RetroStatusMessage tone={statusMessage?.tone ?? "ok"} text={statusMessage?.text ?? ""} />
 </section>
 
 <style>
@@ -311,21 +307,6 @@
     min-width: 0;
   }
 
-  .kicker {
-    margin: 0;
-    color: var(--tc-color-gray-2);
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  h2 {
-    margin: var(--tc-space-1) 0 0;
-    font-size: 0.9rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
-
   .actions {
     display: flex;
     gap: var(--tc-space-2);
@@ -338,33 +319,7 @@
     min-width: 0;
   }
 
-  .section-divider {
-    margin: 0;
-    border: 0;
-    border-top: var(--tc-border-muted);
-    min-width: 0;
-  }
-
-  .status {
-    margin: 0;
-    border: var(--tc-border-muted);
-    padding: var(--tc-space-2);
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    overflow-wrap: anywhere;
-  }
-
-  .status.error {
-    color: var(--tc-color-red);
-    border-color: var(--tc-color-red);
-  }
-
-  .status.ok {
-    color: var(--tc-color-turquoise);
-  }
-
-  @media (max-width: 980px) {
+  @media (max-width: var(--tc-layout-breakpoint)) {
     .secrets-header {
       flex-direction: column;
     }

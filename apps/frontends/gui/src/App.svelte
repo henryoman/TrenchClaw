@@ -130,7 +130,7 @@
   .right-column {
     min-height: 0;
     display: grid;
-    grid-template-rows: 1fr 1fr;
+    grid-template-rows: var(--tc-right-column-rows);
     gap: var(--tc-space-3);
   }
 
@@ -140,7 +140,7 @@
     color: var(--tc-color-red);
     padding: var(--tc-space-4);
     text-transform: uppercase;
-    letter-spacing: 0.04em;
+    letter-spacing: var(--tc-status-letter-spacing);
   }
 
   .chat-init-error p {

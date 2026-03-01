@@ -10,11 +10,11 @@
 <style>
   .retro-field {
     display: grid;
-    gap: 6px;
+    gap: var(--tc-field-gap);
     color: var(--tc-color-gray-1);
-    font-size: 0.82rem;
+    font-size: var(--tc-field-label-size);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tc-field-label-letter-spacing);
   }
 
   span {

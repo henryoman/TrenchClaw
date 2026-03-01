@@ -21,4 +21,41 @@
   --tc-space-3: 12px;
   --tc-space-4: 16px;
   --tc-space-5: 20px;
+
+  --tc-control-padding-y: 10px;
+  --tc-control-padding-x: 12px;
+  --tc-control-font-size: 0.95rem;
+  --tc-control-letter-spacing: 0.06em;
+
+  --tc-field-gap: 6px;
+  --tc-field-label-size: 0.74rem;
+  --tc-field-label-letter-spacing: 0.05em;
+
+  --tc-panel-header-padding-y: 10px;
+  --tc-panel-header-padding-x: 12px;
+  --tc-panel-content-padding: 10px;
+  --tc-panel-header-size: 0.86rem;
+  --tc-panel-header-letter-spacing: 0.08em;
+
+  --tc-kicker-size: 0.68rem;
+  --tc-kicker-letter-spacing: 0.05em;
+  --tc-title-size: 0.9rem;
+  --tc-title-letter-spacing: 0.06em;
+  --tc-section-title-size: 0.8rem;
+  --tc-section-title-letter-spacing: 0.05em;
+
+  --tc-status-font-size: 0.78rem;
+  --tc-status-letter-spacing: 0.04em;
+
+  --tc-row-box-padding: var(--tc-space-2);
+  --tc-row-box-bg: var(--tc-color-black-2);
+  --tc-row-box-border: var(--tc-border-muted);
+
+  --tc-sidebar-width: 110px;
+  --tc-layout-breakpoint: 980px;
+  --tc-right-column-rows: 1fr 1fr;
+
+  --tc-sidebar-label-size: 0.68rem;
+  --tc-sidebar-title-size: 0.72rem;
+  --tc-sidebar-letter-spacing: 0.05em;
 }

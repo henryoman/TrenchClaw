@@ -73,13 +73,13 @@
 
   h3 {
     margin: 0;
-    font-size: 0.8rem;
+    font-size: var(--tc-section-title-size);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tc-section-title-letter-spacing);
     color: var(--tc-color-turquoise);
   }
 
-  @media (max-width: 980px) {
+  @media (max-width: var(--tc-layout-breakpoint)) {
     .section-title-row {
       flex-direction: column;
       align-items: flex-start;

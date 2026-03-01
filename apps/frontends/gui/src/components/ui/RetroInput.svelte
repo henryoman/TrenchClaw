@@ -12,7 +12,9 @@
     border: var(--tc-border-muted);
     background: var(--tc-color-black);
     color: var(--tc-color-gray-3);
-    padding: 10px 11px;
+    padding: var(--tc-control-padding-y) var(--tc-control-padding-x);
+    font-size: var(--tc-control-font-size);
+    min-width: 0;
   }
 
   .retro-input:focus {

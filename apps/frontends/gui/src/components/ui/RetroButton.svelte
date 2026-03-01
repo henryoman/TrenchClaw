@@ -14,9 +14,10 @@
     border: var(--tc-border);
     background: var(--tc-color-black);
     color: var(--tc-color-gray-3);
-    padding: 10px 12px;
+    padding: var(--tc-control-padding-y) var(--tc-control-padding-x);
+    font-size: var(--tc-control-font-size);
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--tc-control-letter-spacing);
     cursor: pointer;
     border-radius: 0;
     box-shadow: none;

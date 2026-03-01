@@ -102,6 +102,9 @@
     display: grid;
     gap: var(--tc-space-2);
     min-width: 0;
+    border: var(--tc-row-box-border);
+    background: var(--tc-row-box-bg);
+    padding: var(--tc-row-box-padding);
   }
 
   .row-actions {
@@ -112,13 +115,11 @@
 
   :global(.secret-row .retro-field) {
     min-width: 0;
-    font-size: 0.74rem;
   }
 
   :global(.secret-row .retro-input),
   :global(.secret-row .retro-select) {
     min-width: 0;
-    font-size: 0.95rem;
     box-sizing: border-box;
   }
 </style>

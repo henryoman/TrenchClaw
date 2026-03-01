@@ -20,15 +20,15 @@
   header {
     border-bottom: var(--tc-border-muted);
     color: var(--tc-color-turquoise);
-    padding: 10px 12px;
+    padding: var(--tc-panel-header-padding-y) var(--tc-panel-header-padding-x);
     text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.86rem;
+    letter-spacing: var(--tc-panel-header-letter-spacing);
+    font-size: var(--tc-panel-header-size);
   }
 
   .content {
     min-height: 0;
-    padding: 10px;
+    padding: var(--tc-panel-content-padding);
     overflow: auto;
     display: flex;
     flex-direction: column;

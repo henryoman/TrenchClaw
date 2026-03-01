@@ -57,7 +57,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--tc-space-2);
-    min-width: 110px;
+    min-width: var(--tc-sidebar-width);
   }
 
   .tabs {
@@ -72,9 +72,9 @@
     color: var(--tc-color-gray-1);
     padding: var(--tc-space-2);
     font-family: inherit;
-    font-size: 0.68rem;
+    font-size: var(--tc-sidebar-label-size);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: var(--tc-sidebar-letter-spacing);
     text-align: left;
     cursor: pointer;
   }
@@ -87,7 +87,7 @@
   .instance {
     margin: 0;
     color: var(--tc-color-gray-3);
-    font-size: 0.72rem;
+    font-size: var(--tc-sidebar-title-size);
     text-transform: uppercase;
   }
 
@@ -102,7 +102,7 @@
     border: var(--tc-border-muted);
     padding: var(--tc-space-2);
     color: var(--tc-color-gray-1);
-    font-size: 0.68rem;
+    font-size: var(--tc-sidebar-label-size);
     text-transform: uppercase;
     line-height: 1.35;
   }
