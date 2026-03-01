@@ -42,13 +42,27 @@ console.log(response.text);
 
 ## LLM Provider Standard
 
-TrenchClaw uses a provider-agnostic OpenAI-compatible standard via AI SDK. Configure these env vars:
+TrenchClaw uses a provider-agnostic OpenAI-compatible standard via AI SDK.
+
+Primary secret source is vault:
+
+- `src/ai/brain/protected/no-read/vault.json`
+- `llm.openrouter.api-key`
+- `llm.openai.api-key`
+- `llm.openai-compatible.api-key`
+- `llm.gateway.api-key`
+
+Provider selection/model config can be controlled by env:
 
 - `TRENCHCLAW_AI_PROVIDER`: `openrouter` (default), `openai`, or `openai-compatible`.
 - `TRENCHCLAW_AI_MODEL`: model id for the provider.
 - `TRENCHCLAW_AI_BASE_URL`: optional override base URL.
-- `OPENROUTER_API_KEY`: used for `openrouter`.
-- `OPENAI_API_KEY`: used for `openai`.
-- `TRENCHCLAW_AI_API_KEY`: used for `openai-compatible`.
+
+Legacy env API keys are still accepted:
+
+- `OPENROUTER_API_KEY`: `openrouter`.
+- `OPENAI_API_KEY`: `openai`.
+- `TRENCHCLAW_AI_API_KEY`: `openai-compatible`.
+- `AI_GATEWAY_API_KEY`: gateway mode.
 
 Default provider/model is OpenRouter + Step 3.5 Flash free: `stepfun/step-3.5-flash:free`.

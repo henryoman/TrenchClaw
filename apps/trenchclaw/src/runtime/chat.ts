@@ -21,7 +21,7 @@ import type {
   LlmGenerateInput,
   LlmGenerateResult,
 } from "../ai";
-import { resolveLlmProviderConfigFromEnv } from "../ai/llm/config";
+import { resolveGatewayConfig, resolveLlmProviderConfig } from "../ai/llm/config";
 import {
   createWorkspaceBashTools,
   WORKSPACE_BASH_TOOL_NAME,
@@ -50,26 +50,21 @@ interface RuntimeChatServiceDeps {
 }
 
 interface RuntimeChatServiceOverrides {
-  resolveStreamingModel?: () => LanguageModel;
+  resolveStreamingModel?: () => LanguageModel | Promise<LanguageModel>;
   convertToModelMessages?: typeof convertToModelMessages;
   streamText?: typeof streamText;
 }
 
-const trimOrUndefined = (value: string | undefined): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const resolveStreamingModel = (): LanguageModel => {
-  const gatewayApiKey = trimOrUndefined(process.env.AI_GATEWAY_API_KEY);
-  if (gatewayApiKey) {
-    const gateway = createGateway({ apiKey: gatewayApiKey });
-    return gateway(trimOrUndefined(process.env.TRENCHCLAW_AI_MODEL) ?? "anthropic/claude-sonnet-4.5");
+const resolveStreamingModel = async (): Promise<LanguageModel> => {
+  const gatewayConfig = await resolveGatewayConfig();
+  if (gatewayConfig) {
+    const gateway = createGateway({ apiKey: gatewayConfig.apiKey });
+    return gateway(gatewayConfig.model);
   }
 
-  const llmConfig = resolveLlmProviderConfigFromEnv();
+  const llmConfig = await resolveLlmProviderConfig();
   if (!llmConfig) {
-    throw new Error("No model provider configured. Set AI_GATEWAY_API_KEY or TRENCHCLAW_* provider env vars.");
+    throw new Error("No model provider configured. Set vault llm api keys or TRENCHCLAW_* provider env vars.");
   }
 
   const openai = createOpenAI({
@@ -308,7 +303,7 @@ export const createRuntimeChatService = (
     input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
   ): Promise<Response> => {
     const normalizedMessages = normalizeUiMessages(messages);
-    const model = resolveModel();
+    const model = await resolveModel();
     const toolNames = listToolNames();
     const tools: Record<string, any> = buildActionTools(deps);
     const chatId = resolveChatId(input?.chatId);

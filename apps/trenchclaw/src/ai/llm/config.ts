@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { parseStructuredFile, resolvePathFromModule } from "./shared";
+import { ensureVaultFileExists } from "./vault-file";
 
 export const LLM_PROVIDERS = ["openai", "openrouter", "openai-compatible"] as const;
 
@@ -18,6 +20,10 @@ const defaultModelByProvider: Record<LlmProvider, string> = {
 };
 
 const providerSchema = z.enum(LLM_PROVIDERS);
+const DEFAULT_VAULT_FILE = "../brain/protected/no-read/vault.json";
+const DEFAULT_VAULT_TEMPLATE_FILE = "../brain/protected/no-read/vault.template.json";
+const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
+const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 
 const trimOrUndefined = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
@@ -33,6 +39,36 @@ const ensureApiKey = (name: string, value: string | undefined): string => {
 
 const resolveProvider = (rawProvider: string | undefined): LlmProvider =>
   providerSchema.parse(rawProvider?.trim() || "openrouter");
+
+const getByPath = (root: unknown, segments: string[]): unknown => {
+  let current = root;
+  for (const segment of segments) {
+    if (current === null || typeof current !== "object" || Array.isArray(current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+};
+
+const readVaultString = (root: unknown, refPath: string): string | undefined => {
+  const value = getByPath(root, refPath.split("/").filter(Boolean));
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+};
+
+const readVaultData = async (): Promise<unknown> => {
+  const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
+  const vaultTemplatePath = resolvePathFromModule(
+    import.meta.url,
+    DEFAULT_VAULT_TEMPLATE_FILE,
+    process.env[VAULT_TEMPLATE_FILE_ENV],
+  );
+  await ensureVaultFileExists({
+    vaultPath,
+    templatePath: vaultTemplatePath,
+  });
+  return await parseStructuredFile(vaultPath);
+};
 
 export const resolveLlmProviderConfigFromEnv = (): LlmProviderConfig | null => {
   const provider = resolveProvider(process.env.TRENCHCLAW_AI_PROVIDER);
@@ -77,5 +113,75 @@ export const resolveLlmProviderConfigFromEnv = (): LlmProviderConfig | null => {
     baseURL: z.string().url().parse(baseURL),
     apiKey: ensureApiKey(provider, apiKey),
     model: trimOrUndefined(process.env.TRENCHCLAW_AI_MODEL) ?? defaultModelByProvider[provider],
+  };
+};
+
+export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderConfig | null> => {
+  const vaultData = await readVaultData();
+  const provider = resolveProvider(trimOrUndefined(process.env.TRENCHCLAW_AI_PROVIDER) ?? readVaultString(vaultData, "llm/provider"));
+
+  if (provider === "openai") {
+    const apiKey = readVaultString(vaultData, "llm/openai/api-key");
+    if (!apiKey) {
+      return null;
+    }
+    return {
+      provider,
+      apiKey,
+      model: readVaultString(vaultData, "llm/openai/model") ?? defaultModelByProvider.openai,
+      baseURL: readVaultString(vaultData, "llm/openai/base-url"),
+    };
+  }
+
+  if (provider === "openrouter") {
+    const apiKey = readVaultString(vaultData, "llm/openrouter/api-key");
+    if (!apiKey) {
+      return null;
+    }
+    return {
+      provider,
+      apiKey,
+      model: readVaultString(vaultData, "llm/openrouter/model") ?? defaultModelByProvider.openrouter,
+      baseURL: readVaultString(vaultData, "llm/openrouter/base-url") ?? "https://openrouter.ai/api/v1",
+    };
+  }
+
+  const apiKey = readVaultString(vaultData, "llm/openai-compatible/api-key");
+  const baseURL = readVaultString(vaultData, "llm/openai-compatible/base-url");
+  if (!apiKey || !baseURL) {
+    return null;
+  }
+
+  return {
+    provider,
+    apiKey,
+    baseURL: z.string().url().parse(baseURL),
+    model: readVaultString(vaultData, "llm/openai-compatible/model") ?? defaultModelByProvider["openai-compatible"],
+  };
+};
+
+export const resolveLlmProviderConfig = async (): Promise<LlmProviderConfig | null> => {
+  const fromVault = await resolveLlmProviderConfigFromVault();
+  if (fromVault) {
+    return fromVault;
+  }
+  return resolveLlmProviderConfigFromEnv();
+};
+
+export const resolveGatewayConfig = async (): Promise<{ apiKey: string; model: string } | null> => {
+  const envApiKey = trimOrUndefined(process.env.AI_GATEWAY_API_KEY);
+  const envModel = trimOrUndefined(process.env.TRENCHCLAW_AI_MODEL) ?? "anthropic/claude-sonnet-4.5";
+  if (envApiKey) {
+    return { apiKey: envApiKey, model: envModel };
+  }
+
+  const vaultData = await readVaultData();
+  const apiKey = readVaultString(vaultData, "llm/gateway/api-key");
+  if (!apiKey) {
+    return null;
+  }
+  return {
+    apiKey,
+    model: readVaultString(vaultData, "llm/gateway/model") ?? envModel,
   };
 };

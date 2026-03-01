@@ -1,6 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
-import { resolveLlmProviderConfigFromEnv } from "./config";
+import { resolveLlmProviderConfig } from "./config";
 import { loadSystemPromptPayload } from "./prompt-loader";
 import type {
   LlmClient,
@@ -108,7 +108,7 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
 };
 
 export const createLlmClientFromEnv = async (): Promise<LlmClient | null> => {
-  const providerConfig = resolveLlmProviderConfigFromEnv();
+  const providerConfig = await resolveLlmProviderConfig();
   if (!providerConfig) {
     return null;
   }
