@@ -117,12 +117,12 @@
         />
       </div>
 
-      <h1 class="text-7xl md:text-8xl font-black mb-6 leading-tight tracking-tighter text-balance">
+      <h1 class="text-7xl md:text-8xl font-black mb-10 leading-tight tracking-tighter text-balance">
         <span class="text-cyan-brand">The Next Generation</span><br />
         <span class="text-foreground">Solana Agent</span>
       </h1>
 
-      <p class="text-lg md:text-xl text-muted mb-8 max-w-3xl mx-auto leading-relaxed font-extralight text-balance">
+      <p class="text-lg md:text-xl text-muted mb-12 max-w-3xl mx-auto leading-relaxed font-extralight text-balance">
         High-performance agentic runtime built on
         <span class="text-cyan-brand font-normal">@solana/kit</span>
         and
@@ -307,6 +307,23 @@
           {/each}
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <!-- Dashboard Preview -->
+  <section class="max-w-6xl mx-auto px-6 py-20 border-t border-border-subtle">
+    <h2 class="text-5xl font-black mb-4 text-center tracking-tight">Operator Dashboard</h2>
+    <p class="text-center text-muted mb-10 text-sm max-w-2xl mx-auto font-extralight leading-relaxed">
+      Monitor chat, queue status, and runtime logs from a single control surface.
+    </p>
+    <div class="border border-border-subtle overflow-hidden">
+      <img
+        src="/ui.png"
+        alt="TrenchClaw operator dashboard UI"
+        class="w-full h-auto object-cover"
+        width="1024"
+        height="780"
+      />
     </div>
   </section>
 

@@ -18,17 +18,17 @@
     "ci": "bun run lint && bun run typecheck && bun run build"
   },
   "dependencies": {
-    "@sveltejs/adapter-static": "^3.0.8",
-    "@sveltejs/kit": "^2.21.3",
-    "@sveltejs/vite-plugin-svelte": "^5.0.3",
-    "svelte": "^5.28.2"
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.53.4",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "svelte": "^5.53.6"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.7",
-    "oxlint": "^1.49.0",
-    "svelte-check": "^4.1.7",
-    "tailwindcss": "^4.1.7",
-    "typescript": "^5.7.3",
-    "vite": "^6.3.5"
+    "@tailwindcss/vite": "^4.2.1",
+    "oxlint": "^1.50.0",
+    "svelte-check": "^4.4.4",
+    "tailwindcss": "^4.2.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }
