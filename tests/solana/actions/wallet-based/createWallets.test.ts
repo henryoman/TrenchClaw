@@ -14,26 +14,26 @@ afterEach(async () => {
 });
 
 describe("createWalletsAction", () => {
-  test("accepts JSON config and appends wallet metadata into protected wallet library", async () => {
-    const scopeName = `test-wallets-${crypto.randomUUID()}`;
-    const directory = path.join("src/ai/brain/protected", scopeName, "keypairs");
-    const walletLibraryFile = path.join("src/ai/brain/protected", scopeName, "wallet-library.jsonl");
-    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected", scopeName));
+  test("creates wallets inside the selected wallet group directory and appends library metadata", async () => {
+    const walletGroup = `core-wallets-${crypto.randomUUID()}`;
+    const walletLibraryFile = path.join("src/ai/brain/protected", `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
+    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
       includePrivateKey: true,
       privateKeyEncoding: "base64",
       walletPath: "group1.wallet001",
-      walletLocator: {
-        group: "group1",
-        startIndex: 1,
+      storage: {
+        walletGroup,
+        createGroupIfMissing: true,
+        walletLibraryFile,
+        keypairGenerator: "bun",
       },
       output: {
-        directory,
         filePrefix: "wallet",
         includeIndexInFileName: true,
-        walletLibraryFile,
       },
     });
 
@@ -51,6 +51,8 @@ describe("createWalletsAction", () => {
     expect(data.wallets).toHaveLength(1);
     expect(data.wallets[0]?.walletPath).toBe("group1.wallet001");
     expect(data.wallets[0]).not.toHaveProperty("privateKey");
+    expect(data.walletGroup).toBe(walletGroup);
+    expect(data.outputDirectory).toContain(`/keypairs/${walletGroup}`);
 
     const libraryLines = (await Bun.file(data.walletLibraryFilePath).text())
       .trim()
@@ -61,26 +63,31 @@ describe("createWalletsAction", () => {
     const libraryEntry = JSON.parse(libraryLines[0] ?? "{}");
     expect(libraryEntry.walletPath).toBe("group1.wallet001");
     expect(typeof libraryEntry.keypairFilePath).toBe("string");
+    expect(libraryEntry.walletGroup).toBe(walletGroup);
 
     const keypairJson = await Bun.file(data.files[0] ?? "").json();
     expect(keypairJson.walletPath).toBe("group1.wallet001");
     expect(typeof keypairJson.privateKey).toBe("string");
   });
 
-  test("rejects writing wallet artifacts outside protected directory", async () => {
+  test("rejects wallet library paths outside protected directory", async () => {
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
       includePrivateKey: false,
       privateKeyEncoding: "base64",
+      storage: {
+        walletGroup: "uploaded-wallets",
+        createGroupIfMissing: true,
+        walletLibraryFile: "./tmp/outside-protected/wallet-library.jsonl",
+        keypairGenerator: "bun",
+      },
       walletLocator: {
         group: "tmp",
         startIndex: 1,
       },
       output: {
-        directory: "./tmp/outside-protected",
         filePrefix: "wallet",
         includeIndexInFileName: true,
-        walletLibraryFile: "./tmp/outside-protected/wallet-library.jsonl",
       },
     });
 

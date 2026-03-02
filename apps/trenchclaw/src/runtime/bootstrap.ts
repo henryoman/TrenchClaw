@@ -10,7 +10,6 @@ import {
   InMemoryStateStore,
   PolicyEngine,
   Scheduler,
-  type Action,
   type Policy,
   type JobState,
   type RuntimeEventBus,
@@ -27,21 +26,12 @@ import { createTokenAccountAdapterFromEnv } from "../solana/lib/adapters/token-a
 import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-signer";
 import { actionSequenceRoutine } from "../solana/routines/action-sequence";
 import { createWalletsRoutine } from "../solana/routines/create-wallets";
-import { createWalletsAction } from "../solana/actions/wallet-based/create-wallets/createWallets";
-import { renameWalletsAction } from "../solana/actions/wallet-based/create-wallets/renameWallets";
-import { createBlockchainAlertAction } from "../solana/actions/data-fetch/alerts/createBlockchainAlert";
-import { queryRuntimeStoreAction } from "../solana/actions/data-fetch/runtime/queryRuntimeStore";
-import { pingRuntimeAction } from "../solana/actions/data-fetch/runtime/pingRuntime";
-import { upsertInstanceFactAction } from "../solana/actions/data-fetch/runtime/upsertInstanceFact";
-import { transferAction } from "../solana/actions/wallet-based/transfer/transfer";
 import {
-  privacyAirdropAction,
-  privacySwapAction,
-  privacyTransferAction,
-} from "../solana/actions/wallet-based/transfer/privacyCash";
-import { ultraExecuteSwapAction } from "../solana/actions/wallet-based/swap/ultra/executeSwap";
-import { ultraQuoteSwapAction } from "../solana/actions/wallet-based/swap/ultra/quoteSwap";
-import { ultraSwapAction } from "../solana/actions/wallet-based/swap/ultra/swap";
+  getRuntimeActionCatalog,
+  getRuntimeActionsRequiringUserConfirmation,
+  isRuntimeActionEnabledBySettings,
+  type RuntimeAction,
+} from "../ai/tools";
 import {
   loadRuntimeSettings,
   resolveRuntimeSettingsProfile,
@@ -60,17 +50,7 @@ import {
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
 
-type RuntimeAction = Action<any, any>;
-const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = new Set([
-  "executeSwap",
-  "ultraExecuteSwap",
-  "ultraSwap",
-  "transfer",
-  "privacyTransfer",
-  "privacyAirdrop",
-  "privacySwap",
-  "createToken",
-]);
+const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "privacySwap"]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
 const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
@@ -155,82 +135,6 @@ const resolveRoutinePlanner = (routineName: string): RoutinePlanner => {
   );
 };
 
-const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string): boolean => {
-  if (actionName === "createWallets") {
-    return settings.wallet.dangerously.allowCreatingWallets;
-  }
-
-  if (actionName === "renameWallets") {
-    return settings.wallet.dangerously.allowUpdatingWallets;
-  }
-
-  if (actionName === "ultraQuoteSwap") {
-    return settings.trading.enabled && settings.trading.jupiter.ultra.enabled && settings.trading.jupiter.ultra.allowQuotes;
-  }
-
-  if (actionName === "ultraExecuteSwap") {
-    return (
-      settings.trading.enabled &&
-      settings.trading.jupiter.ultra.enabled &&
-      settings.trading.jupiter.ultra.allowExecutions
-    );
-  }
-
-  if (actionName === "ultraSwap") {
-    return (
-      settings.trading.enabled &&
-      settings.trading.jupiter.ultra.enabled &&
-      settings.trading.jupiter.ultra.allowQuotes &&
-      settings.trading.jupiter.ultra.allowExecutions
-    );
-  }
-
-  if (actionName === "createBlockchainAlert") {
-    return settings.trading.enabled;
-  }
-
-  if (actionName === "queryRuntimeStore") {
-    return true;
-  }
-
-  if (actionName === "pingRuntime") {
-    return true;
-  }
-
-  if (actionName === "upsertInstanceFact") {
-    return true;
-  }
-
-  if (actionName === "transfer") {
-    return (
-      settings.trading.enabled &&
-      settings.wallet.dangerously.allowWalletSigning &&
-      settings.trading.limits.maxSingleTransferSol > 0
-    );
-  }
-
-  if (actionName === "privacyTransfer" || actionName === "privacyAirdrop") {
-    return (
-      settings.trading.enabled &&
-      settings.wallet.dangerously.allowWalletSigning &&
-      settings.trading.limits.maxSingleTransferSol > 0
-    );
-  }
-
-  if (actionName === "privacySwap") {
-    return (
-      settings.trading.enabled &&
-      settings.wallet.dangerously.allowWalletSigning &&
-      settings.trading.limits.maxSingleTransferSol > 0 &&
-      settings.trading.jupiter.ultra.enabled &&
-      settings.trading.jupiter.ultra.allowQuotes &&
-      settings.trading.jupiter.ultra.allowExecutions
-    );
-  }
-
-  return false;
-};
-
 const createSettingsPolicy = (settings: RuntimeSettings, supportedActions: ReadonlySet<string>): Policy => ({
   name: "runtime-settings-guard",
   type: "pre" as const,
@@ -244,7 +148,7 @@ const createSettingsPolicy = (settings: RuntimeSettings, supportedActions: Reado
       return { allowed: false, policyName: "runtime-settings-guard", reason: `Unknown action "${actionName}"` };
     }
 
-    if (!actionEnabledBySettings(settings, actionName)) {
+    if (!isRuntimeActionEnabledBySettings(settings, actionName)) {
       return {
         allowed: false,
         policyName: "runtime-settings-guard",
@@ -391,40 +295,7 @@ const instrumentLlmClient = (
 };
 
 export const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
-  const actions: RuntimeAction[] = [
-    createWalletsAction,
-    renameWalletsAction,
-    queryRuntimeStoreAction,
-    pingRuntimeAction,
-    upsertInstanceFactAction,
-  ];
-
-  if (settings.trading.enabled) {
-    actions.push(createBlockchainAlertAction);
-  }
-
-  if (
-    settings.trading.enabled &&
-    settings.wallet.dangerously.allowWalletSigning &&
-    settings.trading.limits.maxSingleTransferSol > 0
-  ) {
-    actions.push(transferAction);
-    actions.push(privacyTransferAction, privacyAirdropAction);
-  }
-
-  if (settings.trading.enabled && settings.trading.jupiter.ultra.enabled) {
-    actions.push(ultraQuoteSwapAction, ultraExecuteSwapAction, ultraSwapAction);
-    if (
-      settings.wallet.dangerously.allowWalletSigning &&
-      settings.trading.limits.maxSingleTransferSol > 0 &&
-      settings.trading.jupiter.ultra.allowQuotes &&
-      settings.trading.jupiter.ultra.allowExecutions
-    ) {
-      actions.push(privacySwapAction);
-    }
-  }
-
-  return actions;
+  return getRuntimeActionCatalog(settings);
 };
 
 const EVENT_NAMES: RuntimeEventName[] = [

@@ -7,16 +7,26 @@ const walletSegmentSchema = z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/);
 
 const outputSchema = z
   .object({
-    directory: z.string().min(1).default("src/ai/brain/protected/keypairs"),
     filePrefix: z.string().min(1).default("wallet"),
     includeIndexInFileName: z.boolean().default(true),
-    walletLibraryFile: z.string().min(1).default("src/ai/brain/protected/wallet-library.jsonl"),
   })
   .default({
-    directory: "src/ai/brain/protected/keypairs",
     filePrefix: "wallet",
     includeIndexInFileName: true,
+  });
+
+const storageSchema = z
+  .object({
+    walletGroup: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/).default("core-wallets"),
+    createGroupIfMissing: z.boolean().default(true),
+    walletLibraryFile: z.string().min(1).default("src/ai/brain/protected/wallet-library.jsonl"),
+    keypairGenerator: z.enum(["bun", "solana-cli"]).default("bun"),
+  })
+  .default({
+    walletGroup: "core-wallets",
+    createGroupIfMissing: true,
     walletLibraryFile: "src/ai/brain/protected/wallet-library.jsonl",
+    keypairGenerator: "bun",
   });
 
 const namedWalletSchema = z.object({
@@ -82,6 +92,7 @@ const createWalletsRoutineConfigSchema = z.object({
       startIndex: 1,
     }),
   output: outputSchema,
+  storage: storageSchema,
   groups: z.array(walletGroupNodeSchema).optional(),
   renames: z.array(renameSchema).optional(),
 });
@@ -108,6 +119,7 @@ const buildCreateStep = (
     privateKeyEncoding: config.privateKeyEncoding,
     walletPath: input.walletPath,
     walletLocator: input.walletLocator,
+    storage: config.storage,
     output: {
       ...config.output,
       filePrefix: input.filePrefix ?? config.output.filePrefix,
@@ -177,7 +189,7 @@ export const createWalletsRoutine: RoutinePlanner = async (_ctx, job) => {
     steps.push({
       actionName: "renameWallets",
       input: {
-        walletLibraryFile: config.output.walletLibraryFile,
+        walletLibraryFile: config.storage.walletLibraryFile,
         renames: config.renames,
         updateKeypairFiles: true,
       },

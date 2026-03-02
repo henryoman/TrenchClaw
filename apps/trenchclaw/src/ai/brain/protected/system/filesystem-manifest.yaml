@@ -22,7 +22,9 @@ rules:
     model: write
   - path: src/ai/brain/protected/notes
     model: write
+  - path: src/ai/brain/protected/wallet-library.jsonl
+    model: write
   - path: src/ai/brain/protected/keypairs
-    model: none
+    model: write
   - path: src/ai/brain/protected/no-read
     model: none

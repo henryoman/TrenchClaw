@@ -9,20 +9,21 @@ import {
   assertWithinBrainProtectedDirectory,
   resolveAbsolutePath,
 } from "../../../lib/wallet/protected-write-policy";
+import {
+  DEFAULT_WALLET_GROUP,
+  DEFAULT_WALLET_LIBRARY_PATH,
+  resolveWalletGroupDirectoryPath,
+  resolveWalletKeypairRootPath,
+  walletGroupNameSchema,
+} from "./wallet-storage";
 
-const defaultKeyDirectory = "src/ai/brain/protected/keypairs";
-const defaultWalletLibraryPath = "src/ai/brain/protected/wallet-library.jsonl";
+const walletSegmentSchema = z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/);
 
-const walletLocatorSchema = z
-  .object({
-    group: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/).default("default"),
-    wallet: z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/).optional(),
-    startIndex: z.number().int().positive().default(1),
-  })
-  .default({
-    group: "default",
-    startIndex: 1,
-  });
+const walletLocatorSchema = z.object({
+  group: walletSegmentSchema.optional(),
+  wallet: walletSegmentSchema.optional(),
+  startIndex: z.number().int().positive().default(1),
+});
 
 const createWalletsInputSchema = z.object({
   count: z.number().int().positive().max(100).default(1),
@@ -33,19 +34,28 @@ const createWalletsInputSchema = z.object({
     .trim()
     .regex(/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/)
     .optional(),
-  walletLocator: walletLocatorSchema,
-  output: z
+  walletLocator: walletLocatorSchema.optional(),
+  storage: z
     .object({
-      directory: z.string().min(1).default(defaultKeyDirectory),
-      filePrefix: z.string().min(1).default("wallet"),
-      includeIndexInFileName: z.boolean().default(true),
-      walletLibraryFile: z.string().min(1).default(defaultWalletLibraryPath),
+      walletGroup: walletGroupNameSchema.default(DEFAULT_WALLET_GROUP),
+      createGroupIfMissing: z.boolean().default(true),
+      walletLibraryFile: z.string().min(1).default(DEFAULT_WALLET_LIBRARY_PATH),
+      keypairGenerator: z.enum(["bun", "solana-cli"]).default("bun"),
     })
     .default({
-      directory: defaultKeyDirectory,
+      walletGroup: DEFAULT_WALLET_GROUP,
+      createGroupIfMissing: true,
+      walletLibraryFile: DEFAULT_WALLET_LIBRARY_PATH,
+      keypairGenerator: "bun",
+    }),
+  output: z
+    .object({
+      filePrefix: z.string().min(1).default("wallet"),
+      includeIndexInFileName: z.boolean().default(true),
+    })
+    .default({
       filePrefix: "wallet",
       includeIndexInFileName: true,
-      walletLibraryFile: defaultWalletLibraryPath,
     }),
 });
 
@@ -63,6 +73,7 @@ interface CreateWalletsOutput {
   outputDirectory: string;
   files: string[];
   walletLibraryFilePath: string;
+  walletGroup: string;
 }
 
 const encodePrivateKey = (privateKeyBytes: Uint8Array, encoding: CreateWalletsInput["privateKeyEncoding"]) => {
@@ -75,7 +86,11 @@ const encodePrivateKey = (privateKeyBytes: Uint8Array, encoding: CreateWalletsIn
   return Buffer.from(privateKeyBytes).toString("base64");
 };
 
-const resolveWalletNaming = (input: CreateWalletsInput, index: number): { group: string; wallet: string; walletPath: string } => {
+const resolveWalletNaming = (
+  input: CreateWalletsInput,
+  effectiveWalletGroupForLocator: string,
+  index: number,
+): { group: string; wallet: string; walletPath: string } => {
   if (input.walletPath) {
     const [group, wallet] = input.walletPath.split(".");
     if (!group || !wallet) {
@@ -93,14 +108,63 @@ const resolveWalletNaming = (input: CreateWalletsInput, index: number): { group:
     return { group, wallet, walletPath: input.walletPath };
   }
 
-  const group = input.walletLocator.group;
-  if (input.walletLocator.wallet && input.count === 1) {
-    return { group, wallet: input.walletLocator.wallet, walletPath: `${group}.${input.walletLocator.wallet}` };
+  const walletLocator = input.walletLocator;
+  const group = walletLocator?.group ?? effectiveWalletGroupForLocator;
+
+  if (walletLocator?.wallet && input.count === 1) {
+    return { group, wallet: walletLocator.wallet, walletPath: `${group}.${walletLocator.wallet}` };
   }
 
-  const indexValue = input.walletLocator.startIndex + index;
+  const indexValue = (walletLocator?.startIndex ?? 1) + index;
   const wallet = `${input.output.filePrefix}${String(indexValue).padStart(3, "0")}`;
   return { group, wallet, walletPath: `${group}.${wallet}` };
+};
+
+const parseSolanaSecretKeyArray = (value: unknown): number[] => {
+  if (!Array.isArray(value) || value.length < 64) {
+    throw new Error("solana-keygen output is not a valid keypair array");
+  }
+
+  const numeric = value.map((entry) => Number(entry));
+  const allValid = numeric.every((entry) => Number.isInteger(entry) && entry >= 0 && entry <= 255);
+  if (!allValid) {
+    throw new Error("solana-keygen output contains invalid key bytes");
+  }
+  return numeric;
+};
+
+const createWalletWithGenerator = async (input: {
+  generator: "bun" | "solana-cli";
+  keypairFilePath: string;
+}): Promise<{ address: string; publicKeyBytes: Uint8Array; privateKeyBytes: Uint8Array }> => {
+  if (input.generator === "solana-cli") {
+    try {
+      await Bun.$`solana-keygen new --no-bip39-passphrase --silent --outfile ${input.keypairFilePath}`.quiet();
+      const address = (await Bun.$`solana-keygen pubkey ${input.keypairFilePath}`.text()).trim();
+      const secretKey = parseSolanaSecretKeyArray(await Bun.file(input.keypairFilePath).json());
+      const privateKeyBytes = Uint8Array.from(secretKey);
+      const publicKeyBytes = Uint8Array.from(secretKey.slice(32, 64));
+      return {
+        address,
+        publicKeyBytes,
+        privateKeyBytes,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`solana-keygen wallet generation failed: ${message}`);
+    }
+  }
+
+  const seedPrivateKeyBytes = crypto.getRandomValues(new Uint8Array(32));
+  const keyPair = await createKeyPairFromPrivateKeyBytes(seedPrivateKeyBytes);
+  const address = await getAddressFromPublicKey(keyPair.publicKey);
+  const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
+
+  return {
+    address: String(address),
+    publicKeyBytes,
+    privateKeyBytes: seedPrivateKeyBytes,
+  };
 };
 
 export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput> = {
@@ -115,11 +179,21 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
       const input = createWalletsInputSchema.parse(rawInput);
       const wallets: CreatedWallet[] = [];
       const files: string[] = [];
-      const outputDirectory = resolveAbsolutePath(input.output.directory);
-      const walletLibraryFilePath = resolveAbsolutePath(input.output.walletLibraryFile);
 
+      const walletGroup = input.storage.walletGroup;
+      const keypairRootPath = resolveWalletKeypairRootPath();
+      const outputDirectory = resolveWalletGroupDirectoryPath(walletGroup);
+      const walletLibraryFilePath = resolveAbsolutePath(input.storage.walletLibraryFile);
+
+      assertWithinBrainProtectedDirectory(keypairRootPath);
       assertWithinBrainProtectedDirectory(outputDirectory);
       assertWithinBrainProtectedDirectory(walletLibraryFilePath);
+
+      await assertProtectedWriteAllowed({
+        actor: _ctx.actor,
+        targetPath: keypairRootPath,
+        operation: "prepare wallet keypair root directory",
+      });
       await assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: outputDirectory, operation: "create wallets" });
       await assertProtectedWriteAllowed({
         actor: _ctx.actor,
@@ -127,20 +201,22 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
         operation: "append wallet library",
       });
 
-      await Bun.$`mkdir -p ${outputDirectory}`.quiet();
+      if (input.storage.createGroupIfMissing) {
+        await Bun.$`mkdir -p ${outputDirectory}`.quiet();
+      } else if (!(await Bun.file(outputDirectory).exists())) {
+        throw new Error(`Wallet group directory does not exist: ${outputDirectory}`);
+      }
+
       await Bun.$`mkdir -p ${path.dirname(walletLibraryFilePath)}`.quiet();
 
-      for (let index = 0; index < input.count; index += 1) {
-        const privateKeyBytes = crypto.getRandomValues(new Uint8Array(32));
-        const keyPair = await createKeyPairFromPrivateKeyBytes(privateKeyBytes);
-        const address = await getAddressFromPublicKey(keyPair.publicKey);
-        const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
+      const effectiveWalletGroupForLocator = input.walletLocator?.group ?? walletGroup;
 
-        const { group, wallet, walletPath } = resolveWalletNaming(input, index);
+      for (let index = 0; index < input.count; index += 1) {
+        const { group, wallet, walletPath } = resolveWalletNaming(input, effectiveWalletGroupForLocator, index);
 
         const baseName = input.output.includeIndexInFileName
           ? `${group}-${wallet}-${String(index + 1).padStart(4, "0")}`
-          : `${group}-${wallet}-${String(address)}`;
+          : `${group}-${wallet}`;
         const keypairFilePath = path.join(outputDirectory, `${baseName}.json`);
 
         if (await Bun.file(keypairFilePath).exists()) {
@@ -148,8 +224,13 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
         }
         await assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: keypairFilePath, operation: "write keypair file" });
 
+        const generated = await createWalletWithGenerator({
+          generator: input.storage.keypairGenerator,
+          keypairFilePath,
+        });
+
         const privateKey = input.includePrivateKey
-          ? encodePrivateKey(privateKeyBytes, input.privateKeyEncoding)
+          ? encodePrivateKey(generated.privateKeyBytes, input.privateKeyEncoding)
           : undefined;
 
         await Bun.write(
@@ -157,9 +238,10 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
           `${JSON.stringify(
             {
               walletPath,
-              address: String(address),
-              publicKeyBytes: Array.from(publicKeyBytes),
+              address: generated.address,
+              publicKeyBytes: Array.from(generated.publicKeyBytes),
               privateKey,
+              keypairGenerator: input.storage.keypairGenerator,
             },
             null,
             2,
@@ -172,8 +254,9 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
             walletPath,
             group,
             wallet,
-            address: String(address),
+            address: generated.address,
             keypairFilePath,
+            walletGroup,
             createdAt: new Date().toISOString(),
           })}\n`,
           { encoding: "utf8" },
@@ -183,8 +266,8 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
 
         wallets.push({
           walletPath,
-          address: String(address),
-          publicKeyBytes: Array.from(publicKeyBytes),
+          address: generated.address,
+          publicKeyBytes: Array.from(generated.publicKeyBytes),
           keypairFilePath,
         });
       }
@@ -197,6 +280,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
           outputDirectory,
           files,
           walletLibraryFilePath,
+          walletGroup,
         },
         durationMs: Date.now() - startedAt,
         timestamp: Date.now(),

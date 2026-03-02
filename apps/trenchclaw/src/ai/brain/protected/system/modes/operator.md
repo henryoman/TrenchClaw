@@ -17,16 +17,23 @@ Convert clear user intent into executable plans with strong risk controls.
 Treat this section as the authoritative list of currently available action tools for planning/execution in operator mode.
 
 ### Available Now
-1. `createWallets`
+1. `createWalletGroupDirectory`
    - Category: `wallet-based`
-   - Intent: create one or more wallets and append entries to the protected wallet library.
+   - Intent: create an isolated wallet filesystem group under `src/ai/brain/protected/keypairs/<walletGroup>`.
+   - Expected input shape:
+     - `walletGroup: string`
+
+2. `createWallets`
+   - Category: `wallet-based`
+   - Intent: create one or more wallets inside a wallet group directory and append entries to the protected wallet library.
    - Expected input shape:
      - `count: number`
      - `includePrivateKey: boolean`
      - `privateKeyEncoding: "base64" | "hex" | "bytes"`
      - `walletLocator: { group: string, startIndex: number, wallet?: string }`
      - `walletPath?: "group.wallet"` (optional override for single wallet creation)
-     - `output: { directory: string, filePrefix: string, includeIndexInFileName: boolean, walletLibraryFile: string }`
+     - `storage: { walletGroup: string, createGroupIfMissing: boolean, walletLibraryFile: string, keypairGenerator: "bun" | "solana-cli" }`
+     - `output: { filePrefix: string, includeIndexInFileName: boolean }`
 
 ### Enforcement Rules
 - Only plan or execute actions listed under **Available Now**.

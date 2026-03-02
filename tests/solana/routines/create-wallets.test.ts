@@ -12,11 +12,15 @@ describe("createWalletsRoutine", () => {
       config: {
         includePrivateKey: false,
         privateKeyEncoding: "base64",
+        storage: {
+          walletGroup: "core-wallets",
+          createGroupIfMissing: true,
+          walletLibraryFile: "src/ai/brain/protected/wallet-library.jsonl",
+          keypairGenerator: "bun",
+        },
         output: {
-          directory: "src/ai/brain/protected/keypairs",
           filePrefix: "wallet",
           includeIndexInFileName: true,
-          walletLibraryFile: "src/ai/brain/protected/wallet-library.jsonl",
         },
         groups: [
           {
@@ -48,12 +52,14 @@ describe("createWalletsRoutine", () => {
     const secondInput = steps[1]?.input as {
       count?: number;
       walletLocator?: { group?: string; startIndex?: number };
+      storage?: { walletGroup?: string };
       output?: { filePrefix?: string };
     };
     expect(secondInput.count).toBe(2);
     expect(secondInput.walletLocator?.group).toBe("core_snipers");
     expect(secondInput.walletLocator?.startIndex).toBe(5);
     expect(secondInput.output?.filePrefix).toBe("s");
+    expect(secondInput.storage?.walletGroup).toBe("core-wallets");
 
     expect(steps[2]?.actionName).toBe("renameWallets");
     const thirdInput = steps[2]?.input as { renames?: Array<{ from: string; to: string }> };

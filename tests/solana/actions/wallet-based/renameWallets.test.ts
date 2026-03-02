@@ -16,26 +16,25 @@ afterEach(async () => {
 
 describe("renameWalletsAction", () => {
   test("renames walletPath in library and updates keypair walletPath", async () => {
-    const scopeName = `test-rename-wallets-${crypto.randomUUID()}`;
-    const directory = path.join("src/ai/brain/protected", scopeName, "keypairs");
-    const walletLibraryFile = path.join("src/ai/brain/protected", scopeName, "wallet-library.jsonl");
-    const scopeRoot = path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected", scopeName);
-    createdPaths.add(scopeRoot);
+    const walletGroup = `core-wallets-${crypto.randomUUID()}`;
+    const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-wallet-library-${crypto.randomUUID()}.jsonl`);
+    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
+    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
 
     const createResult = await createWalletsAction.execute({} as never, {
       count: 1,
       includePrivateKey: true,
       privateKeyEncoding: "base64",
       walletPath: "ops.wallet001",
-      walletLocator: {
-        group: "ops",
-        startIndex: 1,
+      storage: {
+        walletGroup,
+        createGroupIfMissing: true,
+        walletLibraryFile,
+        keypairGenerator: "bun",
       },
       output: {
-        directory,
         filePrefix: "wallet",
         includeIndexInFileName: true,
-        walletLibraryFile,
       },
     });
 
@@ -84,26 +83,25 @@ describe("renameWalletsAction", () => {
   });
 
   test("rejects rename when target walletPath already exists", async () => {
-    const scopeName = `test-rename-wallets-conflict-${crypto.randomUUID()}`;
-    const directory = path.join("src/ai/brain/protected", scopeName, "keypairs");
-    const walletLibraryFile = path.join("src/ai/brain/protected", scopeName, "wallet-library.jsonl");
-    const scopeRoot = path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected", scopeName);
-    createdPaths.add(scopeRoot);
+    const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
+    const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-conflict-wallet-library-${crypto.randomUUID()}.jsonl`);
+    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
+    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
 
     await createWalletsAction.execute({} as never, {
       count: 1,
       includePrivateKey: true,
       privateKeyEncoding: "base64",
       walletPath: "ops.one",
-      walletLocator: {
-        group: "ops",
-        startIndex: 1,
+      storage: {
+        walletGroup,
+        createGroupIfMissing: true,
+        walletLibraryFile,
+        keypairGenerator: "bun",
       },
       output: {
-        directory,
         filePrefix: "wallet",
         includeIndexInFileName: true,
-        walletLibraryFile,
       },
     });
 
@@ -112,15 +110,15 @@ describe("renameWalletsAction", () => {
       includePrivateKey: true,
       privateKeyEncoding: "base64",
       walletPath: "ops.two",
-      walletLocator: {
-        group: "ops",
-        startIndex: 1,
+      storage: {
+        walletGroup,
+        createGroupIfMissing: true,
+        walletLibraryFile,
+        keypairGenerator: "bun",
       },
       output: {
-        directory,
         filePrefix: "wallet",
         includeIndexInFileName: true,
-        walletLibraryFile,
       },
     });
 
