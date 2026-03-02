@@ -1,0 +1,18 @@
+{
+  "name": "@trenchclaw/runner",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun run index.ts",
+    "build": "bun build index.ts --target bun --outdir dist",
+    "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix ."
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "oxlint": "^1.49.0",
+    "typescript": "^5.9.2"
+  }
+}

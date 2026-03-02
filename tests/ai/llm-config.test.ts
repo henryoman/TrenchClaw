@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe("resolveLlmProviderConfigFromEnv", () => {
-  test("defaults to OpenRouter Step 3.5 Flash free", () => {
+  test("defaults to OpenRouter GPT-4.1 mini routing", () => {
     process.env.OPENROUTER_API_KEY = "or-key";
 
     const resolved = resolveLlmProviderConfigFromEnv();
@@ -30,7 +30,21 @@ describe("resolveLlmProviderConfigFromEnv", () => {
     expect(resolved).toEqual({
       provider: "openrouter",
       apiKey: "or-key",
-      model: "stepfun/step-3.5-flash:free",
+      model: "openai/gpt-4.1-mini",
+      baseURL: "https://openrouter.ai/api/v1",
+    });
+  });
+
+  test("upgrades legacy StepFun OpenRouter model override", () => {
+    process.env.OPENROUTER_API_KEY = "or-key";
+    process.env.TRENCHCLAW_AI_MODEL = "stepfun/step-3.5-flash:free";
+
+    const resolved = resolveLlmProviderConfigFromEnv();
+
+    expect(resolved).toEqual({
+      provider: "openrouter",
+      apiKey: "or-key",
+      model: "openai/gpt-4.1-mini",
       baseURL: "https://openrouter.ai/api/v1",
     });
   });

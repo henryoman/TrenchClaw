@@ -56,22 +56,22 @@ interface RuntimeChatServiceOverrides {
 }
 
 const resolveStreamingModel = async (): Promise<LanguageModel> => {
+  const llmConfig = await resolveLlmProviderConfig();
+  if (llmConfig) {
+    const openai = createOpenAI({
+      apiKey: llmConfig.apiKey,
+      baseURL: llmConfig.baseURL,
+    });
+    return openai.responses(llmConfig.model);
+  }
+
   const gatewayConfig = await resolveGatewayConfig();
   if (gatewayConfig) {
     const gateway = createGateway({ apiKey: gatewayConfig.apiKey });
     return gateway(gatewayConfig.model);
   }
 
-  const llmConfig = await resolveLlmProviderConfig();
-  if (!llmConfig) {
-    throw new Error("No model provider configured. Set vault llm api keys or TRENCHCLAW_* provider env vars.");
-  }
-
-  const openai = createOpenAI({
-    apiKey: llmConfig.apiKey,
-    baseURL: llmConfig.baseURL,
-  });
-  return openai.responses(llmConfig.model);
+  throw new Error("No model provider configured. Set vault llm api keys or TRENCHCLAW_* provider env vars.");
 };
 
 const buildSystemPrompt = async (deps: RuntimeChatServiceDeps, toolNames: string[]): Promise<string> => {

@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-02T21:38:00.808Z
+Generated at: 2026-03-02T21:55:46.990Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -106,10 +106,13 @@ apps/trenchclaw/
 |   |   |   |   |-- configs/
 |   |   |   |   |-- misc-scripts/
 |   |   |   |   |-- notes/
+|   |   |   |   |-- output/
 |   |   |   |   |-- price-data/
+|   |   |   |   |-- scratch/
 |   |   |   |   |-- strategies/
 |   |   |   |   |   |-- .tests/
 |   |   |   |   |   `-- .keep
+|   |   |   |   |-- typescript/
 |   |   |   |   |-- ui/
 |   |   |   |   `-- rules.md
 |   |   |   |-- rules.md

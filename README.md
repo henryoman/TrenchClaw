@@ -276,10 +276,17 @@ bun run start
 ```
 
 What `bun run start` does:
+- Starts the dedicated runner (`apps/runner`) which then starts the CLI runtime process
 - Starts runtime API on localhost
 - Serves GUI from static `apps/frontends/gui/dist`
 - Proxies `/api/*` from GUI server to runtime server
 - Opens your default browser automatically
+
+Local development still uses Vite:
+
+```bash
+bun run gui:dev
+```
 
 Compatibility aliases:
 
