@@ -7,11 +7,7 @@ import { loadRuntimeSettings } from "../../runtime/load";
 import { buildActionCatalog } from "../../runtime/bootstrap";
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import {
-  WORKSPACE_BASH_TOOL_NAME,
-  WORKSPACE_READ_FILE_TOOL_NAME,
-  WORKSPACE_WRITE_FILE_TOOL_NAME,
-} from "../../runtime/workspace-bash";
+import { buildRuntimeChatToolNameCatalog, workspaceToolsEnabledByRuntimeSettings } from "../../ai/tools";
 
 const APP_ROOT_DIR = fileURLToPath(new URL("../../../", import.meta.url));
 const CONTEXT_ROOT_LABEL = "apps/trenchclaw";
@@ -166,12 +162,10 @@ const getRuntimeActionCatalogTable = async (): Promise<string> => {
 
 const getChatToolCatalogTable = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const actions = buildActionCatalog(settings).map((action) => action.name);
-  const runtimeTools = settings.agent.dangerously.allowFilesystemWrites
-    ? [WORKSPACE_BASH_TOOL_NAME, WORKSPACE_READ_FILE_TOOL_NAME, WORKSPACE_WRITE_FILE_TOOL_NAME]
-    : [];
-
-  const tools = [...actions, ...runtimeTools].toSorted((a, b) => a.localeCompare(b)).map((toolName) => [toolName]);
+  const tools = buildRuntimeChatToolNameCatalog({
+    actionNames: buildActionCatalog(settings).map((action) => action.name),
+    workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings(settings),
+  }).map((toolName) => [toolName]);
   return toMarkdownTable(["toolName"], tools);
 };
 

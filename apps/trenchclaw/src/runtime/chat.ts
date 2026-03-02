@@ -11,6 +11,7 @@ import {
   type UIMessage,
 } from "ai";
 import { z } from "zod";
+import { buildRuntimeChatToolNameCatalog } from "../ai/tools";
 import { createActionContext } from "../ai/runtime/types/context";
 import type {
   ActionDispatcher,
@@ -24,9 +25,6 @@ import type {
 import { resolveGatewayConfig, resolveLlmProviderConfig } from "../ai/llm/config";
 import {
   createWorkspaceBashTools,
-  WORKSPACE_BASH_TOOL_NAME,
-  WORKSPACE_READ_FILE_TOOL_NAME,
-  WORKSPACE_WRITE_FILE_TOOL_NAME,
 } from "./workspace-bash";
 import { buildFilesystemPolicyPrompt } from "./security/filesystem-manifest";
 
@@ -270,16 +268,13 @@ export const createRuntimeChatService = (
   let workspaceToolPromise: Promise<Record<string, unknown>> | null = null;
 
   const listToolNames = (): string[] =>
-    [
-      ...deps.registry
-      .list()
-      .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
-      .map((entry) => entry.name)
-      .toSorted((a, b) => a.localeCompare(b)),
-      ...(workspaceToolsEnabled
-        ? [WORKSPACE_BASH_TOOL_NAME, WORKSPACE_READ_FILE_TOOL_NAME, WORKSPACE_WRITE_FILE_TOOL_NAME]
-        : []),
-    ].toSorted((a, b) => a.localeCompare(b));
+    buildRuntimeChatToolNameCatalog({
+      actionNames: deps.registry
+        .list()
+        .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
+        .map((entry) => entry.name),
+      workspaceToolsEnabled,
+    });
 
   const generateText = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
     if (!deps.llm) {
