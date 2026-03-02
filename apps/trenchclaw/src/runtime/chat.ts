@@ -87,6 +87,7 @@ const buildSystemPrompt = async (deps: RuntimeChatServiceDeps, toolNames: string
   return [
     base,
     "Use tools for real execution. Do not claim execution unless a tool call confirms success.",
+    "Always return at least one non-empty plain-text assistant response. Never end with reasoning-only output.",
     "For data-heavy questions, use multi-step retrieval: query/search first, inspect results, then follow-up tool calls.",
     `Available runtime tools: ${toolCatalog}`,
     filesystemPolicy,
@@ -102,6 +103,7 @@ const GENERATED_CONTEXT_SNAPSHOT_FILE = fileURLToPath(
   new URL("../ai/brain/protected/context/workspace-and-schema.md", import.meta.url),
 );
 const DEFAULT_CHAT_ID_PREFIX = "chat";
+const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 1200;
 
 const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
@@ -170,6 +172,18 @@ const sanitizeConversationTitle = (title: string | undefined, fallbackMessages: 
 
 const resolveChatId = (chatId: string | undefined): string =>
   trimOrUndefinedValue(chatId) ?? `${DEFAULT_CHAT_ID_PREFIX}-${crypto.randomUUID()}`;
+
+const resolveChatMaxOutputTokens = (): number => {
+  const raw = trimOrUndefinedValue(process.env.TRENCHCLAW_CHAT_MAX_OUTPUT_TOKENS);
+  if (!raw) {
+    return DEFAULT_CHAT_MAX_OUTPUT_TOKENS;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
+    return DEFAULT_CHAT_MAX_OUTPUT_TOKENS;
+  }
+  return parsed;
+};
 
 const withChatHeaders = (headers: HeadersInit | undefined, chatId: string): Headers => {
   const merged = new Headers(headers);
@@ -394,16 +408,19 @@ export const createRuntimeChatService = (
       });
 
       const streamBuildStartedAt = Date.now();
+      const maxOutputTokens = resolveChatMaxOutputTokens();
       const result = streamWithModel({
         model,
         system: systemPrompt,
         messages: modelMessages,
+        maxOutputTokens,
         stopWhen: stepCountIs(12),
         tools,
       });
       deps.logger?.info("chat:model_stream_initialized", {
         chatId,
         durationMs: Date.now() - streamBuildStartedAt,
+        maxOutputTokens,
       });
 
       const response = result.toUIMessageStreamResponse({
