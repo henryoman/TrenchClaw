@@ -57,6 +57,23 @@ Index:
 Index:
 - `(conversation_id, created_at DESC)`
 
+### `instance_facts`
+- `id TEXT PRIMARY KEY`
+- `instance_id TEXT NOT NULL`
+- `fact_key TEXT NOT NULL`
+- `fact_value_json TEXT NOT NULL`
+- `confidence REAL NOT NULL` (`0..1`)
+- `source TEXT NOT NULL`
+- `source_message_id TEXT`
+- `created_at INTEGER NOT NULL`
+- `updated_at INTEGER NOT NULL`
+- `expires_at INTEGER`
+- `UNIQUE(instance_id, fact_key)`
+
+Indexes:
+- `(instance_id, updated_at DESC)`
+- `(expires_at)`
+
 ## Market + chart data
 
 ### `market_instruments`

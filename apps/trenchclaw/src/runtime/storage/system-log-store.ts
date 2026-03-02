@@ -1,9 +1,10 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import type { RuntimeLogEntry } from "../logging";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { getLogIoWorkerClient } from "./log-io-worker";
 
 export interface SystemLogStoreConfig {
   directory: string;
@@ -18,6 +19,7 @@ const dateKey = (timestampIso: string): string => timestampIso.slice(0, 10);
 
 export class SystemLogStore {
   private readonly directory: string;
+  private readonly writer = getLogIoWorkerClient();
 
   constructor(config: SystemLogStoreConfig) {
     this.directory = toAbsolutePath(config.directory);
@@ -31,7 +33,7 @@ export class SystemLogStore {
     assertRuntimeSystemWritePath(filePath, "append system log entry");
     const details = entry.details ? ` ${JSON.stringify(entry.details)}` : "";
     const line = `${entry.timestamp} ${entry.level.toUpperCase()} ${entry.event}${details}\n`;
-    appendFileSync(filePath, line, "utf8");
+    void this.writer.appendUtf8(filePath, line);
     return filePath;
   }
 }

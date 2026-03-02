@@ -7,3 +7,4 @@ export * from "./session-summary-store";
 export * from "./memory-log-store";
 export * from "./system-log-store";
 export * from "./summary-log-store";
+export * from "./log-io-worker";

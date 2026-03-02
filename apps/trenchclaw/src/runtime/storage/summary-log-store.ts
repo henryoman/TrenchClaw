@@ -1,7 +1,8 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { getLogIoWorkerClient } from "./log-io-worker";
 
 export type RuntimeSummaryCategory = "runtime" | "trade" | "data";
 
@@ -25,6 +26,7 @@ const dateKey = (timestampIso: string): string => timestampIso.slice(0, 10);
 
 export class SummaryLogStore {
   private readonly directory: string;
+  private readonly writer = getLogIoWorkerClient();
 
   constructor(config: SummaryLogStoreConfig) {
     this.directory = toAbsolutePath(config.directory);
@@ -37,7 +39,7 @@ export class SummaryLogStore {
     assertRuntimeSystemWritePath(filePath, "append runtime summary log entry");
     const details = entry.details ? ` ${JSON.stringify(entry.details)}` : "";
     const line = `${entry.timestamp} ${entry.category.toUpperCase()} ${entry.event}${details}\n`;
-    appendFileSync(filePath, line, "utf8");
+    void this.writer.appendUtf8(filePath, line);
     return filePath;
   }
 }

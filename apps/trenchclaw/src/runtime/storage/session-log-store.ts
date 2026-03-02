@@ -1,7 +1,8 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { getLogIoWorkerClient } from "./log-io-worker";
 
 type SessionMessageRole = "system" | "user" | "assistant" | "toolResult";
 
@@ -102,6 +103,7 @@ export class SessionLogStore {
   private readonly source: string;
   private active: ActiveSessionInfo | null = null;
   private writeChain: Promise<void> = Promise.resolve();
+  private readonly writer = getLogIoWorkerClient();
 
   constructor(config: SessionLogStoreConfig) {
     this.directory = toAbsolutePath(config.directory);
@@ -247,7 +249,7 @@ export class SessionLogStore {
 
   private async writeStore(store: SessionStoreData): Promise<void> {
     assertRuntimeSystemWritePath(this.indexFilePath, "write sessions index file");
-    await Bun.write(this.indexFilePath, `${JSON.stringify(store, null, 2)}\n`);
+    await this.writer.writeUtf8(this.indexFilePath, `${JSON.stringify(store, null, 2)}\n`);
   }
 
   private async appendRaw(line: SessionJsonLine): Promise<void> {
@@ -255,7 +257,7 @@ export class SessionLogStore {
     const encoded = `${JSON.stringify(line)}\n`;
     this.writeChain = this.writeChain.then(async () => {
       assertRuntimeSystemWritePath(active.sessionFilePath, "append session log entry");
-      appendFileSync(active.sessionFilePath, encoded, "utf8");
+      await this.writer.appendUtf8(active.sessionFilePath, encoded);
     });
     await this.writeChain;
   }

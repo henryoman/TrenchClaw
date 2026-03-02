@@ -47,16 +47,18 @@ export const createChatController = () => {
 
   const toUiMessages = (messages: GuiConversationMessageView[]) =>
     normalizeUiMessages(
-      messages.map((message) => ({
-        id: message.id,
-        role: message.role === "tool" ? "assistant" : message.role,
-        parts: [
-          {
-            type: "text" as const,
-            text: message.role === "tool" ? `[tool]\n${message.content}` : message.content,
-          },
-        ],
-      })),
+      messages
+        .filter((message): message is GuiConversationMessageView & { role: "assistant" | "system" | "user" } => message.role !== "tool")
+        .map((message) => ({
+          id: message.id,
+          role: message.role,
+          parts: [
+            {
+              type: "text" as const,
+              text: message.content,
+            },
+          ],
+        })),
     );
 
   const normalizeUiMessages = (messages: UIMessage[]): UIMessage[] => {
@@ -73,7 +75,7 @@ export const createChatController = () => {
           if (part.type === "text") {
             return part.text ?? "";
           }
-          return JSON.stringify(part);
+          return "";
         })
         .join("\n")
         .trim();

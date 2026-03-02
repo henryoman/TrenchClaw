@@ -36,6 +36,12 @@ Primary database: `storage.sqlite.path` (from runtime settings).
   - FK: `conversation_id -> conversations(id)`
   - Indexed: `(conversation_id, created_at DESC)`
 
+- `instance_facts`
+: Per-instance durable fact store for model memory.
+  - Key: `id`
+  - Unique: `(instance_id, fact_key)`
+  - Indexed: `(instance_id, updated_at DESC)`, `(expires_at)`
+
 ### Market/chart data tables
 
 - `market_instruments`
@@ -73,6 +79,8 @@ Primary database: `storage.sqlite.path` (from runtime settings).
   - logs a compact schema snapshot for model/operator context
 
 ## Runtime file stores
+
+All runtime log sinks are file-backed and write through a dedicated Bun worker queue to avoid blocking scheduler/chat paths.
 
 - `summary-log-store.ts`
 : Writes concise top-level runtime summaries into daily files (`summary/<YYYY-MM-DD>.log`), focused on runtime lifecycle, completed data downloads, and executed trades.

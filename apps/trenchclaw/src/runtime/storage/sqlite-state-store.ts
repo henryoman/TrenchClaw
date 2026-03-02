@@ -8,6 +8,7 @@ import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
   ConversationState,
+  InstanceFactState,
   JobState,
   JobStatus,
   RuntimeKnowledgeSurface,
@@ -19,6 +20,7 @@ import {
   actionResultSchema,
   chatMessageStateSchema,
   conversationStateSchema,
+  instanceFactStateSchema,
   httpCacheEntryInputSchema,
   httpCacheEntryRecordSchema,
   jobStateSchema,
@@ -40,7 +42,12 @@ import {
   type SaveOhlcvBarsInput,
 } from "./schema";
 import { getSqliteSchemaSnapshot, syncSqliteSchema, type SqliteSchemaSyncReport } from "./sqlite-orm";
-import { sqliteChatMessageRowSchema, sqliteConversationRowSchema, sqliteJobRowSchema } from "./sqlite-schema";
+import {
+  sqliteChatMessageRowSchema,
+  sqliteConversationRowSchema,
+  sqliteInstanceFactRowSchema,
+  sqliteJobRowSchema,
+} from "./sqlite-schema";
 
 export type SqliteStateStoreConfig = {
   path: string;
@@ -590,6 +597,121 @@ export class SqliteStateStore implements StateStore {
             : parseJson<Record<string, unknown> | undefined>(parsed.metadata_json, undefined),
         createdAt: parsed.created_at,
       });
+    });
+  }
+
+  saveInstanceFact(fact: InstanceFactState): void {
+    const parsed = instanceFactStateSchema.parse(fact);
+    this.db
+      .query(
+        `
+        INSERT INTO instance_facts (
+          id, instance_id, fact_key, fact_value_json, confidence, source, source_message_id, created_at, updated_at, expires_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(instance_id, fact_key) DO UPDATE SET
+          id = excluded.id,
+          fact_value_json = excluded.fact_value_json,
+          confidence = excluded.confidence,
+          source = excluded.source,
+          source_message_id = excluded.source_message_id,
+          updated_at = excluded.updated_at,
+          expires_at = excluded.expires_at
+      `,
+      )
+      .run(
+        parsed.id,
+        parsed.instanceId,
+        parsed.factKey,
+        JSON.stringify(parsed.factValue),
+        parsed.confidence,
+        parsed.source,
+        parsed.sourceMessageId ?? null,
+        parsed.createdAt,
+        parsed.updatedAt,
+        parsed.expiresAt ?? null,
+      );
+  }
+
+  listInstanceFacts(input: { instanceId: string; limit?: number; includeExpired?: boolean }): InstanceFactState[] {
+    const instanceId = input.instanceId.trim();
+    if (!instanceId) {
+      return [];
+    }
+
+    const includeExpired = input.includeExpired === true;
+    const rows = this.db
+      .query(
+        `
+        SELECT
+          id, instance_id, fact_key, fact_value_json, confidence, source, source_message_id, created_at, updated_at, expires_at
+        FROM instance_facts
+        WHERE instance_id = ?
+          AND (? = 1 OR expires_at IS NULL OR expires_at > ?)
+        ORDER BY updated_at DESC
+        LIMIT ?
+      `,
+      )
+      .all(
+        instanceId,
+        includeExpired ? 1 : 0,
+        Date.now(),
+        Math.max(1, Math.trunc(input.limit ?? 200)),
+      ) as Record<string, unknown>[];
+
+    return rows.map((row) => {
+      const parsed = sqliteInstanceFactRowSchema.parse(row);
+      return instanceFactStateSchema.parse({
+        id: parsed.id,
+        instanceId: parsed.instance_id,
+        factKey: parsed.fact_key,
+        factValue: parseJson<unknown>(parsed.fact_value_json, null),
+        confidence: parsed.confidence,
+        source: parsed.source,
+        sourceMessageId: parsed.source_message_id ?? undefined,
+        createdAt: parsed.created_at,
+        updatedAt: parsed.updated_at,
+        expiresAt: parsed.expires_at ?? undefined,
+      });
+    });
+  }
+
+  getInstanceFact(input: { instanceId: string; factKey: string; includeExpired?: boolean }): InstanceFactState | null {
+    const instanceId = input.instanceId.trim();
+    const factKey = input.factKey.trim();
+    if (!instanceId || !factKey) {
+      return null;
+    }
+
+    const includeExpired = input.includeExpired === true;
+    const row = this.db
+      .query(
+        `
+        SELECT
+          id, instance_id, fact_key, fact_value_json, confidence, source, source_message_id, created_at, updated_at, expires_at
+        FROM instance_facts
+        WHERE instance_id = ? AND fact_key = ?
+          AND (? = 1 OR expires_at IS NULL OR expires_at > ?)
+        LIMIT 1
+      `,
+      )
+      .get(instanceId, factKey, includeExpired ? 1 : 0, Date.now()) as Record<string, unknown> | null;
+
+    if (!row) {
+      return null;
+    }
+
+    const parsed = sqliteInstanceFactRowSchema.parse(row);
+    return instanceFactStateSchema.parse({
+      id: parsed.id,
+      instanceId: parsed.instance_id,
+      factKey: parsed.fact_key,
+      factValue: parseJson<unknown>(parsed.fact_value_json, null),
+      confidence: parsed.confidence,
+      source: parsed.source,
+      sourceMessageId: parsed.source_message_id ?? undefined,
+      createdAt: parsed.created_at,
+      updatedAt: parsed.updated_at,
+      expiresAt: parsed.expires_at ?? undefined,
     });
   }
 

@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import type { RuntimeEvent, RuntimeEventMap, RuntimeEventName } from "../../ai/runtime/types/events";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { getLogIoWorkerClient } from "./log-io-worker";
 
 export interface RuntimeFileEventLogConfig {
   directory: string;
@@ -16,6 +17,7 @@ const toAbsolutePath = (targetPath: string): string =>
 
 export class RuntimeFileEventLog {
   private readonly directory: string;
+  private readonly writer = getLogIoWorkerClient();
 
   constructor(config: RuntimeFileEventLogConfig) {
     this.directory = toAbsolutePath(config.directory);
@@ -34,6 +36,6 @@ export class RuntimeFileEventLog {
     const filename = `${timestamp}-${safeType}-${crypto.randomUUID()}.json`;
     const filePath = path.join(this.directory, filename);
     assertRuntimeSystemWritePath(filePath, "write runtime event log");
-    void Bun.write(filePath, `${JSON.stringify(event)}\n`);
+    void this.writer.writeUtf8(filePath, `${JSON.stringify(event)}\n`);
   }
 }

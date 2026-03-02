@@ -32,6 +32,7 @@ import { renameWalletsAction } from "../solana/actions/wallet-based/create-walle
 import { createBlockchainAlertAction } from "../solana/actions/data-fetch/alerts/createBlockchainAlert";
 import { queryRuntimeStoreAction } from "../solana/actions/data-fetch/runtime/queryRuntimeStore";
 import { pingRuntimeAction } from "../solana/actions/data-fetch/runtime/pingRuntime";
+import { upsertInstanceFactAction } from "../solana/actions/data-fetch/runtime/upsertInstanceFact";
 import { transferAction } from "../solana/actions/wallet-based/transfer/transfer";
 import {
   privacyAirdropAction,
@@ -193,6 +194,10 @@ const actionEnabledBySettings = (settings: RuntimeSettings, actionName: string):
   }
 
   if (actionName === "pingRuntime") {
+    return true;
+  }
+
+  if (actionName === "upsertInstanceFact") {
     return true;
   }
 
@@ -386,7 +391,13 @@ const instrumentLlmClient = (
 };
 
 export const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
-  const actions: RuntimeAction[] = [createWalletsAction, renameWalletsAction, queryRuntimeStoreAction, pingRuntimeAction];
+  const actions: RuntimeAction[] = [
+    createWalletsAction,
+    renameWalletsAction,
+    queryRuntimeStoreAction,
+    pingRuntimeAction,
+    upsertInstanceFactAction,
+  ];
 
   if (settings.trading.enabled) {
     actions.push(createBlockchainAlertAction);

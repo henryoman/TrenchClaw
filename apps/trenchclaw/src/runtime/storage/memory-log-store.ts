@@ -1,7 +1,8 @@
-import { appendFileSync, mkdirSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { getLogIoWorkerClient } from "./log-io-worker";
 
 export interface MemoryLogStoreConfig {
   directory: string;
@@ -21,6 +22,7 @@ const currentDateKey = (): string => new Date().toISOString().slice(0, 10);
 export class MemoryLogStore {
   private readonly directory: string;
   private readonly longTermFile: string;
+  private readonly writer = getLogIoWorkerClient();
 
   constructor(config: MemoryLogStoreConfig) {
     this.directory = toAbsolutePath(config.directory);
@@ -34,13 +36,13 @@ export class MemoryLogStore {
   appendDaily(note: string, dateKey = currentDateKey()): string {
     const target = path.join(this.directory, `${dateKey}.md`);
     assertRuntimeSystemWritePath(target, "append daily memory note");
-    appendFileSync(target, `${note.trim()}\n\n`, "utf8");
+    void this.writer.appendUtf8(target, `${note.trim()}\n\n`);
     return target;
   }
 
   appendLongTerm(note: string): string {
     assertRuntimeSystemWritePath(this.longTermFile, "append long-term memory note");
-    appendFileSync(this.longTermFile, `${note.trim()}\n\n`, "utf8");
+    void this.writer.appendUtf8(this.longTermFile, `${note.trim()}\n\n`);
     return this.longTermFile;
   }
 }

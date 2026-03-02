@@ -41,6 +41,19 @@ export interface ChatMessageState {
   createdAt: number;
 }
 
+export interface InstanceFactState {
+  id: string;
+  instanceId: string;
+  factKey: string;
+  factValue: unknown;
+  confidence: number;
+  source: string;
+  sourceMessageId?: string;
+  createdAt: number;
+  updatedAt: number;
+  expiresAt?: number;
+}
+
 export type RuntimeSearchScope = "all" | "conversations" | "messages" | "jobs" | "receipts";
 
 export interface RuntimeSearchResult {
@@ -81,6 +94,9 @@ export interface StateStore {
   listConversations(limit?: number): ConversationState[];
   saveChatMessage(message: ChatMessageState): void;
   listChatMessages(conversationId: string, limit?: number): ChatMessageState[];
+  saveInstanceFact(fact: InstanceFactState): void;
+  listInstanceFacts(input: { instanceId: string; limit?: number; includeExpired?: boolean }): InstanceFactState[];
+  getInstanceFact(input: { instanceId: string; factKey: string; includeExpired?: boolean }): InstanceFactState | null;
   searchRuntimeText(input: {
     query: string;
     scope?: RuntimeSearchScope;

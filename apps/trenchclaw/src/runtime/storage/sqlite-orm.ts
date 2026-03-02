@@ -157,6 +157,27 @@ const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
     indexes: [{ name: "idx_chat_messages_conversation_created_at", columns: ["conversation_id", "created_at"] }],
   },
   {
+    name: "instance_facts",
+    rowSchema: sqliteTables.instance_facts,
+    columns: [
+      { name: "id", type: "TEXT", primaryKey: true },
+      { name: "instance_id", type: "TEXT", notNull: true },
+      { name: "fact_key", type: "TEXT", notNull: true },
+      { name: "fact_value_json", type: "TEXT", notNull: true },
+      { name: "confidence", type: "REAL", notNull: true, check: "confidence >= 0 AND confidence <= 1" },
+      { name: "source", type: "TEXT", notNull: true },
+      { name: "source_message_id", type: "TEXT" },
+      { name: "created_at", type: "INTEGER", notNull: true },
+      { name: "updated_at", type: "INTEGER", notNull: true },
+      { name: "expires_at", type: "INTEGER", check: "expires_at IS NULL OR expires_at >= 0" },
+    ],
+    tableConstraints: ["UNIQUE(instance_id, fact_key)"],
+    indexes: [
+      { name: "idx_instance_facts_instance_updated", columns: ["instance_id", "updated_at"] },
+      { name: "idx_instance_facts_expires_at", columns: ["expires_at"] },
+    ],
+  },
+  {
     name: "market_instruments",
     rowSchema: sqliteTables.market_instruments,
     columns: [

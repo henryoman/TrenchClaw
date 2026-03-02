@@ -2,6 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { getLogIoWorkerClient } from "./log-io-worker";
 
 export interface SessionSummaryInput {
   sessionId: string;
@@ -28,6 +29,7 @@ const toAbsolutePath = (targetPath: string): string =>
 
 export class SessionSummaryStore {
   private readonly directory: string;
+  private readonly writer = getLogIoWorkerClient();
 
   constructor(config: SessionSummaryStoreConfig) {
     this.directory = toAbsolutePath(config.directory);
@@ -60,7 +62,7 @@ export class SessionSummaryStore {
 
     const filePath = path.join(this.directory, `${summary.sessionId}.md`);
     assertRuntimeSystemWritePath(filePath, "write session summary");
-    await Bun.write(filePath, body);
+    await this.writer.writeUtf8(filePath, body);
     return filePath;
   }
 }

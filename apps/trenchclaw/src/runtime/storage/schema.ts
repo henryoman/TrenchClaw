@@ -4,6 +4,7 @@ import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
   ConversationState,
+  InstanceFactState,
   JobState,
 } from "../../ai/runtime/types/state";
 import { sqliteJobStatusSchema } from "./sqlite-schema";
@@ -67,6 +68,19 @@ export const chatMessageStateSchema: z.ZodType<ChatMessageState> = z.object({
   content: z.string(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: unixMs,
+});
+
+export const instanceFactStateSchema: z.ZodType<InstanceFactState> = z.object({
+  id: nonEmpty,
+  instanceId: nonEmpty,
+  factKey: nonEmpty,
+  factValue: z.unknown(),
+  confidence: z.number().min(0).max(1),
+  source: nonEmpty,
+  sourceMessageId: nonEmpty.optional(),
+  createdAt: unixMs,
+  updatedAt: unixMs,
+  expiresAt: unixMs.optional(),
 });
 
 export const sqliteStateStoreConfigSchema = z.object({
@@ -187,3 +201,4 @@ export type RuntimeRetentionInput = z.infer<typeof runtimeRetentionInputSchema>;
 export type RuntimeRetentionResult = z.infer<typeof runtimeRetentionResultSchema>;
 export type ConversationStateInput = z.infer<typeof conversationStateSchema>;
 export type ChatMessageStateInput = z.infer<typeof chatMessageStateSchema>;
+export type InstanceFactStateInput = z.infer<typeof instanceFactStateSchema>;

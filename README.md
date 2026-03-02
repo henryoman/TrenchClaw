@@ -265,6 +265,29 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
 
+## GUI-Only Release Flow (Local)
+
+For a GUI-first release without shipping a native desktop wrapper:
+
+```bash
+bun install
+bun run release:gui
+```
+
+What this does:
+- Builds CLI runtime + GUI production assets
+- Starts runtime API on localhost
+- Serves GUI from static `apps/frontends/gui/dist`
+- Proxies `/api/*` from GUI server to runtime server
+- Opens your default browser automatically
+
+Optional split commands:
+
+```bash
+bun run release:gui:build
+bun run release:gui:start
+```
+
 ---
 
 ## v0.1 Checklist

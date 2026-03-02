@@ -48,6 +48,20 @@ const getRuntimeKnowledgeSurfaceRequestSchema = z.object({
   recentReceiptsLimit: z.number().int().positive().max(maxLimit).default(20),
 });
 
+const listInstanceFactsRequestSchema = z.object({
+  type: z.literal("listInstanceFacts"),
+  instanceId: z.string().trim().min(1),
+  limit: z.number().int().positive().max(maxLimit).default(100),
+  includeExpired: z.boolean().default(false),
+});
+
+const getInstanceFactRequestSchema = z.object({
+  type: z.literal("getInstanceFact"),
+  instanceId: z.string().trim().min(1),
+  factKey: z.string().trim().min(1).max(120),
+  includeExpired: z.boolean().default(false),
+});
+
 const queryRuntimeStoreInputSchema = z.object({
   request: z.discriminatedUnion("type", [
     listConversationsRequestSchema,
@@ -57,6 +71,8 @@ const queryRuntimeStoreInputSchema = z.object({
     getRecentReceiptsRequestSchema,
     searchRuntimeTextRequestSchema,
     getRuntimeKnowledgeSurfaceRequestSchema,
+    listInstanceFactsRequestSchema,
+    getInstanceFactRequestSchema,
   ]),
 });
 
@@ -118,6 +134,18 @@ export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = 
           recentConversationsLimit: request.recentConversationsLimit,
           recentJobsLimit: request.recentJobsLimit,
           recentReceiptsLimit: request.recentReceiptsLimit,
+        });
+      } else if (request.type === "listInstanceFacts") {
+        data = store.listInstanceFacts({
+          instanceId: request.instanceId,
+          limit: request.limit,
+          includeExpired: request.includeExpired,
+        });
+      } else if (request.type === "getInstanceFact") {
+        data = store.getInstanceFact({
+          instanceId: request.instanceId,
+          factKey: request.factKey,
+          includeExpired: request.includeExpired,
         });
       } else {
         data = store.getRecentReceipts(request.limit);

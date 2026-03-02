@@ -171,10 +171,10 @@ describe("RuntimeChatService", () => {
       },
       {
         resolveStreamingModel: () => ({}) as never,
-        convertToModelMessages: async (messages: UIMessage[]) => {
-          capturedMessages = messages;
+        convertToModelMessages: (async (messages: Array<Omit<UIMessage, "id">>) => {
+          capturedMessages = messages as UIMessage[];
           return [];
-        },
+        }) as never,
         streamText: (() => ({
           toUIMessageStreamResponse: () => new Response("ok"),
         })) as never,

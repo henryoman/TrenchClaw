@@ -2,6 +2,7 @@ import type {
   ActionResult,
   ChatMessageState,
   ConversationState,
+  InstanceFactState,
   JobState,
   JobStatus,
   RuntimeKnowledgeSurface,
@@ -15,6 +16,7 @@ export class InMemoryStateStore implements IStateStore {
   private readonly receipts = new Map<string, ActionResult>();
   private readonly conversations = new Map<string, ConversationState>();
   private readonly chatMessages = new Map<string, ChatMessageState[]>();
+  private readonly instanceFacts = new Map<string, InstanceFactState>();
 
   saveJob(job: JobState): void {
     this.jobs.set(job.id, { ...job });
@@ -91,6 +93,39 @@ export class InMemoryStateStore implements IStateStore {
     return (this.chatMessages.get(conversationId) ?? [])
       .toSorted((a, b) => a.createdAt - b.createdAt)
       .slice(0, Math.max(1, Math.trunc(limit)));
+  }
+
+  saveInstanceFact(fact: InstanceFactState): void {
+    this.instanceFacts.set(fact.id, { ...fact });
+  }
+
+  listInstanceFacts(input: { instanceId: string; limit?: number; includeExpired?: boolean }): InstanceFactState[] {
+    const now = Date.now();
+    const includeExpired = input.includeExpired === true;
+    return Array.from(this.instanceFacts.values())
+      .filter((entry) => entry.instanceId === input.instanceId)
+      .filter((entry) => includeExpired || entry.expiresAt === undefined || entry.expiresAt > now)
+      .toSorted((a, b) => b.updatedAt - a.updatedAt)
+      .slice(0, Math.max(1, Math.trunc(input.limit ?? 200)));
+  }
+
+  getInstanceFact(input: { instanceId: string; factKey: string; includeExpired?: boolean }): InstanceFactState | null {
+    const now = Date.now();
+    const factKey = input.factKey.trim();
+    if (!factKey) {
+      return null;
+    }
+
+    const match = Array.from(this.instanceFacts.values())
+      .filter((entry) => entry.instanceId === input.instanceId && entry.factKey === factKey)
+      .toSorted((a, b) => b.updatedAt - a.updatedAt)[0];
+    if (!match) {
+      return null;
+    }
+    if (!input.includeExpired && match.expiresAt !== undefined && match.expiresAt <= now) {
+      return null;
+    }
+    return { ...match };
   }
 
   searchRuntimeText(input: {

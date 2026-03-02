@@ -81,8 +81,6 @@
           {#each message.parts as part}
             {#if part.type === "text"}
               <p>{part.text}</p>
-            {:else if part.type.startsWith("tool-")}
-              <pre>{JSON.stringify(part, null, 2)}</pre>
             {/if}
           {/each}
         </div>
@@ -269,16 +267,6 @@
 
   .bubble p {
     margin: 0;
-  }
-
-  .bubble pre {
-    margin: var(--tc-space-2) 0 0 0;
-    padding: var(--tc-space-2);
-    border: var(--tc-border-muted);
-    background: var(--tc-color-black);
-    color: var(--tc-color-gray-2);
-    font-size: 0.72rem;
-    overflow-x: auto;
   }
 
   .chat-form {

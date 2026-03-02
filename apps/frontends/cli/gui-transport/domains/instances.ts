@@ -153,6 +153,7 @@ export const createInstance = async (
   context.setActiveChatId(null);
   process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
   process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instance.localInstanceId;
   context.addActivity("runtime", `Instance created: ${instance.name} (${instance.localInstanceId})`);
   return { instance };
 };
@@ -178,6 +179,7 @@ export const signInInstance = async (
   context.setActiveChatId(null);
   process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
   process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instance.localInstanceId;
   context.addActivity("runtime", `Instance signed in: ${instance.name} (${instance.localInstanceId})`);
   return { instance };
 };

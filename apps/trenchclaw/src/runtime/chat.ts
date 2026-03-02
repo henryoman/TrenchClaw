@@ -342,11 +342,16 @@ export const createRuntimeChatService = (
         });
 
         for (const [index, message] of finalMessages.entries()) {
+          const content = extractUiMessageText(message).trim();
+          if (content.length === 0) {
+            continue;
+          }
+
           deps.stateStore.saveChatMessage({
             id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
             conversationId: chatId,
             role: message.role,
-            content: extractUiMessageText(message),
+            content,
             metadata:
               message.metadata && typeof message.metadata === "object"
                 ? (message.metadata as Record<string, unknown>)

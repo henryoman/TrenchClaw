@@ -27,3 +27,6 @@ repomix-output.xml
 apps/frontends/*/dist/
 website/.svelte-kit/
 website/build/
+
+# Release artifacts
+*.tgz

@@ -2,6 +2,7 @@ import { beforeAll, beforeEach, afterAll, describe, expect, test } from "bun:tes
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { InMemoryRuntimeEventBus } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { RuntimeGuiTransport } from "../../apps/frontends/cli/gui-transport";
 
@@ -238,7 +239,7 @@ describe("RuntimeGuiTransport", () => {
   });
 
   test("chat-triggered model flow surfaces queue + activity log updates", async () => {
-    const listeners = new Map<string, Array<(event: { payload: Record<string, unknown> }) => void>>();
+    const eventBus = new InMemoryRuntimeEventBus();
     const jobs: Array<{
       id: string;
       botId: string;
@@ -249,13 +250,6 @@ describe("RuntimeGuiTransport", () => {
       nextRunAt: number;
       cyclesCompleted: number;
     }> = [];
-
-    const emit = (type: string, payload: Record<string, unknown>): void => {
-      const handlers = listeners.get(type) ?? [];
-      for (const handler of handlers) {
-        handler({ payload });
-      }
-    };
 
     const runtime = {
       llm: null,
@@ -276,14 +270,14 @@ describe("RuntimeGuiTransport", () => {
             cyclesCompleted: 0,
           });
 
-          emit("queue:enqueue", {
+          eventBus.emit("queue:enqueue", {
             jobId: "job-model-1",
             botId: "chat-bot",
             routineName: "model-dispatch",
             queueSize: 1,
             queuePosition: 1,
           });
-          emit("queue:dequeue", {
+          eventBus.emit("queue:dequeue", {
             jobId: "job-model-1",
             botId: "chat-bot",
             routineName: "model-dispatch",
@@ -291,7 +285,7 @@ describe("RuntimeGuiTransport", () => {
             queuePosition: 1,
             waitMs: 5,
           });
-          emit("queue:complete", {
+          eventBus.emit("queue:complete", {
             jobId: "job-model-1",
             botId: "chat-bot",
             routineName: "model-dispatch",
@@ -302,14 +296,7 @@ describe("RuntimeGuiTransport", () => {
           return new Response("ok", { status: 200 });
         },
       },
-      eventBus: {
-        on: (type: string, handler: (event: { payload: Record<string, unknown> }) => void) => {
-          const existing = listeners.get(type) ?? [];
-          existing.push(handler);
-          listeners.set(type, existing);
-          return () => {};
-        },
-      },
+      eventBus,
       stateStore: {
         listJobs: () => jobs,
         listConversations: () => [],
@@ -337,6 +324,7 @@ describe("RuntimeGuiTransport", () => {
       }),
     );
     expect(chatResponse.status).toBe(200);
+    await Bun.sleep(0);
 
     const queueResponse = await handler(new Request("http://localhost/api/gui/queue", { method: "GET" }));
     const queuePayload = (await queueResponse.json()) as {
