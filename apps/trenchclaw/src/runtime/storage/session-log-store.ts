@@ -61,6 +61,7 @@ export interface SessionLogStoreConfig {
   agentId: string;
   sessionKey: string;
   source: string;
+  reuseSessionOnBoot?: boolean;
 }
 
 export interface ActiveSessionInfo {
@@ -101,6 +102,7 @@ export class SessionLogStore {
   private readonly agentId: string;
   private readonly sessionKey: string;
   private readonly source: string;
+  private readonly reuseSessionOnBoot: boolean;
   private active: ActiveSessionInfo | null = null;
   private writeChain: Promise<void> = Promise.resolve();
   private readonly writer = getLogIoWorkerClient();
@@ -113,12 +115,42 @@ export class SessionLogStore {
     this.agentId = config.agentId.trim() || "main";
     this.sessionKey = config.sessionKey.trim() || `agent:${this.agentId}:main`;
     this.source = config.source.trim() || "cli";
+    this.reuseSessionOnBoot = config.reuseSessionOnBoot ?? true;
     mkdirSync(this.directory, { recursive: true });
   }
 
   async open(): Promise<ActiveSessionInfo> {
     const store = await this.readStore();
     const now = nowIso();
+    const existing = store.sessions[this.sessionKey];
+
+    if (this.reuseSessionOnBoot && existing) {
+      const existingSessionFilePath = path.join(this.directory, `${existing.sessionId}.jsonl`);
+      const existingFile = Bun.file(existingSessionFilePath);
+      if (await existingFile.exists()) {
+        this.active = {
+          agentId: this.agentId,
+          sessionKey: this.sessionKey,
+          sessionId: existing.sessionId,
+          sessionFilePath: existingSessionFilePath,
+          source: existing.source,
+        };
+        existing.updatedAt = now;
+        await this.writeStore(store);
+        await this.appendRaw({
+          type: "session",
+          timestamp: now,
+          sessionKey: this.sessionKey,
+          sessionId: existing.sessionId,
+          source: existing.source,
+          metadata: {
+            agentId: this.agentId,
+            resumed: true,
+          },
+        });
+        return this.active;
+      }
+    }
 
     const sessionId = crypto.randomUUID();
     const sessionEntry: SessionStoreEntry = {

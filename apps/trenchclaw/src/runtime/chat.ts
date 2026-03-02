@@ -27,6 +27,7 @@ import {
   createWorkspaceBashTools,
 } from "./workspace-bash";
 import { buildFilesystemPolicyPrompt } from "./security/filesystem-manifest";
+import type { RuntimeLogger } from "./logging";
 
 export interface RuntimeChatService {
   listToolNames: () => string[];
@@ -43,6 +44,7 @@ interface RuntimeChatServiceDeps {
   eventBus: RuntimeEventBus;
   stateStore: StateStore;
   llm: LlmClient | null;
+  logger?: RuntimeLogger;
   workspaceToolsEnabled?: boolean;
   workspaceRootDirectory?: string;
 }
@@ -205,6 +207,20 @@ const loadGeneratedContextCatalogs = async (): Promise<string> => {
   }
 };
 
+const truncateText = (value: string, maxLength = 1_500): string =>
+  value.length > maxLength ? `${value.slice(0, maxLength)}…[truncated]` : value;
+
+const serializeForLog = (value: unknown): string => {
+  if (typeof value === "string") {
+    return truncateText(value);
+  }
+  try {
+    return truncateText(JSON.stringify(value));
+  } catch {
+    return "[unserializable]";
+  }
+};
+
 const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
   const tools: Record<string, any> = {};
 
@@ -218,6 +234,12 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
       description: toToolDescription(action.name, action.category, action.subcategory),
       inputSchema: action.inputSchema as z.ZodTypeAny,
       execute: async (rawInput: unknown) => {
+        const dispatchStartedAt = Date.now();
+        deps.logger?.info("chat:tool_start", {
+          actionName: action.name,
+          input: serializeForLog(rawInput),
+        });
+
         const dispatchResult = await deps.dispatcher.dispatchStep(
           createActionContext({
             actor: "agent",
@@ -232,12 +254,39 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
 
         const result = dispatchResult.results[0];
         if (!result) {
+          deps.logger?.error("chat:tool_fail", {
+            actionName: action.name,
+            durationMs: Date.now() - dispatchStartedAt,
+            error: `Action "${action.name}" returned no dispatcher result`,
+            policyHits: serializeForLog(dispatchResult.policyHits),
+          });
           return {
             ok: false,
             error: `Action "${action.name}" returned no dispatcher result`,
             retryable: false,
             policyHits: dispatchResult.policyHits,
           };
+        }
+
+        if (!result.ok) {
+          deps.logger?.error("chat:tool_fail", {
+            actionName: action.name,
+            idempotencyKey: result.idempotencyKey,
+            durationMs: Date.now() - dispatchStartedAt,
+            actionDurationMs: result.durationMs,
+            retryable: result.retryable,
+            error: result.error ?? "unknown error",
+            payload: serializeForLog(result.data ?? null),
+            policyHits: serializeForLog(dispatchResult.policyHits),
+          });
+        } else {
+          deps.logger?.info("chat:tool_success", {
+            actionName: action.name,
+            idempotencyKey: result.idempotencyKey,
+            durationMs: Date.now() - dispatchStartedAt,
+            actionDurationMs: result.durationMs,
+            txSignature: result.txSignature ?? null,
+          });
         }
 
         return {
@@ -291,11 +340,25 @@ export const createRuntimeChatService = (
     messages: UIMessage[],
     input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
   ): Promise<Response> => {
+    const streamStartedAt = Date.now();
     const normalizedMessages = normalizeUiMessages(messages);
+    const chatId = resolveChatId(input?.chatId);
+    deps.logger?.info("chat:stream_start", {
+      chatId,
+      inputMessageCount: messages.length,
+      normalizedMessageCount: normalizedMessages.length,
+      sessionId: trimOrUndefinedValue(input?.sessionId) ?? null,
+    });
+
+    const modelResolveStartedAt = Date.now();
     const model = await resolveModel();
+    deps.logger?.info("chat:model_ready", {
+      chatId,
+      durationMs: Date.now() - modelResolveStartedAt,
+    });
+
     const toolNames = listToolNames();
     const tools: Record<string, any> = buildActionTools(deps);
-    const chatId = resolveChatId(input?.chatId);
     const now = Date.now();
     const existingConversation = deps.stateStore.getConversation(chatId);
     deps.stateStore.saveConversation({
@@ -306,56 +369,135 @@ export const createRuntimeChatService = (
       createdAt: existingConversation?.createdAt ?? now,
       updatedAt: now,
     });
+
     if (workspaceToolsEnabled) {
+      const workspaceToolsStartedAt = Date.now();
       workspaceToolPromise ??= createWorkspaceBashTools({
         workspaceRootDirectory,
         actor: "agent",
       });
       Object.assign(tools, await workspaceToolPromise);
+      deps.logger?.info("chat:workspace_tools_ready", {
+        chatId,
+        durationMs: Date.now() - workspaceToolsStartedAt,
+      });
     }
-    const result = streamWithModel({
-      model,
-      system: await buildSystemPrompt(deps, toolNames),
-      messages: await convertMessages(normalizedMessages),
-      stopWhen: stepCountIs(12),
-      tools,
-    });
+    try {
+      const prepareModelInputStartedAt = Date.now();
+      const systemPrompt = await buildSystemPrompt(deps, toolNames);
+      const modelMessages = await convertMessages(normalizedMessages);
+      deps.logger?.info("chat:model_input_ready", {
+        chatId,
+        durationMs: Date.now() - prepareModelInputStartedAt,
+        toolCount: Object.keys(tools).length,
+        systemPromptChars: systemPrompt.length,
+      });
 
-    return result.toUIMessageStreamResponse({
-      headers: withChatHeaders(input?.headers, chatId),
-      originalMessages: normalizedMessages,
-      onFinish: ({ messages: finalMessages }) => {
-        const updatedAt = Date.now();
-        const conversation = deps.stateStore.getConversation(chatId);
-        deps.stateStore.saveConversation({
-          id: chatId,
-          sessionId: conversation?.sessionId ?? trimOrUndefinedValue(input?.sessionId),
-          title: conversation?.title ?? sanitizeConversationTitle(input?.conversationTitle, finalMessages),
-          summary: conversation?.summary,
-          createdAt: conversation?.createdAt ?? updatedAt,
-          updatedAt,
-        });
+      const streamBuildStartedAt = Date.now();
+      const result = streamWithModel({
+        model,
+        system: systemPrompt,
+        messages: modelMessages,
+        stopWhen: stepCountIs(12),
+        tools,
+      });
+      deps.logger?.info("chat:model_stream_initialized", {
+        chatId,
+        durationMs: Date.now() - streamBuildStartedAt,
+      });
 
-        for (const [index, message] of finalMessages.entries()) {
-          const content = extractUiMessageText(message).trim();
-          if (content.length === 0) {
-            continue;
+      const response = result.toUIMessageStreamResponse({
+        headers: withChatHeaders(input?.headers, chatId),
+        originalMessages: normalizedMessages,
+        onFinish: ({ messages: finalMessages }) => {
+          const updatedAt = Date.now();
+          const conversation = deps.stateStore.getConversation(chatId);
+          deps.stateStore.saveConversation({
+            id: chatId,
+            sessionId: conversation?.sessionId ?? trimOrUndefinedValue(input?.sessionId),
+            title: conversation?.title ?? sanitizeConversationTitle(input?.conversationTitle, finalMessages),
+            summary: conversation?.summary,
+            createdAt: conversation?.createdAt ?? updatedAt,
+            updatedAt,
+          });
+
+          for (const [index, message] of finalMessages.entries()) {
+            const content = extractUiMessageText(message).trim();
+            if (content.length === 0) {
+              continue;
+            }
+
+            deps.stateStore.saveChatMessage({
+              id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
+              conversationId: chatId,
+              role: message.role,
+              content,
+              metadata:
+                message.metadata && typeof message.metadata === "object"
+                  ? (message.metadata as Record<string, unknown>)
+                  : undefined,
+              createdAt: updatedAt + index,
+            });
           }
 
-          deps.stateStore.saveChatMessage({
-            id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
-            conversationId: chatId,
-            role: message.role,
-            content,
-            metadata:
-              message.metadata && typeof message.metadata === "object"
-                ? (message.metadata as Record<string, unknown>)
-                : undefined,
-            createdAt: updatedAt + index,
+          deps.logger?.info("chat:stream_finish", {
+            chatId,
+            durationMs: Date.now() - streamStartedAt,
+            finalMessageCount: finalMessages.length,
           });
-        }
-      },
-    });
+        },
+      });
+
+      if (!response.body) {
+        return response;
+      }
+
+      let firstChunkAt: number | null = null;
+      let chunkCount = 0;
+      let byteCount = 0;
+      const monitoredBody = response.body.pipeThrough(
+        new TransformStream<Uint8Array, Uint8Array>({
+          transform: (chunk, controller) => {
+            if (firstChunkAt === null) {
+              firstChunkAt = Date.now();
+              deps.logger?.info("chat:model_first_chunk", {
+                chatId,
+                durationMs: firstChunkAt - streamStartedAt,
+              });
+            }
+            chunkCount += 1;
+            byteCount += chunk.byteLength;
+            controller.enqueue(chunk);
+          },
+          flush: () => {
+            deps.logger?.info("chat:model_stream_closed", {
+              chatId,
+              durationMs: Date.now() - streamStartedAt,
+              chunkCount,
+              bytes: byteCount,
+            });
+          },
+        }),
+      );
+
+      return new Response(monitoredBody, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    } catch (error) {
+      deps.logger?.error("chat:stream_fail", {
+        chatId,
+        durationMs: Date.now() - streamStartedAt,
+        error: error instanceof Error ? error.message : String(error),
+        payload: serializeForLog({
+          sessionId: trimOrUndefinedValue(input?.sessionId) ?? null,
+          normalizedMessageCount: normalizedMessages.length,
+          lastMessage: normalizedMessages.at(-1)?.parts ?? null,
+        }),
+      });
+      throw error;
+    }
   };
 
   return {

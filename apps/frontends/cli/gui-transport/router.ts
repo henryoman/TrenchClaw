@@ -16,31 +16,83 @@ import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 
 const toErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+const toErrorPayload = (error: unknown): Record<string, unknown> => {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack ?? null,
+      cause:
+        error.cause instanceof Error
+          ? { name: error.cause.name, message: error.cause.message, stack: error.cause.stack ?? null }
+          : error.cause ?? null,
+    };
+  }
+  return { value: error };
+};
 
 export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request: Request) => Promise<Response>) => {
   return async (request: Request) => {
     const url = new URL(request.url);
+    const requestId = crypto.randomUUID().slice(0, 8);
+    const startedAt = Date.now();
+    const logResponse = (response: Response): Response => {
+      console.log(
+        `[api] [${requestId}] ${request.method} ${url.pathname}${url.search} -> ${response.status} (${Date.now() - startedAt}ms)`,
+      );
+      return response;
+    };
+    console.log(`[api] [${requestId}] ${request.method} ${url.pathname}${url.search} <- start`);
 
     if (request.method === "OPTIONS" && (url.pathname.startsWith("/api/gui/") || url.pathname === "/api/chat")) {
-      return new Response(null, {
+      return logResponse(new Response(null, {
         status: 204,
         headers: CORS_HEADERS,
-      });
+      }));
     }
 
     if (request.method === "POST" && url.pathname === "/api/chat") {
       const payload = await parseUiChatRequest(request);
       if (!payload) {
-        return Response.json({ error: "Invalid chat payload" }, { status: 400, headers: CORS_HEADERS });
+        return logResponse(Response.json({ error: "Invalid chat payload" }, { status: 400, headers: CORS_HEADERS }));
       }
+      console.log(
+        `[api] [${requestId}] chat payload messages=${payload.messages.length} chatId=${payload.chatId ?? "auto"} title=${payload.conversationTitle ?? "n/a"}`,
+      );
 
       try {
-        return await streamChat(context, payload.messages, {
+        return logResponse(await streamChat(context, payload.messages, {
           chatId: payload.chatId,
           conversationTitle: payload.conversationTitle,
-        });
+        }));
       } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+        context.addActivity("runtime", `Chat failed: ${toErrorMessage(error)}`);
+        console.error("[api/chat] stream failed", toErrorPayload(error));
+        return logResponse(Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS }));
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/gui/client-error") {
+      try {
+        const payload = await request.json();
+        const source =
+          payload && typeof payload === "object" && "source" in payload && typeof payload.source === "string"
+            ? payload.source
+            : "unknown";
+        const message =
+          payload && typeof payload === "object" && "message" in payload && typeof payload.message === "string"
+            ? payload.message
+            : "Unknown client error";
+        const metadata =
+          payload && typeof payload === "object" && "metadata" in payload && payload.metadata && typeof payload.metadata === "object"
+            ? payload.metadata
+            : undefined;
+        const summary = `Client error [${source}]: ${message}`;
+        context.addActivity("runtime", summary);
+        console.error("[client-error]", summary, metadata ?? {});
+        return Response.json({ ok: true }, { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
       }
     }
 
@@ -58,7 +110,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
     }
 
     if (request.method === "GET" && url.pathname === "/api/gui/bootstrap") {
-      return Response.json(getBootstrap(context), { headers: CORS_HEADERS });
+      return Response.json(await getBootstrap(context), { headers: CORS_HEADERS });
     }
 
     if (request.method === "GET" && url.pathname === "/api/gui/queue") {
@@ -179,6 +231,6 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    return new Response("Not Found", { status: 404, headers: CORS_HEADERS });
+    return logResponse(new Response("Not Found", { status: 404, headers: CORS_HEADERS }));
   };
 };

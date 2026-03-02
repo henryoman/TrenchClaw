@@ -129,6 +129,7 @@ const storageSchema = z.object({
     directory: z.string().min(1),
     agentId: z.string().min(1),
     source: z.string().min(1),
+    reuseSessionOnBoot: z.boolean(),
   }),
   memory: z.object({
     enabled: z.boolean(),

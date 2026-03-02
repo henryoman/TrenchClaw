@@ -118,46 +118,74 @@ export const resolveLlmProviderConfigFromEnv = (): LlmProviderConfig | null => {
 
 export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderConfig | null> => {
   const vaultData = await readVaultData();
-  const provider = resolveProvider(trimOrUndefined(process.env.TRENCHCLAW_AI_PROVIDER) ?? readVaultString(vaultData, "llm/provider"));
+  const tryProvider = (provider: LlmProvider): LlmProviderConfig | null => {
+    if (provider === "openai") {
+      const apiKey = readVaultString(vaultData, "llm/openai/api-key");
+      if (!apiKey) {
+        return null;
+      }
+      return {
+        provider,
+        apiKey,
+        model: readVaultString(vaultData, "llm/openai/model") ?? defaultModelByProvider.openai,
+        baseURL: readVaultString(vaultData, "llm/openai/base-url"),
+      };
+    }
 
-  if (provider === "openai") {
-    const apiKey = readVaultString(vaultData, "llm/openai/api-key");
-    if (!apiKey) {
+    if (provider === "openrouter") {
+      const apiKey = readVaultString(vaultData, "llm/openrouter/api-key");
+      if (!apiKey) {
+        return null;
+      }
+      return {
+        provider,
+        apiKey,
+        model: readVaultString(vaultData, "llm/openrouter/model") ?? defaultModelByProvider.openrouter,
+        baseURL: readVaultString(vaultData, "llm/openrouter/base-url") ?? "https://openrouter.ai/api/v1",
+      };
+    }
+
+    const apiKey = readVaultString(vaultData, "llm/openai-compatible/api-key");
+    const baseURL = readVaultString(vaultData, "llm/openai-compatible/base-url");
+    if (!apiKey || !baseURL) {
       return null;
     }
     return {
       provider,
       apiKey,
-      model: readVaultString(vaultData, "llm/openai/model") ?? defaultModelByProvider.openai,
-      baseURL: readVaultString(vaultData, "llm/openai/base-url"),
+      baseURL: z.string().url().parse(baseURL),
+      model: readVaultString(vaultData, "llm/openai-compatible/model") ?? defaultModelByProvider["openai-compatible"],
     };
-  }
-
-  if (provider === "openrouter") {
-    const apiKey = readVaultString(vaultData, "llm/openrouter/api-key");
-    if (!apiKey) {
-      return null;
-    }
-    return {
-      provider,
-      apiKey,
-      model: readVaultString(vaultData, "llm/openrouter/model") ?? defaultModelByProvider.openrouter,
-      baseURL: readVaultString(vaultData, "llm/openrouter/base-url") ?? "https://openrouter.ai/api/v1",
-    };
-  }
-
-  const apiKey = readVaultString(vaultData, "llm/openai-compatible/api-key");
-  const baseURL = readVaultString(vaultData, "llm/openai-compatible/base-url");
-  if (!apiKey || !baseURL) {
-    return null;
-  }
-
-  return {
-    provider,
-    apiKey,
-    baseURL: z.string().url().parse(baseURL),
-    model: readVaultString(vaultData, "llm/openai-compatible/model") ?? defaultModelByProvider["openai-compatible"],
   };
+
+  const envProviderRaw = trimOrUndefined(process.env.TRENCHCLAW_AI_PROVIDER);
+  const vaultProviderRaw = readVaultString(vaultData, "llm/provider");
+  const preferredProviders: LlmProvider[] = [];
+
+  if (envProviderRaw) {
+    preferredProviders.push(resolveProvider(envProviderRaw));
+  }
+  if (vaultProviderRaw) {
+    const resolved = resolveProvider(vaultProviderRaw);
+    if (!preferredProviders.includes(resolved)) {
+      preferredProviders.push(resolved);
+    }
+  }
+
+  for (const fallbackProvider of LLM_PROVIDERS) {
+    if (!preferredProviders.includes(fallbackProvider)) {
+      preferredProviders.push(fallbackProvider);
+    }
+  }
+
+  for (const provider of preferredProviders) {
+    const config = tryProvider(provider);
+    if (config) {
+      return config;
+    }
+  }
+
+  return null;
 };
 
 export const resolveLlmProviderConfig = async (): Promise<LlmProviderConfig | null> => {

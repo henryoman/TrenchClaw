@@ -32,6 +32,15 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+body.site-root {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.site-body {
+  display: contents;
+}
+
 .logo-white {
   filter: brightness(0) invert(1) saturate(0);
 }

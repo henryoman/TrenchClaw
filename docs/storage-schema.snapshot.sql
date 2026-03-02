@@ -35,6 +35,20 @@ CREATE TABLE "http_cache" (
   "expires_at" INTEGER
 );
 
+CREATE TABLE "instance_facts" (
+  "id" TEXT PRIMARY KEY,
+  "instance_id" TEXT NOT NULL,
+  "fact_key" TEXT NOT NULL,
+  "fact_value_json" TEXT NOT NULL,
+  "confidence" REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  "source" TEXT NOT NULL,
+  "source_message_id" TEXT,
+  "created_at" INTEGER NOT NULL,
+  "updated_at" INTEGER NOT NULL,
+  "expires_at" INTEGER CHECK (expires_at IS NULL OR expires_at >= 0),
+  UNIQUE(instance_id, fact_key)
+);
+
 CREATE TABLE "jobs" (
   "id" TEXT PRIMARY KEY,
   "bot_id" TEXT NOT NULL,
@@ -107,6 +121,10 @@ CREATE INDEX "idx_conversations_updated_at" ON "conversations"("updated_at");
 CREATE INDEX "idx_http_cache_expires_at" ON "http_cache"("expires_at");
 
 CREATE INDEX "idx_http_cache_source_endpoint" ON "http_cache"("source", "endpoint");
+
+CREATE INDEX "idx_instance_facts_expires_at" ON "instance_facts"("expires_at");
+
+CREATE INDEX "idx_instance_facts_instance_updated" ON "instance_facts"("instance_id", "updated_at");
 
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
 

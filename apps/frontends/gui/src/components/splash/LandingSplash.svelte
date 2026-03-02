@@ -7,15 +7,20 @@
   export let busy = false;
   export let onRetry: () => void;
   export let onCreate: () => void;
+  export let onLogin: () => void;
 </script>
 
 <main class="splash-shell">
   <RetroCard center={true}>
     <h1>TrenchClaw</h1>
-    <RetroButton variant="secondary" disabled={busy} on:click={onRetry}>
-      {busy ? "Checking Runtime..." : "Retry Runtime Check"}
-    </RetroButton>
-    <RetroButton on:click={onCreate}>Create New Instance</RetroButton>
+    <p class="tagline">Runtime instance operator</p>
+    <div class="actions">
+      <RetroButton disabled={busy} on:click={onCreate}>Create Instance</RetroButton>
+      <RetroButton variant="secondary" disabled={busy} on:click={onLogin}>Log In</RetroButton>
+      <RetroButton variant="secondary" disabled={busy} on:click={onRetry}>
+        {busy ? "Checking Runtime..." : "Retry Runtime Check"}
+      </RetroButton>
+    </div>
     {#if error}
       <p class="error">{error}</p>
     {/if}
@@ -38,6 +43,20 @@
     font-size: 1rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+  }
+
+  .tagline {
+    margin: 0;
+    color: var(--tc-color-gray-1);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .actions {
+    display: grid;
+    width: min(320px, 100%);
+    gap: var(--tc-space-2);
   }
 
   .error {

@@ -1,6 +1,6 @@
 :root {
   --tc-font-ui: "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
-  --tc-font-display: "Press Start 2P", "IBM Plex Mono", "JetBrains Mono", monospace;
+  --tc-font-display: "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
 
   --tc-color-black: #000000;
   --tc-color-black-2: #050505;

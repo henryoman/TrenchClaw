@@ -86,10 +86,10 @@ All runtime log sinks are file-backed and write through a dedicated Bun worker q
 : Writes concise top-level runtime summaries into daily files (`summary/<YYYY-MM-DD>.log`), focused on runtime lifecycle, completed data downloads, and executed trades.
 
 - `file-event-log.ts`
-: Writes one JSON event file per event into `storage.files.eventsDirectory`.
+: Appends structured event JSONL lines into daily files (`events/<YYYY-MM-DD>.jsonl`).
 
 - `session-log-store.ts`
-: Session index (`sessions.json`) and per-session JSONL transcript files. This is the detailed event stream used for model/operator replay, including queue enqueue/dequeue/complete lifecycle events.
+: Session index (`sessions.json`) and per-session JSONL transcript files. By default, runtime boots with the same `sessionKey` append to the existing session file; set `storage.sessions.reuseSessionOnBoot=false` to force file rotation per boot.
 
 - `session-summary-store.ts`
 : Writes compact markdown summaries (`summaries/<sessionId>.md`) at runtime stop.

@@ -2,10 +2,13 @@
   import { onDestroy } from "svelte";
   import type { GuiUpsertSecretRequest } from "@trenchclaw/types";
   import { CREATE_NEW_OPTION } from "./config";
+  import { SAFETY_PROFILE_OPTIONS } from "./config/app-config";
   import {
     ChatPanel,
     CreateInstanceModal,
     LandingSplash,
+    LoadingSplash,
+    LoginSplash,
     QueuePanel,
     SecretsPanel,
     SummaryPanel,
@@ -48,7 +51,9 @@
   });
 </script>
 
-{#if runtime.state.phase === "landing"}
+{#if runtime.state.phase === "loading"}
+  <LoadingSplash runtimeStatus={runtime.state.runtimeStatus} />
+{:else if runtime.state.phase === "landing"}
   <LandingSplash
     runtimeStatus={runtime.state.runtimeStatus}
     error={runtime.state.splashError}
@@ -57,6 +62,22 @@
       void runtime.initializeSplash();
     }}
     onCreate={runtime.openCreateModal}
+    onLogin={() => {
+      void runtime.openLogin();
+    }}
+  />
+{:else if runtime.state.phase === "login"}
+  <LoginSplash
+    instances={runtime.state.availableInstances}
+    bind:selectedId={runtime.state.signInInstanceId}
+    bind:pin={runtime.state.signInPin}
+    createNewOption={CREATE_NEW_OPTION}
+    runtimeStatus={runtime.state.runtimeStatus}
+    error={runtime.state.splashError}
+    busy={runtime.state.splashBusy}
+    onSubmit={() => {
+      void runtime.submitSignIn(CREATE_NEW_OPTION);
+    }}
   />
 {:else}
   <WorkspaceShell
@@ -117,6 +138,9 @@
 {#if runtime.state.showCreateModal}
   <CreateInstanceModal
     bind:name={runtime.state.newInstanceName}
+    bind:safetyProfile={runtime.state.newInstanceSafetyProfile}
+    bind:pin={runtime.state.newInstancePin}
+    safetyProfileOptions={SAFETY_PROFILE_OPTIONS}
     busy={runtime.state.splashBusy}
     onCancel={runtime.closeCreateModal}
     onCreate={() => {

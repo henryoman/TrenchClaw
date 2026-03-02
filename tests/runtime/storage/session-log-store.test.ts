@@ -45,7 +45,7 @@ describe("SessionLogStore", () => {
     expect(jsonl.includes("\"type\":\"event\"")).toBe(true);
   });
 
-  test("creates a new session file when runtime restarts with same session key", async () => {
+  test("reuses existing session file when runtime restarts with same session key", async () => {
     const directory = path.resolve(
       process.cwd(),
       `apps/trenchclaw/src/ai/brain/db/.tests/session-log-${crypto.randomUUID()}`,
@@ -70,13 +70,44 @@ describe("SessionLogStore", () => {
     const secondActive = await second.open();
     await second.appendMessage("system", "second runtime");
 
-    expect(secondActive.sessionId).not.toBe(firstActive.sessionId);
+    expect(secondActive.sessionId).toBe(firstActive.sessionId);
     expect(await Bun.file(firstActive.sessionFilePath).exists()).toBe(true);
-    expect(await Bun.file(secondActive.sessionFilePath).exists()).toBe(true);
 
     const index = JSON.parse(await Bun.file(`${directory}/sessions.json`).text()) as {
       sessions: Record<string, { sessionId: string }>;
     };
     expect(index.sessions["agent:test-agent:main"]?.sessionId).toBe(secondActive.sessionId);
+  });
+
+  test("creates a new session file when reuseSessionOnBoot is disabled", async () => {
+    const directory = path.resolve(
+      process.cwd(),
+      `apps/trenchclaw/src/ai/brain/db/.tests/session-log-${crypto.randomUUID()}`,
+    );
+    sessionDirs.push(directory);
+
+    const first = new SessionLogStore({
+      directory,
+      agentId: "test-agent",
+      sessionKey: "agent:test-agent:main",
+      source: "test",
+      reuseSessionOnBoot: false,
+    });
+    const firstActive = await first.open();
+    await first.appendMessage("system", "first runtime");
+
+    const second = new SessionLogStore({
+      directory,
+      agentId: "test-agent",
+      sessionKey: "agent:test-agent:main",
+      source: "test",
+      reuseSessionOnBoot: false,
+    });
+    const secondActive = await second.open();
+    await second.appendMessage("system", "second runtime");
+
+    expect(secondActive.sessionId).not.toBe(firstActive.sessionId);
+    expect(await Bun.file(firstActive.sessionFilePath).exists()).toBe(true);
+    expect(await Bun.file(secondActive.sessionFilePath).exists()).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 # Knowledge Manifest
 
-Generated at: 2026-03-01T09:15:00.521Z
+Generated at: 2026-03-02T21:38:00.840Z
 Root: src/ai/brain/knowledge
 
 Use this inventory to decide which files to read.
@@ -26,7 +26,9 @@ knowledge/
 |   |   |   `-- form-automation.sh
 |   |   `-- SKILL.md
 |   `-- skills-lock.json
-|-- bun-shell.md
+|-- bun-secrets-docs.md
+|-- bun-shell-docs.md
+|-- bun-sqlite-docs.md
 |-- data-structures-as-json.md
 |-- helius.md
 |-- KNOWLEDGE_MANIFEST.md

@@ -3,3 +3,30 @@
 :global(main) {
   width: 100%;
 }
+
+:global(.gui-mount-error-shell) {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: var(--tc-color-black);
+  color: var(--tc-color-red);
+  font-family: var(--tc-font-ui);
+  padding: var(--tc-space-4);
+}
+
+:global(.gui-mount-error-card) {
+  max-width: 860px;
+  border: 1px solid var(--tc-color-red);
+  padding: var(--tc-space-4);
+}
+
+:global(.gui-mount-error-card h1) {
+  margin: 0 0 var(--tc-space-3) 0;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+:global(.gui-mount-error-card p) {
+  margin: 0;
+  line-height: 1.4;
+}

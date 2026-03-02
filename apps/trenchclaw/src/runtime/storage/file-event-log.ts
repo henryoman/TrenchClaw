@@ -32,10 +32,9 @@ export class RuntimeFileEventLog {
       payload,
     };
 
-    const safeType = String(type).replaceAll(":", "_");
-    const filename = `${timestamp}-${safeType}-${crypto.randomUUID()}.json`;
+    const filename = `${new Date(timestamp).toISOString().slice(0, 10)}.jsonl`;
     const filePath = path.join(this.directory, filename);
     assertRuntimeSystemWritePath(filePath, "write runtime event log");
-    void this.writer.writeUtf8(filePath, `${JSON.stringify(event)}\n`);
+    void this.writer.appendUtf8(filePath, `${JSON.stringify(event)}\n`);
   }
 }

@@ -4,6 +4,7 @@ import type {
   GuiQueueJobView,
   GuiQueueResponse,
 } from "@trenchclaw/types";
+import { resolveLlmProviderConfig } from "../../../../trenchclaw/src/ai/llm/config";
 import { ACTIVE_JOB_STATUSES, GUI_QUEUE_INCLUDE_HISTORY } from "../constants";
 import type { RuntimeGuiDomainContext } from "../contracts";
 
@@ -18,12 +19,15 @@ export const mapJobToView = (job: ReturnType<RuntimeGuiDomainContext["runtime"][
   cyclesCompleted: job.cyclesCompleted,
 });
 
-export const getBootstrap = (context: RuntimeGuiDomainContext): GuiBootstrapResponse => ({
-  profile: context.runtime.settings.profile,
-  llmEnabled: context.runtime.llm !== null,
-  activeInstance: context.getActiveInstance(),
-  runtime: context.runtime.describe(),
-});
+export const getBootstrap = async (context: RuntimeGuiDomainContext): Promise<GuiBootstrapResponse> => {
+  const llmConfig = await resolveLlmProviderConfig();
+  return {
+    profile: context.runtime.settings.profile,
+    llmEnabled: llmConfig !== null,
+    activeInstance: context.getActiveInstance(),
+    runtime: context.runtime.describe(),
+  };
+};
 
 export const getQueue = (context: RuntimeGuiDomainContext): GuiQueueResponse => {
   const jobs = context.runtime.stateStore

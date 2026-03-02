@@ -113,6 +113,8 @@ const normalizeRuntimeSettings = (
   const trading = isRecord(candidate.trading) ? candidate.trading : {};
   const wallet = isRecord(candidate.wallet) ? candidate.wallet : {};
   const agent = isRecord(candidate.agent) ? candidate.agent : {};
+  const storage = isRecord(candidate.storage) ? candidate.storage : {};
+  const sessionsStorage = isRecord(storage.sessions) ? storage.sessions : {};
   const rpc = isRecord(candidate.rpc) ? candidate.rpc : {};
   const rpcProviders = isRecord(rpc.providers) ? rpc.providers : {};
   const primaryRpcName = toStringValue(rpc.primaryRpc, "primary");
@@ -276,6 +278,7 @@ const normalizeRuntimeSettings = (
         directory: resolveFromAppRoot("src/ai/brain/db/sessions"),
         agentId: "trenchclaw",
         source: "cli",
+        reuseSessionOnBoot: toBooleanValue(sessionsStorage.reuseSessionOnBoot, true),
       },
       memory: {
         enabled: true,

@@ -42,6 +42,7 @@ Treat this section as the authoritative list of currently available action tools
 - Do not enumerate all unavailable tools unless the operator explicitly asks for the full list.
 
 ## Output Pattern
+Use this structure for planning/execution decisions, not casual chat.
 1. Status + summary
 2. Objective
 3. Plan (ordered steps)

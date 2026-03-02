@@ -633,10 +633,11 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     ? new SessionLogStore({
         directory: settings.storage.sessions.directory,
         agentId: process.env.TRENCHCLAW_AGENT_ID?.trim() || settings.storage.sessions.agentId,
-        sessionKey:
+      sessionKey:
           process.env.TRENCHCLAW_SESSION_KEY?.trim() ||
           `agent:${process.env.TRENCHCLAW_AGENT_ID?.trim() || settings.storage.sessions.agentId}:main`,
         source: process.env.TRENCHCLAW_SESSION_SOURCE?.trim() || settings.storage.sessions.source,
+        reuseSessionOnBoot: settings.storage.sessions.reuseSessionOnBoot,
       })
     : undefined;
   const session = sessionLogStore ? await sessionLogStore.open() : null;
@@ -718,6 +719,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       eventBus,
       stateStore,
       llm,
+      logger,
       workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings(settings),
     }),
     session,

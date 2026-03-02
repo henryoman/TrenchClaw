@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, afterAll, describe, expect, test } from "bun:test";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { InMemoryRuntimeEventBus } from "../../apps/trenchclaw/src/ai";
@@ -8,6 +8,7 @@ import { RuntimeGuiTransport } from "../../apps/frontends/cli/gui-transport";
 
 const CORE_APP_ROOT = path.resolve("/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw");
 const VAULT_FILE_PATH = path.join(CORE_APP_ROOT, "src/ai/brain/protected/no-read/vault.json");
+const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
 
 const readJson = async (filePath: string): Promise<Record<string, unknown>> => {
   const text = await readFile(filePath, "utf8");
@@ -50,6 +51,7 @@ const buildTransport = (): RuntimeGuiTransport => {
 describe("RuntimeGuiTransport", () => {
   let originalVaultExists = false;
   let originalVaultText = "";
+  let originalInstanceFileNames = new Set<string>();
 
   const restoreVault = async (): Promise<void> => {
     await mkdir(path.dirname(VAULT_FILE_PATH), { recursive: true, mode: 0o700 });
@@ -58,6 +60,20 @@ describe("RuntimeGuiTransport", () => {
       return;
     }
     await rm(VAULT_FILE_PATH, { force: true });
+  };
+
+  const listInstanceFileNames = async (): Promise<string[]> => {
+    await mkdir(INSTANCE_DIRECTORY, { recursive: true, mode: 0o700 });
+    const entries = await readdir(INSTANCE_DIRECTORY, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && /^user-\d+\.json$/u.test(entry.name))
+      .map((entry) => entry.name);
+  };
+
+  const cleanupCreatedInstanceFiles = async (): Promise<void> => {
+    const currentFiles = await listInstanceFileNames();
+    const filesToRemove = currentFiles.filter((fileName) => !originalInstanceFileNames.has(fileName));
+    await Promise.all(filesToRemove.map((fileName) => rm(path.join(INSTANCE_DIRECTORY, fileName), { force: true })));
   };
 
   beforeAll(async () => {
@@ -70,14 +86,17 @@ describe("RuntimeGuiTransport", () => {
       }
       originalVaultExists = false;
     }
+    originalInstanceFileNames = new Set(await listInstanceFileNames());
   });
 
   beforeEach(async () => {
     await restoreVault();
+    await cleanupCreatedInstanceFiles();
   });
 
   afterAll(async () => {
     await restoreVault();
+    await cleanupCreatedInstanceFiles();
   });
 
   test("streamChat delegates to runtime.chat.stream with CORS headers", async () => {
@@ -236,6 +255,91 @@ describe("RuntimeGuiTransport", () => {
     expect(payload.completed).toBe(true);
     expect(payload.status).toBe("pending");
     expect(payload.result.message).toBe("queue-model-test");
+  });
+
+  test("create instance persists safety profile and PIN requirement", async () => {
+    const transport = buildTransport();
+    const handler = transport.createApiHandler();
+
+    const createResponse = await handler(
+      new Request("http://localhost/api/gui/instances", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Ops Vault",
+          safetyProfile: "safe",
+          userPin: "2468",
+        }),
+      }),
+    );
+
+    expect(createResponse.status).toBe(200);
+    const createPayload = (await createResponse.json()) as {
+      instance: { localInstanceId: string; name: string; safetyProfile: string; userPinRequired: boolean };
+    };
+    expect(createPayload.instance.name).toBe("Ops Vault");
+    expect(createPayload.instance.safetyProfile).toBe("safe");
+    expect(createPayload.instance.userPinRequired).toBe(true);
+
+    const listResponse = await handler(new Request("http://localhost/api/gui/instances", { method: "GET" }));
+    expect(listResponse.status).toBe(200);
+    const listPayload = (await listResponse.json()) as {
+      instances: Array<{ localInstanceId: string; safetyProfile: string; userPinRequired: boolean }>;
+    };
+    const created = listPayload.instances.find((instance) => instance.localInstanceId === createPayload.instance.localInstanceId);
+    expect(created).toBeDefined();
+    expect(created?.safetyProfile).toBe("safe");
+    expect(created?.userPinRequired).toBe(true);
+  });
+
+  test("sign in endpoint accepts valid PIN and rejects invalid PIN", async () => {
+    const transport = buildTransport();
+    const handler = transport.createApiHandler();
+
+    const createResponse = await handler(
+      new Request("http://localhost/api/gui/instances", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "PIN Desk",
+          safetyProfile: "dangerous",
+          userPin: "1357",
+        }),
+      }),
+    );
+    expect(createResponse.status).toBe(200);
+    const createPayload = (await createResponse.json()) as { instance: { localInstanceId: string } };
+
+    const invalidSignInResponse = await handler(
+      new Request("http://localhost/api/gui/instances/sign-in", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          localInstanceId: createPayload.instance.localInstanceId,
+          userPin: "0000",
+        }),
+      }),
+    );
+    expect(invalidSignInResponse.status).toBe(401);
+    const invalidPayload = (await invalidSignInResponse.json()) as { error: string };
+    expect(invalidPayload.error).toContain("Invalid PIN");
+
+    const validSignInResponse = await handler(
+      new Request("http://localhost/api/gui/instances/sign-in", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          localInstanceId: createPayload.instance.localInstanceId,
+          userPin: "1357",
+        }),
+      }),
+    );
+    expect(validSignInResponse.status).toBe(200);
+    const validPayload = (await validSignInResponse.json()) as {
+      instance: { localInstanceId: string; userPinRequired: boolean };
+    };
+    expect(validPayload.instance.localInstanceId).toBe(createPayload.instance.localInstanceId);
+    expect(validPayload.instance.userPinRequired).toBe(true);
   });
 
   test("chat-triggered model flow surfaces queue + activity log updates", async () => {

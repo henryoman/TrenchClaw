@@ -1,7 +1,0 @@
-# Agent capability override layer.
-# This file is intentionally limited to agent-level ability toggles.
-# Runtime tuning, strategy/routine controls, and deep system settings are not applied
-# from here in safe/dangerous profiles.
-
-agent:
-  enabled: true

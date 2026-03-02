@@ -177,6 +177,18 @@ export const createChatController = () => {
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_CHAT_ERROR;
       console.error(errorText);
+      try {
+        await runtimeApi.reportClientError({
+          source: "gui-chat",
+          message: errorText,
+          metadata: {
+            chatStatus: chat.status,
+            conversationId: state.activeConversationId,
+          },
+        });
+      } catch {
+        // Best effort only; keep UI responsive even when runtime cannot accept error telemetry.
+      }
     }
   };
 

@@ -7,6 +7,7 @@ import type {
   GuiSecretOptionView,
 } from "@trenchclaw/types";
 import {
+  DEFAULT_NEW_INSTANCE_SAFETY_PROFILE,
   DEFAULT_CREATE_INSTANCE_ERROR,
   DEFAULT_RUNTIME_ERROR,
   DEFAULT_SIGN_IN_ERROR,
@@ -14,9 +15,16 @@ import {
   RUNTIME_REFRESH_INTERVAL_MS,
   RUNTIME_STATUS_CHECKING,
   RUNTIME_STATUS_OFFLINE,
+  type RuntimeSafetyProfile,
   STARTUP_GUARD_TIMEOUT_MS,
 } from "../../config/app-config";
 import { runtimeApi } from "../../runtime-api";
+import {
+  applyCreateInstanceSuccess,
+  buildCreateInstanceRequest,
+  resolvePhaseAfterBootstrap,
+  resolveSignInAction,
+} from "./runtime-controller.logic";
 
 export type AppPhase = "loading" | "landing" | "login" | "app";
 
@@ -29,6 +37,8 @@ interface RuntimeUiState {
   splashBusy: boolean;
   showCreateModal: boolean;
   newInstanceName: string;
+  newInstanceSafetyProfile: RuntimeSafetyProfile;
+  newInstancePin: string;
   signInInstanceId: string;
   signInPin: string;
   queueJobs: GuiQueueJobView[];
@@ -58,6 +68,8 @@ export const createRuntimeController = () => {
     splashBusy: false,
     showCreateModal: false,
     newInstanceName: "",
+    newInstanceSafetyProfile: DEFAULT_NEW_INSTANCE_SAFETY_PROFILE,
+    newInstancePin: "",
     signInInstanceId: "",
     signInPin: "",
     queueJobs: [],
@@ -72,6 +84,15 @@ export const createRuntimeController = () => {
   });
 
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
+
+  const loadInstances = async (): Promise<void> => {
+    const response = await runtimeApi.instances();
+    state.availableInstances = response.instances;
+    if (response.instances.some((instance) => instance.localInstanceId === state.signInInstanceId)) {
+      return;
+    }
+    state.signInInstanceId = response.instances[0]?.localInstanceId ?? "";
+  };
 
   const loadAppData = async (): Promise<void> => {
     const [bootstrap, queue, activity] = await Promise.all([
@@ -134,13 +155,22 @@ export const createRuntimeController = () => {
     try {
       const bootstrap = await Promise.race([bootstrapPromise, timeoutPromise]);
       state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
-      if (bootstrap.activeInstance) {
+      if (resolvePhaseAfterBootstrap(bootstrap.activeInstance) === "app") {
+        if (!bootstrap.activeInstance) {
+          throw new Error("Missing active instance for app phase.");
+        }
         state.activeInstance = bootstrap.activeInstance;
+        state.phase = "app";
+        await loadAppData();
+        await loadSecrets();
+        startPolling();
+      } else {
+        state.activeInstance = null;
+        state.signInPin = "";
+        await loadInstances();
+        state.phase = "login";
+        stopPolling();
       }
-      state.phase = "app";
-      await loadAppData();
-      await loadSecrets();
-      startPolling();
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_RUNTIME_ERROR;
       state.runtimeStatus = RUNTIME_STATUS_OFFLINE;
@@ -155,7 +185,23 @@ export const createRuntimeController = () => {
   const openCreateModal = (): void => {
     state.splashError = "";
     state.newInstanceName = "";
+    state.newInstanceSafetyProfile = DEFAULT_NEW_INSTANCE_SAFETY_PROFILE;
+    state.newInstancePin = "";
     state.showCreateModal = true;
+  };
+
+  const openLogin = async (): Promise<void> => {
+    state.splashError = "";
+    state.splashBusy = true;
+    try {
+      await loadInstances();
+      state.phase = "login";
+    } catch (error) {
+      state.splashError = error instanceof Error ? error.message : DEFAULT_RUNTIME_ERROR;
+      state.phase = "landing";
+    } finally {
+      state.splashBusy = false;
+    }
   };
 
   const closeCreateModal = (): void => {
@@ -172,11 +218,19 @@ export const createRuntimeController = () => {
     state.splashBusy = true;
     state.splashError = "";
     try {
-      const created = await runtimeApi.createInstance({ name });
-      state.availableInstances = [created.instance, ...state.availableInstances];
-      state.signInInstanceId = created.instance.localInstanceId;
-      state.showCreateModal = false;
-      state.phase = "login";
+      const created = await runtimeApi.createInstance(
+        buildCreateInstanceRequest({
+          name,
+          safetyProfile: state.newInstanceSafetyProfile,
+          pin: state.newInstancePin,
+        }),
+      );
+      const nextState = applyCreateInstanceSuccess(state.availableInstances, created.instance);
+      state.availableInstances = nextState.availableInstances;
+      state.signInInstanceId = nextState.signInInstanceId;
+      state.signInPin = nextState.signInPin;
+      state.showCreateModal = nextState.showCreateModal;
+      state.phase = nextState.phase;
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_CREATE_INSTANCE_ERROR;
     } finally {
@@ -185,12 +239,13 @@ export const createRuntimeController = () => {
   };
 
   const submitSignIn = async (createNewOption: string): Promise<void> => {
-    if (!state.signInInstanceId) {
+    const signInAction = resolveSignInAction(state.signInInstanceId, createNewOption);
+    if (signInAction === "select-instance") {
       state.splashError = "Select an instance.";
       return;
     }
 
-    if (state.signInInstanceId === createNewOption) {
+    if (signInAction === "open-create") {
       openCreateModal();
       return;
     }
@@ -263,6 +318,8 @@ export const createRuntimeController = () => {
       state.secretEntries = state.secretEntries.map((entry) =>
         entry.optionId === result.entry.optionId ? result.entry : entry,
       );
+      const bootstrap = await runtimeApi.bootstrap();
+      state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
     } catch (error) {
       state.secretsError = error instanceof Error ? error.message : "Failed to save secret.";
     } finally {
@@ -297,6 +354,7 @@ export const createRuntimeController = () => {
     state,
     initializeSplash,
     openCreateModal,
+    openLogin,
     closeCreateModal,
     submitCreateInstance,
     submitSignIn,

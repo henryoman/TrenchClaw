@@ -18,7 +18,7 @@
 
 <main class="splash-shell">
   <RetroCard>
-    <h1>Select Instance</h1>
+    <h1>TrenchClaw</h1>
     <form
       class="form"
       on:submit|preventDefault={() => {
@@ -29,15 +29,17 @@
         <RetroSelect bind:value={selectedId}>
           <option value="">Select instance...</option>
           {#each instances as instance}
-            <option value={instance.localInstanceId}>{instance.name} ({instance.localInstanceId})</option>
+            <option value={instance.localInstanceId}>
+              {instance.name} ({instance.localInstanceId}) | {instance.safetyProfile}{instance.userPinRequired ? " | pin" : ""}
+            </option>
           {/each}
           <option value={createNewOption}>Create New Instance</option>
         </RetroSelect>
       </RetroField>
-      <RetroField label="Pin">
+      <RetroField label="PIN">
         <RetroInput bind:value={pin} placeholder="Pin if required" />
       </RetroField>
-      <RetroButton type="submit" disabled={busy}>Continue</RetroButton>
+      <RetroButton type="submit" disabled={busy}>{busy ? "Signing In..." : "Continue"}</RetroButton>
     </form>
     {#if error}
       <p class="error">{error}</p>
@@ -58,7 +60,7 @@
     margin: 0 0 var(--tc-space-3) 0;
     color: var(--tc-color-turquoise);
     font-family: var(--tc-font-display);
-    font-size: 0.9rem;
+    font-size: 1rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }

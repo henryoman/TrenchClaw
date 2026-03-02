@@ -111,4 +111,14 @@ export const runtimeApi = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
+  reportClientError: (input: {
+    source: string;
+    message: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<{ ok: true }> =>
+    fetchJson<{ ok: true }>(toRuntimeUrl(`${GUI_API_BASE_PATH}/client-error`), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
 };
