@@ -49,7 +49,8 @@
     "knowledge:skills:add": "bun run scripts/install-knowledge-skills.ts",
     "deps:root-install": "bun install && bun run deps:dupes",
     "systemd:install": "bun run --cwd apps/trenchclaw systemd:install",
-    "ci": "bun run lint && bun run typecheck && bun run test && bun run build"
+    "ci": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "wallet:vanity": "bun run --cwd apps/trenchclaw wallet:vanity"
   },
   "devDependencies": {
     "turbo": "^2.3.3"

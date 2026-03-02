@@ -15,7 +15,8 @@
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "test": "bun test ../../tests",
-    "build": "bun build src/index.ts --target bun --outdir dist"
+    "build": "bun build src/index.ts --target bun --outdir dist",
+    "wallet:vanity": "bun run src/solana/actions/wallet-based/create-wallets/create-vanity-wallet.ts"
   },
   "devDependencies": {
     "@types/bun": "latest",
