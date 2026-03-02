@@ -27,6 +27,7 @@ import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-si
 import { actionSequenceRoutine } from "../solana/routines/action-sequence";
 import { createWalletsRoutine } from "../solana/routines/create-wallets";
 import {
+  workspaceToolsEnabledByRuntimeSettings,
   getRuntimeActionCatalog,
   getRuntimeActionsRequiringUserConfirmation,
   isRuntimeActionEnabledBySettings,
@@ -717,7 +718,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       eventBus,
       stateStore,
       llm,
-      workspaceToolsEnabled: settings.agent.dangerously.allowFilesystemWrites,
+      workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings(settings),
     }),
     session,
     stop: () => {
