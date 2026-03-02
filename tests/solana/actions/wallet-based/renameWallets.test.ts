@@ -6,8 +6,14 @@ import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/acti
 import { renameWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/renameWallets";
 
 const createdPaths = new Set<string>();
+const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
 
 afterEach(async () => {
+  if (previousWalletLibraryPath === undefined) {
+    delete process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
+  } else {
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = previousWalletLibraryPath;
+  }
   for (const targetPath of createdPaths) {
     await rm(targetPath, { recursive: true, force: true });
   }
@@ -18,6 +24,7 @@ describe("renameWalletsAction", () => {
   test("renames walletPath in library and updates keypair walletPath", async () => {
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-wallet-library-${crypto.randomUUID()}.jsonl`);
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
     createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
     createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
 
@@ -29,7 +36,6 @@ describe("renameWalletsAction", () => {
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        walletLibraryFile,
         keypairGenerator: "bun",
       },
       output: {
@@ -44,7 +50,6 @@ describe("renameWalletsAction", () => {
     }
 
     const renameResult = await renameWalletsAction.execute({} as never, {
-      walletLibraryFile,
       renames: [{ from: "ops.wallet001", to: "ops.wallet-main" }],
       updateKeypairFiles: true,
     });
@@ -85,6 +90,7 @@ describe("renameWalletsAction", () => {
   test("rejects rename when target walletPath already exists", async () => {
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-conflict-wallet-library-${crypto.randomUUID()}.jsonl`);
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
     createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
     createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
 
@@ -96,7 +102,6 @@ describe("renameWalletsAction", () => {
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        walletLibraryFile,
         keypairGenerator: "bun",
       },
       output: {
@@ -113,7 +118,6 @@ describe("renameWalletsAction", () => {
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        walletLibraryFile,
         keypairGenerator: "bun",
       },
       output: {
@@ -123,7 +127,6 @@ describe("renameWalletsAction", () => {
     });
 
     const renameResult = await renameWalletsAction.execute({} as never, {
-      walletLibraryFile,
       updateKeypairFiles: true,
       renames: [{ from: "ops.one", to: "ops.two" }],
     });

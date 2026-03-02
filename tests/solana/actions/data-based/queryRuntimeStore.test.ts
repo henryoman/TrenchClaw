@@ -1,23 +1,28 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
 import { SqliteStateStore } from "../../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import { queryRuntimeStoreAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/queryRuntimeStore";
 
 const dbPaths: string[] = [];
+const RUNTIME_DB_DIRECTORY = fileURLToPath(new URL("../../../../apps/trenchclaw/src/ai/brain/db", import.meta.url));
+const createTestDbPath = (): string =>
+  path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-query-runtime-${crypto.randomUUID()}.db`);
 
 afterEach(() => {
   for (const dbPath of dbPaths.splice(0)) {
     const file = Bun.file(dbPath);
-    void file.delete();
-    void Bun.file(`${dbPath}-wal`).delete();
-    void Bun.file(`${dbPath}-shm`).delete();
+    void file.delete().catch(() => {});
+    void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
+    void Bun.file(`${dbPath}-shm`).delete().catch(() => {});
   }
 });
 
 describe("queryRuntimeStoreAction", () => {
   test("returns conversation and chat data through JSON request input", async () => {
-    const dbPath = `/tmp/trenchclaw-query-runtime-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath();
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({
@@ -72,7 +77,7 @@ describe("queryRuntimeStoreAction", () => {
   });
 
   test("supports multi-surface text search for conversations/messages/jobs/receipts", async () => {
-    const dbPath = `/tmp/trenchclaw-query-runtime-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath();
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({
@@ -151,7 +156,7 @@ describe("queryRuntimeStoreAction", () => {
   });
 
   test("returns runtime knowledge surface summary", async () => {
-    const dbPath = `/tmp/trenchclaw-query-runtime-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath();
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({

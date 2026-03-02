@@ -6,8 +6,7 @@ import {
   assertWithinBrainProtectedDirectory,
   resolveAbsolutePath,
 } from "../../../lib/wallet/protected-write-policy";
-
-const defaultWalletLibraryPath = "src/ai/brain/protected/wallet-library.jsonl";
+import { resolveWalletLibraryFilePath } from "./wallet-storage";
 
 const walletPathSchema = z
   .string()
@@ -15,7 +14,6 @@ const walletPathSchema = z
   .regex(/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/);
 
 const renameWalletsInputSchema = z.object({
-  walletLibraryFile: z.string().min(1).default(defaultWalletLibraryPath),
   updateKeypairFiles: z.boolean().default(true),
   renames: z
     .array(
@@ -64,7 +62,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
 
     try {
       const input = renameWalletsInputSchema.parse(rawInput);
-      const walletLibraryFilePath = resolveAbsolutePath(input.walletLibraryFile);
+      const walletLibraryFilePath = resolveWalletLibraryFilePath();
       assertWithinBrainProtectedDirectory(walletLibraryFilePath);
       await assertProtectedWriteAllowed({
         actor: _ctx.actor,

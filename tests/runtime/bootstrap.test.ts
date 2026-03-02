@@ -251,11 +251,14 @@ wallet:
               group: "blocked",
               startIndex: 1,
             },
+            storage: {
+              walletGroup: "core-wallets",
+              createGroupIfMissing: true,
+              keypairGenerator: "bun",
+            },
             output: {
-              directory: "src/ai/brain/protected/test-blocked/keypairs",
               filePrefix: "blocked",
               includeIndexInFileName: true,
-              walletLibraryFile: "src/ai/brain/protected/test-blocked/wallet-library.jsonl",
             },
           },
         },

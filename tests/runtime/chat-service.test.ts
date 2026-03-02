@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { UIMessage } from "ai";
 import { z } from "zod";
 
@@ -24,12 +26,15 @@ const makeActionResult = (input: {
 });
 
 const sqliteDbPaths: string[] = [];
+const RUNTIME_DB_DIRECTORY = fileURLToPath(new URL("../../apps/trenchclaw/src/ai/brain/db", import.meta.url));
+const createTestDbPath = (): string =>
+  path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-chat-runtime-${crypto.randomUUID()}.db`);
 
 afterEach(() => {
   for (const dbPath of sqliteDbPaths.splice(0)) {
-    void Bun.file(dbPath).delete();
-    void Bun.file(`${dbPath}-wal`).delete();
-    void Bun.file(`${dbPath}-shm`).delete();
+    void Bun.file(dbPath).delete().catch(() => {});
+    void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
+    void Bun.file(`${dbPath}-shm`).delete().catch(() => {});
   }
 });
 
@@ -280,7 +285,7 @@ describe("RuntimeChatService", () => {
   });
 
   test("persists chat history in SQLite across store reopen", async () => {
-    const dbPath = `/tmp/trenchclaw-chat-runtime-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath();
     sqliteDbPaths.push(dbPath);
     const stateStore = new SqliteStateStore({
       path: dbPath,

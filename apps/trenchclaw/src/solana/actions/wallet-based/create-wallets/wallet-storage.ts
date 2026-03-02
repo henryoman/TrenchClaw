@@ -11,6 +11,7 @@ export const walletGroupNameSchema = z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/)
 export const DEFAULT_WALLET_GROUP = "core-wallets";
 export const WALLET_KEYPAIRS_ROOT = "src/ai/brain/protected/keypairs";
 export const DEFAULT_WALLET_LIBRARY_PATH = "src/ai/brain/protected/wallet-library.jsonl";
+const WALLET_LIBRARY_PATH_ENV = "TRENCHCLAW_WALLET_LIBRARY_FILE";
 
 export const resolveWalletKeypairRootPath = (): string => {
   const absoluteRoot = resolveAbsolutePath(WALLET_KEYPAIRS_ROOT);
@@ -27,4 +28,11 @@ export const resolveWalletGroupDirectoryPath = (walletGroup: string): string => 
   }
   assertWithinBrainProtectedDirectory(groupDirectoryPath);
   return groupDirectoryPath;
+};
+
+export const resolveWalletLibraryFilePath = (): string => {
+  const configuredPath = process.env[WALLET_LIBRARY_PATH_ENV]?.trim();
+  const absolutePath = resolveAbsolutePath(configuredPath && configuredPath.length > 0 ? configuredPath : DEFAULT_WALLET_LIBRARY_PATH);
+  assertWithinBrainProtectedDirectory(absolutePath);
+  return absolutePath;
 };

@@ -15,7 +15,6 @@ describe("createWalletsRoutine", () => {
         storage: {
           walletGroup: "core-wallets",
           createGroupIfMissing: true,
-          walletLibraryFile: "src/ai/brain/protected/wallet-library.jsonl",
           keypairGenerator: "bun",
         },
         output: {

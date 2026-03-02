@@ -1,24 +1,29 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 import type { ActionResult } from "../../../apps/trenchclaw/src/ai/runtime/types/action";
 import { sqliteTables } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-schema";
 import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 
 const dbPaths: string[] = [];
+const RUNTIME_DB_DIRECTORY = fileURLToPath(new URL("../../../apps/trenchclaw/src/ai/brain/db", import.meta.url));
+const createTestDbPath = (name: string): string =>
+  path.join(RUNTIME_DB_DIRECTORY, `${name}-${crypto.randomUUID()}.db`);
 
 afterEach(() => {
   for (const dbPath of dbPaths.splice(0)) {
     const file = Bun.file(dbPath);
-    void file.delete();
-    void Bun.file(`${dbPath}-wal`).delete();
-    void Bun.file(`${dbPath}-shm`).delete();
+    void file.delete().catch(() => {});
+    void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
+    void Bun.file(`${dbPath}-shm`).delete().catch(() => {});
   }
 });
 
 describe("SqliteStateStore", () => {
   test("persists jobs and receipts", () => {
-    const dbPath = `/tmp/trenchclaw-store-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-store");
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({
@@ -61,7 +66,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("stores and reads OHLCV chart bars", () => {
-    const dbPath = `/tmp/trenchclaw-market-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-market");
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({
@@ -114,7 +119,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("stores and reads conversations and chat messages", () => {
-    const dbPath = `/tmp/trenchclaw-chat-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-chat");
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({
@@ -164,7 +169,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("creates conversation tables in migrations", () => {
-    const dbPath = `/tmp/trenchclaw-conversations-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-conversations");
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({
@@ -193,7 +198,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("sqlite zod table schemas match created sqlite tables", () => {
-    const dbPath = `/tmp/trenchclaw-schema-sync-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-schema-sync");
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({
@@ -223,7 +228,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("auto-sync adds missing columns on existing tables", () => {
-    const dbPath = `/tmp/trenchclaw-auto-sync-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-auto-sync");
     dbPaths.push(dbPath);
 
     const seedDb = new Database(dbPath, { create: true, strict: true });
@@ -259,7 +264,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("auto-sync adds queue metadata columns on existing jobs tables", () => {
-    const dbPath = `/tmp/trenchclaw-auto-sync-jobs-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-auto-sync-jobs");
     dbPaths.push(dbPath);
 
     const seedDb = new Database(dbPath, { create: true, strict: true });
@@ -295,7 +300,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("recovers interrupted running jobs on restart", () => {
-    const dbPath = `/tmp/trenchclaw-recover-running-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-recover-running");
     dbPaths.push(dbPath);
     const now = Date.now();
 
@@ -334,7 +339,7 @@ describe("SqliteStateStore", () => {
   });
 
   test("schema snapshot is available from store", () => {
-    const dbPath = `/tmp/trenchclaw-schema-snapshot-${crypto.randomUUID()}.db`;
+    const dbPath = createTestDbPath("trenchclaw-schema-snapshot");
     dbPaths.push(dbPath);
 
     const store = new SqliteStateStore({

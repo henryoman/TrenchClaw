@@ -7,13 +7,12 @@ import type { Action } from "../../../../ai/runtime/types/action";
 import {
   assertProtectedWriteAllowed,
   assertWithinBrainProtectedDirectory,
-  resolveAbsolutePath,
 } from "../../../lib/wallet/protected-write-policy";
 import {
   DEFAULT_WALLET_GROUP,
-  DEFAULT_WALLET_LIBRARY_PATH,
   resolveWalletGroupDirectoryPath,
   resolveWalletKeypairRootPath,
+  resolveWalletLibraryFilePath,
   walletGroupNameSchema,
 } from "./wallet-storage";
 
@@ -39,13 +38,11 @@ const createWalletsInputSchema = z.object({
     .object({
       walletGroup: walletGroupNameSchema.default(DEFAULT_WALLET_GROUP),
       createGroupIfMissing: z.boolean().default(true),
-      walletLibraryFile: z.string().min(1).default(DEFAULT_WALLET_LIBRARY_PATH),
       keypairGenerator: z.enum(["bun", "solana-cli"]).default("bun"),
     })
     .default({
       walletGroup: DEFAULT_WALLET_GROUP,
       createGroupIfMissing: true,
-      walletLibraryFile: DEFAULT_WALLET_LIBRARY_PATH,
       keypairGenerator: "bun",
     }),
   output: z
@@ -183,7 +180,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
       const walletGroup = input.storage.walletGroup;
       const keypairRootPath = resolveWalletKeypairRootPath();
       const outputDirectory = resolveWalletGroupDirectoryPath(walletGroup);
-      const walletLibraryFilePath = resolveAbsolutePath(input.storage.walletLibraryFile);
+      const walletLibraryFilePath = resolveWalletLibraryFilePath();
 
       assertWithinBrainProtectedDirectory(keypairRootPath);
       assertWithinBrainProtectedDirectory(outputDirectory);

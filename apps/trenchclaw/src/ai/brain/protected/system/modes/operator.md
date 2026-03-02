@@ -32,7 +32,7 @@ Treat this section as the authoritative list of currently available action tools
      - `privateKeyEncoding: "base64" | "hex" | "bytes"`
      - `walletLocator: { group: string, startIndex: number, wallet?: string }`
      - `walletPath?: "group.wallet"` (optional override for single wallet creation)
-     - `storage: { walletGroup: string, createGroupIfMissing: boolean, walletLibraryFile: string, keypairGenerator: "bun" | "solana-cli" }`
+     - `storage: { walletGroup: string, createGroupIfMissing: boolean, keypairGenerator: "bun" | "solana-cli" }`
      - `output: { filePrefix: string, includeIndexInFileName: boolean }`
 
 ### Enforcement Rules

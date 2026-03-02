@@ -5,8 +5,14 @@ import path from "node:path";
 import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWallets";
 
 const createdPaths = new Set<string>();
+const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
 
 afterEach(async () => {
+  if (previousWalletLibraryPath === undefined) {
+    delete process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
+  } else {
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = previousWalletLibraryPath;
+  }
   for (const targetPath of createdPaths) {
     await rm(targetPath, { recursive: true, force: true });
   }
@@ -17,6 +23,7 @@ describe("createWalletsAction", () => {
   test("creates wallets inside the selected wallet group directory and appends library metadata", async () => {
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
     createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
     createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
 
@@ -28,7 +35,6 @@ describe("createWalletsAction", () => {
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        walletLibraryFile,
         keypairGenerator: "bun",
       },
       output: {
@@ -70,15 +76,14 @@ describe("createWalletsAction", () => {
     expect(typeof keypairJson.privateKey).toBe("string");
   });
 
-  test("rejects wallet library paths outside protected directory", async () => {
+  test("rejects invalid wallet group names", async () => {
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
       includePrivateKey: false,
       privateKeyEncoding: "base64",
       storage: {
-        walletGroup: "uploaded-wallets",
+        walletGroup: "../uploaded-wallets",
         createGroupIfMissing: true,
-        walletLibraryFile: "./tmp/outside-protected/wallet-library.jsonl",
         keypairGenerator: "bun",
       },
       walletLocator: {
@@ -96,6 +101,6 @@ describe("createWalletsAction", () => {
       return;
     }
 
-    expect(result.error).toContain("Protected writes must stay under");
+    expect(result.error).toContain("Invalid");
   });
 });
