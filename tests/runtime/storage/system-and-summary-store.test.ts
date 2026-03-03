@@ -6,8 +6,20 @@ import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/se
 import { SessionSummaryStore } from "../../../apps/trenchclaw/src/runtime/storage/session-summary-store";
 import { SummaryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/summary-log-store";
 import { SystemLogStore } from "../../../apps/trenchclaw/src/runtime/storage/system-log-store";
+import { coreAppPath } from "../../helpers/core-paths";
 
 const tmpTargets: string[] = [];
+
+const waitForFileText = async (filePath: string, timeoutMs = 2_000): Promise<string> => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await Bun.file(filePath).exists()) {
+      return Bun.file(filePath).text();
+    }
+    await Bun.sleep(25);
+  }
+  throw new Error(`Timed out waiting for file: ${filePath}`);
+};
 
 afterEach(async () => {
   for (const target of tmpTargets.splice(0)) {
@@ -18,8 +30,8 @@ afterEach(async () => {
 describe("SystemLogStore + SessionSummaryStore", () => {
   test("writes runtime logger entries to daily system log files", async () => {
     const root = path.resolve(
-      process.cwd(),
-      `apps/trenchclaw/src/ai/brain/db/.tests/system-log-${crypto.randomUUID()}`,
+      coreAppPath("src/ai/brain/db/.tests"),
+      `system-log-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
 
@@ -39,15 +51,15 @@ describe("SystemLogStore + SessionSummaryStore", () => {
     unsubscribe();
 
     const logPath = `${root}/system/${new Date().toISOString().slice(0, 10)}.log`;
-    const content = await Bun.file(logPath).text();
+    const content = await waitForFileText(logPath);
     expect(content.includes("runtime:boot")).toBe(true);
     expect(content.includes("dangerous")).toBe(true);
   });
 
   test("creates compact markdown summaries for sessions", async () => {
     const root = path.resolve(
-      process.cwd(),
-      `apps/trenchclaw/src/ai/brain/db/.tests/session-summary-${crypto.randomUUID()}`,
+      coreAppPath("src/ai/brain/db/.tests"),
+      `session-summary-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
 
@@ -87,8 +99,8 @@ describe("SystemLogStore + SessionSummaryStore", () => {
 
   test("writes concise summary entries to daily files", async () => {
     const root = path.resolve(
-      process.cwd(),
-      `apps/trenchclaw/src/ai/brain/db/.tests/runtime-summary-${crypto.randomUUID()}`,
+      coreAppPath("src/ai/brain/db/.tests"),
+      `runtime-summary-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
 
@@ -103,7 +115,7 @@ describe("SystemLogStore + SessionSummaryStore", () => {
     });
 
     const logPath = `${root}/summary/${new Date().toISOString().slice(0, 10)}.log`;
-    const content = await Bun.file(logPath).text();
+    const content = await waitForFileText(logPath);
     expect(content.includes("TRADE")).toBe(true);
     expect(content.includes("trade:executed")).toBe(true);
     expect(content.includes("ultraSwap")).toBe(true);

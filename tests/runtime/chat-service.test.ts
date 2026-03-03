@@ -367,4 +367,101 @@ describe("RuntimeChatService", () => {
     expect(messages.some((entry) => entry.id === "assistant-sqlite-1")).toBe(true);
     reopened.close();
   });
+
+  test("maps provider auth failures to explicit runtime chat errors", async () => {
+    const registry = new ActionRegistry();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => {
+          throw new Error("AI_APICallError: User not found.");
+        }) as never,
+      },
+    );
+
+    await expect(
+      service.stream([
+        {
+          id: "user-auth-fail-1",
+          role: "user",
+          parts: [{ type: "text", text: "hello runtime" }],
+        },
+      ]),
+    ).rejects.toThrow("LLM authentication failed (OpenRouter: User not found).");
+  });
+
+  test("persists error-part-only assistant messages as runtime error text", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStreamResponse: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) => {
+            const assistantMessage = {
+              id: "assistant-error-only-1",
+              role: "assistant",
+              parts: [{ type: "error", errorText: "User not found." }],
+            } as unknown as UIMessage;
+            const original = options?.originalMessages ?? [];
+            options?.onFinish?.({
+              messages: [...original, assistantMessage],
+              isContinuation: false,
+              isAborted: false,
+              responseMessage: assistantMessage,
+              finishReason: "error",
+            });
+            return new Response("ok");
+          },
+        })) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "user-error-part-1",
+          role: "user",
+          parts: [{ type: "text", text: "ping runtime" }],
+        },
+      ],
+      { chatId: "chat-error-part-1" },
+    );
+
+    const persisted = stateStore.listChatMessages("chat-error-part-1", 10);
+    const assistant = persisted.find((message) => message.role === "assistant");
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toContain("Runtime error: User not found.");
+  });
 });

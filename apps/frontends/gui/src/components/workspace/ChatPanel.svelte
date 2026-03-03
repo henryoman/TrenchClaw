@@ -81,6 +81,8 @@
           {#each message.parts as part}
             {#if part.type === "text"}
               <p>{part.text}</p>
+            {:else if "errorText" in part}
+              <p class="error-text">Runtime error: {part.errorText}</p>
             {/if}
           {/each}
         </div>
@@ -267,6 +269,10 @@
 
   .bubble p {
     margin: 0;
+  }
+
+  .error-text {
+    color: var(--tc-color-red);
   }
 
   .chat-form {

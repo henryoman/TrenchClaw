@@ -4,6 +4,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { createWalletGroupDirectoryAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWalletGroupDirectory";
+import { coreAppPath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
 
@@ -17,7 +18,7 @@ afterEach(async () => {
 describe("createWalletGroupDirectoryAction", () => {
   test("creates group directories under protected keypairs root", async () => {
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
-    const expectedPath = path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup);
+    const expectedPath = path.join(coreAppPath("src/ai/brain/protected/keypairs"), walletGroup);
 
     const result = await createWalletGroupDirectoryAction.execute({} as never, { walletGroup });
 

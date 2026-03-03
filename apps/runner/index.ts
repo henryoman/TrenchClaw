@@ -235,7 +235,7 @@ const waitForGuiLaunchConfirmation = async (): Promise<GuiLaunchDecision> => {
   try {
     const answer = (
       await prompt.question(
-        `${RUNNER_LOG_PREFIX} launch GUI now? Enter=yes, "skip"=CLI-only, "quit"=stop app: `,
+        `${RUNNER_LOG_PREFIX} launch GUI now? Enter=yes, "skip"=not now, "quit"=stop app: `,
       )
     )
       .trim()
@@ -438,7 +438,7 @@ const main = async (): Promise<void> => {
     return;
   }
   if (guiLaunchDecision === "skip") {
-    console.log(`${RUNNER_LOG_PREFIX} GUI auto-launch disabled. Runtime remains active.`);
+    console.log(`${RUNNER_LOG_PREFIX} GUI auto-launch skipped. Runtime remains active.`);
     console.log(`${RUNNER_LOG_PREFIX} Open manually when needed: ${emphasize(guiUrl)}`);
   } else {
     await openBrowser(guiUrl);

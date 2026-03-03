@@ -5,6 +5,7 @@
   "packageManager": "bun@1.3.9",
   "type": "module",
   "scripts": {
+    "launch": "bun run --cwd .. launch",
     "assets:sync": "bun run ./scripts/sync-public-assets.ts",
     "dev": "bun run assets:sync && vite dev",
     "build": "bun run assets:sync && vite build",

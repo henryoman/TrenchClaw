@@ -1,7 +1,7 @@
 ---
 title: Runtime and Frontends
 description: Understand how the runner, runtime, and frontend apps connect in this monorepo.
-order: 3
+order: 5
 ---
 
 TrenchClaw is split into a runtime and frontend surfaces:

@@ -75,6 +75,11 @@ export const createChatController = () => {
           if (part.type === "text") {
             return part.text ?? "";
           }
+
+          if ("errorText" in part && typeof part.errorText === "string") {
+            return `Runtime error: ${part.errorText}`;
+          }
+
           return "";
         })
         .join("\n")
@@ -179,8 +184,19 @@ export const createChatController = () => {
         await onAfterSend();
       }
     } catch (error) {
-      const errorText = error instanceof Error ? error.message : DEFAULT_CHAT_ERROR;
+      const rawErrorText = error instanceof Error ? error.message : DEFAULT_CHAT_ERROR;
+      const errorText = rawErrorText.includes("User not found")
+        ? "LLM authentication failed (OpenRouter: User not found). Update your OpenRouter key in Vault > LLM secrets."
+        : rawErrorText;
       console.error(errorText);
+      chat.messages = normalizeUiMessages([
+        ...(chat.messages as UIMessage[]),
+        {
+          id: `msg-${crypto.randomUUID()}`,
+          role: "assistant",
+          parts: [{ type: "text", text: `Runtime error: ${errorText}` }],
+        },
+      ]);
       try {
         await runtimeApi.reportClientError({
           source: "gui-chat",

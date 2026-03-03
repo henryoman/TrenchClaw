@@ -2,8 +2,20 @@ import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
 import { MemoryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/memory-log-store";
+import { coreAppPath } from "../../helpers/core-paths";
 
 const tmpTargets: string[] = [];
+
+const waitForFileText = async (filePath: string, timeoutMs = 2_000): Promise<string> => {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await Bun.file(filePath).exists()) {
+      return Bun.file(filePath).text();
+    }
+    await Bun.sleep(25);
+  }
+  throw new Error(`Timed out waiting for file: ${filePath}`);
+};
 
 afterEach(async () => {
   for (const target of tmpTargets.splice(0)) {
@@ -14,8 +26,8 @@ afterEach(async () => {
 describe("MemoryLogStore", () => {
   test("writes daily and long-term memory logs", async () => {
     const root = path.resolve(
-      process.cwd(),
-      `apps/trenchclaw/src/ai/brain/db/.tests/memory-${crypto.randomUUID()}`,
+      coreAppPath("src/ai/brain/db/.tests"),
+      `memory-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
 
@@ -27,8 +39,8 @@ describe("MemoryLogStore", () => {
     const dailyFile = store.appendDaily("- runtime started", "2026-02-24");
     const longTermFile = store.appendLongTerm("- learned thing");
 
-    const dailyText = await Bun.file(dailyFile).text();
-    const longTermText = await Bun.file(longTermFile).text();
+    const dailyText = await waitForFileText(dailyFile);
+    const longTermText = await waitForFileText(longTermFile);
 
     expect(dailyText.includes("runtime started")).toBe(true);
     expect(longTermText.includes("learned thing")).toBe(true);

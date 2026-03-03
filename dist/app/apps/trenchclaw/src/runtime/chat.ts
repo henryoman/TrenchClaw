@@ -114,8 +114,15 @@ const trimOrUndefinedValue = (value: string | undefined): string | undefined => 
 
 const extractUiMessageText = (message: UIMessage): string => {
   const text = message.parts
-    .filter((part): part is Extract<(typeof message.parts)[number], { type: "text" }> => part.type === "text")
-    .map((part) => part.text.trim())
+    .map((part) => {
+      if (part.type === "text") {
+        return part.text.trim();
+      }
+      if ("errorText" in part && typeof part.errorText === "string") {
+        return `Runtime error: ${part.errorText}`.trim();
+      }
+      return "";
+    })
     .filter((part) => part.length > 0)
     .join("\n");
 
@@ -233,6 +240,17 @@ const serializeForLog = (value: unknown): string => {
   } catch {
     return "[unserializable]";
   }
+};
+
+const toRuntimeChatErrorMessage = (error: unknown): string => {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("User not found")) {
+    return "LLM authentication failed (OpenRouter: User not found). Update llm/openrouter/api-key in Vault secrets.";
+  }
+  if (message.includes("401")) {
+    return `LLM request rejected with authentication error: ${message}`;
+  }
+  return message;
 };
 
 const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
@@ -426,6 +444,7 @@ export const createRuntimeChatService = (
       const response = result.toUIMessageStreamResponse({
         headers: withChatHeaders(input?.headers, chatId),
         originalMessages: normalizedMessages,
+        onError: (error) => toRuntimeChatErrorMessage(error),
         onFinish: ({ messages: finalMessages }) => {
           const updatedAt = Date.now();
           const conversation = deps.stateStore.getConversation(chatId);
@@ -503,17 +522,18 @@ export const createRuntimeChatService = (
         headers: response.headers,
       });
     } catch (error) {
+      const errorMessage = toRuntimeChatErrorMessage(error);
       deps.logger?.error("chat:stream_fail", {
         chatId,
         durationMs: Date.now() - streamStartedAt,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
         payload: serializeForLog({
           sessionId: trimOrUndefinedValue(input?.sessionId) ?? null,
           normalizedMessageCount: normalizedMessages.length,
           lastMessage: normalizedMessages.at(-1)?.parts ?? null,
         }),
       });
-      throw error;
+      throw new Error(errorMessage);
     }
   };
 

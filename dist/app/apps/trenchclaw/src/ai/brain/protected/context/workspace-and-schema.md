@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-03T03:44:49.133Z
+Generated at: 2026-03-03T04:59:08.341Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -10,14 +10,25 @@ This file is generated. Refresh with:
 ```text
 # WORKSPACE ROOT: apps/trenchclaw/
 apps/trenchclaw/
+|-- apps/
+|   `-- trenchclaw/
+|       `-- src/
+|           `-- ai/
+|               `-- brain/
+|                   `-- workspace/
+|                       `-- .tests/
 |-- src/
 |   |-- ai/
 |   |   |-- brain/
 |   |   |   |-- db/
 |   |   |   |   |-- .tests/
+|   |   |   |   |   `-- memory-92446690-a66f-490d-b282-76cf88adab1d/
+|   |   |   |   |       `-- memory/
+|   |   |   |   |           `-- MEMORY.md
 |   |   |   |   |-- events/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   `-- 2026-03-02.jsonl
+|   |   |   |   |   |-- 2026-03-02.jsonl
+|   |   |   |   |   `-- 2026-03-03.jsonl
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-03-02.md
 |   |   |   |   |   |-- 2026-03-03.md
@@ -355,6 +366,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | /api/gui/bootstrap |
 | /api/gui/client-error |
 | /api/gui/conversations |
+| /api/gui/events |
 | /api/gui/instances |
 | /api/gui/instances/sign-in |
 | /api/gui/queue |

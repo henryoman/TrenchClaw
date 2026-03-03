@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { createActionContext } from "../../apps/trenchclaw/src/ai";
 import { bootstrapRuntime } from "../../apps/trenchclaw/src/runtime/bootstrap";
+import { coreAppPath } from "../helpers/core-paths";
 
 const REQUIRED_ENV_DEFAULTS: Record<string, string> = {
   RPC_URL: "https://rpc.example",
@@ -276,8 +277,8 @@ wallet:
 
     const runtime = await bootstrapRuntime();
     const alertsFile = path.resolve(
-      process.cwd(),
-      `apps/trenchclaw/src/ai/brain/workspace/strategies/.tests/bootstrap-alerts-${crypto.randomUUID()}.json`,
+      coreAppPath("src/ai/brain/workspace/strategies/.tests"),
+      `bootstrap-alerts-${crypto.randomUUID()}.json`,
     );
     try {
       const result = await runtime.dispatcher.dispatchStep(

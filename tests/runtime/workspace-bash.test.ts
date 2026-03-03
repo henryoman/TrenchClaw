@@ -9,8 +9,9 @@ import {
   WORKSPACE_WRITE_FILE_TOOL_NAME,
   createWorkspaceBashTools,
 } from "../../apps/trenchclaw/src/runtime/workspace-bash";
+import { coreAppPath } from "../helpers/core-paths";
 
-const TEST_ROOT = path.resolve(process.cwd(), "apps/trenchclaw/src/ai/brain/workspace/.tests");
+const TEST_ROOT = coreAppPath("src/ai/brain/workspace/.tests");
 const createdPaths: string[] = [];
 
 afterEach(async () => {

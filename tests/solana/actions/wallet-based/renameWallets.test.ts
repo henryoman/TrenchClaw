@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWallets";
 import { renameWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/renameWallets";
+import { coreAppPath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
 const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
@@ -25,8 +26,8 @@ describe("renameWalletsAction", () => {
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
-    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
+    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/keypairs"), walletGroup));
+    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
 
     const createResult = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -91,8 +92,8 @@ describe("renameWalletsAction", () => {
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-conflict-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw/src/ai/brain/protected/keypairs", walletGroup));
-    createdPaths.add(path.join(process.cwd(), "apps/trenchclaw", walletLibraryFile));
+    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/keypairs"), walletGroup));
+    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
 
     await createWalletsAction.execute({} as never, {
       count: 1,

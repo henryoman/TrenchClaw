@@ -3,6 +3,7 @@ import path from "node:path";
 
 import { createBlockchainAlertAction } from "../../../../../apps/trenchclaw/src/solana/actions/data-fetch/alerts/createBlockchainAlert";
 import { createActionContext } from "../../../../../apps/trenchclaw/src/ai";
+import { coreAppPath } from "../../../../helpers/core-paths";
 
 const createdFiles: string[] = [];
 
@@ -15,8 +16,8 @@ afterEach(async () => {
 describe("createBlockchainAlertAction", () => {
   test("creates and stores an alert rule", async () => {
     const storageFilePath = path.resolve(
-      process.cwd(),
-      `apps/trenchclaw/src/ai/brain/workspace/strategies/.tests/alerts-${crypto.randomUUID()}.json`,
+      coreAppPath("src/ai/brain/workspace/strategies/.tests"),
+      `alerts-${crypto.randomUUID()}.json`,
     );
     createdFiles.push(storageFilePath);
 

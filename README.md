@@ -40,6 +40,7 @@ SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 ## THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
 
 ---
+## [Get Started](https://github.com/henryoman/TrenchClaw/blob/main/website/src/content/docs/getting-started.md)
 
 ## Dashboard UI
 

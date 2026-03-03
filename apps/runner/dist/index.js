@@ -177,7 +177,7 @@ var waitForGuiLaunchConfirmation = async () => {
     output: process.stdout
   });
   try {
-    const answer = (await prompt.question(`${RUNNER_LOG_PREFIX} launch GUI now? Enter=yes, "skip"=CLI-only, "quit"=stop app: `)).trim().toLowerCase();
+    const answer = (await prompt.question(`${RUNNER_LOG_PREFIX} launch GUI now? Enter=yes, "skip"=not now, "quit"=stop app: `)).trim().toLowerCase();
     if (answer === "quit" || answer === "q" || answer === "exit") {
       return "quit";
     }
@@ -341,7 +341,7 @@ var main = async () => {
     return;
   }
   if (guiLaunchDecision === "skip") {
-    console.log(`${RUNNER_LOG_PREFIX} GUI auto-launch disabled. Runtime remains active.`);
+    console.log(`${RUNNER_LOG_PREFIX} GUI auto-launch skipped. Runtime remains active.`);
     console.log(`${RUNNER_LOG_PREFIX} Open manually when needed: ${emphasize(guiUrl)}`);
   } else {
     await openBrowser(guiUrl);

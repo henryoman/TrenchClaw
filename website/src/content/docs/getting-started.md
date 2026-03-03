@@ -23,15 +23,15 @@ this is what you need:
 Use this if you want a single command that does everything needed.
 
 ```bash
-curl -fsSL <TRENCHCLAW_BOOTSTRAP_SCRIPT_URL_PLACEHOLDER> | sh
+curl -fsSL https://downloads.trenchclaw.dev/install.sh | sh
 ```
 
 Optional channel/version example:
 
 ```bash
-curl -fsSL <TRENCHCLAW_BOOTSTRAP_SCRIPT_URL_PLACEHOLDER> | \
-  TRENCHCLAW_CHANNEL=<CHANNEL_PLACEHOLDER> \
-  TRENCHCLAW_VERSION=<VERSION_PLACEHOLDER> \
+curl -fsSL https://downloads.trenchclaw.dev/install.sh | \
+  TRENCHCLAW_CHANNEL=stable \
+  TRENCHCLAW_VERSION=latest \
   sh
 ```
 
@@ -48,7 +48,7 @@ After script completes, verify:
 ```bash
 bun --version
 solana --version
-<trenchclaw_binary_name_placeholder> --version
+trenchclaw --version
 ```
 
 ### Path B: Direct Binary Download (If Dependencies Already Installed)
@@ -57,9 +57,9 @@ Use this if you already have required dependencies and only need TrenchClaw.
 
 Download links (placeholders):
 
-- macOS binary: `<APP_BINARY_MAC_PLACEHOLDER>`
-- Windows binary: `<APP_BINARY_WINDOWS_PLACEHOLDER>`
-- Linux binary: `<APP_BINARY_LINUX_PLACEHOLDER>`
+- macOS binary: `https://downloads.trenchclaw.dev/stable/latest/trenchclaw-darwin-arm64`
+- Windows binary: `https://downloads.trenchclaw.dev/stable/latest/trenchclaw-windows-x64.exe`
+- Linux binary: `https://downloads.trenchclaw.dev/stable/latest/trenchclaw-linux-x64`
 
 After download:
 
@@ -68,7 +68,7 @@ After download:
 3. Verify:
 
 ```bash
-<trenchclaw_binary_name_placeholder> --version
+trenchclaw --version
 ```
 
 ### Path C: Manual Setup (Source / Advanced)
@@ -94,9 +94,9 @@ bun --version
 solana --version
 ```
 
-Download source (placeholder):
+Download source:
 
-- `<SOURCE_DOWNLOAD_PLACEHOLDER>`
+- `https://github.com/trenchclaw/trenchclaw`
 
 Install workspace dependencies:
 
@@ -120,62 +120,7 @@ solana --version
 
 Expected result: a version string like `solana-cli x.y.z`.
 
-## Step 3: Create or Connect Your Wallet
-
-If you already have a wallet keypair, use it. Otherwise create one:
-
-```bash
-solana-keygen new --outfile ~/.config/solana/id.json
-```
-
-Set it as active wallet:
-
-```bash
-solana config set --keypair ~/.config/solana/id.json
-```
-
-Check wallet address:
-
-```bash
-solana address
-```
-
-## Step 4: Select Network
-
-Choose one:
-
-```bash
-# Devnet (recommended first)
-solana config set --url https://api.devnet.solana.com
-
-# Mainnet (real funds)
-solana config set --url https://api.mainnet-beta.solana.com
-```
-
-Verify config:
-
-```bash
-solana config get
-```
-
-## Step 5: Fund Wallet
-
-Check current balance:
-
-```bash
-solana balance
-```
-
-If using devnet:
-
-```bash
-solana airdrop 2
-solana balance
-```
-
-If using mainnet: fund from your exchange or wallet app.
-
-## Step 6: Configure Runtime Inputs
+## Step 3: Configure Runtime Inputs
 
 When TrenchClaw asks for setup values, provide:
 
@@ -188,26 +133,28 @@ Minimum required to proceed successfully:
 - one valid RPC URL
 - one valid LLM API key
 
-## Step 7: CLI Launch (Placeholder)
+Wallet creation/import is done inside the TrenchClaw app.
+
+## Step 4: CLI Launch (Placeholder)
 
 If running via binary CLI, launch with:
 
 ```bash
-<APP_CLI_START_PLACEHOLDER_COMMAND>
+trenchclaw
 ```
 
 Optional health check:
 
 ```bash
-<APP_CLI_HEALTHCHECK_PLACEHOLDER_COMMAND>
+trenchclaw --help
 ```
 
-## Step 8: Start TrenchClaw UI
+## Step 5: Start TrenchClaw UI
 
 If you installed app/binary:
 
 ```bash
-<APP_START_PLACEHOLDER_COMMAND>
+trenchclaw
 ```
 
 If you are running from source:
@@ -222,14 +169,13 @@ Expected behavior:
 - runtime and UI start
 - GUI URL opens (or is printed)
 
-## Step 9: Stop Point for This Guide
+## Step 6: Stop Point for This Guide
 
 You are done when the GUI opens and you can interact with the interface.
 
 At this point you should have:
 
 - TrenchClaw running
-- wallet configured
 - RPC configured
 - AI key configured
 
@@ -246,7 +192,7 @@ Restart terminal and rerun `solana --version`.
 ### TrenchClaw command not found
 
 - Ensure binary install directory is on `PATH`.
-- Reopen terminal and rerun `<trenchclaw_binary_name_placeholder> --version`.
+- Reopen terminal and rerun `trenchclaw --version`.
 
 ### RPC errors/timeouts
 
@@ -257,25 +203,3 @@ Restart terminal and rerun `solana --version`.
 
 - Re-check API key and model ID.
 - Confirm your provider account has access/quota.
-
-## Full Manual Command Checklist
-
-```bash
-# Bun
-curl -fsSL https://bun.sh/install | bash
-bun --version
-
-# Solana CLI
-sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.9/install)"
-solana --version
-
-# Wallet + network
-solana-keygen new --outfile ~/.config/solana/id.json
-solana config set --keypair ~/.config/solana/id.json
-solana config set --url https://api.devnet.solana.com
-solana airdrop 2
-
-# Source install path only
-bun install
-bun run launch:dev
-```
