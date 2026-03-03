@@ -282,10 +282,14 @@ export interface GuiLlmCheckResponse {
   provider: string | null;
   model: string | null;
   baseURL: string | null;
+  resolvedVaultFile: string | null;
   keySource: "vault" | "env" | "none";
   keyConfigured: boolean;
   keyLength: number;
   keyFingerprint: string | null;
+  vaultKeyConfigured: boolean;
+  vaultKeyLength: number;
+  vaultKeyFingerprint: string | null;
   probeOk: boolean;
   probeStatus: number | null;
   probeMessage: string;

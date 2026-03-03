@@ -22,35 +22,25 @@ afterEach(() => {
 });
 
 describe("resolveLlmProviderConfigFromEnv", () => {
-  test("defaults to OpenRouter Step 3.5 Flash free", () => {
+  test("is disabled when vault-only LLM mode is active", () => {
     process.env.OPENROUTER_API_KEY = "or-key";
 
     const resolved = resolveLlmProviderConfigFromEnv();
 
-    expect(resolved).toEqual({
-      provider: "openrouter",
-      apiKey: "or-key",
-      model: "stepfun/step-3.5-flash:free",
-      baseURL: "https://openrouter.ai/api/v1",
-    });
+    expect(resolved).toBeNull();
   });
 
-  test("supports OpenAI", () => {
+  test("ignores OpenAI env settings", () => {
     process.env.TRENCHCLAW_AI_PROVIDER = "openai";
     process.env.OPENAI_API_KEY = "oa-key";
     process.env.TRENCHCLAW_AI_MODEL = "gpt-4.1-mini";
 
     const resolved = resolveLlmProviderConfigFromEnv();
 
-    expect(resolved).toEqual({
-      provider: "openai",
-      apiKey: "oa-key",
-      model: "gpt-4.1-mini",
-      baseURL: undefined,
-    });
+    expect(resolved).toBeNull();
   });
 
-  test("supports custom OpenAI-compatible providers", () => {
+  test("ignores OpenAI-compatible env settings", () => {
     process.env.TRENCHCLAW_AI_PROVIDER = "openai-compatible";
     process.env.TRENCHCLAW_AI_API_KEY = "custom-key";
     process.env.TRENCHCLAW_AI_BASE_URL = "https://llm.example.com/v1";
@@ -58,11 +48,6 @@ describe("resolveLlmProviderConfigFromEnv", () => {
 
     const resolved = resolveLlmProviderConfigFromEnv();
 
-    expect(resolved).toEqual({
-      provider: "openai-compatible",
-      apiKey: "custom-key",
-      baseURL: "https://llm.example.com/v1",
-      model: "vendor/model",
-    });
+    expect(resolved).toBeNull();
   });
 });

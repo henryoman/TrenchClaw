@@ -47,6 +47,7 @@
     "refresh": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run refresh --filter=@trenchclaw/core",
     "verify:generate": "bun run lint && bun run build:all && bun run typecheck && bun run test && bun run generate",
     "deps:dupes": "bun run scripts/check-dependency-duplicates.ts",
+    "deps:bootstrap": "sh ./apps/runner/scripts/bootstrap-deps.sh",
     "knowledge:skills:add": "bun run scripts/install-knowledge-skills.ts",
     "deps:root-install": "bun install && bun run deps:dupes",
     "systemd:install": "bun run --cwd apps/trenchclaw systemd:install",

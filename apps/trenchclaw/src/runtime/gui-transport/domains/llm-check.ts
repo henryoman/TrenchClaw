@@ -1,9 +1,11 @@
 import type { GuiLlmCheckResponse } from "@trenchclaw/types";
-import { resolveLlmProviderConfigFromEnv, resolveLlmProviderConfigFromVault } from "../../../ai/llm/config";
+import { resolveLlmProviderConfigFromVault } from "../../../ai/llm/config";
+import { resolvePathFromModule } from "../../../ai/llm/shared";
 
 const OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_VAULT_FILE = "../../../ai/brain/protected/no-read/vault.json";
 
 const toKeyFingerprint = async (key: string): Promise<string | null> => {
   if (!key) {
@@ -86,22 +88,28 @@ const probeProviderAuth = async (input: {
 };
 
 export const runLlmCheck = async (): Promise<GuiLlmCheckResponse> => {
+  const resolvedVaultFile = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env.TRENCHCLAW_VAULT_FILE);
   const fromVault = await resolveLlmProviderConfigFromVault();
-  const fromEnv = resolveLlmProviderConfigFromEnv();
-  const active = fromVault ?? fromEnv;
+  const active = fromVault;
+  const vaultKey = fromVault?.apiKey ?? "";
+  const vaultKeyFingerprint = await toKeyFingerprint(vaultKey);
 
   if (!active) {
     return {
       provider: null,
       model: null,
       baseURL: null,
+      resolvedVaultFile,
       keySource: "none",
       keyConfigured: false,
       keyLength: 0,
       keyFingerprint: null,
+      vaultKeyConfigured: false,
+      vaultKeyLength: 0,
+      vaultKeyFingerprint: null,
       probeOk: false,
       probeStatus: null,
-      probeMessage: "No LLM key configured in vault or environment.",
+      probeMessage: "No LLM key configured in vault.",
     };
   }
 
@@ -119,10 +127,14 @@ export const runLlmCheck = async (): Promise<GuiLlmCheckResponse> => {
     provider: active.provider,
     model: active.model,
     baseURL: active.baseURL ?? null,
-    keySource: fromVault ? "vault" : "env",
+    resolvedVaultFile,
+    keySource: "vault",
     keyConfigured: active.apiKey.length > 0,
     keyLength: active.apiKey.length,
     keyFingerprint,
+    vaultKeyConfigured: vaultKey.length > 0,
+    vaultKeyLength: vaultKey.length,
+    vaultKeyFingerprint,
     probeOk: probe.ok,
     probeStatus: probe.status,
     probeMessage: probe.message,

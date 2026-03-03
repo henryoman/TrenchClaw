@@ -401,7 +401,11 @@ export const createRuntimeController = () => {
       const model = result.model ?? "n/a";
       const status = result.probeStatus ?? "n/a";
       const verdict = result.probeOk ? "ok" : "failed";
-      state.llmCheckMessage = `LLM check: provider=${provider} model=${model} source=${source} keyLen=${result.keyLength} ${fingerprint} probe=${verdict} status=${status} message=${result.probeMessage}`;
+      const vaultFingerprint = result.vaultKeyFingerprint ? `vaultFp:${result.vaultKeyFingerprint}` : "vaultFp:n/a";
+      state.llmCheckMessage =
+        `LLM check: provider=${provider} model=${model} source=${source} vault=${result.resolvedVaultFile ?? "n/a"} keyLen=${result.keyLength} ${fingerprint} ` +
+        `${vaultFingerprint} vaultLen=${result.vaultKeyLength} ` +
+        `probe=${verdict} status=${status} message=${result.probeMessage}`;
     } catch (error) {
       state.llmCheckMessage = error instanceof Error ? error.message : "Failed to run LLM check.";
     } finally {

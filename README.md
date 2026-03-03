@@ -11,7 +11,7 @@
   <a href="https://github.com/anza-xyz/kit"><img src="https://img.shields.io/badge/Solana%20Kit-551BF9?style=for-the-badge&logo=solana&logoColor=white" alt="Solana Kit" /></a>
   <a href="https://www.metaplex.com"><img src="https://img.shields.io/badge/Metaplex-6A00FF?style=for-the-badge&logo=metaplex&logoColor=white" alt="Metaplex" /></a>
   <a href="https://www.jup.ag"><img src="https://img.shields.io/badge/Jupiter-00BFA6?style=for-the-badge&logo=jupiter&logoColor=white" alt="Jupiter" /></a>
-  <a href="https://www.helius.dev"><img src="https://img.shields.io/badge/Helius-FF6B35?style=for-the-badge&logo=helius&logoColor=white" alt="Helius" /></a>
+  <a href="https://www.helius.dev"><img src="https://www.helius.dev/_next/image?url=%2Flogo.svg&w=384&q=90" alt="Helius" height="28" /></a>
   <a href="https://solana.com"><img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana" /></a>
   <a href="https://streamdown.ai/"><img src="https://img.shields.io/badge/Streamdown-0F172A?style=for-the-badge" alt="Streamdown" /></a>
   <a href="https://www.meteora.ag/"><img src="https://img.shields.io/badge/Meteora-FC030F?style=for-the-badge" alt="Meteora" /></a>
@@ -28,7 +28,7 @@ Please give us a star if you're interested in seeing this project get fully buil
 
 # TrenchClaw
 
-TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line. This is very dangerous and will be a while before security is perfected. 
+TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected. 
 
 While the TypeScript repo is a little heavier than minimalist alternatives, it is currently the best and most accurate agent orchestrator for this stack.
 
@@ -37,6 +37,7 @@ Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bu
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 Quick links:
+- [Quickstart](https://trenchclaw.vercel.app/docs)
 - [Runtime Architecture and Boundaries](#runtime-architecture-and-boundaries)
 - [Why TypeScript?](#why-typescript)
 - [Why Solana Kit](#why-solana-kit)
@@ -47,7 +48,11 @@ SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 ## THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
 
 ---
-## [Get Started](https://github.com/henryoman/TrenchClaw/blob/main/website/src/content/docs/getting-started.md)
+## [Get Started](https://trenchclaw.vercel.app/docs)
+
+Download Dependencies
+
+
 
 ## Dashboard UI
 
@@ -319,6 +324,38 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Keeps agent knowledge (soul, rules, skills, outside context) in `src/ai/brain/`, loaded by orchestration in `src/ai/`
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
+
+## Download Dependencies
+
+Use the runner bootstrap script to install or upgrade both dependencies to latest stable:
+
+```bash
+sh ./apps/runner/scripts/bootstrap-deps.sh
+```
+
+Manual equivalents (if you need them):
+
+```bash
+# Bun (macOS/Linux)
+curl -fsSL https://bun.sh/install | bash
+
+# Solana CLI via Anza installer (macOS/Linux, stable channel)
+sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+```
+
+Verify everything is installed:
+
+```bash
+bun --version
+solana --version
+```
+
+Update commands:
+
+```bash
+bun upgrade
+agave-install update
+```
 
 ## Unified App Runner (Local)
 

@@ -44,6 +44,9 @@ const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 
 const GUI_DIST_DIR = path.join(APP_ROOT, "apps/frontends/gui/dist");
 const GUI_INDEX_PATH = path.join(GUI_DIST_DIR, "index.html");
+const CORE_APP_ROOT = path.join(APP_ROOT, "apps/trenchclaw");
+const CORE_VAULT_FILE = path.join(CORE_APP_ROOT, "src/ai/brain/protected/no-read/vault.json");
+const CORE_VAULT_TEMPLATE_FILE = path.join(CORE_APP_ROOT, "src/ai/brain/protected/no-read/vault.template.json");
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value > 0 && value <= 65535;
 
@@ -350,7 +353,7 @@ const main = async (): Promise<void> => {
   console.log(`${RUNNER_LOG_PREFIX} gui target: ${emphasize(guiUrl)}`);
 
   const runtimeProc = Bun.spawn([process.execPath, "src/runtime/start-runtime-server.ts"], {
-    cwd: path.join(APP_ROOT, "apps/trenchclaw"),
+    cwd: CORE_APP_ROOT,
     stdout: "pipe",
     stderr: "pipe",
     stdin: "inherit",
@@ -363,6 +366,9 @@ const main = async (): Promise<void> => {
       TRENCHCLAW_GUI_URL: guiUrl,
       TRENCHCLAW_BOOT_REFRESH_CONTEXT: process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "0",
       TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE: process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "0",
+      TRENCHCLAW_APP_ROOT: CORE_APP_ROOT,
+      TRENCHCLAW_VAULT_FILE: CORE_VAULT_FILE,
+      TRENCHCLAW_VAULT_TEMPLATE_FILE: CORE_VAULT_TEMPLATE_FILE,
     },
   });
 
