@@ -21,6 +21,9 @@ type LogIoResponse = {
   id: string;
   ok: boolean;
   error?: string;
+  operation?: "appendUtf8" | "writeUtf8";
+  filePath?: string;
+  bytes?: number;
 };
 
 const postResponse = (response: LogIoResponse): void => {
@@ -29,6 +32,7 @@ const postResponse = (response: LogIoResponse): void => {
 
 self.onmessage = async (event: MessageEvent<LogIoRequest>) => {
   const request = event.data;
+  const bytes = Buffer.byteLength(request.content, "utf8");
   try {
     await mkdir(path.dirname(request.filePath), { recursive: true });
     if (request.type === "appendUtf8") {
@@ -39,13 +43,18 @@ self.onmessage = async (event: MessageEvent<LogIoRequest>) => {
     postResponse({
       id: request.id,
       ok: true,
+      operation: request.type,
+      filePath: request.filePath,
+      bytes,
     });
   } catch (error) {
     postResponse({
       id: request.id,
       ok: false,
       error: error instanceof Error ? error.message : String(error),
+      operation: request.type,
+      filePath: request.filePath,
+      bytes,
     });
   }
 };
-

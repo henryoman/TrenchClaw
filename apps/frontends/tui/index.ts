@@ -1,6 +1,6 @@
 import { renderWelcomeToTrenchClaw } from "./views/welcome";
 import { bootstrapRuntime, type RuntimeBootstrap } from "../../trenchclaw/src/runtime/bootstrap";
-import { createWebGuiApiHandler } from "./gui-transport";
+import { createRuntimeApiHandler } from "./gui-transport";
 import { CORE_APP_ROOT } from "./runtime-paths";
 
 export type CliMode = "dev" | "start" | "headless" | "cli";
@@ -22,6 +22,8 @@ export interface RuntimeServerInfo {
 
 const DEFAULT_RUNTIME_PROFILE: RuntimeSafetyProfile = "dangerous";
 const DEV_BOOTSTRAP_CREATE_WALLETS_ENABLED = process.env.DEV_BOOTSTRAP_CREATE_WALLETS === "1";
+// Bun currently enforces idleTimeout <= 255 seconds.
+const RUNTIME_IDLE_TIMEOUT_SECONDS = 255;
 
 export const parseCliArgs = (argv: string[]): ParsedCliArgs => {
   const [, , ...rest] = argv;
@@ -67,11 +69,12 @@ export const startRuntimeServer = (
   const host = process.env.RUNTIME_HOST ?? "127.0.0.1";
   const port = toPortNumber(process.env.RUNTIME_PORT);
   const strictPort = process.env.RUNTIME_STRICT_PORT === "1";
-  const webGuiApiHandler = createWebGuiApiHandler(runtime);
+  const webGuiApiHandler = createRuntimeApiHandler(runtime);
   const createServer = (targetPort: number) =>
     Bun.serve({
       hostname: host,
       port: targetPort,
+      idleTimeout: RUNTIME_IDLE_TIMEOUT_SECONDS,
       fetch: async (request: Request) => {
         const url = new URL(request.url);
         if (request.method === "GET" && url.pathname === "/health") {

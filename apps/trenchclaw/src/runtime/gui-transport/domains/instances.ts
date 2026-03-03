@@ -10,7 +10,7 @@ import type {
 } from "@trenchclaw/types";
 import {
   assertInstanceSystemWritePath,
-} from "../../../../trenchclaw/src/runtime/security/write-scope";
+} from "../../security/write-scope";
 import { INSTANCE_DIRECTORY } from "../constants";
 import { isRecord } from "../parsers";
 import type { RuntimeGuiDomainContext } from "../contracts";

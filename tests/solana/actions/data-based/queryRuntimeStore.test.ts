@@ -206,4 +206,17 @@ describe("queryRuntimeStoreAction", () => {
 
     store.close();
   });
+
+  test("accepts stringified request payloads produced by model tool calls", () => {
+    const parsed = queryRuntimeStoreAction.inputSchema.parse({
+      request: "{\"type\":\"getRuntimeKnowledgeSurface\",\"recentConversationsLimit\":20,\"recentJobsLimit\":20,\"recentReceiptsLimit\":20}",
+    });
+
+    expect(parsed.request.type).toBe("getRuntimeKnowledgeSurface");
+    if (parsed.request.type === "getRuntimeKnowledgeSurface") {
+      expect(parsed.request.recentConversationsLimit).toBe(20);
+      expect(parsed.request.recentJobsLimit).toBe(20);
+      expect(parsed.request.recentReceiptsLimit).toBe(20);
+    }
+  });
 });

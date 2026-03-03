@@ -1,4 +1,5 @@
 import { CORS_HEADERS } from "./constants";
+import type { UIMessage } from "ai";
 import type { RuntimeGuiDomainContext } from "./contracts";
 import {
   parseCreateInstanceRequest,
@@ -16,6 +17,63 @@ import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 
 const toErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+const toErrorPayloadV1 = (code: string, message: string, details?: unknown): { error: { code: string; message: string; details?: unknown } } => ({
+  error: {
+    code,
+    message,
+    ...(details === undefined ? {} : { details }),
+  },
+});
+const jsonWithCors = (payload: unknown, status = 200): Response => Response.json(payload, { status, headers: CORS_HEADERS });
+
+const extractLastAssistantMessage = (messages: UIMessage[]): UIMessage | null => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === "assistant") {
+      return message;
+    }
+  }
+  return null;
+};
+
+const toUiMessagesFromStore = (context: RuntimeGuiDomainContext, conversationId: string): UIMessage[] =>
+  context.runtime.stateStore
+    .listChatMessages(conversationId, 10_000)
+    .filter((message): message is typeof message & { role: "assistant" | "system" | "user" } => message.role !== "tool")
+    .map((message) => ({
+      id: message.id,
+      role: message.role,
+      parts: [{ type: "text", text: message.content }],
+    }));
+
+const runChatTurn = async (
+  context: RuntimeGuiDomainContext,
+  input: { messages: UIMessage[]; chatId?: string; conversationTitle?: string },
+): Promise<{ chatId: string; message: UIMessage; messages: UIMessage[] }> => {
+  const response = await streamChat(context, input.messages, {
+    chatId: input.chatId,
+    conversationTitle: input.conversationTitle,
+  });
+  if (!response.ok) {
+    throw new Error(`Chat turn failed with status ${response.status}`);
+  }
+
+  await response.text();
+
+  const chatId = input.chatId?.trim() || context.getActiveChatId() || context.resolveDefaultChatId();
+  const finalMessages = toUiMessagesFromStore(context, chatId);
+  const assistantMessage = extractLastAssistantMessage(finalMessages);
+  if (!assistantMessage) {
+    throw new Error("Model returned no assistant message");
+  }
+
+  return {
+    chatId,
+    message: assistantMessage,
+    messages: finalMessages,
+  };
+};
+
 const toErrorPayload = (error: unknown): Record<string, unknown> => {
   if (error instanceof Error) {
     return {
@@ -33,22 +91,87 @@ const toErrorPayload = (error: unknown): Record<string, unknown> => {
 
 export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request: Request) => Promise<Response>) => {
   return async (request: Request) => {
+    const verboseApiLogs = process.env.TRENCHCLAW_API_LOGS === "1";
     const url = new URL(request.url);
     const requestId = crypto.randomUUID().slice(0, 8);
     const startedAt = Date.now();
     const logResponse = (response: Response): Response => {
-      console.log(
-        `[api] [${requestId}] ${request.method} ${url.pathname}${url.search} -> ${response.status} (${Date.now() - startedAt}ms)`,
-      );
+      if (verboseApiLogs) {
+        console.log(
+          `[api] [${requestId}] ${request.method} ${url.pathname}${url.search} -> ${response.status} (${Date.now() - startedAt}ms)`,
+        );
+      }
       return response;
     };
-    console.log(`[api] [${requestId}] ${request.method} ${url.pathname}${url.search} <- start`);
+    if (verboseApiLogs) {
+      console.log(`[api] [${requestId}] ${request.method} ${url.pathname}${url.search} <- start`);
+    }
 
-    if (request.method === "OPTIONS" && (url.pathname.startsWith("/api/gui/") || url.pathname === "/api/chat")) {
+    if (
+      request.method === "OPTIONS" &&
+      (url.pathname.startsWith("/api/gui/") || url.pathname === "/api/chat" || url.pathname.startsWith("/v1/"))
+    ) {
       return logResponse(new Response(null, {
         status: 204,
         headers: CORS_HEADERS,
       }));
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/health") {
+      return logResponse(jsonWithCors({
+        ok: true,
+        service: "trenchclaw-runtime",
+      }));
+    }
+
+    if (request.method === "GET" && url.pathname === "/v1/runtime") {
+      const runtime = context.runtime.describe();
+      return logResponse(jsonWithCors({
+        profile: runtime.profile,
+        llmEnabled: runtime.llmEnabled,
+        llmModel: runtime.llmModel,
+        version: "v1",
+      }));
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/chat/stream") {
+      const payload = await parseUiChatRequest(request);
+      if (!payload) {
+        return logResponse(jsonWithCors(toErrorPayloadV1("invalid_payload", "Invalid chat payload"), 400));
+      }
+
+      try {
+        return logResponse(await streamChat(context, payload.messages, {
+          chatId: payload.chatId,
+          conversationTitle: payload.conversationTitle,
+        }));
+      } catch (error) {
+        const message = toErrorMessage(error);
+        context.addActivity("runtime", `Chat stream failed: ${message}`);
+        return logResponse(jsonWithCors(toErrorPayloadV1("runtime_error", message), 500));
+      }
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/chat/turn") {
+      const payload = await parseUiChatRequest(request);
+      if (!payload) {
+        return logResponse(jsonWithCors(toErrorPayloadV1("invalid_payload", "Invalid chat payload"), 400));
+      }
+
+      try {
+        const result = await runChatTurn(context, payload);
+        return logResponse(
+          jsonWithCors({
+            chatId: result.chatId,
+            message: result.message,
+            messages: result.messages,
+          }),
+        );
+      } catch (error) {
+        const message = toErrorMessage(error);
+        context.addActivity("runtime", `Chat turn failed: ${message}`);
+        return logResponse(jsonWithCors(toErrorPayloadV1("runtime_error", message), 500));
+      }
     }
 
     if (request.method === "POST" && url.pathname === "/api/chat") {

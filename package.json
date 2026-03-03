@@ -9,6 +9,9 @@
     "website"
   ],
   "scripts": {
+    "launch": "bun run --cwd apps/frontends/gui build && bun run start",
+    "launch:dev": "bun run dev:bootstrap",
+    "launch:release": "bun run release:gui",
     "dev": "bun run scripts/dev-bootstrap.ts",
     "dev:bootstrap": "bun run scripts/dev-bootstrap.ts",
     "dev:gui-only": "bun run --bun --cwd apps/frontends/gui dev:standalone",
@@ -27,11 +30,11 @@
     "website:preview": "bun run --bun --cwd website preview",
     "website:ci": "bun run --bun --cwd website ci",
     "site": "bun run website:lint && bun run website:svelte-check && bun run website:typecheck && bun run website:test && bun run website:build && bun run website:dev",
-    "start": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run start --filter=@trenchclaw/runner",
+    "start": "bun run --cwd apps/runner start",
     "headless": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run headless --filter=@trenchclaw/cli",
     "cli": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run cli --filter=@trenchclaw/cli",
     "build": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run build",
-    "release:gui:build": "bun run --cwd apps/frontends/cli build && bun run --cwd apps/frontends/gui build && bun run --cwd apps/runner build",
+    "release:gui:build": "bun run --cwd apps/frontends/gui build && bun run --cwd apps/runner build",
     "release:gui:start": "bun run start",
     "release:gui": "bun run release:gui:build && bun run start",
     "typecheck": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run typecheck",

@@ -51,3 +51,54 @@ body.site-root {
   font-weight: 900;
   letter-spacing: -0.01em;
 }
+
+.docs-content h1 {
+  margin: 0 0 1rem;
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.05;
+}
+
+.docs-content h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: clamp(1.4rem, 3.5vw, 2rem);
+  line-height: 1.15;
+}
+
+.docs-content p,
+.docs-content li {
+  color: var(--color-muted);
+  font-size: 0.98rem;
+  font-weight: 300;
+  line-height: 1.75;
+}
+
+.docs-content p {
+  margin: 0.75rem 0;
+}
+
+.docs-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+}
+
+.docs-content code {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.9em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.1rem 0.3rem;
+}
+
+.docs-content pre {
+  overflow-x: auto;
+  margin: 1rem 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.docs-content pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}

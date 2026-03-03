@@ -42,7 +42,7 @@ export const getConversationMessages = (
   }
 
   const activeInstanceId = context.getActiveInstance()?.localInstanceId;
-  if (activeInstanceId && conversation.sessionId !== activeInstanceId) {
+  if (activeInstanceId && conversation.sessionId && conversation.sessionId !== activeInstanceId) {
     throw new Error("Conversation is not accessible for the current instance");
   }
 

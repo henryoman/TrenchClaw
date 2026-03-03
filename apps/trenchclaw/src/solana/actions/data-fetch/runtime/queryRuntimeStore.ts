@@ -62,8 +62,24 @@ const getInstanceFactRequestSchema = z.object({
   includeExpired: z.boolean().default(false),
 });
 
-const queryRuntimeStoreInputSchema = z.object({
-  request: z.discriminatedUnion("type", [
+const parseJsonObject = (value: unknown): unknown => {
+  if (typeof value !== "string") {
+    return value;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return value;
+  }
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const queryRuntimeStoreRequestSchema = z.preprocess(
+  parseJsonObject,
+  z.discriminatedUnion("type", [
     listConversationsRequestSchema,
     getConversationRequestSchema,
     listChatMessagesRequestSchema,
@@ -74,6 +90,10 @@ const queryRuntimeStoreInputSchema = z.object({
     listInstanceFactsRequestSchema,
     getInstanceFactRequestSchema,
   ]),
+);
+
+const queryRuntimeStoreInputSchema = z.object({
+  request: queryRuntimeStoreRequestSchema,
 });
 
 type QueryRuntimeStoreInput = z.output<typeof queryRuntimeStoreInputSchema>;

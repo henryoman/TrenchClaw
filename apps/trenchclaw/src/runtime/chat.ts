@@ -62,7 +62,9 @@ const resolveStreamingModel = async (): Promise<LanguageModel> => {
       apiKey: llmConfig.apiKey,
       baseURL: llmConfig.baseURL,
     });
-    return openai.responses(llmConfig.model);
+    const baseURL = llmConfig.baseURL?.toLowerCase() ?? "";
+    const useChatApi = llmConfig.provider === "openrouter" || baseURL.includes("openrouter.ai");
+    return useChatApi ? openai.chat(llmConfig.model) : openai.responses(llmConfig.model);
   }
 
   const gatewayConfig = await resolveGatewayConfig();
@@ -121,7 +123,7 @@ const extractUiMessageText = (message: UIMessage): string => {
     return text;
   }
 
-  return JSON.stringify(message.parts);
+  return "";
 };
 
 const normalizeUiMessages = (messages: UIMessage[]): UIMessage[] => {
@@ -133,12 +135,10 @@ const normalizeUiMessages = (messages: UIMessage[]): UIMessage[] => {
       continue;
     }
 
-    const normalizedParts = message.parts.filter((part) => {
-      if (part.type !== "text") {
-        return true;
-      }
-      return (part.text ?? "").trim().length > 0;
-    });
+    const normalizedParts = message.parts.filter(
+      (part): part is Extract<(typeof message.parts)[number], { type: "text" }> =>
+        part.type === "text" && (part.text ?? "").trim().length > 0,
+    );
 
     if (normalizedParts.length === 0) {
       continue;

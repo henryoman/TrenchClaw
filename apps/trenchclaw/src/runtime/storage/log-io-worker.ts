@@ -18,6 +18,25 @@ type LogIoResponse = {
   id: string;
   ok: boolean;
   error?: string;
+  operation?: "appendUtf8" | "writeUtf8";
+  filePath?: string;
+  bytes?: number;
+};
+
+export interface LogIoWriteEvent {
+  ok: boolean;
+  operation: "appendUtf8" | "writeUtf8";
+  filePath: string;
+  bytes: number;
+  error?: string;
+}
+
+export type LogIoWriteObserver = (event: LogIoWriteEvent) => void;
+
+let writeObserver: LogIoWriteObserver | null = null;
+
+export const setLogIoWriteObserver = (observer: LogIoWriteObserver | null): void => {
+  writeObserver = observer;
 };
 
 export class LogIoWorkerClient {
@@ -33,6 +52,18 @@ export class LogIoWorkerClient {
         return;
       }
       this.pending.delete(response.id);
+      const operation = response.operation;
+      const filePath = response.filePath;
+      const bytes = response.bytes;
+      if (operation && filePath && typeof bytes === "number") {
+        writeObserver?.({
+          ok: response.ok,
+          operation,
+          filePath,
+          bytes,
+          ...(response.error ? { error: response.error } : {}),
+        });
+      }
       if (response.ok) {
         pending.resolve();
         return;
@@ -73,4 +104,3 @@ export const getLogIoWorkerClient = (): LogIoWorkerClient => {
   sharedClient ??= new LogIoWorkerClient();
   return sharedClient;
 };
-

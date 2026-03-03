@@ -4,7 +4,7 @@ import type {
   GuiQueueJobView,
   GuiQueueResponse,
 } from "@trenchclaw/types";
-import { resolveLlmProviderConfig } from "../../../../trenchclaw/src/ai/llm/config";
+import { resolveLlmProviderConfig } from "../../../ai/llm/config";
 import { ACTIVE_JOB_STATUSES, GUI_QUEUE_INCLUDE_HISTORY } from "../constants";
 import type { RuntimeGuiDomainContext } from "../contracts";
 

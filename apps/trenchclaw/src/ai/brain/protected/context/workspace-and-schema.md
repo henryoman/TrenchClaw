@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-02T21:59:56.792Z
+Generated at: 2026-03-03T03:44:49.133Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -20,6 +20,7 @@ apps/trenchclaw/
 |   |   |   |   |   `-- 2026-03-02.jsonl
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-03-02.md
+|   |   |   |   |   |-- 2026-03-03.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
@@ -30,19 +31,27 @@ apps/trenchclaw/
 |   |   |   |   |   `-- 8cf7109f-a009-4e26-87c1-61a21f166932.md
 |   |   |   |   |-- summary/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   `-- 2026-03-02.log
+|   |   |   |   |   |-- 2026-03-02.log
+|   |   |   |   |   `-- 2026-03-03.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
-|   |   |   |   |   `-- 2026-03-02.log
+|   |   |   |   |   |-- 2026-03-02.log
+|   |   |   |   |   `-- 2026-03-03.log
 |   |   |   |   |-- .gitignore
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
 |   |   |   |   |-- runtime.sqlite-shm
 |   |   |   |   `-- runtime.sqlite-wal
 |   |   |   |-- knowledge/
-|   |   |   |   |-- dexscreener/
-|   |   |   |   |   |-- dexscreener-actions.md
-|   |   |   |   |   `-- dexscreener-api-reference.md
+|   |   |   |   |-- deep-knowledge/
+|   |   |   |   |   |-- dexscreener/
+|   |   |   |   |   |   |-- dexscreener-actions.md
+|   |   |   |   |   |   `-- dexscreener-api-reference.md
+|   |   |   |   |   |-- bun-secrets-docs.md
+|   |   |   |   |   |-- bun-shell-docs.md
+|   |   |   |   |   |-- bun-sqlite-docs.md
+|   |   |   |   |   |-- data-structures-as-json.md
+|   |   |   |   |   `-- helius.md
 |   |   |   |   |-- skills/
 |   |   |   |   |   |-- agent-browser/
 |   |   |   |   |   |   |-- references/
@@ -59,11 +68,8 @@ apps/trenchclaw/
 |   |   |   |   |   |   |   `-- form-automation.sh
 |   |   |   |   |   |   `-- SKILL.md
 |   |   |   |   |   `-- skills-lock.json
-|   |   |   |   |-- bun-secrets-docs.md
-|   |   |   |   |-- bun-shell-docs.md
-|   |   |   |   |-- bun-sqlite-docs.md
-|   |   |   |   |-- data-structures-as-json.md
-|   |   |   |   |-- helius.md
+|   |   |   |   |-- bash-tool.md
+|   |   |   |   |-- file-system-wallet.md
 |   |   |   |   |-- KNOWLEDGE_MANIFEST.md
 |   |   |   |   `-- knowledge-tree.ts
 |   |   |   |-- protected/
@@ -159,6 +165,18 @@ apps/trenchclaw/
 |   |   |   `-- refresh-workspace-context.ts
 |   |   `-- commands.txt
 |   |-- runtime/
+|   |   |-- gui-transport/
+|   |   |   |-- domains/
+|   |   |   |   |-- chat.ts
+|   |   |   |   |-- instances.ts
+|   |   |   |   |-- runtime-panels.ts
+|   |   |   |   |-- tests.ts
+|   |   |   |   `-- vault-secrets.ts
+|   |   |   |-- constants.ts
+|   |   |   |-- contracts.ts
+|   |   |   |-- parsers.ts
+|   |   |   |-- router.ts
+|   |   |   `-- runtime-gui-transport.ts
 |   |   |-- load/
 |   |   |   |-- authority.ts
 |   |   |   |-- index.ts
@@ -187,10 +205,15 @@ apps/trenchclaw/
 |   |   |   `-- system-log-store.ts
 |   |   |-- bootstrap.ts
 |   |   |-- chat.ts
+|   |   |-- gui-transport.ts
 |   |   |-- index.ts
+|   |   |-- runtime-paths.ts
+|   |   |-- start-runtime-server.ts
 |   |   `-- workspace-bash.ts
 |   |-- solana/
 |   |   |-- actions/
+|   |   |   |-- agentic-signup/
+|   |   |   |   `-- helius.ts
 |   |   |   |-- data-fetch/
 |   |   |   |   |-- alerts/
 |   |   |   |   |   |-- createBlockchainAlert.ts
@@ -338,6 +361,10 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | /api/gui/secrets |
 | /api/gui/tests/dispatcher |
 | /api/gui/vault |
+| /v1/chat/stream |
+| /v1/chat/turn |
+| /v1/health |
+| /v1/runtime |
 
 ## SQLite Schema Snapshot
 ```text

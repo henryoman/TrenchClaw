@@ -47,6 +47,7 @@ import {
   SummaryLogStore,
   SqliteStateStore,
   SystemLogStore,
+  setLogIoWriteObserver,
   type ActiveSessionInfo,
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
@@ -509,6 +510,19 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
   const logger = createRuntimeLogger(settings);
+  setLogIoWriteObserver((event) => {
+    const details: Record<string, unknown> = {
+      operation: event.operation,
+      filePath: event.filePath,
+      bytes: event.bytes,
+    };
+    if (!event.ok) {
+      details.error = event.error ?? "unknown write failure";
+      logger.warn("storage:fs_write_fail", details);
+      return;
+    }
+    logger.debug("storage:fs_write", details);
+  });
   await runBootContextRefresh(logger);
   const eventBus = new InMemoryRuntimeEventBus();
   const sqliteStore = settings.storage.sqlite.enabled
@@ -759,6 +773,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       });
       closableStateStore.close?.();
       unsubscribeSystemLogs();
+      setLogIoWriteObserver(null);
     },
     enqueueJob,
     describe: () => ({

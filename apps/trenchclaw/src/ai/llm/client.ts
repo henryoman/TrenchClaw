@@ -56,7 +56,9 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
     apiKey: config.apiKey,
     baseURL: config.baseURL,
   });
-  const model = openai.responses(config.model);
+  const baseURL = config.baseURL?.toLowerCase() ?? "";
+  const useChatApi = config.provider === "openrouter" || baseURL.includes("openrouter.ai");
+  const model = useChatApi ? openai.chat(config.model) : openai.responses(config.model);
   const resolveSystemPrompt = async (input: LlmGenerateInput | LlmStreamInput): Promise<string> => {
     if (input.system) {
       return input.system;

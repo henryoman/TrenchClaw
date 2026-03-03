@@ -18,26 +18,120 @@ export const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export const parseUiChatRequest = async (
   request: Request,
-): Promise<{ messages: UIMessage[]; chatId?: string; conversationTitle?: string } | null> => {
-  try {
-    const payload = await request.json();
-    if (!isRecord(payload) || !Array.isArray(payload.messages)) {
+): Promise<{ messages: UIMessage[]; chatId?: string; conversationTitle?: string; metadata?: Record<string, unknown> } | null> => {
+  const toUserMessage = (text: string): UIMessage => ({
+    id: `msg-${crypto.randomUUID()}`,
+    role: "user",
+    parts: [{ type: "text", text }],
+  });
+
+  const toUiMessage = (value: unknown): UIMessage | null => {
+    if (!isRecord(value)) {
       return null;
     }
+
+    const role = value.role;
+    if (role !== "system" && role !== "user" && role !== "assistant") {
+      return null;
+    }
+
+    const id = typeof value.id === "string" && value.id.trim().length > 0 ? value.id.trim() : `msg-${crypto.randomUUID()}`;
+    if (Array.isArray(value.parts)) {
+      return {
+        id,
+        role,
+        parts: value.parts as UIMessage["parts"],
+      };
+    }
+
+    if (typeof value.content === "string" && value.content.trim().length > 0) {
+      return {
+        id,
+        role,
+        parts: [{ type: "text", text: value.content.trim() }],
+      };
+    }
+
+    if (typeof value.text === "string" && value.text.trim().length > 0) {
+      return {
+        id,
+        role,
+        parts: [{ type: "text", text: value.text.trim() }],
+      };
+    }
+
+    return null;
+  };
+
+  const toUiMessages = (value: unknown): UIMessage[] | null => {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+    const messages = value
+      .map((entry) => toUiMessage(entry))
+      .filter((entry): entry is UIMessage => entry !== null);
+    return messages.length > 0 ? messages : null;
+  };
+
+  const extractMessages = (value: Record<string, unknown>): UIMessage[] | null => {
+    const list = toUiMessages(value.messages);
+    if (list) {
+      return list;
+    }
+
+    if (isRecord(value.message)) {
+      const single = toUiMessage(value.message);
+      if (single) {
+        return [single];
+      }
+    }
+
+    if (typeof value.input === "string" && value.input.trim().length > 0) {
+      return [toUserMessage(value.input.trim())];
+    }
+
+    if (typeof value.prompt === "string" && value.prompt.trim().length > 0) {
+      return [toUserMessage(value.prompt.trim())];
+    }
+
+    return null;
+  };
+
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload)) {
+      return null;
+    }
+
+    const body = isRecord(payload.body) ? payload.body : payload;
+    const messages = extractMessages(body) ?? (body === payload ? null : extractMessages(payload));
+    if (!messages || messages.length === 0) {
+      return null;
+    }
+
     const chatId =
-      (typeof payload.chatId === "string" && payload.chatId.trim().length > 0
-        ? payload.chatId.trim()
-        : typeof payload.id === "string" && payload.id.trim().length > 0
-          ? payload.id.trim()
-          : undefined);
+      (typeof body.chatId === "string" && body.chatId.trim().length > 0
+        ? body.chatId.trim()
+        : typeof body.id === "string" && body.id.trim().length > 0
+          ? body.id.trim()
+          : typeof payload.chatId === "string" && payload.chatId.trim().length > 0
+            ? payload.chatId.trim()
+            : typeof payload.id === "string" && payload.id.trim().length > 0
+              ? payload.id.trim()
+              : undefined);
     const conversationTitle =
-      typeof payload.conversationTitle === "string" && payload.conversationTitle.trim().length > 0
-        ? payload.conversationTitle.trim()
-        : undefined;
+      typeof body.conversationTitle === "string" && body.conversationTitle.trim().length > 0
+        ? body.conversationTitle.trim()
+        : typeof payload.conversationTitle === "string" && payload.conversationTitle.trim().length > 0
+          ? payload.conversationTitle.trim()
+          : undefined;
+    const metadata =
+      isRecord(body.metadata) ? body.metadata : isRecord(payload.metadata) ? payload.metadata : undefined;
     return {
-      messages: payload.messages as UIMessage[],
+      messages,
       chatId,
       conversationTitle,
+      metadata,
     };
   } catch {
     return null;

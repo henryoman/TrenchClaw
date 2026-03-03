@@ -7,8 +7,6 @@ const REPO_ROOT = process.cwd();
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
 const DEFAULT_RUNTIME_PORT = Number.parseInt(process.env.RUNTIME_PORT || "4020", 10);
 const DEFAULT_GUI_PORT = Number.parseInt(process.env.GUI_PORT || "4173", 10);
-const HEALTH_TIMEOUT_MS = Number.parseInt(process.env.BOOTSTRAP_HEALTH_TIMEOUT_MS || "30000", 10);
-const HEALTH_POLL_MS = 250;
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value > 0 && value <= 65535;
 
@@ -60,25 +58,6 @@ const findAvailablePort = async (host: string, preferredPort: number, label: str
   throw new Error(`No available ${label} port found from ${firstPort} to ${maxPort} (${maxPort - firstPort + 1} attempts)`);
 };
 
-const waitForRuntimeHealth = async (runtimeUrl: string, timeoutMs: number): Promise<void> => {
-  const deadline = Date.now() + timeoutMs;
-  const healthUrl = `${runtimeUrl}/health`;
-
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(healthUrl);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // Runtime is still booting.
-    }
-    await Bun.sleep(HEALTH_POLL_MS);
-  }
-
-  throw new Error(`Runtime health check timed out after ${timeoutMs}ms (${healthUrl})`);
-};
-
 const waitForExit = async (proc: Bun.Subprocess): Promise<number> => {
   const code = await proc.exited;
   return code ?? 0;
@@ -89,6 +68,8 @@ const waitForExitOrTimeout = async (proc: Bun.Subprocess, timeoutMs: number): Pr
     proc.exited.then(() => true),
     Bun.sleep(timeoutMs).then(() => false),
   ]);
+
+const isSignalExitCode = (code: number): boolean => code === 130 || code === 143;
 
 const signalStop = (proc: Bun.Subprocess): void => {
   if (proc.killed || proc.exitCode !== null) {
@@ -134,7 +115,7 @@ const run = async (): Promise<void> => {
 
   const baseEnv = { ...process.env };
 
-  const runtimeProc = Bun.spawn(["bun", "run", "--cwd", "apps/frontends/cli", "dev"], {
+  const runtimeProc = Bun.spawn(["bun", "run", "--cwd", "apps/trenchclaw", "runtime:start"], {
     cwd: REPO_ROOT,
     stdout: "inherit",
     stderr: "inherit",
@@ -144,13 +125,13 @@ const run = async (): Promise<void> => {
       RUNTIME_HOST,
       RUNTIME_PORT: String(runtimePort),
       RUNTIME_REQUIRE_SERVER: "1",
-      TRENCHCLAW_APP_ROOT: path.join(REPO_ROOT, "apps/trenchclaw"),
       TRENCHCLAW_GUI_URL: guiUrl,
     },
   });
 
   let guiProc: Bun.Subprocess | null = null;
   let shuttingDown = false;
+  let shutdownRequested = false;
   let shutdownPromise: Promise<void> | null = null;
   const shutdownGraceMs = Number.parseInt(process.env.BOOTSTRAP_SHUTDOWN_GRACE_MS || "2500", 10);
 
@@ -160,7 +141,7 @@ const run = async (): Promise<void> => {
     }
 
     shuttingDown = true;
-    process.exitCode = exitCode;
+    process.exitCode = shutdownRequested ? 0 : exitCode;
 
     shutdownPromise = (async () => {
       const procs: Array<{ label: string; proc: Bun.Subprocess | null }> = [
@@ -200,9 +181,13 @@ const run = async (): Promise<void> => {
     void shutdown(1);
   };
 
-  process.once("SIGINT", () => void shutdown(0));
-  process.once("SIGTERM", () => void shutdown(0));
-  process.once("SIGHUP", () => void shutdown(0));
+  const handleTerminationSignal = (): void => {
+    shutdownRequested = true;
+    void shutdown(0);
+  };
+  process.on("SIGINT", handleTerminationSignal);
+  process.on("SIGTERM", handleTerminationSignal);
+  process.on("SIGHUP", handleTerminationSignal);
   process.once("exit", () => {
     if (!shuttingDown) {
       signalStop(runtimeProc);
@@ -218,20 +203,7 @@ const run = async (): Promise<void> => {
     handleFatal("unhandled rejection", reason);
   });
 
-  try {
-    await Promise.race([
-      waitForRuntimeHealth(runtimeUrl, HEALTH_TIMEOUT_MS),
-      runtimeProc.exited.then((code) => {
-        throw new Error(`Runtime exited before becoming healthy (code ${code ?? 0})`);
-      }),
-    ]);
-    console.log("[bootstrap] runtime healthy; starting GUI");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`[bootstrap] ${message}`);
-    await shutdown(1);
-    return;
-  }
+  console.log("[bootstrap] runtime spawned; starting GUI");
 
   guiProc = Bun.spawn(["bun", "--bun", "vite", "--host", RUNTIME_HOST, "--port", String(guiPort), "--strictPort"], {
     cwd: path.join(REPO_ROOT, "apps/frontends/gui"),
@@ -252,7 +224,7 @@ const run = async (): Promise<void> => {
     guiExit.then((code) => ({ source: "gui" as const, code })),
   ]);
 
-  if (result.code !== 0) {
+  if (result.code !== 0 && !(shutdownRequested && isSignalExitCode(result.code))) {
     console.error(`[bootstrap] ${result.source} exited with code ${result.code}`);
     await shutdown(result.code);
     return;

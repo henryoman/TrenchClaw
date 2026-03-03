@@ -11,6 +11,7 @@
     "generate": "bun run context:refresh && bun run knowledge:refresh",
     "refresh": "bun run typecheck && bun run lint && bun run context:refresh",
     "systemd:install": "bun run ../../scripts/systemd/install.ts",
+    "runtime:start": "bun run src/runtime/start-runtime-server.ts",
     "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",

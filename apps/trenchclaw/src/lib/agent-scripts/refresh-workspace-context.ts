@@ -15,7 +15,7 @@ const PROTECTED_CONTEXT_FILE = fileURLToPath(
   new URL("../../ai/brain/protected/context/workspace-and-schema.md", import.meta.url),
 );
 const SQLITE_SQL_SNAPSHOT_FILE = fileURLToPath(new URL("../../../../../docs/storage-schema.snapshot.sql", import.meta.url));
-const GUI_TRANSPORT_FILE = fileURLToPath(new URL("../../../../frontends/cli/gui-transport/router.ts", import.meta.url));
+const GUI_TRANSPORT_FILE = fileURLToPath(new URL("../../runtime/gui-transport/router.ts", import.meta.url));
 const CONTEXT_DB_PATH_ENV = "TRENCHCLAW_CONTEXT_DB_PATH";
 const DEFAULT_LIVE_DB_PATH_CANDIDATES = [
   join(APP_ROOT_DIR, "src/ai/brain/db/runtime.sqlite"),

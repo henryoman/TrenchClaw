@@ -5,18 +5,23 @@
 <p align="center">
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
   <a href="https://github.com/anza-xyz/kit"><img src="https://img.shields.io/badge/Solana%20Kit-551BF9?style=for-the-badge&logo=solana&logoColor=white" alt="Solana Kit" /></a>
-  <a href="https://umi.typedoc.metaplex.com"><img src="https://img.shields.io/badge/Umi-2E2E2E?style=for-the-badge&logo=metaplex&logoColor=white" alt="Umi" /></a>
   <a href="https://www.metaplex.com"><img src="https://img.shields.io/badge/Metaplex-6A00FF?style=for-the-badge&logo=metaplex&logoColor=white" alt="Metaplex" /></a>
   <a href="https://www.jup.ag"><img src="https://img.shields.io/badge/Jupiter-00BFA6?style=for-the-badge&logo=jupiter&logoColor=white" alt="Jupiter" /></a>
   <a href="https://www.helius.dev"><img src="https://img.shields.io/badge/Helius-FF6B35?style=for-the-badge&logo=helius&logoColor=white" alt="Helius" /></a>
   <a href="https://solana.com"><img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana" /></a>
+  <a href="https://streamdown.ai/"><img src="https://img.shields.io/badge/Streamdown-0F172A?style=for-the-badge" alt="Streamdown" /></a>
+  <a href="https://www.meteora.ag/"><img src="https://img.shields.io/badge/Meteora-00C2A8?style=for-the-badge" alt="Meteora" /></a>
+  <a href="https://ai-sdk.dev/tools-registry/bash-tool"><img src="https://img.shields.io/badge/Bash%20Tool-111827?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Bash Tool" /></a>
+  <a href="https://svelte.dev/"><img src="https://img.shields.io/badge/Svelte-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte" /></a>
+  <a href="https://github.com/sst/opentui"><img src="https://img.shields.io/badge/OpenTUI-1F2937?style=for-the-badge" alt="OpenTUI" /></a>
+  <a href="https://bun.sh/docs/api/sqlite"><img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" /></a>
 </p>
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
 
 # TrenchClaw
 
-*useable 0.0.1 release coming Monday March 2*
+*USEABLE TEST RELEASE AVAILABLE TUESDAY*
 
 TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line. This is very dangerous and will be a while before security is perfected. 
 
@@ -276,11 +281,12 @@ bun run start
 ```
 
 What `bun run start` does:
-- Starts the dedicated runner (`apps/runner`) which then starts the CLI runtime process
+- Starts the dedicated runner (`apps/runner`) which then starts the core runtime process (`apps/trenchclaw runtime:start`)
+- Runs startup context refresh + knowledge manifest refresh (override with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=0` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=0`)
 - Starts runtime API on localhost
 - Serves GUI from static `apps/frontends/gui/dist`
 - Proxies `/api/*` from GUI server to runtime server
-- Opens your default browser automatically
+- Prompts `launch GUI now?` and opens browser after Enter (type `skip` to keep runtime CLI-only)
 
 Local development still uses Vite:
 

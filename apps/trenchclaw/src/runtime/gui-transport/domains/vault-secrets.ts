@@ -11,8 +11,8 @@ import type {
   GuiUpsertSecretResponse,
   GuiVaultResponse,
 } from "@trenchclaw/types";
-import { ensureVaultFileExists, parseVaultJsonText } from "../../../../trenchclaw/src/ai/llm/vault-file";
-import { assertProtectedNoReadWritePath } from "../../../../trenchclaw/src/runtime/security/write-scope";
+import { ensureVaultFileExists, parseVaultJsonText } from "../../../ai/llm/vault-file";
+import { assertProtectedNoReadWritePath } from "../../security/write-scope";
 import { NO_READ_DIRECTORY, PUBLIC_RPC_OPTIONS, SECRET_OPTIONS, VAULT_FILE_PATH, VAULT_TEMPLATE_FILE_PATH } from "../constants";
 import { isRecord } from "../parsers";
 import type { RuntimeGuiDomainContext } from "../contracts";

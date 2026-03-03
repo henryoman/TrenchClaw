@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
+
   const githubUrl = 'https://github.com/henryoman/trenchclaw';
 
   const features = [
@@ -82,9 +84,7 @@
       </div>
       <div class="flex items-center gap-8">
         <a
-          href="{githubUrl}#readme"
-          target="_blank"
-          rel="noopener noreferrer"
+          href={resolve('/docs')}
           class="text-sm text-muted hover:text-cyan-brand transition-colors font-light"
         >
           Docs
@@ -143,9 +143,7 @@
           </svg>
         </a>
         <a
-          href="{githubUrl}#readme"
-          target="_blank"
-          rel="noopener noreferrer"
+          href={resolve('/docs')}
           class="px-8 py-3 border-2 border-purple-brand text-purple-brand hover:bg-purple-brand hover:text-background transition-colors flex items-center justify-center gap-2 font-light"
         >
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -366,7 +364,7 @@
       <p class="text-xs text-muted-dark font-extralight">&copy; 2026 TrenchClaw. MIT License (coming soon).</p>
       <div class="flex gap-6 mt-4 md:mt-0">
         <a href="{githubUrl}" target="_blank" rel="noopener noreferrer" class="text-xs text-muted-dark hover:text-cyan-brand transition-colors font-extralight">GitHub</a>
-        <a href="{githubUrl}#readme" target="_blank" rel="noopener noreferrer" class="text-xs text-muted-dark hover:text-cyan-brand transition-colors font-extralight">Read Me</a>
+        <a href={resolve('/docs')} class="text-xs text-muted-dark hover:text-cyan-brand transition-colors font-extralight">Docs</a>
         <a href="{githubUrl}/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener noreferrer" class="text-xs text-muted-dark hover:text-cyan-brand transition-colors font-extralight">Architecture</a>
       </div>
     </div>

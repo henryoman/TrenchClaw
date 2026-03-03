@@ -3,7 +3,7 @@ import type {
   GuiConversationView,
   GuiInstanceProfileView,
 } from "@trenchclaw/types";
-import type { RuntimeBootstrap } from "../../../trenchclaw/src/runtime/bootstrap";
+import type { RuntimeBootstrap } from "../bootstrap";
 import { MAX_ACTIVITY_ITEMS } from "./constants";
 import type { RuntimeGuiDomainContext } from "./contracts";
 import { createGuiApiHandler } from "./router";
@@ -94,7 +94,7 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
 
     return this.runtime.stateStore
       .listConversations(normalizedLimit * 2)
-      .filter((conversation) => !activeInstanceId || conversation.sessionId === activeInstanceId)
+      .filter((conversation) => !activeInstanceId || !conversation.sessionId || conversation.sessionId === activeInstanceId)
       .slice(0, normalizedLimit)
       .map((conversation) => ({
         id: conversation.id,
@@ -154,7 +154,7 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
   }
 }
 
-export const createWebGuiApiHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
+export const createRuntimeApiHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
   const transport = new RuntimeGuiTransport(runtime);
   return transport.createApiHandler();
 };

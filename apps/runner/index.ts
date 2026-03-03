@@ -1,15 +1,27 @@
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
+import { createInterface } from "node:readline/promises";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "../..");
-const CORE_APP_ROOT = path.join(REPO_ROOT, "apps/trenchclaw");
 
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
 const DEFAULT_RUNTIME_PORT = Number.parseInt(process.env.RUNTIME_PORT || "4020", 10);
 const DEFAULT_GUI_PORT = Number.parseInt(process.env.GUI_PORT || "4173", 10);
-const HEALTH_TIMEOUT_MS = Number.parseInt(process.env.RELEASE_HEALTH_TIMEOUT_MS || "30000", 10);
 const SHUTDOWN_GRACE_MS = Number.parseInt(process.env.RELEASE_SHUTDOWN_GRACE_MS || "2500", 10);
-const HEALTH_POLL_MS = 250;
+// Bun currently enforces idleTimeout <= 255 seconds.
+const GUI_IDLE_TIMEOUT_SECONDS = 255;
+
+const ANSI = {
+  reset: "\u001b[0m",
+  neonTurquoise: "\u001b[38;2;0;245;212m",
+  neonPurple: "\u001b[38;2;191;0;255m",
+} as const;
+
+const supportsColor = Boolean(process.stdout.isTTY) && !("NO_COLOR" in process.env);
+const colorize = (value: string, color: keyof typeof ANSI): string =>
+  supportsColor ? `${ANSI[color]}${value}${ANSI.reset}` : value;
+const RUNNER_LOG_PREFIX = colorize("@trenclaw:", "neonPurple");
+const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 
 const GUI_DIST_DIR = path.join(REPO_ROOT, "apps/frontends/gui/dist");
 const GUI_INDEX_PATH = path.join(GUI_DIST_DIR, "index.html");
@@ -50,30 +62,13 @@ const findAvailablePort = async (host: string, preferredPort: number, label: str
   throw new Error(`No available ${label} port found from ${firstPort} to ${maxPort}`);
 };
 
-const waitForRuntimeHealth = async (runtimeUrl: string, timeoutMs: number): Promise<void> => {
-  const deadline = Date.now() + timeoutMs;
-  const healthUrl = `${runtimeUrl}/health`;
-
-  while (Date.now() < deadline) {
-    try {
-      const response = await fetch(healthUrl);
-      if (response.ok) {
-        return;
-      }
-    } catch {
-      // Runtime still booting.
-    }
-    await Bun.sleep(HEALTH_POLL_MS);
-  }
-
-  throw new Error(`Runtime health check timed out after ${timeoutMs}ms (${healthUrl})`);
-};
-
 const waitForExitOrTimeout = async (proc: Bun.Subprocess, timeoutMs: number): Promise<boolean> =>
   await Promise.race([
     proc.exited.then(() => true),
     Bun.sleep(timeoutMs).then(() => false),
   ]);
+
+const isSignalExitCode = (code: number): boolean => code === 130 || code === 143;
 
 const signalStop = (proc: Bun.Subprocess): void => {
   if (proc.killed || proc.exitCode !== null) {
@@ -112,7 +107,41 @@ const openBrowser = async (url: string): Promise<void> => {
     }
   }
 
-  console.warn(`[runner] unable to auto-open browser. open manually: ${url}`);
+  console.warn(`${RUNNER_LOG_PREFIX} unable to auto-open browser. open manually: ${emphasize(url)}`);
+};
+
+const shouldPromptForGuiLaunch = (): boolean =>
+  process.env.TRENCHCLAW_RUNNER_PROMPT_GUI_LAUNCH === "1" &&
+  Boolean(process.stdin.isTTY) &&
+  Boolean(process.stdout.isTTY);
+
+const waitForGuiLaunchConfirmation = async (): Promise<boolean> => {
+  if (process.env.TRENCHCLAW_RUNNER_AUTO_OPEN_GUI === "1") {
+    return true;
+  }
+
+  if (!shouldPromptForGuiLaunch()) {
+    return false;
+  }
+
+  const prompt = createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  try {
+    const answer = (
+      await prompt.question(
+        `${RUNNER_LOG_PREFIX} launch GUI now? Press Enter to continue, or type "skip" to keep CLI-only: `,
+      )
+    )
+      .trim()
+      .toLowerCase();
+
+    return !(answer === "skip" || answer === "s");
+  } finally {
+    prompt.close();
+  }
 };
 
 const contentTypeByExt = new Map<string, string>([
@@ -141,12 +170,14 @@ const toAssetPath = (urlPathname: string): string => {
 const proxyApiRequest = async (request: Request, runtimeBaseUrl: string): Promise<Response> => {
   const url = new URL(request.url);
   const upstreamUrl = new URL(`${url.pathname}${url.search}`, runtimeBaseUrl);
-
-  return fetch(upstreamUrl, {
+  const proxyInit = {
     method: request.method,
     headers: request.headers,
     body: request.body,
-  });
+    duplex: request.body ? "half" : undefined,
+  };
+
+  return fetch(upstreamUrl, proxyInit as unknown as RequestInit);
 };
 
 const createStaticServer = (input: {
@@ -157,6 +188,7 @@ const createStaticServer = (input: {
   return Bun.serve({
     hostname: input.host,
     port: input.port,
+    idleTimeout: GUI_IDLE_TIMEOUT_SECONDS,
     fetch: async (request: Request) => {
       const url = new URL(request.url);
 
@@ -205,10 +237,10 @@ const main = async (): Promise<void> => {
   const runtimeUrl = `http://${RUNTIME_HOST}:${runtimePort}`;
   const guiUrl = `http://${RUNTIME_HOST}:${guiPort}`;
 
-  console.log(`[runner] runtime target: ${runtimeUrl}`);
-  console.log(`[runner] gui target: ${guiUrl}`);
+  console.log(`${RUNNER_LOG_PREFIX} runtime target: ${emphasize(runtimeUrl)}`);
+  console.log(`${RUNNER_LOG_PREFIX} gui target: ${emphasize(guiUrl)}`);
 
-  const runtimeProc = Bun.spawn(["bun", "run", "--cwd", "apps/frontends/cli", "start"], {
+  const runtimeProc = Bun.spawn(["bun", "run", "--cwd", "apps/trenchclaw", "runtime:start"], {
     cwd: REPO_ROOT,
     stdout: "inherit",
     stderr: "inherit",
@@ -219,15 +251,15 @@ const main = async (): Promise<void> => {
       RUNTIME_PORT: String(runtimePort),
       RUNTIME_REQUIRE_SERVER: "1",
       RUNTIME_STRICT_PORT: "1",
-      TRENCHCLAW_APP_ROOT: CORE_APP_ROOT,
       TRENCHCLAW_GUI_URL: guiUrl,
-      TRENCHCLAW_BOOT_REFRESH_CONTEXT: "0",
-      TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE: "0",
+      TRENCHCLAW_BOOT_REFRESH_CONTEXT: process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "1",
+      TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE: process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "1",
     },
   });
 
   let guiServer: Bun.Server<unknown> | null = null;
   let shuttingDown = false;
+  let shutdownRequested = false;
   let shutdownPromise: Promise<void> | null = null;
 
   const shutdown = (exitCode: number): Promise<void> => {
@@ -236,13 +268,15 @@ const main = async (): Promise<void> => {
     }
 
     shuttingDown = true;
-    process.exitCode = exitCode;
+    process.exitCode = shutdownRequested ? 0 : exitCode;
 
     shutdownPromise = (async () => {
       signalStop(runtimeProc);
       const exitedGracefully = await waitForExitOrTimeout(runtimeProc, SHUTDOWN_GRACE_MS);
       if (!exitedGracefully) {
-        console.warn(`[runner] runtime did not exit after ${SHUTDOWN_GRACE_MS}ms; force-killing`);
+        console.warn(
+          `${RUNNER_LOG_PREFIX} runtime did not exit after ${emphasize(`${SHUTDOWN_GRACE_MS}ms`)}; force-killing`,
+        );
         forceStop(runtimeProc);
         await waitForExitOrTimeout(runtimeProc, 1000);
       }
@@ -253,9 +287,13 @@ const main = async (): Promise<void> => {
     return shutdownPromise;
   };
 
-  process.once("SIGINT", () => void shutdown(0));
-  process.once("SIGTERM", () => void shutdown(0));
-  process.once("SIGHUP", () => void shutdown(0));
+  const handleTerminationSignal = (): void => {
+    shutdownRequested = true;
+    void shutdown(0);
+  };
+  process.on("SIGINT", handleTerminationSignal);
+  process.on("SIGTERM", handleTerminationSignal);
+  process.on("SIGHUP", handleTerminationSignal);
   process.once("exit", () => {
     if (!shuttingDown) {
       signalStop(runtimeProc);
@@ -263,33 +301,25 @@ const main = async (): Promise<void> => {
     }
   });
 
-  try {
-    await Promise.race([
-      waitForRuntimeHealth(runtimeUrl, HEALTH_TIMEOUT_MS),
-      runtimeProc.exited.then((code) => {
-        throw new Error(`Runtime exited before becoming healthy (code ${code ?? 0})`);
-      }),
-    ]);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`[runner] ${message}`);
-    await shutdown(1);
-    return;
-  }
-
   guiServer = createStaticServer({
     host: RUNTIME_HOST,
     port: guiPort,
     runtimeBaseUrl: runtimeUrl,
   });
 
-  console.log(`[runner] GUI serving from ${guiUrl}`);
-  console.log(`[runner] Press Ctrl+C to stop.`);
-  await openBrowser(guiUrl);
+  console.log(`${RUNNER_LOG_PREFIX} GUI serving from ${emphasize(guiUrl)}`);
+  const launchGui = await waitForGuiLaunchConfirmation();
+  if (!launchGui) {
+    console.log(`${RUNNER_LOG_PREFIX} GUI auto-launch disabled. Runtime remains active.`);
+    console.log(`${RUNNER_LOG_PREFIX} Open manually when needed: ${emphasize(guiUrl)}`);
+  } else {
+    await openBrowser(guiUrl);
+  }
+  console.log(`${RUNNER_LOG_PREFIX} Press ${emphasize("Ctrl+C")} to stop.`);
 
   const runtimeExitCode = (await runtimeProc.exited) ?? 0;
-  if (runtimeExitCode !== 0) {
-    console.error(`[runner] runtime exited with code ${runtimeExitCode}`);
+  if (runtimeExitCode !== 0 && !(shutdownRequested && isSignalExitCode(runtimeExitCode))) {
+    console.error(`${RUNNER_LOG_PREFIX} runtime exited with code ${runtimeExitCode}`);
     await shutdown(runtimeExitCode);
     return;
   }

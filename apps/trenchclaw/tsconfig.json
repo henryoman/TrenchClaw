@@ -5,6 +5,6 @@
     "noEmit": true,
     "lib": ["ESNext", "DOM"]
   },
-  "include": ["src/**/*.ts", "types/**/*.ts", "../frontends/cli/**/*.ts", "../../tests/**/*.ts"],
+  "include": ["src/**/*.ts", "types/**/*.ts", "../../tests/**/*.ts"],
   "exclude": ["dist", "node_modules", "../frontends/gui/**"]
 }

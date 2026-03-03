@@ -12,7 +12,6 @@ import {
   DEFAULT_RUNTIME_ERROR,
   DEFAULT_SIGN_IN_ERROR,
   RUNTIME_ACTIVITY_LIMIT,
-  RUNTIME_REFRESH_INTERVAL_MS,
   RUNTIME_STATUS_CHECKING,
   RUNTIME_STATUS_OFFLINE,
   type RuntimeSafetyProfile,
@@ -83,8 +82,6 @@ export const createRuntimeController = () => {
     secretsError: "",
   });
 
-  let refreshTimer: ReturnType<typeof setInterval> | null = null;
-
   const loadInstances = async (): Promise<void> => {
     const response = await runtimeApi.instances();
     state.availableInstances = response.instances;
@@ -122,22 +119,8 @@ export const createRuntimeController = () => {
     }
   };
 
-  const startPolling = (): void => {
-    if (refreshTimer) {
-      return;
-    }
-    refreshTimer = setInterval(() => {
-      void refreshRuntimePanels();
-    }, RUNTIME_REFRESH_INTERVAL_MS);
-  };
-
-  const stopPolling = (): void => {
-    if (!refreshTimer) {
-      return;
-    }
-    clearInterval(refreshTimer);
-    refreshTimer = null;
-  };
+  const startPolling = (): void => {};
+  const stopPolling = (): void => {};
 
   const initializeSplash = async (): Promise<void> => {
     state.splashError = "";
@@ -163,20 +146,17 @@ export const createRuntimeController = () => {
         state.phase = "app";
         await loadAppData();
         await loadSecrets();
-        startPolling();
       } else {
         state.activeInstance = null;
         state.signInPin = "";
         await loadInstances();
         state.phase = "login";
-        stopPolling();
       }
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_RUNTIME_ERROR;
       state.runtimeStatus = RUNTIME_STATUS_OFFLINE;
       state.splashError = `${errorText}. Start runtime and retry.`;
       state.phase = "landing";
-      stopPolling();
     } finally {
       state.splashBusy = false;
     }
@@ -261,7 +241,6 @@ export const createRuntimeController = () => {
       state.phase = "app";
       await loadAppData();
       await loadSecrets();
-      startPolling();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_SIGN_IN_ERROR;
     } finally {

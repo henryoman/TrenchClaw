@@ -3,7 +3,7 @@ import type {
   GuiConversationView,
   GuiInstanceProfileView,
 } from "@trenchclaw/types";
-import type { RuntimeBootstrap } from "../../../trenchclaw/src/runtime/bootstrap";
+import type { RuntimeBootstrap } from "../bootstrap";
 
 export interface RuntimeGuiDomainContext {
   readonly runtime: RuntimeBootstrap;
