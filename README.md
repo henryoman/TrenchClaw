@@ -7,11 +7,11 @@
   <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/badge/AI%20SDK-111827?style=for-the-badge" alt="AI SDK" /></a>
   <a href="https://x.com/mert"><img src="https://img.shields.io/badge/Teachings%20of%20Mert-000000?style=for-the-badge&logo=x&logoColor=white" alt="Teachings of Mert" /></a>
   <a href="https://phantom.app/"><img src="https://img.shields.io/badge/Phantom-AB9FF2?style=for-the-badge&logo=phantom&logoColor=white" alt="Phantom" /></a>
-  <a href="https://anza.xyz/"><img src="https://img.shields.io/badge/Anza-9FE870?style=for-the-badge" alt="Anza" /></a>
+  <a href="https://anza.xyz/"><img src="https://img.shields.io/badge/Anza-1F5F3A?style=for-the-badge&logoColor=F5F5DC&labelColor=1F5F3A&color=1F5F3A" alt="Anza" /></a>
   <a href="https://github.com/anza-xyz/kit"><img src="https://img.shields.io/badge/Solana%20Kit-551BF9?style=for-the-badge&logo=solana&logoColor=white" alt="Solana Kit" /></a>
-  <a href="https://www.metaplex.com"><img src="https://img.shields.io/badge/Metaplex-6A00FF?style=for-the-badge&logo=metaplex&logoColor=white" alt="Metaplex" /></a>
-  <a href="https://www.jup.ag"><img src="https://img.shields.io/badge/Jupiter-00BFA6?style=for-the-badge&logo=jupiter&logoColor=white" alt="Jupiter" /></a>
-  <a href="https://www.helius.dev"><img src="https://www.helius.dev/_next/image?url=%2Flogo.svg&w=384&q=90" alt="Helius" height="28" /></a>
+  <a href="https://www.metaplex.com"><img src="https://img.shields.io/badge/Metaplex-000000?style=for-the-badge&logo=metaplex&logoColor=white" alt="Metaplex" /></a>
+  <a href="https://www.jup.ag"><img src="https://img.shields.io/badge/Jupiter-009A86?style=for-the-badge&logo=jupiter&logoColor=white" alt="Jupiter" /></a>
+  <a href="https://www.helius.dev"><img src="https://img.shields.io/badge/Helius-000000?style=for-the-badge&logo=helius&logoColor=white" alt="Helius" /></a>
   <a href="https://solana.com"><img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana" /></a>
   <a href="https://streamdown.ai/"><img src="https://img.shields.io/badge/Streamdown-0F172A?style=for-the-badge" alt="Streamdown" /></a>
   <a href="https://www.meteora.ag/"><img src="https://img.shields.io/badge/Meteora-FC030F?style=for-the-badge" alt="Meteora" /></a>
