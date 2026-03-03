@@ -8,7 +8,10 @@ import type { UltraSwapOutput } from "../swap/ultra/swap";
 import { ultraSwapAction } from "../swap/ultra/swap";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
-const DEFAULT_SOLANA_MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
+const heliusApiKey = process.env.HELIUS_API_KEY?.trim();
+const DEFAULT_SOLANA_MAINNET_RPC_URL = heliusApiKey
+  ? `https://beta.helius-rpc.com/?api-key=${heliusApiKey}`
+  : "https://api.mainnet-beta.solana.com";
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 interface PrivacyCashClient {

@@ -17,6 +17,11 @@ Used references in `src/ai/brain/user-blockchain-settings/settings.yaml` and run
 - `vault://integrations/dexscreener/api-key`
 - `vault://integrations/jupiter/api-key`
 
+Recommended Helius endpoint values (gateway-first):
+
+- `rpc.helius.http-url`: `https://beta.helius-rpc.com/?api-key=`
+- `rpc.helius.ws-url`: `wss://beta.helius-rpc.com/?api-key=`
+
 Recommended permissions (POSIX):
 
 ```bash

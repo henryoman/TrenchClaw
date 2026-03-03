@@ -6,8 +6,8 @@
       "public-id": ""
     },
     "helius": {
-      "http-url": "",
-      "ws-url": "",
+      "http-url": "https://beta.helius-rpc.com/?api-key=",
+      "ws-url": "wss://beta.helius-rpc.com/?api-key=",
       "api-key": ""
     },
     "quicknode": {
