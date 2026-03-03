@@ -102,7 +102,7 @@
           bind:input={chat.state.input}
           conversations={chat.state.conversations}
           activeConversationId={chat.state.activeConversationId}
-          sending={chat.isSending()}
+          sending={chat.state.sending}
           onSelectConversation={(conversationId) => {
             void chat!.selectConversation(conversationId);
           }}

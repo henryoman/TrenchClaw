@@ -88,6 +88,13 @@
         </div>
       </div>
     {/each}
+    {#if sending}
+      <div class="message-row assistant">
+        <div class="bubble assistant thinking-bubble">
+          <p>thinking...</p>
+        </div>
+      </div>
+    {/if}
   </div>
 
   <form
@@ -262,6 +269,11 @@
     background: var(--tc-color-black);
   }
 
+  .thinking-bubble {
+    opacity: 0.9;
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+
   .bubble.system {
     color: var(--tc-color-red);
     background: var(--tc-color-black);
@@ -273,6 +285,18 @@
 
   .error-text {
     color: var(--tc-color-red);
+  }
+
+  @keyframes pulse {
+    0% {
+      opacity: 0.45;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0.45;
+    }
   }
 
   .chat-form {

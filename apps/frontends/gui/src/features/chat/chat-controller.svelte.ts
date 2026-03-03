@@ -7,13 +7,16 @@ import { runtimeApi, toRuntimeUrl } from "../../runtime-api";
 
 interface ChatUiState {
   input: string;
+  sending: boolean;
   activeConversationId: string | null;
   conversations: GuiConversationView[];
 }
 
 export const createChatController = () => {
+  let manuallySending = $state(false);
   const state = $state<ChatUiState>({
     input: "",
+    sending: false,
     activeConversationId: null,
     conversations: [],
   });
@@ -100,6 +103,34 @@ export const createChatController = () => {
     return normalized;
   };
 
+  const toDisplayErrorText = (rawErrorText: string): string =>
+    rawErrorText.includes("User not found")
+      ? "LLM authentication failed (OpenRouter: User not found). Update your OpenRouter key in Vault > LLM secrets."
+      : rawErrorText;
+
+  const appendAssistantRuntimeError = (rawErrorText: string): void => {
+    const errorText = toDisplayErrorText(rawErrorText);
+    console.error(errorText);
+    chat.messages = normalizeUiMessages([
+      ...(chat.messages as UIMessage[]),
+      {
+        id: `msg-${crypto.randomUUID()}`,
+        role: "assistant",
+        parts: [{ type: "text", text: `Runtime error: ${errorText}` }],
+      },
+    ]);
+  };
+
+  const hasTerminalAssistantText = (messages: UIMessage[]): boolean => {
+    const lastMessage = messages.at(-1);
+    if (!lastMessage || lastMessage.role !== "assistant") {
+      return false;
+    }
+    return lastMessage.parts.some(
+      (part) => part.type === "text" && typeof part.text === "string" && part.text.trim().length > 0,
+    );
+  };
+
   const chat = new Chat({
     transport: new DefaultChatTransport({
       api: toRuntimeUrl(CHAT_API_PATH),
@@ -119,7 +150,7 @@ export const createChatController = () => {
     }),
   });
 
-  const isSending = (): boolean => chat.status === "streaming" || chat.status === "submitted";
+  const isSending = (): boolean => state.sending || manuallySending;
 
   const refreshConversations = async (): Promise<void> => {
     const response = await runtimeApi.conversations();
@@ -174,33 +205,40 @@ export const createChatController = () => {
 
     state.input = "";
     ensureActiveConversationId();
+    state.sending = true;
+    manuallySending = true;
 
     try {
       chat.messages = normalizeUiMessages(chat.messages as UIMessage[]);
       await chat.sendMessage({ text: nextMessage });
       chat.messages = normalizeUiMessages(chat.messages as UIMessage[]);
+      if (chat.status === "error" && !hasTerminalAssistantText(chat.messages as UIMessage[])) {
+        const rawErrorText = chat.error?.message || DEFAULT_CHAT_ERROR;
+        appendAssistantRuntimeError(rawErrorText);
+        try {
+          await runtimeApi.reportClientError({
+            source: "gui-chat",
+            message: toDisplayErrorText(rawErrorText),
+            metadata: {
+              chatStatus: chat.status,
+              conversationId: state.activeConversationId,
+            },
+          });
+        } catch {
+          // Best effort only; keep UI responsive even when runtime cannot accept error telemetry.
+        }
+      }
       await refreshConversations();
       if (onAfterSend) {
         await onAfterSend();
       }
     } catch (error) {
       const rawErrorText = error instanceof Error ? error.message : DEFAULT_CHAT_ERROR;
-      const errorText = rawErrorText.includes("User not found")
-        ? "LLM authentication failed (OpenRouter: User not found). Update your OpenRouter key in Vault > LLM secrets."
-        : rawErrorText;
-      console.error(errorText);
-      chat.messages = normalizeUiMessages([
-        ...(chat.messages as UIMessage[]),
-        {
-          id: `msg-${crypto.randomUUID()}`,
-          role: "assistant",
-          parts: [{ type: "text", text: `Runtime error: ${errorText}` }],
-        },
-      ]);
+      appendAssistantRuntimeError(rawErrorText);
       try {
         await runtimeApi.reportClientError({
           source: "gui-chat",
-          message: errorText,
+          message: toDisplayErrorText(rawErrorText),
           metadata: {
             chatStatus: chat.status,
             conversationId: state.activeConversationId,
@@ -209,6 +247,9 @@ export const createChatController = () => {
       } catch {
         // Best effort only; keep UI responsive even when runtime cannot accept error telemetry.
       }
+    } finally {
+      state.sending = false;
+      manuallySending = false;
     }
   };
 
