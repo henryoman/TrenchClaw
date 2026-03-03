@@ -8,6 +8,7 @@ import type {
   GuiDeleteSecretRequest,
   GuiDeleteSecretResponse,
   GuiInstancesResponse,
+  GuiLlmCheckResponse,
   GuiQueueResponse,
   GuiSecretsResponse,
   GuiSignInInstanceRequest,
@@ -111,6 +112,7 @@ export const runtimeApi = {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
+  llmCheck: (): Promise<GuiLlmCheckResponse> => fetchJson<GuiLlmCheckResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/llm/check`)),
   reportClientError: (input: {
     source: string;
     message: string;

@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-03T04:59:08.341Z
+Generated at: 2026-03-03T19:54:32.162Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -52,7 +52,11 @@ apps/trenchclaw/
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
 |   |   |   |   |-- runtime.sqlite-shm
-|   |   |   |   `-- runtime.sqlite-wal
+|   |   |   |   |-- runtime.sqlite-wal
+|   |   |   |   |-- trenchclaw-chat-runtime-01fd27c0-fa31-4fac-8332-f7b8bb389494.db-wal
+|   |   |   |   |-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db
+|   |   |   |   |-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db-shm
+|   |   |   |   `-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db-wal
 |   |   |   |-- knowledge/
 |   |   |   |   |-- deep-knowledge/
 |   |   |   |   |   |-- dexscreener/

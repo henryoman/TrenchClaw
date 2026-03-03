@@ -125,8 +125,13 @@
         publicRpcOptions={runtime.state.publicRpcOptions}
         busy={runtime.state.secretsBusy}
         error={runtime.state.secretsError}
+        llmCheckBusy={runtime.state.llmCheckBusy}
+        llmCheckMessage={runtime.state.llmCheckMessage}
         onReload={() => {
           void runtime.loadSecrets();
+        }}
+        onCheckLlm={() => {
+          void runtime.checkLlm();
         }}
         onSave={(input: GuiUpsertSecretRequest) => {
           void runtime.upsertSecret(input);

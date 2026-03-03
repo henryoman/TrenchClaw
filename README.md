@@ -18,9 +18,11 @@
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
 
+## useable app almost ready!
+
 # TrenchClaw
 
-*USEABLE TEST RELEASE AVAILABLE TUESDAY*
+*0.0.1 release available wednesday march 3*
 
 TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from the command line. This is very dangerous and will be a while before security is perfected. 
 

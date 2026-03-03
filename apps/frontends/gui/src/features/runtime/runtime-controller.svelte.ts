@@ -51,6 +51,8 @@ interface RuntimeUiState {
   publicRpcOptions: GuiPublicRpcOptionView[];
   secretsBusy: boolean;
   secretsError: string;
+  llmCheckBusy: boolean;
+  llmCheckMessage: string;
 }
 
 const formatRuntimeStatus = (profile: string, llmEnabled: boolean): string =>
@@ -84,6 +86,8 @@ export const createRuntimeController = () => {
     publicRpcOptions: [],
     secretsBusy: false,
     secretsError: "",
+    llmCheckBusy: false,
+    llmCheckMessage: "",
   });
 
   const loadInstances = async (): Promise<void> => {
@@ -386,6 +390,25 @@ export const createRuntimeController = () => {
     }
   };
 
+  const checkLlm = async (): Promise<void> => {
+    state.llmCheckBusy = true;
+    state.llmCheckMessage = "";
+    try {
+      const result = await runtimeApi.llmCheck();
+      const source = result.keySource === "none" ? "none" : result.keySource;
+      const fingerprint = result.keyFingerprint ? `fp:${result.keyFingerprint}` : "fp:n/a";
+      const provider = result.provider ?? "none";
+      const model = result.model ?? "n/a";
+      const status = result.probeStatus ?? "n/a";
+      const verdict = result.probeOk ? "ok" : "failed";
+      state.llmCheckMessage = `LLM check: provider=${provider} model=${model} source=${source} keyLen=${result.keyLength} ${fingerprint} probe=${verdict} status=${status} message=${result.probeMessage}`;
+    } catch (error) {
+      state.llmCheckMessage = error instanceof Error ? error.message : "Failed to run LLM check.";
+    } finally {
+      state.llmCheckBusy = false;
+    }
+  };
+
   return {
     state,
     initializeSplash,
@@ -397,6 +420,7 @@ export const createRuntimeController = () => {
     loadSecrets,
     upsertSecret,
     clearSecret,
+    checkLlm,
     refreshRuntimePanels,
     startPolling,
     stopPolling,

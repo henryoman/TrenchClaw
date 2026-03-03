@@ -241,4 +241,36 @@ describe("Runtime v1 API", () => {
     );
     expect(response.status).toBe(200);
   });
+
+  test("GET /api/gui/llm/check reports active key metadata", async () => {
+    const previous = process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE;
+    process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = "1";
+    try {
+      const runtime = buildRuntime();
+      const transport = new RuntimeGuiTransport(runtime);
+      const handler = transport.createApiHandler();
+
+      const response = await handler(new Request("http://localhost/api/gui/llm/check", { method: "GET" }));
+      expect(response.status).toBe(200);
+      const payload = (await response.json()) as {
+        provider: string | null;
+        keySource: "vault" | "env" | "none";
+        keyConfigured: boolean;
+        keyLength: number;
+        keyFingerprint: string | null;
+        probeMessage: string;
+      };
+
+      expect(payload.keySource === "vault" || payload.keySource === "env" || payload.keySource === "none").toBe(true);
+      expect(typeof payload.keyConfigured).toBe("boolean");
+      expect(typeof payload.keyLength).toBe("number");
+      expect(typeof payload.probeMessage).toBe("string");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE;
+      } else {
+        process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = previous;
+      }
+    }
+  });
 });

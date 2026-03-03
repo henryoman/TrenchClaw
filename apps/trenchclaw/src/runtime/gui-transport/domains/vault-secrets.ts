@@ -28,47 +28,6 @@ const SECRET_OPTIONS_INTERNAL: SecretOptionInternal[] = SECRET_OPTIONS.map((opti
 
 const SECRET_OPTION_BY_ID = new Map(SECRET_OPTIONS_INTERNAL.map((option) => [option.id, option]));
 
-const OPENROUTER_CREDITS_URL = "https://openrouter.ai/api/v1/credits";
-
-const validateOpenRouterApiKey = async (apiKey: string): Promise<void> => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
-
-  try {
-    const response = await fetch(OPENROUTER_CREDITS_URL, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-      signal: controller.signal,
-    });
-
-    if (response.ok) {
-      return;
-    }
-
-    let providerMessage = `HTTP ${response.status}`;
-    try {
-      const payload = (await response.json()) as unknown;
-      if (isRecord(payload) && isRecord(payload.error) && typeof payload.error.message === "string") {
-        providerMessage = payload.error.message;
-      }
-    } catch {
-      // Fall back to status text when provider response body cannot be parsed.
-      providerMessage = response.statusText || providerMessage;
-    }
-
-    throw new Error(`OpenRouter rejected this API key: ${providerMessage}`);
-  } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      throw new Error("OpenRouter key validation timed out. Check your network and try again.");
-    }
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-  }
-};
-
 const getByPath = (root: unknown, pathSegments: string[]): unknown => {
   let current = root;
   for (const segment of pathSegments) {
@@ -218,9 +177,6 @@ export const upsertSecret = async (
   const content = await readFile(VAULT_FILE_PATH, "utf8");
   const vaultData = parseVaultJsonText(content);
   const trimmedValue = payload.value.trim();
-  if (option.id === "openrouter-api-key" && trimmedValue.length > 0) {
-    await validateOpenRouterApiKey(trimmedValue);
-  }
   setByPath(vaultData, option.pathSegments, trimmedValue);
 
   if (option.supportsPublicRpc) {

@@ -12,6 +12,7 @@ import {
 } from "./parsers";
 import { streamChat, getConversationMessages, getConversations } from "./domains/chat";
 import { createInstance, listInstances, signInInstance } from "./domains/instances";
+import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, streamRuntimeEvents } from "./domains/runtime-panels";
 import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
@@ -329,6 +330,14 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
     if (request.method === "GET" && url.pathname === "/api/gui/secrets") {
       try {
         return Response.json(await getSecrets(), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/llm/check") {
+      try {
+        return Response.json(await runLlmCheck(), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
       }

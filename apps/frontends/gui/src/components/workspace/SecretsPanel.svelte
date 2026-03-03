@@ -17,7 +17,10 @@
   export let publicRpcOptions: GuiPublicRpcOptionView[] = [];
   export let busy = false;
   export let error = "";
+  export let llmCheckBusy = false;
+  export let llmCheckMessage = "";
   export let onReload: () => void = () => {};
+  export let onCheckLlm: () => void = () => {};
   export let onSave: (input: {
     optionId: string;
     value: string;
@@ -221,6 +224,7 @@
   }
 
   $: statusErrorText = error.trim();
+  $: llmStatusText = llmCheckMessage.trim();
 </script>
 
 <section class="secrets-panel" aria-label="Manage keys and secrets panel">
@@ -228,6 +232,7 @@
     <RetroSectionHeader title="Manage keys and secrets" />
     <div class="actions">
       <RetroButton variant="secondary" disabled={busy} on:click={onReload}>Reload</RetroButton>
+      <RetroButton variant="secondary" disabled={busy || llmCheckBusy} on:click={onCheckLlm}>Check LLM key</RetroButton>
     </div>
   </header>
 
@@ -266,6 +271,7 @@
   </div>
 
   <RetroStatusMessage tone="error" text={statusErrorText} />
+  <RetroStatusMessage tone={llmStatusText.includes("probe=ok") ? "ok" : "error"} text={llmStatusText} />
 </section>
 
 <style>
