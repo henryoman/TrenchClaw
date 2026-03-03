@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 const BUILD_ARTIFACT_DIRECTORIES = [
-  "apps/frontends/tui/dist",
   "apps/frontends/gui/dist",
   "apps/runner/dist",
   "apps/trenchclaw/dist",

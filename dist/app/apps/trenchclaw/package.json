@@ -27,7 +27,6 @@
   "dependencies": {
     "@ai-sdk/openai": "3.0.33",
     "@openrouter/ai-sdk-provider": "^2.2.3",
-    "@opentui/core": "^0.1.81",
     "@solana/kit": "^6.1.0",
     "@solana/transactions": "^6.1.0",
     "ai": "6.0.99",

@@ -7,7 +7,7 @@ This file reflects the repository as it exists now (monorepo layout, package bou
 - Root workspace (`package.json`) uses Turbo + Bun.
 - Workspaces:
   - `apps/trenchclaw` (`@trenchclaw/core`)
-  - `apps/frontends/cli` (`@trenchclaw/cli`)
+  - `apps/runner` (`@trenchclaw/runner`)
   - `apps/frontends/gui` (`@trenchclaw/web-gui`)
   - `apps/types`
 
@@ -20,8 +20,10 @@ Top-level supporting directories:
 
 ## Runtime Entry Path
 
-- User commands are exposed at root (`bun run dev|start|headless|cli`) and routed by Turbo to `@trenchclaw/cli`.
-- CLI entrypoint: `apps/frontends/cli/index.ts`.
+- App command path:
+  - `bun run app:build` creates `dist/app`
+  - `bun run start` starts `apps/runner`
+- Runner entrypoint: `apps/runner/index.ts`
 - Runtime bootstrap: `apps/trenchclaw/src/runtime/bootstrap.ts`.
 
 Boot sequence in current code:
@@ -158,11 +160,6 @@ Active stores in runtime:
 - `triggers`
 
 ## Frontends
-
-CLI package:
-- `apps/frontends/cli/index.ts`
-- view modules in `apps/frontends/cli/views/*`
-- runtime HTTP + GUI API adapter in `apps/frontends/cli/web-gui.ts`
 
 Web GUI package:
 - Svelte + Vite app in `apps/frontends/gui/src/*`

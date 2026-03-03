@@ -13,7 +13,6 @@
   <a href="https://www.meteora.ag/"><img src="https://img.shields.io/badge/Meteora-00C2A8?style=for-the-badge" alt="Meteora" /></a>
   <a href="https://ai-sdk.dev/tools-registry/bash-tool"><img src="https://img.shields.io/badge/Bash%20Tool-111827?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Bash Tool" /></a>
   <a href="https://svelte.dev/"><img src="https://img.shields.io/badge/Svelte-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte" /></a>
-  <a href="https://github.com/sst/opentui"><img src="https://img.shields.io/badge/OpenTUI-1F2937?style=for-the-badge" alt="OpenTUI" /></a>
   <a href="https://bun.sh/docs/api/sqlite"><img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" /></a>
 </p>
 
@@ -27,7 +26,7 @@ TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It'
 
 While the TypeScript repo is a little heavier than minimalist alternatives, it is currently the best and most accurate agent orchestrator for this stack.
 
-Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/TUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
+Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 

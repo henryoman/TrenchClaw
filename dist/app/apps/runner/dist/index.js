@@ -167,18 +167,24 @@ var shouldPromptForGuiLaunch = () => {
 };
 var waitForGuiLaunchConfirmation = async () => {
   if (process.env.TRENCHCLAW_RUNNER_AUTO_OPEN_GUI === "1") {
-    return true;
+    return "launch";
   }
   if (!shouldPromptForGuiLaunch()) {
-    return false;
+    return "skip";
   }
   const prompt = createInterface({
     input: process.stdin,
     output: process.stdout
   });
   try {
-    const answer = (await prompt.question(`${RUNNER_LOG_PREFIX} launch GUI now? Press Enter to continue, or type "skip" to keep CLI-only: `)).trim().toLowerCase();
-    return !(answer === "skip" || answer === "s");
+    const answer = (await prompt.question(`${RUNNER_LOG_PREFIX} launch GUI now? Enter=yes, "skip"=CLI-only, "quit"=stop app: `)).trim().toLowerCase();
+    if (answer === "quit" || answer === "q" || answer === "exit") {
+      return "quit";
+    }
+    if (answer === "skip" || answer === "s") {
+      return "skip";
+    }
+    return "launch";
   } finally {
     prompt.close();
   }
@@ -250,7 +256,7 @@ var createStaticServer = (input) => {
 };
 var main = async () => {
   if (!existsSync(GUI_INDEX_PATH)) {
-    throw new Error(`GUI build output not found at ${GUI_INDEX_PATH}. Run: bun run release:gui:build`);
+    throw new Error(`GUI build output not found at ${GUI_INDEX_PATH}. Run: bun run app:build`);
   }
   const runtimePort = await findAvailablePort(RUNTIME_HOST, DEFAULT_RUNTIME_PORT, "runtime");
   const guiPort = runtimePort === DEFAULT_GUI_PORT ? await findAvailablePort(RUNTIME_HOST, DEFAULT_GUI_PORT + 1, "gui") : await findAvailablePort(RUNTIME_HOST, DEFAULT_GUI_PORT, "gui");
@@ -258,8 +264,8 @@ var main = async () => {
   const guiUrl = `http://${RUNTIME_HOST}:${guiPort}`;
   console.log(`${RUNNER_LOG_PREFIX} runtime target: ${emphasize(runtimeUrl)}`);
   console.log(`${RUNNER_LOG_PREFIX} gui target: ${emphasize(guiUrl)}`);
-  const runtimeProc = Bun.spawn(["bun", "run", "--cwd", "apps/trenchclaw", "runtime:start"], {
-    cwd: APP_ROOT,
+  const runtimeProc = Bun.spawn([process.execPath, "src/runtime/start-runtime-server.ts"], {
+    cwd: path.join(APP_ROOT, "apps/trenchclaw"),
     stdout: "pipe",
     stderr: "pipe",
     stdin: "inherit",
@@ -328,15 +334,20 @@ var main = async () => {
     runtimeBaseUrl: runtimeUrl
   });
   console.log(`${RUNNER_LOG_PREFIX} GUI serving from ${emphasize(guiUrl)}`);
-  const launchGui = await waitForGuiLaunchConfirmation();
-  if (!launchGui) {
+  const guiLaunchDecision = await waitForGuiLaunchConfirmation();
+  if (guiLaunchDecision === "quit") {
+    console.log(`${RUNNER_LOG_PREFIX} shutdown requested before GUI launch.`);
+    await shutdown(0);
+    return;
+  }
+  if (guiLaunchDecision === "skip") {
     console.log(`${RUNNER_LOG_PREFIX} GUI auto-launch disabled. Runtime remains active.`);
     console.log(`${RUNNER_LOG_PREFIX} Open manually when needed: ${emphasize(guiUrl)}`);
   } else {
     await openBrowser(guiUrl);
   }
-  attachRuntimeConsole();
   console.log(`${RUNNER_LOG_PREFIX} Press ${emphasize("Ctrl+C")} to stop.`);
+  attachRuntimeConsole();
   const runtimeExitCode = await runtimeProc.exited ?? 0;
   if (!runtimeConsoleAttached) {
     attachRuntimeConsole();

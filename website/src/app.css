@@ -54,17 +54,17 @@ body.site-root {
 
 .docs-shell {
   background:
-    radial-gradient(1200px 400px at 50% -120px, rgba(56, 189, 248, 0.08), transparent 70%),
-    #fafaf9;
-  color: #18181b;
+    radial-gradient(1200px 400px at 50% -120px, rgba(34, 238, 211, 0.09), transparent 70%),
+    #000000;
+  color: #ffffff;
 }
 
 .docs-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  border-bottom: 1px solid #e4e4e7;
-  background: rgba(250, 250, 249, 0.86);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.82);
   backdrop-filter: blur(10px);
 }
 
@@ -72,28 +72,28 @@ body.site-root {
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: #ffffff;
 }
 
 .docs-header-link {
-  color: #4b5563;
+  color: #9ca3af;
 }
 
 .docs-header-link:hover {
-  color: #111827;
+  color: #ffffff;
 }
 
 .docs-sidebar {
   position: sticky;
   top: 5.5rem;
-  border: 1px solid #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.9rem;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
   padding: 0.9rem;
 }
 
 .docs-sidebar-label {
-  color: #71717a;
+  color: #9ca3af;
   font-size: 0.7rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -103,7 +103,7 @@ body.site-root {
 .docs-nav-link {
   display: block;
   border-radius: 0.5rem;
-  color: #3f3f46;
+  color: #d1d5db;
   font-size: 0.92rem;
   line-height: 1.3;
   margin-top: 0.2rem;
@@ -112,18 +112,18 @@ body.site-root {
 }
 
 .docs-nav-link:hover {
-  background: #f4f4f5;
-  color: #18181b;
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
 }
 
 .docs-nav-link-active {
-  background: #eef2ff;
-  color: #1d4ed8;
+  background: rgba(34, 238, 211, 0.18);
+  color: #67e8f9;
   font-weight: 600;
 }
 
 .docs-kicker {
-  color: #2563eb;
+  color: #22eed3;
   font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -131,15 +131,15 @@ body.site-root {
 }
 
 .docs-index-hero {
-  border: 1px solid #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 1rem;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
   padding: 1.5rem;
 }
 
 .docs-index-title {
   margin-top: 0.4rem;
-  color: #09090b;
+  color: #ffffff;
   font-size: clamp(1.8rem, 4vw, 2.4rem);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -149,27 +149,27 @@ body.site-root {
 .docs-index-description {
   margin-top: 0.75rem;
   max-width: 60ch;
-  color: #52525b;
+  color: #cbd5e1;
   font-size: 1rem;
   line-height: 1.6;
 }
 
 .docs-card {
-  border: 1px solid #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 0.9rem;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.03);
   padding: 1rem;
   transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 
 .docs-card:hover {
-  border-color: #bfdbfe;
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.08);
+  border-color: rgba(34, 238, 211, 0.45);
+  box-shadow: 0 8px 24px rgba(34, 238, 211, 0.14);
   transform: translateY(-1px);
 }
 
 .docs-card-label {
-  color: #52525b;
+  color: #9ca3af;
   font-size: 0.74rem;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -177,21 +177,21 @@ body.site-root {
 }
 
 .docs-card-title {
-  color: #09090b;
+  color: #ffffff;
   font-size: 1.05rem;
   font-weight: 700;
   margin-top: 0.35rem;
 }
 
 .docs-card-description {
-  color: #525866;
+  color: #cbd5e1;
   font-size: 0.93rem;
   line-height: 1.6;
   margin-top: 0.45rem;
 }
 
 .docs-back-link {
-  color: #2563eb;
+  color: #22eed3;
   font-size: 0.88rem;
   font-weight: 500;
 }
@@ -201,9 +201,9 @@ body.site-root {
 }
 
 .docs-content {
-  border: 1px solid #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 1rem;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.04);
   padding: 1.3rem 1.1rem;
 }
 
@@ -221,7 +221,7 @@ body.site-root {
 
 .docs-content h1 {
   margin: 0 0 1.2rem;
-  color: #09090b;
+  color: #ffffff;
   font-size: clamp(2rem, 5vw, 2.65rem);
   font-weight: 800;
   letter-spacing: -0.03em;
@@ -229,8 +229,8 @@ body.site-root {
 }
 
 .docs-content h2 {
-  border-top: 1px solid #f1f5f9;
-  color: #0f172a;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ffffff;
   font-size: clamp(1.35rem, 2vw, 1.68rem);
   font-weight: 700;
   line-height: 1.2;
@@ -239,7 +239,7 @@ body.site-root {
 }
 
 .docs-content h3 {
-  color: #0f172a;
+  color: #f8fafc;
   font-size: 1.08rem;
   font-weight: 700;
   line-height: 1.3;
@@ -248,7 +248,7 @@ body.site-root {
 
 .docs-content p,
 .docs-content li {
-  color: #374151;
+  color: #d1d5db;
   font-size: 0.98rem;
   line-height: 1.72;
 }
@@ -263,17 +263,21 @@ body.site-root {
   padding-left: 1.3rem;
 }
 
+.docs-content ul {
+  list-style: disc;
+}
+
 .docs-content ol {
   list-style: decimal;
 }
 
 .docs-content strong {
-  color: #0f172a;
+  color: #ffffff;
   font-weight: 650;
 }
 
 .docs-content a {
-  color: #1d4ed8;
+  color: #67e8f9;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -281,20 +285,21 @@ body.site-root {
 .docs-content code {
   font-family: 'Space Mono', monospace;
   font-size: 0.84em;
-  background: #f4f4f5;
-  border: 1px solid #e4e4e7;
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 0.35rem;
-  color: #111827;
+  color: #f8fafc;
   padding: 0.09rem 0.32rem;
 }
 
 .docs-content pre {
-  background: #0f172a;
-  border: 1px solid #0b1324;
+  background: #000000;
+  border: 1px solid #0f172a;
   border-radius: 0.75rem;
   margin: 1rem 0;
   overflow-x: auto;
-  padding: 0.92rem 1rem;
+  padding: 0.92rem 4.4rem 0.92rem 1rem;
+  position: relative;
 }
 
 .docs-content pre code {
@@ -304,8 +309,29 @@ body.site-root {
   padding: 0;
 }
 
+.code-copy-button {
+  position: absolute;
+  right: 0.6rem;
+  top: 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.45rem;
+  background: #000000;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  padding: 0.35rem 0.5rem;
+}
+
+.code-copy-button:hover {
+  border-color: rgba(34, 238, 211, 0.7);
+  color: #22eed3;
+}
+
 .docs-content hr {
   border: 0;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   margin: 1.5rem 0;
 }

@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "start": "bun run index.ts",
+    "start": "bun index.ts",
     "build": "bun build index.ts --target bun --outdir dist",
     "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json",
     "lint": "oxlint .",

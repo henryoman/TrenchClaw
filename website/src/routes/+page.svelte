@@ -224,10 +224,10 @@
           <div class="w-2.5 h-2.5 bg-muted-dark"></div>
           <div class="w-2.5 h-2.5 bg-muted-dark"></div>
           <div class="w-2.5 h-2.5 bg-muted-dark"></div>
-          <span class="ml-2 text-xs text-muted-dark font-mono">trenchclaw — operator@cli</span>
+          <span class="ml-2 text-xs text-muted-dark font-mono">trenchclaw — operator@app</span>
         </div>
         <div class="p-6 font-mono text-sm space-y-1.5 overflow-x-auto">
-          <p><span class="text-muted-dark">$</span> <span class="text-foreground font-extralight">bun run src/cli.ts start</span></p>
+          <p><span class="text-muted-dark">$</span> <span class="text-foreground font-extralight">bun run start</span></p>
           <p class="text-muted-dark font-extralight">  Loading runtime config...</p>
           <p><span class="text-cyan-brand">  ✓</span> <span class="text-muted font-extralight">Wallet keypair loaded</span></p>
           <p><span class="text-cyan-brand">  ✓</span> <span class="text-muted font-extralight">Solana Kit initialized</span></p>

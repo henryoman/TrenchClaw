@@ -1,7 +1,73 @@
 <script lang="ts">
+  import type { Action } from 'svelte/action';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
+
+  const setCopiedState = (button: HTMLButtonElement): void => {
+    button.textContent = 'Copied';
+    window.setTimeout(() => {
+      button.textContent = 'Copy';
+    }, 1400);
+  };
+
+  const copyToClipboard = async (text: string): Promise<boolean> => {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      temp.setAttribute('readonly', '');
+      temp.style.position = 'absolute';
+      temp.style.left = '-9999px';
+      document.body.appendChild(temp);
+      temp.select();
+      const copied = document.execCommand('copy');
+      temp.remove();
+      return copied;
+    }
+  };
+
+  const copyCodeBlocks: Action<HTMLElement, string> = (node) => {
+    const enhance = (): void => {
+      const blocks = node.querySelectorAll('pre');
+
+      for (const block of blocks) {
+        if (!(block instanceof HTMLElement) || block.querySelector('.code-copy-button')) {
+          continue;
+        }
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'code-copy-button';
+        button.textContent = 'Copy';
+        button.setAttribute('aria-label', 'Copy code block');
+
+        button.addEventListener('click', async () => {
+          const codeText = block.querySelector('code')?.textContent ?? block.textContent ?? '';
+          if (codeText.length === 0) {
+            return;
+          }
+
+          const copied = await copyToClipboard(codeText);
+          if (copied) {
+            setCopiedState(button);
+          }
+        });
+
+        block.append(button);
+      }
+    };
+
+    enhance();
+
+    return {
+      update() {
+        enhance();
+      }
+    };
+  };
 </script>
 
 <svelte:head>
@@ -40,7 +106,7 @@
 
     <section class="min-w-0">
       <a href="/docs" class="docs-back-link">&larr; All docs</a>
-      <article class="docs-content mt-4">
+      <article class="docs-content mt-4" use:copyCodeBlocks={data.doc.html}>
         <h1>{data.doc.title}</h1>
         {@html data.doc.html}
       </article>
