@@ -2,7 +2,26 @@ import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 
-const REPO_ROOT = path.resolve(import.meta.dir, "../..");
+const resolveAppRoot = (): string => {
+  const candidates = [
+    path.resolve(import.meta.dir, "../.."),
+    path.resolve(import.meta.dir, "../../.."),
+    process.cwd(),
+  ];
+
+  for (const candidate of candidates) {
+    if (
+      existsSync(path.join(candidate, "apps/trenchclaw/package.json")) &&
+      existsSync(path.join(candidate, "apps/frontends/gui"))
+    ) {
+      return candidate;
+    }
+  }
+
+  return candidates[0] ?? process.cwd();
+};
+
+const APP_ROOT = resolveAppRoot();
 
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
 const DEFAULT_RUNTIME_PORT = Number.parseInt(process.env.RUNTIME_PORT || "4020", 10);
@@ -20,10 +39,10 @@ const ANSI = {
 const supportsColor = Boolean(process.stdout.isTTY) && !("NO_COLOR" in process.env);
 const colorize = (value: string, color: keyof typeof ANSI): string =>
   supportsColor ? `${ANSI[color]}${value}${ANSI.reset}` : value;
-const RUNNER_LOG_PREFIX = colorize("@trenclaw:", "neonPurple");
+const RUNNER_LOG_PREFIX = colorize("@trenchclaw:", "neonPurple");
 const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 
-const GUI_DIST_DIR = path.join(REPO_ROOT, "apps/frontends/gui/dist");
+const GUI_DIST_DIR = path.join(APP_ROOT, "apps/frontends/gui/dist");
 const GUI_INDEX_PATH = path.join(GUI_DIST_DIR, "index.html");
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value > 0 && value <= 65535;
@@ -68,6 +87,80 @@ const waitForExitOrTimeout = async (proc: Bun.Subprocess, timeoutMs: number): Pr
     Bun.sleep(timeoutMs).then(() => false),
   ]);
 
+interface BufferedLogRelay {
+  write: (chunk: string) => void;
+  setPassthrough: (enabled: boolean) => void;
+}
+
+const createBufferedLogRelay = (
+  sink: NodeJS.WriteStream,
+  maxBufferedLines = 500,
+): BufferedLogRelay => {
+  const buffer: string[] = [];
+  let passthrough = false;
+
+  const flush = (): void => {
+    if (buffer.length === 0) {
+      return;
+    }
+    sink.write(buffer.join(""));
+    buffer.length = 0;
+  };
+
+  return {
+    write: (chunk: string) => {
+      if (passthrough) {
+        sink.write(chunk);
+        return;
+      }
+      buffer.push(chunk);
+      if (buffer.length > maxBufferedLines) {
+        buffer.splice(0, buffer.length - maxBufferedLines);
+      }
+    },
+    setPassthrough: (enabled: boolean) => {
+      passthrough = enabled;
+      if (enabled) {
+        flush();
+      }
+    },
+  };
+};
+
+const relaySubprocessOutput = async (
+  stream: ReadableStream<Uint8Array> | null,
+  relay: BufferedLogRelay,
+): Promise<void> => {
+  if (!stream) {
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  const reader = stream.getReader();
+  let pending = "";
+
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      pending += decoder.decode(value, { stream: true });
+      const lines = pending.split(/\r?\n/);
+      pending = lines.pop() ?? "";
+      for (const line of lines) {
+        relay.write(`${line}\n`);
+      }
+    }
+    pending += decoder.decode();
+    if (pending.length > 0) {
+      relay.write(`${pending}\n`);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+};
+
 const isSignalExitCode = (code: number): boolean => code === 130 || code === 143;
 
 const signalStop = (proc: Bun.Subprocess): void => {
@@ -110,10 +203,18 @@ const openBrowser = async (url: string): Promise<void> => {
   console.warn(`${RUNNER_LOG_PREFIX} unable to auto-open browser. open manually: ${emphasize(url)}`);
 };
 
-const shouldPromptForGuiLaunch = (): boolean =>
-  process.env.TRENCHCLAW_RUNNER_PROMPT_GUI_LAUNCH === "1" &&
-  Boolean(process.stdin.isTTY) &&
-  Boolean(process.stdout.isTTY);
+const shouldPromptForGuiLaunch = (): boolean => {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) {
+    return false;
+  }
+
+  const configured = process.env.TRENCHCLAW_RUNNER_PROMPT_GUI_LAUNCH?.trim().toLowerCase();
+  if (!configured) {
+    return true;
+  }
+
+  return !(configured === "0" || configured === "false" || configured === "no");
+};
 
 const waitForGuiLaunchConfirmation = async (): Promise<boolean> => {
   if (process.env.TRENCHCLAW_RUNNER_AUTO_OPEN_GUI === "1") {
@@ -241,9 +342,9 @@ const main = async (): Promise<void> => {
   console.log(`${RUNNER_LOG_PREFIX} gui target: ${emphasize(guiUrl)}`);
 
   const runtimeProc = Bun.spawn(["bun", "run", "--cwd", "apps/trenchclaw", "runtime:start"], {
-    cwd: REPO_ROOT,
-    stdout: "inherit",
-    stderr: "inherit",
+    cwd: APP_ROOT,
+    stdout: "pipe",
+    stderr: "pipe",
     stdin: "inherit",
     env: {
       ...process.env,
@@ -252,15 +353,29 @@ const main = async (): Promise<void> => {
       RUNTIME_REQUIRE_SERVER: "1",
       RUNTIME_STRICT_PORT: "1",
       TRENCHCLAW_GUI_URL: guiUrl,
-      TRENCHCLAW_BOOT_REFRESH_CONTEXT: process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "1",
-      TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE: process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "1",
+      TRENCHCLAW_BOOT_REFRESH_CONTEXT: process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "0",
+      TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE: process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "0",
     },
   });
 
   let guiServer: Bun.Server<unknown> | null = null;
+  const runtimeStdoutRelay = createBufferedLogRelay(process.stdout);
+  const runtimeStderrRelay = createBufferedLogRelay(process.stderr);
+  const runtimeStdoutPump = relaySubprocessOutput(runtimeProc.stdout, runtimeStdoutRelay);
+  const runtimeStderrPump = relaySubprocessOutput(runtimeProc.stderr, runtimeStderrRelay);
+  let runtimeConsoleAttached = false;
   let shuttingDown = false;
   let shutdownRequested = false;
   let shutdownPromise: Promise<void> | null = null;
+
+  const attachRuntimeConsole = (): void => {
+    if (runtimeConsoleAttached) {
+      return;
+    }
+    runtimeConsoleAttached = true;
+    runtimeStdoutRelay.setPassthrough(true);
+    runtimeStderrRelay.setPassthrough(true);
+  };
 
   const shutdown = (exitCode: number): Promise<void> => {
     if (shutdownPromise) {
@@ -315,9 +430,14 @@ const main = async (): Promise<void> => {
   } else {
     await openBrowser(guiUrl);
   }
+  attachRuntimeConsole();
   console.log(`${RUNNER_LOG_PREFIX} Press ${emphasize("Ctrl+C")} to stop.`);
 
   const runtimeExitCode = (await runtimeProc.exited) ?? 0;
+  if (!runtimeConsoleAttached) {
+    attachRuntimeConsole();
+  }
+  await Promise.all([runtimeStdoutPump, runtimeStderrPump]);
   if (runtimeExitCode !== 0 && !(shutdownRequested && isSignalExitCode(runtimeExitCode))) {
     console.error(`${RUNNER_LOG_PREFIX} runtime exited with code ${runtimeExitCode}`);
     await shutdown(runtimeExitCode);

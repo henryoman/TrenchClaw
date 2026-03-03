@@ -182,6 +182,48 @@ describe("Runtime v1 API", () => {
     expect(runtimePayload.version).toBe("v1");
   });
 
+  test("GET /api/gui/events streams runtime snapshots over SSE", async () => {
+    const runtime = buildRuntime();
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+
+    const abortController = new AbortController();
+    const response = await handler(
+      new Request("http://localhost/api/gui/events", {
+        method: "GET",
+        signal: abortController.signal,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("text/event-stream");
+    expect(response.body).not.toBeNull();
+
+    const reader = response.body!.getReader();
+    let payloadText = "";
+    for (let index = 0; index < 8; index += 1) {
+      const chunk = await reader.read();
+      if (chunk.done) {
+        break;
+      }
+      payloadText += new TextDecoder().decode(chunk.value);
+      if (
+        payloadText.includes("event: bootstrap")
+        && payloadText.includes("event: queue")
+        && payloadText.includes("event: activity")
+      ) {
+        break;
+      }
+    }
+
+    expect(payloadText).toContain("event: bootstrap");
+    expect(payloadText).toContain("event: queue");
+    expect(payloadText).toContain("event: activity");
+
+    abortController.abort();
+    await reader.cancel();
+  });
+
   test("legacy /api chat route is available", async () => {
     const runtime = buildRuntime();
     const transport = new RuntimeGuiTransport(runtime);

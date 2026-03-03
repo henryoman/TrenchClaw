@@ -98,11 +98,13 @@ export const createChatController = () => {
   const chat = new Chat({
     transport: new DefaultChatTransport({
       api: toRuntimeUrl(CHAT_API_PATH),
-      prepareSendMessagesRequest: ({ body }) => {
+      prepareSendMessagesRequest: ({ id, messages, body }) => {
         const chatId = ensureActiveConversationId();
         const activeConversation = state.conversations.find((conversation) => conversation.id === chatId);
         return {
           body: {
+            id,
+            messages,
             ...body,
             chatId,
             conversationTitle: activeConversation?.title ?? toTimestampTitle(Date.now()),
@@ -159,7 +161,7 @@ export const createChatController = () => {
     chat.messages = [];
   };
 
-  const submitChat = async (onAfterSend: () => Promise<void>): Promise<void> => {
+  const submitChat = async (onAfterSend: (() => Promise<void>) | null = null): Promise<void> => {
     const nextMessage = state.input.trim();
     if (!nextMessage || isSending()) {
       return;
@@ -173,7 +175,9 @@ export const createChatController = () => {
       await chat.sendMessage({ text: nextMessage });
       chat.messages = normalizeUiMessages(chat.messages as UIMessage[]);
       await refreshConversations();
-      await onAfterSend();
+      if (onAfterSend) {
+        await onAfterSend();
+      }
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_CHAT_ERROR;
       console.error(errorText);

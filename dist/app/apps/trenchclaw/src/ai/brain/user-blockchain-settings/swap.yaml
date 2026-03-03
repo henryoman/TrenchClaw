@@ -1,0 +1,11 @@
+modes:
+  default:
+    swapType: ultra
+    slippagePresetBps: ultra
+  fallback:
+  swapType: metis
+
+quickBuyPresets:
+  preset1:
+  preset2:
+  preset3:

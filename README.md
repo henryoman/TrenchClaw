@@ -276,7 +276,7 @@ Use one command to start the runtime and GUI together:
 
 ```bash
 bun install
-bun run release:gui:build
+bun run app:build
 bun run start
 ```
 
@@ -294,13 +294,6 @@ Local development still uses Vite:
 bun run gui:dev
 ```
 
-Compatibility aliases:
-
-```bash
-bun run release:gui:start
-bun run release:gui
-```
-
 ---
 
 ## v0.1 Checklist
@@ -316,7 +309,7 @@ bun run release:gui
 - [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) in bootstrap
 - [x] Automatic current date/time injection into system prompts
 - [x] Solana action surface for wallet/data flows (including Jupiter Ultra path)
-- [x] CLI and runtime entrypoints (`dev`, `start`, `headless`, `cli`) + health/status routes
+- [x] Runtime entrypoints (`dev`, `start`) + health/status routes
 - [x] Test suite centralized under `tests/` with runtime/storage/action coverage
 - [ ] Stabilize runtime profile behavior test in `tests/runtime/config/authority.test.ts` (`dangerous` partial-override expectation)
 - [ ] Wire additional routines into runtime bootstrap (beyond `createWallets` and `actionSequence`)

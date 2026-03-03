@@ -46,6 +46,14 @@
     }
   });
 
+  $effect(() => {
+    if (runtime.state.phase === "app") {
+      runtime.startPolling();
+      return;
+    }
+    runtime.stopPolling();
+  });
+
   onDestroy(() => {
     runtime.stopPolling();
   });
@@ -102,7 +110,7 @@
             chat!.createNewConversation();
           }}
           onSubmit={() => {
-            void chat!.submitChat(runtime.refreshRuntimePanels);
+            void chat!.submitChat();
           }}
         />
       {:else}

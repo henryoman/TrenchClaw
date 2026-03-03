@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { resolve } from '$app/paths';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -7,34 +6,53 @@
 
 <svelte:head>
   <title>TrenchClaw Docs</title>
-  <meta name="description" content="Documentation for TrenchClaw runtime, frontends, and deployment." />
+  <meta name="description" content="TrenchClaw documentation for installation, setup, and first-run workflows." />
 </svelte:head>
 
-<div class="min-h-screen bg-background text-foreground">
-  <main class="mx-auto max-w-4xl px-6 py-20">
-    <a href={resolve('/')} class="text-sm text-cyan-brand hover:underline">&larr; Back to home</a>
+<div class="docs-shell min-h-screen">
+  <header class="docs-header">
+    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <a href="/" class="docs-logo">TrenchClaw Docs</a>
+      <nav class="flex items-center gap-4 text-sm">
+        <a class="docs-header-link" href="/docs">Docs Home</a>
+        <a class="docs-header-link" href="/">Main Site</a>
+      </nav>
+    </div>
+  </header>
 
-    <header class="mt-6 border-b border-border-subtle pb-8">
-      <h1 class="text-5xl font-black tracking-tight">Documentation</h1>
-      <p class="mt-3 max-w-2xl text-sm leading-relaxed text-muted font-extralight">
-        Reference docs for setup, runtime behavior, and deployment. Add more markdown files in
-        <code>website/src/content/docs</code> and they appear here automatically.
-      </p>
-    </header>
+  <main class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
+    <aside class="hidden lg:block">
+      <div class="docs-sidebar">
+        <p class="docs-sidebar-label">Getting Started</p>
+        <nav class="mt-2">
+          {#each data.docs as doc (doc.slug)}
+            <a class="docs-nav-link" href={`/docs/${doc.slug}`}>{doc.title}</a>
+          {/each}
+        </nav>
+      </div>
+    </aside>
 
-    <section class="mt-10 space-y-4">
-      {#if data.docs.length === 0}
-        <p class="text-sm text-muted">No docs found yet.</p>
-      {:else}
+    <section>
+      <div class="docs-index-hero">
+        <p class="docs-kicker">Documentation</p>
+        <h1 class="docs-index-title">Everything you need to install and launch TrenchClaw</h1>
+        <p class="docs-index-description">
+          Follow the setup guides in order, from first install to your first successful GUI launch.
+        </p>
+      </div>
+
+      <div class="mt-8 grid gap-4 sm:grid-cols-2">
         {#each data.docs as doc (doc.slug)}
-          <a
-            href={resolve(`/docs/${doc.slug}`)}
-            class="block border border-border-subtle p-5 transition-colors hover:border-cyan-brand"
-          >
-            <h2 class="text-xl font-semibold">{doc.title}</h2>
-            <p class="mt-2 text-sm text-muted font-extralight leading-relaxed">{doc.description}</p>
+          <a href={`/docs/${doc.slug}`} class="docs-card">
+            <p class="docs-card-label">Guide</p>
+            <h2 class="docs-card-title">{doc.title}</h2>
+            <p class="docs-card-description">{doc.description}</p>
           </a>
         {/each}
+      </div>
+
+      {#if data.docs.length === 0}
+        <p class="mt-6 text-sm text-[#525866]">No docs found yet.</p>
       {/if}
     </section>
   </main>

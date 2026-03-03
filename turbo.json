@@ -5,17 +5,6 @@
       "cache": false,
       "persistent": true
     },
-    "start": {
-      "cache": false,
-      "persistent": true
-    },
-    "headless": {
-      "cache": false,
-      "persistent": true
-    },
-    "cli": {
-      "cache": false
-    },
     "context:refresh": {
       "cache": false
     },

@@ -1,0 +1,31 @@
+{
+  "createWallets": {
+    "routineName": "createWallets",
+    "command": "createWallets [count=<number>] [walletPath=<group.wallet>] [groups='[{\"name\":\"core\",\"wallets\":[{\"name\":\"maker\"}],\"children\":[{\"name\":\"snipers\",\"count\":2,\"startIndex\":1}]}]'] [renames='[{\"from\":\"core.maker\",\"to\":\"core.makerMain\"}]'] [includePrivateKey=true|false] [privateKeyEncoding=base64|hex|bytes] [output.directory=<path>] [output.filePrefix=<prefix>] [output.includeIndexInFileName=true|false]",
+    "defaults": {
+      "count": 1,
+      "output.directory": "src/ai/brain/protected/keypairs"
+    }
+  },
+  "actionSequence": {
+    "routineName": "actionSequence",
+    "command": "actionSequence steps='[{\"key\":\"step-1\",\"actionName\":\"ultraSwap\",\"input\":{...}},{\"key\":\"step-2\",\"dependsOn\":\"step-1\",\"actionName\":\"createWallets\",\"input\":{...}}]'",
+    "defaults": {
+      "steps": [
+        {
+          "actionName": "createWallets",
+          "input": {
+            "count": 1,
+            "includePrivateKey": false,
+            "privateKeyEncoding": "base64",
+            "output": {
+              "directory": "src/ai/brain/protected/keypairs",
+              "filePrefix": "wallet",
+              "includeIndexInFileName": true
+            }
+          }
+        }
+      ]
+    }
+  }
+}

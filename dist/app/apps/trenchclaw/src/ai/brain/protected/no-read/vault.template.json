@@ -1,0 +1,63 @@
+{
+  "rpc": {
+    "default": {
+      "http-url": "",
+      "source": "custom",
+      "public-id": ""
+    },
+    "helius": {
+      "http-url": "",
+      "ws-url": "",
+      "api-key": ""
+    },
+    "quicknode": {
+      "http-url": "",
+      "ws-url": "",
+      "api-key": ""
+    },
+    "solana-vibestation": {
+      "api-key": ""
+    },
+    "chainstack": {
+      "api-key": ""
+    },
+    "temporal": {
+      "api-key": ""
+    }
+  },
+  "llm": {
+    "openrouter": {
+      "api-key": "",
+      "model": "stepfun/step-3.5-flash:free",
+      "base-url": "https://openrouter.ai/api/v1"
+    },
+    "openai": {
+      "api-key": "",
+      "model": "gpt-4.1-mini",
+      "base-url": ""
+    },
+    "openai-compatible": {
+      "api-key": "",
+      "model": "gpt-4.1-mini",
+      "base-url": ""
+    },
+    "gateway": {
+      "api-key": "",
+      "model": "anthropic/claude-sonnet-4.5"
+    },
+    "anthropic": {
+      "api-key": ""
+    },
+    "google": {
+      "api-key": ""
+    }
+  },
+  "integrations": {
+    "dexscreener": {
+      "api-key": ""
+    },
+    "jupiter": {
+      "api-key": ""
+    }
+  }
+}

@@ -1,0 +1,49 @@
+configVersion: 1
+profile: dangerous
+
+network:
+  allowedClusters:
+    - mainnet-beta
+    - devnet
+
+wallet:
+  defaults:
+    keyEncoding: base64
+    createWalletCountLimit: 100
+    exportFormat: base58
+  dangerously:
+    allowPrivateKeyAccess: true
+    allowWalletSigning: true
+    allowCreatingWallets: true
+    allowDeletingWallets: false
+    allowExportingWallets: true
+    allowImportingWallets: true
+    allowListingWallets: true
+    allowShowingWallets: true
+    allowUpdatingWallets: true
+
+trading:
+  enabled: true
+  liveWalletUse: true
+  requireUserConfirmationForDangerousActions: true
+
+agent:
+  enabled: true
+  dangerously:
+    allowFilesystemWrites: true
+    allowNetworkAccess: true
+    allowSystemAccess: true
+    allowHardwareAccess: true
+    allowDirectKeypairAccess: true
+  internetAccess:
+    trustedSitesOnly: true
+    allowFullAccess: false
+    trustedSites: []
+    blockedSites: []
+    allowedProtocols:
+      - https
+    blockedProtocols: []
+    allowedPorts:
+      - 443
+      - 80
+    blockedPorts: []

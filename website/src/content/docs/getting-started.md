@@ -1,26 +1,56 @@
 ---
 title: Getting Started
-description: Complete local setup for TrenchClaw, including Bun, Solana CLI, wallet/RPC setup, vault secrets, and launch flows.
+description: Detailed user setup from install to first launch, including Bun, Solana CLI, wallet setup, runtime inputs, and GUI startup.
 order: 1
 ---
 
 # Getting Started
 
-This guide covers a full first-time local setup for TrenchClaw. It includes everything you need that is not automatically bundled by JavaScript packages in `node_modules`.
+This guide is for users who want to run TrenchClaw end-to-end for the first time.
 
-## What You Need Outside `node_modules`
+It covers the full flow from install to the point where your GUI is open and connected.
 
-Before running the app, install and configure:
+## Before You Start
 
-- Bun (`bun` runtime + package manager)
-- Solana CLI (`solana` command line tools)
-- A funded Solana wallet/keypair for your target cluster
-- A Solana RPC endpoint (public or provider URL)
-- At least one LLM API key in the local vault (for runtime AI features)
+You need:
 
-## 1. Install Bun (Required First)
+- A Mac, Windows, or Linux machine
+- Stable internet
+- About 10-20 minutes
 
-Official Bun site: <https://bun.sh>
+You will install or configure:
+
+- TrenchClaw app (or source version)
+- Solana CLI
+- A Solana wallet
+- RPC endpoint
+- LLM API key
+
+## Step 1: Install TrenchClaw
+
+Choose one path.
+
+### Path A (Recommended): Download the App
+
+Download links (placeholders):
+
+- macOS: `<APP_DOWNLOAD_MAC_PLACEHOLDER>`
+- Windows: `<APP_DOWNLOAD_WINDOWS_PLACEHOLDER>`
+- Linux: `<APP_DOWNLOAD_LINUX_PLACEHOLDER>`
+
+After download:
+
+1. Install the app normally for your OS.
+2. Launch it once.
+3. Keep it open for setup in later steps.
+
+### Path B: Run from Source (Bun)
+
+Use this path if you want to run from source in terminal.
+
+Bun download:
+
+- <https://bun.sh>
 
 Install Bun:
 
@@ -28,202 +58,240 @@ Install Bun:
 curl -fsSL https://bun.sh/install | bash
 ```
 
-Reload your shell, then verify:
+Restart terminal, then verify:
 
 ```bash
 bun --version
-which bun
 ```
 
-This repo currently expects Bun `1.3.x` (see root `package.json` `packageManager`).
+Download source (placeholder):
 
-## 2. Install Repository Dependencies
+- `<SOURCE_DOWNLOAD_PLACEHOLDER>`
 
-From repo root:
+Open the project folder, then install dependencies:
 
 ```bash
 bun install
 ```
 
-This installs all workspace package dependencies.
+What this does:
 
-## 3. Install Solana CLI (Required)
+- Downloads JavaScript/TypeScript dependencies
+- Prepares workspace packages so launch commands work
 
-Use Anza's installer script:
+## Step 2: Install Solana CLI (Required)
 
-- Download/install link: <https://release.anza.xyz/v3.1.9/install>
-- Install command:
+Solana CLI is required for wallet/network setup.
+
+Install link:
+
+- <https://release.anza.xyz/v3.1.9/install>
+
+Install command:
 
 ```bash
 sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.9/install)"
 ```
 
-After install, ensure Solana CLI is on `PATH` and verify:
+Verify installation:
 
 ```bash
 solana --version
-which solana
 ```
 
-If `solana` is not found, add this to your shell profile (`~/.zshrc` or `~/.bashrc`) and reopen terminal:
+If terminal says command not found, add this and restart terminal:
 
 ```bash
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 ```
 
-## 4. Configure Solana Cluster + Wallet
-
-Check current CLI config:
+Then run again:
 
 ```bash
-solana config get
+solana --version
 ```
 
-Set cluster URL (choose one):
+Expected result: a version string like `solana-cli x.y.z`.
 
-```bash
-# Mainnet
-solana config set --url https://api.mainnet-beta.solana.com
+## Step 3: Create or Connect Your Wallet
 
-# Devnet
-solana config set --url https://api.devnet.solana.com
-```
-
-Create a new keypair (or point to an existing one):
+If you already have a wallet keypair, use it. Otherwise create one:
 
 ```bash
 solana-keygen new --outfile ~/.config/solana/id.json
+```
+
+Set it as active wallet:
+
+```bash
 solana config set --keypair ~/.config/solana/id.json
 ```
 
-Verify wallet address:
+Check wallet address:
 
 ```bash
 solana address
 ```
 
-Fund the wallet:
+Expected result: a base58 wallet address.
 
-- Devnet testing:
+## Step 4: Pick Network (Devnet or Mainnet)
+
+Choose one:
+
+```bash
+# Devnet (recommended for first run)
+solana config set --url https://api.devnet.solana.com
+
+# Mainnet (real funds)
+solana config set --url https://api.mainnet-beta.solana.com
+```
+
+Verify active config:
+
+```bash
+solana config get
+```
+
+Expected result: shows your selected RPC URL and keypair path.
+
+## Step 5: Fund Wallet
+
+Check balance:
+
+```bash
+solana balance
+```
+
+If using devnet, request test SOL:
 
 ```bash
 solana airdrop 2
 solana balance
 ```
 
-- Mainnet: send SOL to this address from your funding source/wallet.
+If using mainnet, send SOL from your exchange or wallet app.
 
-## 5. Configure TrenchClaw Secrets Vault
+Expected result: non-zero balance for the selected network.
 
-TrenchClaw stores sensitive config in:
+## Step 6: Run Initial TrenchClaw Setup Inputs
 
-- `apps/trenchclaw/src/ai/brain/protected/no-read/vault.json`
+When TrenchClaw prompts for configuration, provide:
 
-The runtime can auto-create this file from:
+- RPC URL
+- LLM provider API key
+- Model name
 
-- `apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json`
+Minimum required values to continue:
 
-You can pre-create it manually:
+- 1 valid RPC URL
+- 1 valid LLM API key
 
-```bash
-cp apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json \
-  apps/trenchclaw/src/ai/brain/protected/no-read/vault.json
-```
+Without both, the app may open but actions will fail.
 
-Minimum recommended fields to fill:
+## Step 7: CLI Check (Placeholder)
 
-- `rpc.default.http-url`
-- `llm.openrouter.api-key` or another provider key under `llm.*`
-
-Lock down permissions (recommended on macOS/Linux):
+If your distribution includes a CLI binary, run this placeholder command:
 
 ```bash
-chmod 700 apps/trenchclaw/src/ai/brain/protected/no-read
-chmod 600 apps/trenchclaw/src/ai/brain/protected/no-read/vault.json
+<APP_CLI_PLACEHOLDER_COMMAND>
 ```
 
-## 6. Optional App Download (Placeholder)
-
-Desktop app download (placeholder for now):
-
-- `<APP_DOWNLOAD_LINK_PLACEHOLDER>`
-
-## 7. Run the Website Docs
-
-From repo root:
+Optional quick check:
 
 ```bash
-bun run website:dev
+<APP_CLI_HEALTHCHECK_PLACEHOLDER_COMMAND>
 ```
 
-This starts the website docs app in dev mode.
+Expected result: command responds without auth/config errors.
 
-## 8. Run Runtime + GUI Together
+## Step 8: Start TrenchClaw
 
-From repo root:
+### If you installed the app (Path A)
+
+Run app launch command (placeholder):
+
+```bash
+<APP_START_PLACEHOLDER_COMMAND>
+```
+
+Or open TrenchClaw from Applications / Start Menu.
+
+### If you are running from source (Path B)
+
+Start with:
 
 ```bash
 bun run launch:dev
 ```
 
-What this does:
+What you should see:
 
-- Boots the runtime server (`apps/trenchclaw`)
-- Boots the GUI frontend (`apps/frontends/gui`)
-- Auto-selects available ports if defaults are taken
+- Startup logs in terminal
+- Runtime and frontend begin booting
+- Local GUI URL appears
 
-Default ports (if available):
+## Step 9: Stop Point for This Guide
 
-- Runtime: `4020`
-- GUI: `4173`
+You are done when the GUI opens in your browser or app window.
 
-## 9. Health Checks
+At this point you should have:
 
-Basic local verification checklist:
+- TrenchClaw running
+- Wallet configured
+- RPC configured
+- LLM key configured
+- UI loaded and ready
 
-```bash
-# Tooling
-bun --version
-solana --version
-
-# Workspace install + code health
-bun run lint
-bun run typecheck
-bun run test
-
-# Build
-bun run build
-```
-
-## 10. Common Issues and Fixes
+## First-Run Issues
 
 ### `solana: command not found`
 
-- Add Solana install path to shell `PATH`:
+Fix PATH and restart terminal:
 
 ```bash
 export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
 ```
 
-- Reload shell and rerun `solana --version`.
+### RPC timeout or RPC unavailable
 
-### Runtime starts but actions fail immediately
+- Re-check RPC URL
+- Switch to another endpoint
+- Prefer a private provider RPC if public endpoint is overloaded
 
-- Confirm you set:
-  - A valid RPC URL in `vault.json`
-  - At least one valid LLM API key in `vault.json`
-  - A funded wallet for your selected cluster
+### Wallet errors on send/swap
 
-### Port already in use
+- Confirm correct network (devnet vs mainnet)
+- Confirm wallet has enough SOL
 
-- `launch:dev` already tries alternate ports.
-- If you need fixed ports, set `RUNTIME_PORT` and `GUI_PORT` in env before launch.
+### LLM/provider errors
 
-## Command Quick Reference
+- Re-check API key
+- Re-check model ID spelling
+- Ensure model is available on your provider plan
 
-- `bun run lint`
-- `bun run typecheck`
-- `bun run test`
-- `bun run build`
-- `bun run website:dev`
-- `bun run launch:dev`
+## Command Checklist
+
+Run these in order for source setup:
+
+```bash
+# 1) Bun
+curl -fsSL https://bun.sh/install | bash
+bun --version
+
+# 2) Dependencies
+bun install
+
+# 3) Solana CLI
+sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.9/install)"
+solana --version
+
+# 4) Wallet + network
+solana-keygen new --outfile ~/.config/solana/id.json
+solana config set --keypair ~/.config/solana/id.json
+solana config set --url https://api.devnet.solana.com
+solana airdrop 2
+
+# 5) Start TrenchClaw
+bun run launch:dev
+```

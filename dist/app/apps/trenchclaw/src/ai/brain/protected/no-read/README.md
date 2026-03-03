@@ -1,0 +1,25 @@
+## Vault Secrets
+
+`vault.json` is intentionally untracked and local-only. The runtime auto-creates it from `vault.template.json` if missing.
+
+Used references in `src/ai/brain/user-blockchain-settings/settings.yaml` and runtime LLM config:
+
+- `vault://rpc/helius/http-url`
+- `vault://rpc/helius/ws-url`
+- `vault://rpc/helius/api-key`
+- `vault://rpc/quicknode/http-url`
+- `vault://rpc/quicknode/ws-url`
+- `vault://rpc/quicknode/api-key`
+- `vault://llm/openrouter/api-key`
+- `vault://llm/openai/api-key`
+- `vault://llm/openai-compatible/api-key`
+- `vault://llm/gateway/api-key`
+- `vault://integrations/dexscreener/api-key`
+- `vault://integrations/jupiter/api-key`
+
+Recommended permissions (POSIX):
+
+```bash
+chmod 700 src/ai/brain/protected/no-read
+chmod 600 src/ai/brain/protected/no-read/vault.json
+```

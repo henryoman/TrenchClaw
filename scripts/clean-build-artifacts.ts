@@ -5,10 +5,11 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 
 const BUILD_ARTIFACT_DIRECTORIES = [
-  "apps/frontends/cli/dist",
+  "apps/frontends/tui/dist",
   "apps/frontends/gui/dist",
-  "apps/frontends/runner",
+  "apps/runner/dist",
   "apps/trenchclaw/dist",
+  "dist/app",
   "website/.svelte-kit",
   "website/build",
 ];

@@ -20,6 +20,15 @@ export interface RuntimeServerInfo {
   url: string;
 }
 
+interface RuntimeBootSummary {
+  profile: string;
+  pendingJobs: number;
+  schedulerTickMs: number;
+  llmEnabled: boolean;
+  llmModel: string | null;
+  sessionId: string | null;
+}
+
 const DEFAULT_RUNTIME_PROFILE: RuntimeSafetyProfile = "dangerous";
 const DEV_BOOTSTRAP_CREATE_WALLETS_ENABLED = process.env.DEV_BOOTSTRAP_CREATE_WALLETS === "1";
 // Bun currently enforces idleTimeout <= 255 seconds.
@@ -62,6 +71,18 @@ const toPortNumber = (value: string | undefined): number => {
 };
 
 const toHostName = (value: string | undefined): string => value || "127.0.0.1";
+
+const toRuntimeBootSummary = (runtime: RuntimeBootstrap): RuntimeBootSummary => {
+  const description = runtime.describe();
+  return {
+    profile: description.profile,
+    pendingJobs: description.pendingJobs,
+    schedulerTickMs: description.schedulerTickMs,
+    llmEnabled: description.llmEnabled,
+    llmModel: description.llmModel ?? null,
+    sessionId: description.sessionId ?? null,
+  };
+};
 
 export const startRuntimeServer = (
   runtime: RuntimeBootstrap,
@@ -171,7 +192,7 @@ export const startCli = async (argv: string[] = Bun.argv): Promise<ParsedCliArgs
     runtimeServerUrl: serverInfo?.url,
     webGuiUrl: process.env.TRENCHCLAW_GUI_URL,
   });
-  console.log("[runtime] booted", JSON.stringify(runtime.describe()));
+  console.log("[runtime] booted", JSON.stringify(toRuntimeBootSummary(runtime)));
   console.log("[gui] run separately with `bun run gui:dev` or `bun run dev:parallel` from repo root");
 
   return parsedArgs;

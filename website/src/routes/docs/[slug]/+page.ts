@@ -12,5 +12,5 @@ export const load = ({ params }) => {
     throw error(404, 'Documentation page not found');
   }
 
-  return { doc };
+  return { doc, docs: getDocsList() };
 };

@@ -10,6 +10,7 @@ import {
   DEFAULT_NEW_INSTANCE_SAFETY_PROFILE,
   DEFAULT_CREATE_INSTANCE_ERROR,
   DEFAULT_RUNTIME_ERROR,
+  GUI_API_BASE_PATH,
   DEFAULT_SIGN_IN_ERROR,
   RUNTIME_ACTIVITY_LIMIT,
   RUNTIME_STATUS_CHECKING,
@@ -17,7 +18,8 @@ import {
   type RuntimeSafetyProfile,
   STARTUP_GUARD_TIMEOUT_MS,
 } from "../../config/app-config";
-import { runtimeApi } from "../../runtime-api";
+import type { GuiActivityResponse, GuiBootstrapResponse, GuiQueueResponse } from "@trenchclaw/types";
+import { runtimeApi, toRuntimeUrl } from "../../runtime-api";
 import {
   applyCreateInstanceSuccess,
   buildCreateInstanceRequest,
@@ -58,6 +60,8 @@ export const formatTime = (unixMs: number): string =>
   new Date(unixMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 
 export const createRuntimeController = () => {
+  let eventsSource: EventSource | null = null;
+
   const state = $state<RuntimeUiState>({
     phase: "landing",
     runtimeStatus: RUNTIME_STATUS_CHECKING,
@@ -119,8 +123,61 @@ export const createRuntimeController = () => {
     }
   };
 
-  const startPolling = (): void => {};
-  const stopPolling = (): void => {};
+  const stopPolling = (): void => {
+    if (!eventsSource) {
+      return;
+    }
+    eventsSource.close();
+    eventsSource = null;
+  };
+
+  const startPolling = (): void => {
+    if (state.phase !== "app" || eventsSource) {
+      return;
+    }
+
+    const source = new EventSource(toRuntimeUrl(`${GUI_API_BASE_PATH}/events`));
+    eventsSource = source;
+
+    source.addEventListener("bootstrap", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent<string>).data) as GuiBootstrapResponse;
+        state.runtimeStatus = formatRuntimeStatus(payload.profile, payload.llmEnabled);
+        if (payload.activeInstance) {
+          state.activeInstance = payload.activeInstance;
+        }
+      } catch {
+        // Ignore malformed stream events.
+      }
+    });
+
+    source.addEventListener("queue", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent<string>).data) as GuiQueueResponse;
+        state.queueJobs = payload.jobs;
+      } catch {
+        // Ignore malformed stream events.
+      }
+    });
+
+    source.addEventListener("activity", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent<string>).data) as GuiActivityResponse;
+        state.activityEntries = payload.entries;
+      } catch {
+        // Ignore malformed stream events.
+      }
+    });
+
+    source.addEventListener("error", () => {
+      if (eventsSource !== source) {
+        return;
+      }
+      if (source.readyState === EventSource.CLOSED) {
+        eventsSource = null;
+      }
+    });
+  };
 
   const initializeSplash = async (): Promise<void> => {
     state.splashError = "";
