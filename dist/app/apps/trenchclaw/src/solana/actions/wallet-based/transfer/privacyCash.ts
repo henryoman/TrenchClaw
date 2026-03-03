@@ -6,9 +6,9 @@ import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
 import type { ActionContext } from "../../../../ai/runtime/types/context";
 import type { UltraSwapOutput } from "../swap/ultra/swap";
 import { ultraSwapAction } from "../swap/ultra/swap";
+import { resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
-const DEFAULT_SOLANA_MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
 const SOL_MINT = "So11111111111111111111111111111111111111112";
 
 interface PrivacyCashClient {
@@ -153,7 +153,7 @@ const loadPrivacyCashConstructor = async (): Promise<PrivacyCashConstructor> => 
 const runPrivacyTransfers = async (
   input: PrivacyTransferInput,
 ): Promise<{ output: PrivacyTransferOutput; txSignatures: string[] }> => {
-  const rpcUrl = input.rpcUrl ?? process.env.RPC_URL ?? DEFAULT_SOLANA_MAINNET_RPC_URL;
+  const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
   const forceDeposit = input.forceDeposit ?? false;
   const skipDeposit = input.skipDeposit ?? false;
   const planOnly = input.planOnly ?? false;

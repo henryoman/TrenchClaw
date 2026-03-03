@@ -1,6 +1,6 @@
 # Knowledge Manifest
 
-Generated at: 2026-03-03T19:54:32.208Z
+Generated at: 2026-03-03T22:53:53.839Z
 Root: src/ai/brain/knowledge
 
 Use this inventory to decide which files to read.
@@ -15,6 +15,8 @@ knowledge/
 |   |-- bun-shell-docs.md
 |   |-- bun-sqlite-docs.md
 |   |-- data-structures-as-json.md
+|   |-- helius-agents-llms.md
+|   |-- helius-docs-llms-full.md
 |   `-- helius.md
 |-- skills/
 |   |-- agent-browser/
@@ -34,6 +36,7 @@ knowledge/
 |   `-- skills-lock.json
 |-- bash-tool.md
 |-- file-system-wallet.md
+|-- helius-agents.md
 |-- KNOWLEDGE_MANIFEST.md
 `-- knowledge-tree.ts
 ```

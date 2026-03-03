@@ -35,7 +35,7 @@ const options = {
     })
   };
   
-  fetch('https://mainnet.helius-rpc.com/?api-key=', options)
+  fetch("https://beta.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY", options)
     .then(res => res.json())
     .then(res => console.log(res))
     .catch(err => console.error(err));

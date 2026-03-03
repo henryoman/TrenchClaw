@@ -28,7 +28,7 @@ export const SECRET_OPTIONS: GuiSecretOptionView[] = [
     category: "blockchain",
     label: "Solana RPC URL",
     vaultPath: "rpc/default/http-url",
-    placeholder: "https://beta.helius-rpc.com/?api-key=YOUR_HELIUS_API_KEY",
+    placeholder: "https://your-rpc-provider.example",
     supportsPublicRpc: true,
   },
   {

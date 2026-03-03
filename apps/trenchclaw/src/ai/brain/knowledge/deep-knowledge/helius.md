@@ -19,6 +19,7 @@ Use these before exploring any specific page:
 - Global index: https://www.helius.dev/docs/llms.txt
 - Agents index: https://www.helius.dev/docs/agents/llms.txt
 - Local mirror of agents index: `src/ai/brain/knowledge/deep-knowledge/helius-agents-llms.md`
+- Local mirror of full docs index: `src/ai/brain/knowledge/deep-knowledge/helius-docs-llms-full.md`
 
 Agent-focused pages:
 
@@ -269,6 +270,9 @@ Current runtime strategy:
 - Recommended values:
   - `rpc.helius.http-url`: `https://beta.helius-rpc.com/?api-key=`
   - `rpc.helius.ws-url`: `wss://beta.helius-rpc.com/?api-key=`
+- RPC selection policy:
+  - Runtime does not auto-pick fallback providers.
+  - Set user-selected RPC explicitly via `rpcUrl`/vault config or `RPC_URL`.
 
 Operational constants:
 

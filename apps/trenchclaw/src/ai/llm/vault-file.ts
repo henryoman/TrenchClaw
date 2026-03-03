@@ -9,8 +9,8 @@ export const DEFAULT_VAULT_JSON = {
       "public-id": "",
     },
     helius: {
-      "http-url": "https://beta.helius-rpc.com/?api-key=",
-      "ws-url": "wss://beta.helius-rpc.com/?api-key=",
+      "http-url": "",
+      "ws-url": "",
       "api-key": "",
     },
     quicknode: {

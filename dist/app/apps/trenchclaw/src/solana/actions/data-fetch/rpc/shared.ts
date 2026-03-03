@@ -1,1 +1,1 @@
-export const DEFAULT_SOLANA_MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
+export { resolveRequiredRpcUrl as resolveDefaultSolanaRpcUrl } from "../../../lib/rpc/urls";

@@ -18,11 +18,8 @@ import {
 
 import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
 import type { ActionContext } from "../../../../ai/runtime/types/context";
+import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 
-const heliusApiKey = process.env.HELIUS_API_KEY?.trim();
-const DEFAULT_SOLANA_MAINNET_RPC_URL = heliusApiKey
-  ? `https://beta.helius-rpc.com/?api-key=${heliusApiKey}`
-  : "https://api.mainnet-beta.solana.com";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
 const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
@@ -198,7 +195,8 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
         );
       }
 
-      const rpc = createSolanaRpc(process.env.RPC_URL ?? DEFAULT_SOLANA_MAINNET_RPC_URL);
+      const rpcUrl = resolveRequiredRpcUrl();
+      const rpc = createSolanaRpc(rpcUrl);
       const latestBlockhash = await rpc.getLatestBlockhash().send();
       const instructions: Instruction[] = [];
 
@@ -309,6 +307,9 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      if (message === MISSING_RPC_URL_ERROR) {
+        return createFailure(idempotencyKey, message, "MISSING_RPC_URL");
+      }
       const result = createFailure(idempotencyKey, message, "TRANSFER_FAILED", true);
       return {
         ...result,

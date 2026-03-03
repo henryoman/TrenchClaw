@@ -10,22 +10,18 @@ import {
   type Transaction,
   type TransactionWithBlockhashLifetime,
 } from "@solana/transactions";
+import { resolveRequiredRpcUrl } from "../rpc/urls";
 
 export interface UltraSignerAdapter {
   address: string;
   signBase64Transaction(base64Transaction: string): Promise<string>;
 }
 
-const heliusApiKey = process.env.HELIUS_API_KEY?.trim();
-const DEFAULT_SOLANA_MAINNET_RPC_URL = heliusApiKey
-  ? `https://beta.helius-rpc.com/?api-key=${heliusApiKey}`
-  : "https://api.mainnet-beta.solana.com";
-
 export const createUltraSignerAdapter = async (config: {
   privateKey: Uint8Array;
   rpcUrl?: string;
 }): Promise<UltraSignerAdapter> => {
-  const rpcUrl = config.rpcUrl ?? process.env.RPC_URL ?? DEFAULT_SOLANA_MAINNET_RPC_URL;
+  const rpcUrl = resolveRequiredRpcUrl(config.rpcUrl);
   const rpc = createSolanaRpc(rpcUrl);
   const keyPair = await createKeyPairFromPrivateKeyBytes(config.privateKey);
   const signerAddress = await getAddressFromPublicKey(keyPair.publicKey);

@@ -1,6 +1,6 @@
 import { address, createSolanaRpc } from "@solana/kit";
+import { resolveRequiredRpcUrl } from "../rpc/urls";
 
-const DEFAULT_SOLANA_MAINNET_RPC_URL = "https://api.mainnet-beta.solana.com";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
 export interface TokenAccountAdapterConfig {
@@ -16,7 +16,7 @@ export interface TokenAccountAdapter {
 export const createTokenAccountAdapter = (
   config: TokenAccountAdapterConfig = {},
 ): TokenAccountAdapter => {
-  const rpcUrl = config.rpcUrl ?? process.env.RPC_URL ?? DEFAULT_SOLANA_MAINNET_RPC_URL;
+  const rpcUrl = resolveRequiredRpcUrl(config.rpcUrl);
   const rpc = createSolanaRpc(rpcUrl);
   const decimalsCache = new Map<string, number>();
 
@@ -92,4 +92,4 @@ export const createTokenAccountAdapter = (
 };
 
 export const createTokenAccountAdapterFromEnv = (): TokenAccountAdapter =>
-  createTokenAccountAdapter({ rpcUrl: process.env.RPC_URL });
+  createTokenAccountAdapter({ rpcUrl: process.env.RPC_URL ?? undefined });
