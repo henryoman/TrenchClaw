@@ -31,6 +31,7 @@ Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bu
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 Quick links:
+- [Runtime Architecture and Boundaries](#runtime-architecture-and-boundaries)
 - [Why TypeScript?](#why-typescript)
 - [Why Solana Kit](#why-solana-kit)
 - [TrenchClaw vs ElizaOS and Agent Kit](#trenchclaw-vs-elizaos-and-agent-kit)
@@ -45,6 +46,49 @@ SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 ## Dashboard UI
 
 ![TrenchClaw main dashboard UI](./public/ui.png)
+
+---
+
+## Runtime Architecture and Boundaries
+
+TrenchClaw is designed as a constrained execution system, not a free-form chatbot. The architecture separates control-plane reasoning from execution-plane effects, then applies policy and filesystem constraints before any side-effecting operation.
+
+### 1) Agent control plane (typed orchestration)
+
+- Runtime core (`apps/trenchclaw/src/ai/core`) composes the `ActionRegistry`, `ActionDispatcher`, `PolicyEngine`, `Scheduler`, and typed event bus.
+- Bootstrap wiring (`apps/trenchclaw/src/runtime/bootstrap.ts`) builds the runtime from normalized settings, registers only allowed actions, and injects adapters into action context.
+- Action contracts are typed (`Action<Input, Output>`) and schema-validated before execution.
+- Event emission is structured (`action:*`, `policy:block`, `queue:*`, `rpc:failover`) and persisted to SQLite/files/session logs for traceability.
+
+### 2) Execution plane (on-chain actions + off-chain helpers)
+
+- On-chain-capable actions live under `apps/trenchclaw/src/solana/actions/wallet-based/*` (wallet ops, transfers, swaps, privacy flows).
+- Off-chain helper actions are explicit modules under `apps/trenchclaw/src/solana/actions/data-fetch/*`:
+  - RPC reads (`getAccountInfo`, `getBalance`, `getMultipleAccounts`, `getTokenMetadata`, `getTokenPrice`, `getMarketData`)
+  - External API reads (`api/dexscreener.ts`)
+  - Runtime introspection helpers (`data-fetch/runtime/*`)
+- Adapters isolate provider specifics (`solana/lib/adapters/*`), so action logic remains provider-agnostic.
+
+### 3) Swap modes and execution semantics
+
+- Runtime settings normalize into two Jupiter profiles: `trading.jupiter.ultra` and `trading.jupiter.standard` (`apps/trenchclaw/src/runtime/load/loader.ts`).
+- Profile selection is derived from `trading.preferredSwap` / `trading.defaultSwapProfile`; Ultra enables Ultra quote/execute permissions, Standard enables standard quote/execute permissions.
+- Current tool catalog registration (`apps/trenchclaw/src/ai/tools/catalog.ts`) actively exposes Ultra path actions (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`) and privacy swap composition when signing permissions are satisfied.
+- Standard RPC swap actions (`quoteSwap`, `executeSwap`) exist in `wallet-based/swap/rpc/*` as modular execution primitives, with parity wiring tracked in the roadmap.
+
+### 4) Filesystem and secret boundaries
+
+- Filesystem access is enforced by manifest, not prompt intent (`apps/trenchclaw/src/runtime/security/filesystem-manifest.ts` + `src/ai/brain/protected/system/filesystem-manifest.yaml`).
+- Default model permission is deny (`model: none`), with explicit read/write allowlists for narrow runtime paths.
+- Sensitive vault paths are hard-blocked (`src/ai/brain/protected/no-read` is `model: none`), and protected writes are scoped under `src/ai/brain/protected/*` with explicit policy checks (`solana/lib/wallet/protected-write-policy.ts`).
+
+### 5) Configuration authority boundaries
+
+- Effective settings are produced through a deterministic merge pipeline (`runtime/load/loader.ts`): base safety profile -> sanitized agent overlay -> user overlay -> protected-path enforcement -> schema validation.
+- User-protected settings paths (`runtime/load/authority.ts`) prevent agent layers from silently escalating critical controls (wallet danger flags, trading limits, execution permissions, RPC/network endpoints, internet access).
+- Dangerous action execution can require explicit user confirmation tokens, enforced by runtime policy before dispatch.
+
+This design treats the agent as a policy-constrained orchestrator over explicit modules, with auditable state transitions and narrow I/O boundaries.
 
 ---
 
