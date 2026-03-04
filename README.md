@@ -384,6 +384,7 @@ bun run gui:dev
 ## v0.1 Checklist
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 - [x] Basic file structure for agent runtime and gui initialized
 - [x] Action registry, dispatcher, scheduler, and typed event bus implemented
 - [x] Bun SQLite state store + auto schema sync from Zod typescript schema
@@ -401,6 +402,8 @@ bun run gui:dev
 - [ ] Finalize storage schema/docs refresh (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`)
 - [ ] Complete runtime storage/log store refactor touchpoints and corresponding tests
 =======
+=======
+>>>>>>> Stashed changes
 - [x] Build the runtime core (contracts and orchestration).
 - [x] Ship action registry, dispatcher, scheduler, and typed event bus.
 - [x] Add Bun SQLite state storage with Zod schema sync on boot.
@@ -419,6 +422,9 @@ bun run gui:dev
 - [ ] Finish protected write-policy rollout across runtime and wallet actions.
 - [ ] Refresh storage schema docs and SQL snapshot (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`).
 - [ ] Complete remaining storage/log refactor updates and related tests.
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 
 ## v1.0 Checklist
