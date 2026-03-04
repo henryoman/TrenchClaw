@@ -383,6 +383,7 @@ bun run gui:dev
 
 ## v0.1 Checklist
 
+<<<<<<< Updated upstream
 - [x] Basic file structure for agent runtime and gui initialized
 - [x] Action registry, dispatcher, scheduler, and typed event bus implemented
 - [x] Bun SQLite state store + auto schema sync from Zod typescript schema
@@ -399,31 +400,51 @@ bun run gui:dev
 - [ ] Finish protected write-policy rollout across runtime + wallet action paths
 - [ ] Finalize storage schema/docs refresh (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`)
 - [ ] Complete runtime storage/log store refactor touchpoints and corresponding tests
+=======
+- [x] Build the runtime core (contracts and orchestration).
+- [x] Ship action registry, dispatcher, scheduler, and typed event bus.
+- [x] Add Bun SQLite state storage with Zod schema sync on boot.
+- [x] Harden storage (indexes, retention pruning, schema snapshots).
+- [x] Split runtime logs by purpose (`system`, `sessions`, `summaries`, `memory`).
+- [x] Add runtime profile/policy guardrails and protected settings merge.
+- [x] Enforce filesystem read/write permissions by actor.
+- [x] Enforce runtime/system write scope for DB and protected instance paths.
+- [x] Integrate AI runtime wrapper (`generate`, `stream`) in bootstrap.
+- [x] Inject current date/time automatically into system prompts.
+- [x] Ship Solana wallet/data actions, including Jupiter Ultra swap path.
+- [x] Add runtime entrypoints (`dev`, `start`) and health/status routes.
+- [x] Centralize tests under `tests/` with runtime/storage/action coverage.
+- [ ] Fix runtime profile test for `dangerous` partial override behavior.
+- [ ] Wire more routines into bootstrap (beyond `createWallets`, `actionSequence`).
+- [ ] Finish protected write-policy rollout across runtime and wallet actions.
+- [ ] Refresh storage schema docs and SQL snapshot (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`).
+- [ ] Complete remaining storage/log refactor updates and related tests.
+>>>>>>> Stashed changes
 
 ## v1.0 Checklist
 
-- [ ] Simulation and paper-trading execution paths
-- [ ] Metrics/tracing wiring (`observability.metrics`, `observability.tracing`)
-- [ ] Trigger-to-routine execution flow for timer/price/on-chain triggers
-- [ ] Promote DCA/swing/percentage/sniper routines from definitions to fully wired runtime execution
-- [ ] Complete RPC swap path parity with Ultra path (`quoteSwap`, `executeSwap`, orchestration + retries)
-- [ ] Production-ready trigger engine (durable scheduling, debounce/cooldown, replay protection)
-- [ ] Deterministic idempotency guarantees across action retries and process restarts
-- [ ] Multi-wallet and wallet-group orchestration with per-wallet limits/allocations
-- [ ] Full portfolio state model (positions, cost basis, realized/unrealized PnL, exposure by token)
-- [ ] Risk engine expansion (max slippage/size, drawdown guardrails, per-strategy risk budgets)
-- [ ] Alerting pipeline (runtime/strategy/trade alerts to operator channels)
-- [ ] Operator runbook commands for pause/resume/kill-switch/recovery flows
-- [ ] API surface for external control + automation (auth, rate limits, typed contracts)
-- [ ] Secrets and key management hardening for prod operators (rotation + secure loading paths)
-- [ ] Storage retention/archival tooling (prune, compact, export/import, backup/restore verification)
-- [ ] Historical market ingestion + backtest dataset management workflow
-- [ ] Strategy simulation/backtest runner with reproducible configs and result snapshots
-- [ ] Structured performance reporting (fill quality, slippage stats, strategy-level KPIs)
-- [ ] Expanded Solana data adapters (price/metadata/liquidity sources with fallback priority)
-- [ ] Failure recovery tooling (stuck transaction reconciliation, resumable jobs, dead-letter handling)
-- [ ] Comprehensive test matrix (unit + integration + scenario + long-running soak tests)
-- [ ] Release engineering baseline (versioning, changelog, CI quality gates, reproducible builds)
+- [ ] Add simulation and paper-trading execution paths.
+- [ ] Wire metrics and tracing (`observability.metrics`, `observability.tracing`).
+- [ ] Complete trigger-to-routine execution for timer, price, and on-chain triggers.
+- [ ] Fully wire DCA/swing/percentage/sniper routines into runtime execution.
+- [ ] Complete RPC swap parity with Ultra path (`quoteSwap`, `executeSwap`, retries).
+- [ ] Make trigger engine production-ready (durable scheduling, debounce/cooldown, replay protection).
+- [ ] Add deterministic idempotency across retries and process restarts.
+- [ ] Add multi-wallet and wallet-group orchestration with per-wallet limits.
+- [ ] Build full portfolio state (positions, cost basis, realized/unrealized PnL, token exposure).
+- [ ] Expand risk controls (slippage/size/drawdown limits and strategy risk budgets).
+- [ ] Add alerting pipeline for runtime, strategy, and trade events.
+- [ ] Add operator runbook commands (pause, resume, kill switch, recovery).
+- [ ] Add external API control surface (auth, rate limits, typed contracts).
+- [ ] Harden secrets/key management for production (rotation and secure loading).
+- [ ] Add storage retention and archival tooling (prune, compact, export/import, backup/restore checks).
+- [ ] Add historical market ingestion and backtest dataset workflows.
+- [ ] Ship reproducible strategy simulation/backtest runner and result snapshots.
+- [ ] Add structured performance reporting (fill quality, slippage, strategy KPIs).
+- [ ] Expand Solana data adapters (price/metadata/liquidity with fallback priority).
+- [ ] Add failure recovery tooling (stuck tx reconciliation, resumable jobs, dead-letter handling).
+- [ ] Complete full test matrix (unit, integration, scenario, long-running soak).
+- [ ] Finalize release engineering baseline (versioning, changelog, CI gates, reproducible builds).
 
 ---
 
