@@ -33,6 +33,7 @@
   let blockchainRows: SecretDraftRow[] = [];
   let rowCounter = 0;
   let hydrationSignature = "";
+  let dirtyRowKeys = new Set<string>();
   const DEFAULT_BLOCKCHAIN_OPTION_ID = "solana-rpc-url";
   const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
 
@@ -155,10 +156,12 @@
       publicRpcId,
       value,
     }));
+    dirtyRowKeys = new Set([...dirtyRowKeys, rowKey]);
   };
 
   const onValueChange = (category: GuiSecretCategory, rowKey: string, value: string): void => {
     updateRow(category, rowKey, (row) => ({ ...row, value }));
+    dirtyRowKeys = new Set([...dirtyRowKeys, rowKey]);
   };
 
   const saveRow = (row: SecretDraftRow): void => {
@@ -173,21 +176,46 @@
       if (!rpc) {
         return;
       }
-      void onSave({
-        optionId: row.optionId,
-        value: rpc.url,
-        source: "public",
-        publicRpcId: rpc.id,
-      });
+      Promise.resolve(
+        onSave({
+          optionId: row.optionId,
+          value: rpc.url,
+          source: "public",
+          publicRpcId: rpc.id,
+        }),
+      )
+        .then(() => {
+          dirtyRowKeys.delete(row.rowKey);
+          dirtyRowKeys = new Set(dirtyRowKeys);
+        })
+        .catch(() => {});
       return;
     }
 
-    void onSave({
-      optionId: row.optionId,
-      value: row.value.trim(),
-      source: option.supportsPublicRpc ? "custom" : undefined,
-      publicRpcId: option.supportsPublicRpc ? null : undefined,
-    });
+    Promise.resolve(
+      onSave({
+        optionId: row.optionId,
+        value: row.value.trim(),
+        source: option.supportsPublicRpc ? "custom" : undefined,
+        publicRpcId: option.supportsPublicRpc ? null : undefined,
+      }),
+    )
+      .then(() => {
+        dirtyRowKeys.delete(row.rowKey);
+        dirtyRowKeys = new Set(dirtyRowKeys);
+      })
+      .catch(() => {});
+  };
+
+  const handleReload = (): void => {
+    if (dirtyRowKeys.size > 0) {
+      const proceed = window.confirm("You have unsaved key changes. Reload and discard them?");
+      if (!proceed) {
+        return;
+      }
+    }
+    dirtyRowKeys = new Set();
+    onReload();
   };
 
   const clearRow = (category: GuiSecretCategory, row: SecretDraftRow): void => {
@@ -211,6 +239,8 @@
       source: "custom",
       publicRpcId: firstRpcId(),
     }));
+    dirtyRowKeys.delete(row.rowKey);
+    dirtyRowKeys = new Set(dirtyRowKeys);
     void onClear(row.optionId);
   };
 
@@ -220,6 +250,7 @@
       aiRows = rowsForCategoryFromEntries("ai");
       blockchainRows = rowsForCategoryFromEntries("blockchain");
       hydrationSignature = signature;
+      dirtyRowKeys = new Set();
     }
   }
 
@@ -231,7 +262,7 @@
   <header class="secrets-header">
     <RetroSectionHeader title="Manage keys and secrets" />
     <div class="actions">
-      <RetroButton variant="secondary" disabled={busy} on:click={onReload}>Reload</RetroButton>
+      <RetroButton variant="secondary" disabled={busy} on:click={handleReload}>Reload</RetroButton>
       <RetroButton variant="secondary" disabled={busy || llmCheckBusy} on:click={onCheckLlm}>Check LLM key</RetroButton>
     </div>
   </header>

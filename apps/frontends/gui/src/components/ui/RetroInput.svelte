@@ -4,7 +4,7 @@
   export let disabled = false;
 </script>
 
-<input bind:value {placeholder} {disabled} class="retro-input" />
+<input bind:value {placeholder} {disabled} class="retro-input" on:input on:change on:blur />
 
 <style>
   .retro-input {

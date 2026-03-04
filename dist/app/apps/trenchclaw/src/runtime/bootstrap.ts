@@ -65,6 +65,12 @@ const trimOrUndefined = (value: string | undefined): string | undefined => {
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
 
+const getPrimaryRpcUrlFromSettings = (settings: RuntimeSettings): string | undefined => {
+  const preferredEndpoint = settings.network.rpc.endpoints.find((endpoint) => endpoint.enabled);
+  const fallbackEndpoint = settings.network.rpc.endpoints[0];
+  return trimOrUndefined((preferredEndpoint ?? fallbackEndpoint)?.url);
+};
+
 const envFlagEnabled = (name: string, fallback: boolean): boolean => {
   const configured = trimOrUndefined(process.env[name]);
   if (!configured) {
@@ -510,6 +516,15 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
   const logger = createRuntimeLogger(settings);
+  if (!trimOrUndefined(process.env.RPC_URL)) {
+    const fallbackRpcUrl = getPrimaryRpcUrlFromSettings(settings);
+    if (fallbackRpcUrl) {
+      process.env.RPC_URL = fallbackRpcUrl;
+      logger.info("network:rpc_url_defaulted", {
+        source: "settings.network.rpc.endpoints",
+      });
+    }
+  }
   setLogIoWriteObserver((event) => {
     const details: Record<string, unknown> = {
       operation: event.operation,
