@@ -1,8 +1,0 @@
-{
-  "trenchClawDefaultModel": {
-    "model": "kimi k2",
-    "provider": "openrouter",
-    "baseURL": "https://openrouter.ai/api/v1",
-    "apiKey": "openrouter_api_key"
-  }
-}

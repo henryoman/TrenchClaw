@@ -17,8 +17,6 @@ config/.env.*
 # Vault runtime files (never commit real vault configs)
 apps/trenchclaw/src/ai/brain/protected/no-read/*.json
 !apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json
-dist/app/apps/trenchclaw/src/ai/brain/protected/no-read/*.json
-!dist/app/apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json
 
 # Generated clients from IDL codegen
 lib/client/generated/
@@ -29,8 +27,8 @@ apps/frontends/cli/src/ai/brain/db/
 
 repomix-output.xml
 
-# Frontend build artifacts
-apps/frontends/*/dist/
+# Build artifacts
+**/dist/
 website/.svelte-kit/
 website/build/
 
