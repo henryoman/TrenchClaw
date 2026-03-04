@@ -11,7 +11,7 @@
   <a href="https://github.com/anza-xyz/kit"><img src="https://img.shields.io/badge/Solana%20Kit-551BF9?style=for-the-badge&logo=solana&logoColor=white" alt="Solana Kit" /></a>
   <a href="https://www.metaplex.com"><img src="https://img.shields.io/badge/Metaplex-000000?style=for-the-badge&logo=metaplex&logoColor=white" alt="Metaplex" /></a>
   <a href="https://www.jup.ag"><img src="https://img.shields.io/badge/Jupiter-009A86?style=for-the-badge&logo=jupiter&logoColor=white" alt="Jupiter" /></a>
-  <a href="https://www.helius.dev"><img src="https://img.shields.io/badge/Helius-000000?style=for-the-badge&logo=helius&logoColor=white" alt="Helius" /></a>
+  <a href="https://www.helius.dev"><img src="https://img.shields.io/badge/Helius-000000?style=for-the-badge&logo=https%3A%2F%2Fwww.helius.dev%2Flogo.svg&logoColor=white" alt="Helius" /></a>
   <a href="https://solana.com"><img src="https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white" alt="Solana" /></a>
   <a href="https://streamdown.ai/"><img src="https://img.shields.io/badge/Streamdown-0F172A?style=for-the-badge" alt="Streamdown" /></a>
   <a href="https://www.meteora.ag/"><img src="https://img.shields.io/badge/Meteora-FC030F?style=for-the-badge" alt="Meteora" /></a>

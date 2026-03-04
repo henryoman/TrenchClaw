@@ -52,6 +52,8 @@
     "deps:root-install": "bun install && bun run deps:dupes",
     "systemd:install": "bun run --cwd apps/trenchclaw systemd:install",
     "ci": "bun run lint && bun run typecheck && bun run test && bun run build",
+    "check:all": "bun run lint && bun run typecheck && bun run test && bun run build:all && bun run app:build && bun run deps:dupes",
+    "check:all:with-chat": "bun run check:all && bun run test:launch-chat",
     "wallet:vanity": "bun run --cwd apps/trenchclaw wallet:vanity"
   },
   "devDependencies": {
