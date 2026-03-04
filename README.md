@@ -24,11 +24,13 @@ Please give us a star if you're interested in seeing this project get fully buil
 
 ## useable app almost ready!
 
-*0.0.1 release available wednesday march 4*
+*0.0.1 release available wednesday march 3*
 
 # TrenchClaw
 
 TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected. 
+
+While the TypeScript repo is a little heavier than minimalist alternatives, it is currently the best and most accurate agent orchestrator for this stack.
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
@@ -383,27 +385,6 @@ bun run gui:dev
 
 ## v0.1 Checklist
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-- [x] Basic file structure for agent runtime and gui initialized
-- [x] Action registry, dispatcher, scheduler, and typed event bus implemented
-- [x] Bun SQLite state store + auto schema sync from Zod typescript schema
-- [x] Runtime log split (`system`, `sessions`, `summaries`, `memory`)
-- [x] Runtime profile/policy guardrails + protected settings merge
-- [x] Filesystem manifest policy + actor-aware read/write permission checks
-- [x] Runtime/system write-scope enforcement for db and protected instance paths
-- [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) in bootstrap
-- [x] Automatic current date/time injection into system prompts
-- [x] Create Jupiter Ultra default swap implementation
-- [x] Bash-tool implmeenation 
-- [x] Test suite centralized under `tests/` with runtime/storage/action coverage
-
-- [ ] Finish protected write-policy rollout across runtime + wallet action paths
-- [ ] Finalize storage schema/docs refresh (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`)
-- [ ] Complete runtime storage/log store refactor touchpoints and corresponding tests
-=======
-=======
->>>>>>> Stashed changes
 - [x] Build the runtime core (contracts and orchestration).
 - [x] Ship action registry, dispatcher, scheduler, and typed event bus.
 - [x] Add Bun SQLite state storage with Zod schema sync on boot.
@@ -422,10 +403,6 @@ bun run gui:dev
 - [ ] Finish protected write-policy rollout across runtime and wallet actions.
 - [ ] Refresh storage schema docs and SQL snapshot (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`).
 - [ ] Complete remaining storage/log refactor updates and related tests.
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 ## v1.0 Checklist
 
