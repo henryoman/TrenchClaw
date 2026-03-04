@@ -24,7 +24,7 @@ Please give us a star if you're interested in seeing this project get fully buil
 
 ## useable app almost ready!
 
-*0.0.1 release available wednesday march 3*
+*0.0.1 release available wednesday march 4*
 
 # TrenchClaw
 
