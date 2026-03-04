@@ -1,21 +1,146 @@
-# Helius Quick Ops: CLI + Action Access
+# Helius Quick Ops: CLI + RPC Command Cookbook
 
 Last verified: 2026-03-03
 
-Use this top-level file for fast Helius operational actions only.
+Use this file for high-signal Helius operations: wallet creation, funding, transfers, and direct RPC/DAS JSON methods.
 
-## Fast CLI Commands
+## One-Time Setup
 
-- Install CLI: `npm install -g helius-cli`
-- Check install: `helius --version`
-- Login with existing keypair: `helius login --keypair /path/to/keypair.json --json`
-- List projects: `helius projects --json`
-- List API keys: `helius apikeys --json`
-- Create API key: `helius apikeys create --json`
-- Show RPC endpoints: `helius rpc --json`
-- Check usage/credits: `helius usage --json`
+```bash
+# Helius CLI
+npm install -g helius-cli
 
-## Fast Endpoint References
+# Solana + SPL CLI (if missing)
+# https://docs.solana.com/cli/install-solana-cli-tools
+# https://spl.solana.com/token
+
+# Authenticate with Helius
+helius keygen
+helius signup --json
+helius login --keypair ~/.helius-cli/keypair.json --json
+
+# Grab a key, then export endpoint
+export HELIUS_API_KEY="<your_api_key>"
+export RPC_URL="https://beta.helius-rpc.com/?api-key=${HELIUS_API_KEY}"
+```
+
+Useful checks:
+
+- `helius --version`
+- `helius projects --json`
+- `helius apikeys --json`
+- `helius apikeys create --json`
+- `helius rpc --json`
+- `helius usage --json`
+
+## Wallet Ops (Actually Useful)
+
+```bash
+# Create a new wallet keypair
+mkdir -p ~/.wallets
+solana-keygen new --outfile ~/.wallets/dev-wallet.json
+
+# Print wallet pubkey
+solana-keygen pubkey ~/.wallets/dev-wallet.json
+
+# Verify keypair controls pubkey
+solana-keygen verify "$(solana-keygen pubkey ~/.wallets/dev-wallet.json)" ~/.wallets/dev-wallet.json
+
+# Point Solana CLI at Helius (mainnet)
+solana config set --url "$RPC_URL"
+solana config set --keypair ~/.wallets/dev-wallet.json
+solana config get
+
+# Devnet airdrop flow
+export DEVNET_RPC_URL="https://devnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}"
+solana config set --url "$DEVNET_RPC_URL"
+solana airdrop 2
+solana balance
+
+# Transfer SOL
+solana transfer <TO_PUBKEY> 0.1 --allow-unfunded-recipient
+```
+
+## SPL Token Ops
+
+```bash
+# Ensure CLI is on Helius endpoint first
+solana config set --url "$RPC_URL"
+
+# Create token mint + associated token account, then mint
+spl-token create-token
+spl-token create-account <TOKEN_MINT_ADDRESS>
+spl-token mint <TOKEN_MINT_ADDRESS> 1000
+
+# Check token balances
+spl-token accounts
+```
+
+## JSON-RPC: Copy/Paste Requests
+
+```bash
+export HELIUS_API_KEY="<your_api_key>"
+export RPC_URL="https://beta.helius-rpc.com/?api-key=${HELIUS_API_KEY}"
+export OWNER="<wallet_pubkey>"
+
+rpc() {
+  local method="$1"
+  local params="$2"
+  curl -sS "$RPC_URL" \
+    -H 'Content-Type: application/json' \
+    -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"${method}\",\"params\":${params}}"
+}
+```
+
+```bash
+# 1) SOL balance (lamports)
+rpc "getBalance" "[\"${OWNER}\"]" | jq '.result.value'
+
+# 2) Latest blockhash
+rpc "getLatestBlockhash" "[{\"commitment\":\"confirmed\"}]" | jq '.result.value.blockhash'
+
+# 3) Account info
+rpc "getAccountInfo" "[\"${OWNER}\", {\"encoding\":\"base64\"}]" | jq '.result.value'
+
+# 4) SPL token accounts by owner
+rpc "getTokenAccountsByOwner" "[\"${OWNER}\", {\"programId\":\"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA\"}, {\"encoding\":\"jsonParsed\"}]" | jq '.result.value | length'
+
+# 5) Recent signatures
+rpc "getSignaturesForAddress" "[\"${OWNER}\", {\"limit\":10}]" | jq '.result[0]'
+
+# 6) Full tx details for a signature
+export SIG="<transaction_signature>"
+rpc "getTransaction" "[\"${SIG}\", {\"encoding\":\"jsonParsed\",\"maxSupportedTransactionVersion\":0}]" | jq '.result'
+
+# 7) Simulate a base64 tx (pre-send checks)
+export TX_B64="<base64_tx>"
+rpc "simulateTransaction" "[\"${TX_B64}\", {\"encoding\":\"base64\",\"replaceRecentBlockhash\":true}]" | jq '.result.err, .result.logs'
+
+# 8) Send a base64 tx
+rpc "sendTransaction" "[\"${TX_B64}\", {\"encoding\":\"base64\",\"skipPreflight\":false,\"maxRetries\":3}]" | jq '.result'
+
+# 9) Helius priority fee estimate
+rpc "getPriorityFeeEstimate" "[{\"accountKeys\":[\"${OWNER}\"],\"options\":{\"recommended\":true}}]" | jq '.result'
+```
+
+## DAS API Methods (Helius-Indexed)
+
+```bash
+# getAssetsByOwner (NFTs + fungibles with metadata)
+rpc "getAssetsByOwner" "[{\"ownerAddress\":\"${OWNER}\",\"page\":1,\"limit\":50,\"displayOptions\":{\"showFungible\":true}}]" | jq '.result.items | length'
+
+# getAsset by asset id
+export ASSET_ID="<asset_id>"
+rpc "getAsset" "[{\"id\":\"${ASSET_ID}\"}]" | jq '.result.id, .result.ownership.owner'
+
+# getSignaturesForAsset (compressed NFT history)
+rpc "getSignaturesForAsset" "[{\"id\":\"${ASSET_ID}\",\"page\":1,\"limit\":20}]" | jq '.result.items[0]'
+
+# getTransactionsForAddress (Helius aggregated history)
+rpc "getTransactionsForAddress" "[{\"address\":\"${OWNER}\",\"limit\":20}]" | jq '.result[0]'
+```
+
+## Endpoint References
 
 - Mainnet RPC (Gateway preferred): `https://beta.helius-rpc.com/?api-key=YOUR_API_KEY`
 - Mainnet RPC (standard): `https://mainnet.helius-rpc.com/?api-key=YOUR_API_KEY`
