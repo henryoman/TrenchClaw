@@ -30,8 +30,6 @@ Please give us a star if you're interested in seeing this project get fully buil
 
 TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected. 
 
-While the TypeScript repo is a little heavier than minimalist alternatives, it is currently the best and most accurate agent orchestrator for this stack.
-
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
@@ -385,21 +383,19 @@ bun run gui:dev
 
 ## v0.1 Checklist
 
-- [x] Runtime core contracts + orchestration foundation
-- [x] Action registry, dispatcher, scheduler, and typed event bus
-- [x] Bun SQLite state store + auto schema sync from Zod
-- [x] Storage hardening (indexes, retention pruning, schema snapshot support)
+- [x] Basic file structure for agent runtime and gui initialized
+- [x] Action registry, dispatcher, scheduler, and typed event bus implemented
+- [x] Bun SQLite state store + auto schema sync from Zod typescript schema
 - [x] Runtime log split (`system`, `sessions`, `summaries`, `memory`)
 - [x] Runtime profile/policy guardrails + protected settings merge
 - [x] Filesystem manifest policy + actor-aware read/write permission checks
 - [x] Runtime/system write-scope enforcement for db and protected instance paths
 - [x] Vercel AI SDK runtime wrapper (`generate` + `stream`) in bootstrap
 - [x] Automatic current date/time injection into system prompts
-- [x] Solana action surface for wallet/data flows (including Jupiter Ultra path)
-- [x] Runtime entrypoints (`dev`, `start`) + health/status routes
+- [x] Create Jupiter Ultra default swap implementation
+- [x] Bash-tool implmeenation 
 - [x] Test suite centralized under `tests/` with runtime/storage/action coverage
-- [ ] Stabilize runtime profile behavior test in `tests/runtime/config/authority.test.ts` (`dangerous` partial-override expectation)
-- [ ] Wire additional routines into runtime bootstrap (beyond `createWallets` and `actionSequence`)
+
 - [ ] Finish protected write-policy rollout across runtime + wallet action paths
 - [ ] Finalize storage schema/docs refresh (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`)
 - [ ] Complete runtime storage/log store refactor touchpoints and corresponding tests
