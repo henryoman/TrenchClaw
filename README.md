@@ -22,15 +22,42 @@
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
 
-## useable app almost ready!
-
 *0.0.1 release available wednesday march 3*
+
+### v0.0.1 Test Release Checklist
+
+- [x] Set up project with a bun-based runtime and monorepo structure.
+- [x] Download dependencies, SDK's and core skills.
+- [x] Create backend typescript files and layout file structure for solana/ and ai/
+- [x] Added the action and routine systems.
+- [x] Added SQLite storage with a central zod schema.
+- [x] Create and implement the agent's brain, memory, loop and workspace primitives.
+- [x] Create loggers and split logs into 3 styles (`system`, `sessions`, `summaries`).
+- [x] Added raw file read/write permission.
+- [x] Create standardized AI gateway and dispatcher than can accept tool calls.
+- [x] Add native paths and scripts for wallet creation and organization.
+- [x] Add native paths and scripts for blockchain data retreival.
+- [x] Add bash-tool and solana cli 3.0 capabilities.
+- [x] Create temprory vault system for storage of keys and passwords.
+- [x] Isolate and restrict runtime/system writes to allowed /workspace/ and protected paths.
+- [x] Connect AI SDK runtime calls (`generate`, `stream`) during startup to our backend app.
+- [x] Build payload builder and standardized tool schema.
+- [x] Add Solana swap actions, including Jupiter Ultra swap, Metis swap, Sender swap helper and more.
+- [x] Add runtime start commands and health/status endpoints.
+- [x] Create in-depth test suite
+- [x] Create marketing and docs website
+- [x] Create Svelte gui and connect it to standardized trenclaw gateway.
+- [x] Create runner cli to build and startup everything properly
+- [ ] Test and ship model-triggered routines.
+- [ ] Test models ability to execute CLI and bash commands in its workspace.
+- [ ] Finish rolling out protected write policy across runtime and wallet actions.
+- [ ] Make CI and release flow with proper versioning.
+- [ ] Push updated docs to website.
+
 
 # TrenchClaw
 
-TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected. 
-
-While the TypeScript repo is a little heavier than minimalist alternatives, it is currently the best and most accurate agent orchestrator for this stack.
+TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected.
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
@@ -43,9 +70,9 @@ Quick links:
 - [Why Solana Kit](#why-solana-kit)
 - [TrenchClaw vs ElizaOS and Agent Kit](#trenchclaw-vs-elizaos-and-agent-kit)
 
-SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
+PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 
-## THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
+### THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
 
 ---
 ## [Get Started](https://trenchclaw.vercel.app/docs)
@@ -383,51 +410,30 @@ bun run gui:dev
 
 ---
 
-## v0.1 Checklist
-
-- [x] Build the runtime core (contracts and orchestration).
-- [x] Ship action registry, dispatcher, scheduler, and typed event bus.
-- [x] Add Bun SQLite state storage with Zod schema sync on boot.
-- [x] Harden storage (indexes, retention pruning, schema snapshots).
-- [x] Split runtime logs by purpose (`system`, `sessions`, `summaries`, `memory`).
-- [x] Add runtime profile/policy guardrails and protected settings merge.
-- [x] Enforce filesystem read/write permissions by actor.
-- [x] Enforce runtime/system write scope for DB and protected instance paths.
-- [x] Integrate AI runtime wrapper (`generate`, `stream`) in bootstrap.
-- [x] Inject current date/time automatically into system prompts.
-- [x] Ship Solana wallet/data actions, including Jupiter Ultra swap path.
-- [x] Add runtime entrypoints (`dev`, `start`) and health/status routes.
-- [x] Centralize tests under `tests/` with runtime/storage/action coverage.
-- [ ] Fix runtime profile test for `dangerous` partial override behavior.
-- [ ] Wire more routines into bootstrap (beyond `createWallets`, `actionSequence`).
-- [ ] Finish protected write-policy rollout across runtime and wallet actions.
-- [ ] Refresh storage schema docs and SQL snapshot (`docs/storage-schema.md`, `docs/storage-schema.snapshot.sql`).
-- [ ] Complete remaining storage/log refactor updates and related tests.
-
 ## v1.0 Checklist
 
-- [ ] Add simulation and paper-trading execution paths.
-- [ ] Wire metrics and tracing (`observability.metrics`, `observability.tracing`).
-- [ ] Complete trigger-to-routine execution for timer, price, and on-chain triggers.
-- [ ] Fully wire DCA/swing/percentage/sniper routines into runtime execution.
-- [ ] Complete RPC swap parity with Ultra path (`quoteSwap`, `executeSwap`, retries).
-- [ ] Make trigger engine production-ready (durable scheduling, debounce/cooldown, replay protection).
-- [ ] Add deterministic idempotency across retries and process restarts.
-- [ ] Add multi-wallet and wallet-group orchestration with per-wallet limits.
-- [ ] Build full portfolio state (positions, cost basis, realized/unrealized PnL, token exposure).
-- [ ] Expand risk controls (slippage/size/drawdown limits and strategy risk budgets).
-- [ ] Add alerting pipeline for runtime, strategy, and trade events.
-- [ ] Add operator runbook commands (pause, resume, kill switch, recovery).
-- [ ] Add external API control surface (auth, rate limits, typed contracts).
-- [ ] Harden secrets/key management for production (rotation and secure loading).
-- [ ] Add storage retention and archival tooling (prune, compact, export/import, backup/restore checks).
-- [ ] Add historical market ingestion and backtest dataset workflows.
-- [ ] Ship reproducible strategy simulation/backtest runner and result snapshots.
-- [ ] Add structured performance reporting (fill quality, slippage, strategy KPIs).
-- [ ] Expand Solana data adapters (price/metadata/liquidity with fallback priority).
-- [ ] Add failure recovery tooling (stuck tx reconciliation, resumable jobs, dead-letter handling).
-- [ ] Complete full test matrix (unit, integration, scenario, long-running soak).
-- [ ] Finalize release engineering baseline (versioning, changelog, CI gates, reproducible builds).
+- [ ] Add simulation mode and paper trading mode.
+- [ ] Add metrics and tracing.
+- [ ] Make triggers actually run routines (time-based, price-based, and on-chain triggers).
+- [ ] Fully connect DCA, swing, percentage, and sniper routines to live execution.
+- [ ] Finish the non-Ultra RPC swap path to match Ultra features.
+- [ ] Make trigger processing stable for production (durable scheduling, cooldown/debounce, replay protection).
+- [ ] Ensure retries and restarts do not duplicate work.
+- [ ] Add full multi-wallet support with per-wallet limits.
+- [ ] Build full portfolio tracking (positions, cost basis, realized/unrealized PnL, exposure).
+- [ ] Expand risk controls (max size, slippage, drawdown, per-strategy limits).
+- [ ] Add alert delivery for runtime, strategy, and trade events.
+- [ ] Add operator control commands (pause, resume, kill switch, recovery).
+- [ ] Add external API controls with auth, rate limits, and typed contracts.
+- [ ] Improve production secrets/key handling (secure loading and rotation).
+- [ ] Add storage maintenance tools (prune, compact, export/import, backup/restore verification).
+- [ ] Add historical market data ingestion and backtest dataset workflows.
+- [ ] Add reproducible backtest/simulation runs with saved result snapshots.
+- [ ] Add clear performance reports (fill quality, slippage, strategy KPIs).
+- [ ] Add more Solana data sources with fallback priority.
+- [ ] Add failure recovery tools (stuck transaction cleanup, resumable jobs, dead-letter handling).
+- [ ] Complete broader testing (unit, integration, scenario, long-running soak).
+- [ ] Finalize release workflow (versioning, changelog, CI quality gates, reproducible builds).
 
 ---
 
