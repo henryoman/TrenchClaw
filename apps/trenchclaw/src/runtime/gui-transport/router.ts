@@ -16,6 +16,7 @@ import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, streamRuntimeEvents } from "./domains/runtime-panels";
 import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
+import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
 const toErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const toErrorPayloadV1 = (code: string, message: string, details?: unknown): { error: { code: string; message: string; details?: unknown } } => ({
@@ -332,6 +333,34 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
         return Response.json(await getSecrets(), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/wallets") {
+      try {
+        return Response.json(await listWalletTree(), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/wallets/download") {
+      const relativePath = (url.searchParams.get("path") ?? "").trim();
+      if (!relativePath) {
+        return Response.json({ error: "Missing wallet file path" }, { status: 400, headers: CORS_HEADERS });
+      }
+      try {
+        const backup = await readWalletBackupFile(relativePath);
+        return new Response(backup.content, {
+          status: 200,
+          headers: {
+            ...CORS_HEADERS,
+            "content-type": "application/json; charset=utf-8",
+            "content-disposition": `attachment; filename="${backup.fileName}"`,
+          },
+        });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 404, headers: CORS_HEADERS });
       }
     }
 

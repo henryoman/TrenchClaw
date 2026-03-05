@@ -49,8 +49,12 @@
             "count": 5,
             "includePrivateKey": true,
             "privateKeyEncoding": "base64",
+            "storage": {
+              "walletGroup": "core-wallets",
+              "createGroupIfMissing": true,
+              "keypairGenerator": "bun"
+            },
             "output": {
-              "directory": "runtime/config/workspace/keypairs",
               "filePrefix": "wallet",
               "includeIndexInFileName": true
             }

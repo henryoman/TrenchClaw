@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-03T19:54:32.162Z
+Generated at: 2026-03-05T03:13:57.679Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -10,13 +10,6 @@ This file is generated. Refresh with:
 ```text
 # WORKSPACE ROOT: apps/trenchclaw/
 apps/trenchclaw/
-|-- apps/
-|   `-- trenchclaw/
-|       `-- src/
-|           `-- ai/
-|               `-- brain/
-|                   `-- workspace/
-|                       `-- .tests/
 |-- src/
 |   |-- ai/
 |   |   |-- brain/
@@ -28,10 +21,13 @@ apps/trenchclaw/
 |   |   |   |   |-- events/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-03-02.jsonl
-|   |   |   |   |   `-- 2026-03-03.jsonl
+|   |   |   |   |   |-- 2026-03-03.jsonl
+|   |   |   |   |   `-- 2026-03-05.jsonl
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-03-02.md
 |   |   |   |   |   |-- 2026-03-03.md
+|   |   |   |   |   |-- 2026-03-04.md
+|   |   |   |   |   |-- 2026-03-05.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
@@ -43,11 +39,15 @@ apps/trenchclaw/
 |   |   |   |   |-- summary/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-03-02.log
-|   |   |   |   |   `-- 2026-03-03.log
+|   |   |   |   |   |-- 2026-03-03.log
+|   |   |   |   |   |-- 2026-03-04.log
+|   |   |   |   |   `-- 2026-03-05.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-03-02.log
-|   |   |   |   |   `-- 2026-03-03.log
+|   |   |   |   |   |-- 2026-03-03.log
+|   |   |   |   |   |-- 2026-03-04.log
+|   |   |   |   |   `-- 2026-03-05.log
 |   |   |   |   |-- .gitignore
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
@@ -66,6 +66,8 @@ apps/trenchclaw/
 |   |   |   |   |   |-- bun-shell-docs.md
 |   |   |   |   |   |-- bun-sqlite-docs.md
 |   |   |   |   |   |-- data-structures-as-json.md
+|   |   |   |   |   |-- helius-agents-llms.md
+|   |   |   |   |   |-- helius-docs-llms-full.md
 |   |   |   |   |   `-- helius.md
 |   |   |   |   |-- skills/
 |   |   |   |   |   |-- agent-browser/
@@ -85,6 +87,7 @@ apps/trenchclaw/
 |   |   |   |   |   `-- skills-lock.json
 |   |   |   |   |-- bash-tool.md
 |   |   |   |   |-- file-system-wallet.md
+|   |   |   |   |-- helius-agents.md
 |   |   |   |   |-- KNOWLEDGE_MANIFEST.md
 |   |   |   |   `-- knowledge-tree.ts
 |   |   |   |-- protected/
@@ -96,9 +99,8 @@ apps/trenchclaw/
 |   |   |   |   |   |-- .gitkeep
 |   |   |   |   |   `-- user-1.json
 |   |   |   |   |-- keypairs/
-|   |   |   |   |   |-- file-system-wallets/
-|   |   |   |   |   |   |-- core_wallets/
-|   |   |   |   |   |   `-- uploaded_wallets/
+|   |   |   |   |   |-- smoke-test/
+|   |   |   |   |   |   `-- smoke-test-wallet001-0001.json
 |   |   |   |   |   `-- .keep
 |   |   |   |   |-- no-read/
 |   |   |   |   |   |-- .gitkeep
@@ -108,33 +110,30 @@ apps/trenchclaw/
 |   |   |   |   |   `-- vault.template.json
 |   |   |   |   |-- notes/
 |   |   |   |   |   `-- .keep
-|   |   |   |   `-- system/
-|   |   |   |       |-- modes/
-|   |   |   |       |   `-- operator.md
-|   |   |   |       |-- safety-modes/
-|   |   |   |       |   |-- dangerous.yaml
-|   |   |   |       |   |-- safe.yaml
-|   |   |   |       |   `-- veryDangerous.yaml
-|   |   |   |       |-- filesystem-manifest.yaml
-|   |   |   |       |-- payload-manifest.yaml
-|   |   |   |       `-- system.md
+|   |   |   |   |-- system/
+|   |   |   |   |   |-- modes/
+|   |   |   |   |   |   `-- operator.md
+|   |   |   |   |   |-- safety-modes/
+|   |   |   |   |   |   |-- dangerous.yaml
+|   |   |   |   |   |   |-- safe.yaml
+|   |   |   |   |   |   `-- veryDangerous.yaml
+|   |   |   |   |   |-- filesystem-manifest.yaml
+|   |   |   |   |   |-- payload-manifest.yaml
+|   |   |   |   |   `-- system.md
+|   |   |   |   `-- wallet-library.jsonl
 |   |   |   |-- user-blockchain-settings/
 |   |   |   |   |-- notifications.yaml
 |   |   |   |   |-- settings.yaml
 |   |   |   |   `-- swap.yaml
 |   |   |   |-- workspace/
-|   |   |   |   |-- .tests/
 |   |   |   |   |-- configs/
-|   |   |   |   |-- misc-scripts/
 |   |   |   |   |-- notes/
 |   |   |   |   |-- output/
-|   |   |   |   |-- price-data/
 |   |   |   |   |-- scratch/
 |   |   |   |   |-- strategies/
 |   |   |   |   |   |-- .tests/
 |   |   |   |   |   `-- .keep
 |   |   |   |   |-- typescript/
-|   |   |   |   |-- ui/
 |   |   |   |   `-- rules.md
 |   |   |   |-- rules.md
 |   |   |   `-- soul.md
@@ -184,9 +183,11 @@ apps/trenchclaw/
 |   |   |   |-- domains/
 |   |   |   |   |-- chat.ts
 |   |   |   |   |-- instances.ts
+|   |   |   |   |-- llm-check.ts
 |   |   |   |   |-- runtime-panels.ts
 |   |   |   |   |-- tests.ts
-|   |   |   |   `-- vault-secrets.ts
+|   |   |   |   |-- vault-secrets.ts
+|   |   |   |   `-- wallets.ts
 |   |   |   |-- constants.ts
 |   |   |   |-- contracts.ts
 |   |   |   |-- parsers.ts
@@ -277,8 +278,6 @@ apps/trenchclaw/
 |   |   |   |   |   |   `-- swap.ts
 |   |   |   |   |   `-- index.ts
 |   |   |   |   |-- token/
-|   |   |   |   |   |-- launch/
-|   |   |   |   |   |   `-- meteora/
 |   |   |   |   |   `-- mint/
 |   |   |   |   |       `-- createToken.ts
 |   |   |   |   |-- transfer/
@@ -295,6 +294,8 @@ apps/trenchclaw/
 |   |   |   |   |-- rpc-pool.ts
 |   |   |   |   |-- token-account.ts
 |   |   |   |   `-- ultra-signer.ts
+|   |   |   |-- rpc/
+|   |   |   |   `-- urls.ts
 |   |   |   |-- ultra/
 |   |   |   |   `-- parsing.ts
 |   |   |   `-- wallet/
@@ -322,7 +323,6 @@ apps/trenchclaw/
 |   `-- index.ts
 |-- types/
 |   `-- index.ts
-|-- .env.example
 |-- .gitignore
 |-- package.json
 |-- README.md
@@ -373,10 +373,13 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | /api/gui/events |
 | /api/gui/instances |
 | /api/gui/instances/sign-in |
+| /api/gui/llm/check |
 | /api/gui/queue |
 | /api/gui/secrets |
 | /api/gui/tests/dispatcher |
 | /api/gui/vault |
+| /api/gui/wallets |
+| /api/gui/wallets/download |
 | /v1/chat/stream |
 | /v1/chat/turn |
 | /v1/health |

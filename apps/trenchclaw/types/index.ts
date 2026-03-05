@@ -294,3 +294,17 @@ export interface GuiLlmCheckResponse {
   probeStatus: number | null;
   probeMessage: string;
 }
+
+export interface GuiWalletNodeView {
+  name: string;
+  relativePath: string;
+  kind: "directory" | "file";
+  children?: GuiWalletNodeView[];
+}
+
+export interface GuiWalletsResponse {
+  rootRelativePath: string;
+  rootExists: boolean;
+  nodes: GuiWalletNodeView[];
+  walletFileCount: number;
+}

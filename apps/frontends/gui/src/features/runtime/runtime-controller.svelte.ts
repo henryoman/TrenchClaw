@@ -5,6 +5,7 @@ import type {
   GuiQueueJobView,
   GuiSecretEntryView,
   GuiSecretOptionView,
+  GuiWalletNodeView,
 } from "@trenchclaw/types";
 import {
   DEFAULT_NEW_INSTANCE_SAFETY_PROFILE,
@@ -53,6 +54,12 @@ interface RuntimeUiState {
   secretsError: string;
   llmCheckBusy: boolean;
   llmCheckMessage: string;
+  walletsRootRelativePath: string;
+  walletsRootExists: boolean;
+  walletNodes: GuiWalletNodeView[];
+  walletFileCount: number;
+  walletsBusy: boolean;
+  walletsError: string;
 }
 
 const formatRuntimeStatus = (profile: string, llmEnabled: boolean): string =>
@@ -88,6 +95,12 @@ export const createRuntimeController = () => {
     secretsError: "",
     llmCheckBusy: false,
     llmCheckMessage: "",
+    walletsRootRelativePath: "",
+    walletsRootExists: false,
+    walletNodes: [],
+    walletFileCount: 0,
+    walletsBusy: false,
+    walletsError: "",
   });
 
   const loadInstances = async (): Promise<void> => {
@@ -207,6 +220,7 @@ export const createRuntimeController = () => {
         state.phase = "app";
         await loadAppData();
         await loadSecrets();
+        await loadWallets();
       } else {
         state.activeInstance = null;
         state.signInPin = "";
@@ -302,6 +316,7 @@ export const createRuntimeController = () => {
       state.phase = "app";
       await loadAppData();
       await loadSecrets();
+      await loadWallets();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_SIGN_IN_ERROR;
     } finally {
@@ -413,6 +428,22 @@ export const createRuntimeController = () => {
     }
   };
 
+  const loadWallets = async (): Promise<void> => {
+    state.walletsBusy = true;
+    state.walletsError = "";
+    try {
+      const payload = await runtimeApi.wallets();
+      state.walletsRootRelativePath = payload.rootRelativePath;
+      state.walletsRootExists = payload.rootExists;
+      state.walletNodes = payload.nodes;
+      state.walletFileCount = payload.walletFileCount;
+    } catch (error) {
+      state.walletsError = error instanceof Error ? error.message : "Failed to load wallets.";
+    } finally {
+      state.walletsBusy = false;
+    }
+  };
+
   return {
     state,
     initializeSplash,
@@ -422,6 +453,7 @@ export const createRuntimeController = () => {
     submitCreateInstance,
     submitSignIn,
     loadSecrets,
+    loadWallets,
     upsertSecret,
     clearSecret,
     checkLlm,

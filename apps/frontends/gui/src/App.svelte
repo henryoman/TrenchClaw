@@ -12,6 +12,7 @@
     QueuePanel,
     SecretsPanel,
     SummaryPanel,
+    WalletsPanel,
     WorkspaceShell,
   } from "./components";
   import type { createChatController as CreateChatController } from "./features/chat/chat-controller.svelte";
@@ -23,7 +24,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
-  let activeTab: "chat" | "keys-secrets" = $state("chat");
+  let activeTab: "chat" | "keys-secrets" | "wallets" = $state("chat");
 
   const ensureChatController = async (): Promise<void> => {
     if (chat) {
@@ -118,7 +119,7 @@
           <p>{chatInitError || "Initializing chat..."}</p>
         </section>
       {/if}
-    {:else}
+    {:else if activeTab === "keys-secrets"}
       <SecretsPanel
         options={runtime.state.secretsOptions}
         entries={runtime.state.secretEntries}
@@ -138,6 +139,18 @@
         }}
         onClear={(optionId: string) => {
           void runtime.clearSecret(optionId);
+        }}
+      />
+    {:else}
+      <WalletsPanel
+        rootRelativePath={runtime.state.walletsRootRelativePath}
+        rootExists={runtime.state.walletsRootExists}
+        nodes={runtime.state.walletNodes}
+        walletFileCount={runtime.state.walletFileCount}
+        busy={runtime.state.walletsBusy}
+        error={runtime.state.walletsError}
+        onReload={() => {
+          void runtime.loadWallets();
         }}
       />
     {/if}

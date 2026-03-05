@@ -13,6 +13,7 @@ import type {
   GuiSecretsResponse,
   GuiSignInInstanceRequest,
   GuiSignInInstanceResponse,
+  GuiWalletsResponse,
   GuiUpsertSecretRequest,
   GuiUpsertSecretResponse,
   GuiUpdateVaultRequest,
@@ -113,6 +114,9 @@ export const runtimeApi = {
       body: JSON.stringify(input),
     }),
   llmCheck: (): Promise<GuiLlmCheckResponse> => fetchJson<GuiLlmCheckResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/llm/check`)),
+  wallets: (): Promise<GuiWalletsResponse> => fetchJson<GuiWalletsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/wallets`)),
+  walletBackupDownloadUrl: (relativePath: string): string =>
+    toRuntimeUrl(`${GUI_API_BASE_PATH}/wallets/download?path=${encodeURIComponent(relativePath)}`),
   reportClientError: (input: {
     source: string;
     message: string;

@@ -1,7 +1,7 @@
 <script lang="ts">
   export let runtimeStatus = "";
-  export let activeTab: "chat" | "keys-secrets" = "chat";
-  export let onTabChange: (tab: "chat" | "keys-secrets") => void;
+  export let activeTab: "chat" | "keys-secrets" | "wallets" = "chat";
+  export let onTabChange: (tab: "chat" | "keys-secrets" | "wallets") => void;
 
   const getSidebarStatus = (status: string): string => {
     const runtimeMatch = /^runtime:\s*([^|]+?)(?:\s*\|.*)?$/i.exec(status.trim());
@@ -41,6 +41,13 @@
       on:click={() => {
         onTabChange("keys-secrets");
       }}>Keys & Secrets</button
+    >
+    <button
+      type="button"
+      class="tab-button {activeTab === 'wallets' ? 'active' : ''}"
+      on:click={() => {
+        onTabChange("wallets");
+      }}>Wallets</button
     >
   </nav>
   <div class="status-stack">

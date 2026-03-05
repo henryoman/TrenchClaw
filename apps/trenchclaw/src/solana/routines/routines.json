@@ -1,10 +1,12 @@
 {
   "createWallets": {
     "routineName": "createWallets",
-    "command": "createWallets [count=<number>] [walletPath=<group.wallet>] [groups='[{\"name\":\"core\",\"wallets\":[{\"name\":\"maker\"}],\"children\":[{\"name\":\"snipers\",\"count\":2,\"startIndex\":1}]}]'] [renames='[{\"from\":\"core.maker\",\"to\":\"core.makerMain\"}]'] [includePrivateKey=true|false] [privateKeyEncoding=base64|hex|bytes] [output.directory=<path>] [output.filePrefix=<prefix>] [output.includeIndexInFileName=true|false]",
+    "command": "createWallets [count=<number>] [walletPath=<group.wallet>] [walletLocator.group=<group>] [walletLocator.wallet=<wallet>] [walletLocator.startIndex=<number>] [storage.walletGroup=<group>] [storage.createGroupIfMissing=true|false] [storage.keypairGenerator=bun|solana-cli] [groups='[{\"name\":\"core\",\"wallets\":[{\"name\":\"maker\"}],\"children\":[{\"name\":\"snipers\",\"count\":2,\"startIndex\":1}]}]'] [renames='[{\"from\":\"core.maker\",\"to\":\"core.makerMain\"}]'] [includePrivateKey=true|false] [privateKeyEncoding=base64|hex|bytes] [output.filePrefix=<prefix>] [output.includeIndexInFileName=true|false]",
     "defaults": {
       "count": 1,
-      "output.directory": "src/ai/brain/protected/keypairs"
+      "storage.walletGroup": "core-wallets",
+      "output.filePrefix": "wallet",
+      "output.includeIndexInFileName": true
     }
   },
   "actionSequence": {
@@ -18,8 +20,12 @@
             "count": 1,
             "includePrivateKey": false,
             "privateKeyEncoding": "base64",
+            "storage": {
+              "walletGroup": "core-wallets",
+              "createGroupIfMissing": true,
+              "keypairGenerator": "bun"
+            },
             "output": {
-              "directory": "src/ai/brain/protected/keypairs",
               "filePrefix": "wallet",
               "includeIndexInFileName": true
             }
