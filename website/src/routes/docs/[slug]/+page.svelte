@@ -33,7 +33,7 @@
     const enhance = (): void => {
       const blocks = node.querySelectorAll('pre');
 
-      for (const block of blocks) {
+      for (const block of Array.from(blocks)) {
         if (!(block instanceof HTMLElement) || block.querySelector('.code-copy-button')) {
           continue;
         }
