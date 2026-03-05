@@ -26,9 +26,9 @@ Please give us a star if you're interested in seeing this project get fully buil
 
 ## v0.0.1 Test Release Checklist
 
-- [-] Set up project with a bun-based runtime and monorepo structure.
-- [x] Download dependencies, SDK's and core skills.
-- [x] Create backend typescript files and layout file structure for solana/ and ai/
+[-] Set up project with a bun-based runtime and monorepo structure.
+[-] Download dependencies, SDK's and core skills.
+[-] Create backend typescript files and layout file structure for solana/ and ai/
 - [x] Added the action and routine systems.
 - [x] Added SQLite storage with a central zod schema.
 - [x] Create and implement the agent's brain, memory, loop and workspace primitives.
@@ -48,10 +48,10 @@ Please give us a star if you're interested in seeing this project get fully buil
 - [x] Create marketing and docs website
 - [x] Create Svelte gui and connect it to standardized trenclaw gateway.
 - [x] Create runner cli to build and startup everything properly
-- [x] Test and ship model-triggered routines.
-- [x] Test models ability to execute CLI and bash commands in its workspace.
-- [ ] Finish rolling out protected write policy across runtime and wallet actions.
-- [ ] Make CI and release flow with proper versioning.
+[x] Test and ship model-triggered routines.
+[x] Test models ability to execute CLI and bash commands in its workspace.
+[ ] Finish rolling out protected write policy across runtime and wallet actions.
+[ ] Make CI and release flow with proper versioning.
 - [ ] Update and push docs to website for actual use by other humans.
 
 # TrenchClaw
