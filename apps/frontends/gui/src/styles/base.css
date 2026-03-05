@@ -11,6 +11,7 @@ body {
   color: var(--tc-color-gray-3);
   background: var(--tc-color-black);
   font-family: var(--tc-font-ui);
+  overflow-x: hidden;
 }
 
 button,
@@ -25,4 +26,16 @@ textarea {
 
 #app {
   height: 100vh;
+  overflow: hidden;
+}
+
+/* Keep scroll behavior while hiding scrollbar chrome across panels. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }

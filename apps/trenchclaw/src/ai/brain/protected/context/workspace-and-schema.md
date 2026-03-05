@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-05T03:13:57.679Z
+Generated at: 2026-03-05T03:46:58.359Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -99,8 +99,11 @@ apps/trenchclaw/
 |   |   |   |   |   |-- .gitkeep
 |   |   |   |   |   `-- user-1.json
 |   |   |   |   |-- keypairs/
+|   |   |   |   |   |-- core-wallets/
+|   |   |   |   |   |   `-- core-wallets-wallet001-0001.json
 |   |   |   |   |   |-- smoke-test/
 |   |   |   |   |   |   `-- smoke-test-wallet001-0001.json
+|   |   |   |   |   |-- trading-wallets/
 |   |   |   |   |   `-- .keep
 |   |   |   |   |-- no-read/
 |   |   |   |   |   |-- .gitkeep

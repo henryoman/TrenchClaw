@@ -14,6 +14,7 @@ interface ChatUiState {
 
 export const createChatController = () => {
   let manuallySending = $state(false);
+  let submitInFlight = false;
   const state = $state<ChatUiState>({
     input: "",
     sending: false,
@@ -150,7 +151,8 @@ export const createChatController = () => {
     }),
   });
 
-  const isSending = (): boolean => state.sending || manuallySending;
+  const isSending = (): boolean =>
+    state.sending || manuallySending || submitInFlight || chat.status === "submitted" || chat.status === "streaming";
 
   const refreshConversations = async (): Promise<void> => {
     const response = await runtimeApi.conversations();
@@ -199,10 +201,11 @@ export const createChatController = () => {
 
   const submitChat = async (onAfterSend: (() => Promise<void>) | null = null): Promise<void> => {
     const nextMessage = state.input.trim();
-    if (!nextMessage || isSending()) {
+    if (!nextMessage || isSending() || submitInFlight) {
       return;
     }
 
+    submitInFlight = true;
     state.input = "";
     ensureActiveConversationId();
     state.sending = true;
@@ -250,6 +253,7 @@ export const createChatController = () => {
     } finally {
       state.sending = false;
       manuallySending = false;
+      submitInFlight = false;
     }
   };
 

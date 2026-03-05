@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/trenchclaw.png" alt="TrenchClaw" width="320" />
+  <img src="./public/banner.png" alt="TrenchClaw" width="480" />
 </p>
 
 <p align="center">
@@ -434,6 +434,10 @@ bun run gui:dev
 - [ ] Finalize release workflow (versioning, changelog, CI quality gates, reproducible builds).
 
 ---
+
+<p align="center">
+  <img src="./public/trenchclaw.png" alt="TrenchClaw" width="320" />
+</p>
 
 ## License
 

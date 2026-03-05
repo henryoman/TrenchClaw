@@ -104,4 +104,40 @@ describe("createWalletsAction", () => {
 
     expect(result.error).toContain("Invalid");
   });
+
+  test("uses existing wallet group directory when createGroupIfMissing is false", async () => {
+    const walletGroup = `existing-wallets-${crypto.randomUUID()}`;
+    const walletLibraryFile = path.join("src/ai/brain/protected", `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
+    const walletGroupPath = path.join(coreAppPath("src/ai/brain/protected/keypairs"), walletGroup);
+    await Bun.$`mkdir -p ${walletGroupPath}`.quiet();
+    createdPaths.add(walletGroupPath);
+    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
+
+    const result = await createWalletsAction.execute({} as never, {
+      count: 1,
+      includePrivateKey: false,
+      privateKeyEncoding: "base64",
+      storage: {
+        walletGroup,
+        createGroupIfMissing: false,
+        keypairGenerator: "bun",
+      },
+      walletLocator: {
+        group: walletGroup,
+        startIndex: 1,
+      },
+      output: {
+        filePrefix: "wallet",
+        includeIndexInFileName: true,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(result.data?.wallets).toHaveLength(1);
+    expect(result.data?.outputDirectory).toContain(`/keypairs/${walletGroup}`);
+  });
 });

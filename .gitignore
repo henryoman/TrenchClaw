@@ -18,6 +18,11 @@ config/.env.*
 apps/trenchclaw/src/ai/brain/protected/no-read/*.json
 !apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json
 
+# Wallet key material and wallet registry (never commit)
+apps/trenchclaw/src/ai/brain/protected/keypairs/**
+!apps/trenchclaw/src/ai/brain/protected/keypairs/.keep
+apps/trenchclaw/src/ai/brain/protected/wallet-library.jsonl
+
 # Generated clients from IDL codegen
 lib/client/generated/
 

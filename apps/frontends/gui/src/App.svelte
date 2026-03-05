@@ -104,6 +104,7 @@
           conversations={chat.state.conversations}
           activeConversationId={chat.state.activeConversationId}
           sending={chat.state.sending}
+          chatDisabledReason={runtime.state.llmAvailable ? "" : runtime.state.llmCheckMessage}
           onSelectConversation={(conversationId) => {
             void chat!.selectConversation(conversationId);
           }}

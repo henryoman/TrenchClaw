@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount, tick } from "svelte";
   import type { UIMessage } from "ai";
   import type { GuiConversationView } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
@@ -9,11 +10,64 @@
   export let conversations: GuiConversationView[] = [];
   export let activeConversationId: string | null = null;
   export let sending = false;
+  export let chatDisabledReason = "";
   export let onSelectConversation: (conversationId: string) => void;
   export let onCreateConversation: () => void;
   export let onSubmit: () => void;
 
   let showConversationModal = false;
+  $: chatDisabled = chatDisabledReason.trim().length > 0;
+  let messageViewport: HTMLDivElement | null = null;
+  let shouldFollowStream = true;
+  let lastRenderKey = "";
+  const SCROLL_BOTTOM_TOLERANCE_PX = 20;
+
+  const isNearBottom = (): boolean => {
+    if (!messageViewport) {
+      return true;
+    }
+    const remaining = messageViewport.scrollHeight - messageViewport.scrollTop - messageViewport.clientHeight;
+    return remaining <= SCROLL_BOTTOM_TOLERANCE_PX;
+  };
+
+  const scrollToBottom = (behavior: ScrollBehavior): void => {
+    if (!messageViewport) {
+      return;
+    }
+    messageViewport.scrollTo({
+      top: messageViewport.scrollHeight,
+      behavior,
+    });
+  };
+
+  const onMessagesScroll = (): void => {
+    shouldFollowStream = isNearBottom();
+  };
+
+  const buildRenderKey = (): string => `${messages.length}:${sending ? "1" : "0"}`;
+
+  const syncScrollForLatestMessages = async (behavior: ScrollBehavior): Promise<void> => {
+    await tick();
+    if (!messageViewport) {
+      return;
+    }
+    if (!shouldFollowStream && !sending) {
+      return;
+    }
+    scrollToBottom(behavior);
+  };
+
+  $: {
+    const nextKey = buildRenderKey();
+    if (nextKey !== lastRenderKey) {
+      lastRenderKey = nextKey;
+      void syncScrollForLatestMessages(messages.length <= 1 ? "auto" : "smooth");
+    }
+  }
+
+  onMount(() => {
+    scrollToBottom("auto");
+  });
 </script>
 
 <section class="chat-root">
@@ -74,7 +128,7 @@
     </section>
   {/if}
 
-  <div class="chat-messages">
+  <div class="chat-messages" bind:this={messageViewport} on:scroll={onMessagesScroll}>
     {#each messages as message}
       <div class="message-row {message.role}">
         <div class="bubble {message.role}">
@@ -97,14 +151,22 @@
     {/if}
   </div>
 
+  {#if chatDisabled}
+    <p class="chat-disabled">{chatDisabledReason}</p>
+  {/if}
+
   <form
     class="chat-form"
     on:submit|preventDefault={() => {
+      if (chatDisabled) {
+        return;
+      }
       onSubmit();
+      void syncScrollForLatestMessages("smooth");
     }}
   >
-    <RetroInput bind:value={input} placeholder="Ask TrenchClaw..." />
-    <RetroButton type="submit" disabled={sending}>Send</RetroButton>
+    <RetroInput bind:value={input} placeholder="Ask TrenchClaw..." disabled={chatDisabled} />
+    <RetroButton type="submit" disabled={sending || chatDisabled}>Send</RetroButton>
   </form>
 </section>
 
@@ -230,6 +292,7 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: var(--tc-space-2);
     display: flex;
     flex-direction: column;
@@ -256,6 +319,7 @@
     font-size: var(--tc-chat-text-size);
     line-height: 1.4;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
 
   .bubble.user {
@@ -306,6 +370,16 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: var(--tc-space-2);
+  }
+
+  .chat-disabled {
+    margin: 0;
+    border-top: var(--tc-border-muted);
+    color: var(--tc-color-red);
+    padding: var(--tc-space-2) var(--tc-space-3);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: var(--tc-sidebar-letter-spacing);
   }
 
   :global(.chat-form .retro-input) {

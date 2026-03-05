@@ -37,6 +37,7 @@
 <style>
   .retro-table {
     width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     font-size: var(--tc-type-sm);
   }
@@ -46,6 +47,7 @@
     border: var(--tc-border-muted);
     padding: var(--tc-space-2);
     text-align: left;
+    overflow-wrap: anywhere;
   }
 
   .retro-table th {

@@ -1,5 +1,5 @@
 import { createKeyPairFromPrivateKeyBytes, getAddressFromPublicKey } from "@solana/kit";
-import { appendFile } from "node:fs/promises";
+import { appendFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
@@ -130,6 +130,15 @@ const parseSolanaSecretKeyArray = (value: unknown): number[] => {
   return numeric;
 };
 
+const directoryExists = async (directoryPath: string): Promise<boolean> => {
+  try {
+    const metadata = await stat(directoryPath);
+    return metadata.isDirectory();
+  } catch {
+    return false;
+  }
+};
+
 const createWalletWithGenerator = async (input: {
   generator: "bun" | "solana-cli";
   keypairFilePath: string;
@@ -200,7 +209,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
 
       if (input.storage.createGroupIfMissing) {
         await Bun.$`mkdir -p ${outputDirectory}`.quiet();
-      } else if (!(await Bun.file(outputDirectory).exists())) {
+      } else if (!(await directoryExists(outputDirectory))) {
         throw new Error(`Wallet group directory does not exist: ${outputDirectory}`);
       }
 

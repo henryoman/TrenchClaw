@@ -117,4 +117,10 @@
   .live-status {
     margin: 0;
   }
+
+  @media (max-width: var(--tc-layout-breakpoint)) {
+    .sidebar {
+      min-width: 0;
+    }
+  }
 </style>

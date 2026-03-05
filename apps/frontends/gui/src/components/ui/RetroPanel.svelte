@@ -29,7 +29,8 @@
   .content {
     min-height: 0;
     padding: var(--tc-panel-content-padding);
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
   }

@@ -54,6 +54,7 @@ interface RuntimeUiState {
   secretsError: string;
   llmCheckBusy: boolean;
   llmCheckMessage: string;
+  llmAvailable: boolean;
   walletsRootRelativePath: string;
   walletsRootExists: boolean;
   walletNodes: GuiWalletNodeView[];
@@ -95,6 +96,7 @@ export const createRuntimeController = () => {
     secretsError: "",
     llmCheckBusy: false,
     llmCheckMessage: "",
+    llmAvailable: false,
     walletsRootRelativePath: "",
     walletsRootExists: false,
     walletNodes: [],
@@ -220,6 +222,7 @@ export const createRuntimeController = () => {
         state.phase = "app";
         await loadAppData();
         await loadSecrets();
+        await checkLlm();
         await loadWallets();
       } else {
         state.activeInstance = null;
@@ -316,6 +319,7 @@ export const createRuntimeController = () => {
       state.phase = "app";
       await loadAppData();
       await loadSecrets();
+      await checkLlm();
       await loadWallets();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_SIGN_IN_ERROR;
@@ -375,6 +379,7 @@ export const createRuntimeController = () => {
       );
       const bootstrap = await runtimeApi.bootstrap();
       state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
+      await checkLlm();
     } catch (error) {
       state.secretsError = error instanceof Error ? error.message : "Failed to save secret.";
     } finally {
@@ -398,6 +403,7 @@ export const createRuntimeController = () => {
             }
           : entry,
       );
+      await checkLlm();
     } catch (error) {
       state.secretsError = error instanceof Error ? error.message : "Failed to clear secret.";
     } finally {
@@ -410,18 +416,16 @@ export const createRuntimeController = () => {
     state.llmCheckMessage = "";
     try {
       const result = await runtimeApi.llmCheck();
-      const source = result.keySource === "none" ? "none" : result.keySource;
-      const fingerprint = result.keyFingerprint ? `fp:${result.keyFingerprint}` : "fp:n/a";
-      const provider = result.provider ?? "none";
-      const model = result.model ?? "n/a";
-      const status = result.probeStatus ?? "n/a";
-      const verdict = result.probeOk ? "ok" : "failed";
-      const vaultFingerprint = result.vaultKeyFingerprint ? `vaultFp:${result.vaultKeyFingerprint}` : "vaultFp:n/a";
-      state.llmCheckMessage =
-        `LLM check: provider=${provider} model=${model} source=${source} vault=${result.resolvedVaultFile ?? "n/a"} keyLen=${result.keyLength} ${fingerprint} ` +
-        `${vaultFingerprint} vaultLen=${result.vaultKeyLength} ` +
-        `probe=${verdict} status=${status} message=${result.probeMessage}`;
+      state.llmAvailable = result.keyConfigured && result.probeOk;
+      if (state.llmAvailable) {
+        state.llmCheckMessage = "LLM ready.";
+      } else if (!result.keyConfigured) {
+        state.llmCheckMessage = "LLM not configured. Add a provider API key in Vault > LLM secrets.";
+      } else {
+        state.llmCheckMessage = `LLM unavailable: ${result.probeMessage}`;
+      }
     } catch (error) {
+      state.llmAvailable = false;
       state.llmCheckMessage = error instanceof Error ? error.message : "Failed to run LLM check.";
     } finally {
       state.llmCheckBusy = false;
