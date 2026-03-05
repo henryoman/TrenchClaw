@@ -5,6 +5,30 @@
       "source": "vercel-labs/agent-browser",
       "sourceType": "github",
       "computedHash": "2f771f8eb25f9856d2169a4de4766de94e2bdbff999f42c458c8f1e2ca405c03"
+    },
+    "helius": {
+      "source": "helius-labs/core-ai",
+      "sourcePath": "helius-skills/helius",
+      "sourceType": "github",
+      "computedHash": "24431c9a8700ec22a182217dddf21751e0cc2662d84272bf19c1aad004233764"
+    },
+    "helius-phantom": {
+      "source": "helius-labs/core-ai",
+      "sourcePath": "helius-skills/helius-phantom",
+      "sourceType": "github",
+      "computedHash": "acf1943b7ea971712d85314e8b045ba16ca7e61d9249ed408baf7b54afd4fc0d"
+    },
+    "helius-dflow": {
+      "source": "helius-labs/core-ai",
+      "sourcePath": "helius-skills/helius-dflow",
+      "sourceType": "github",
+      "computedHash": "c29f10182cb8b0fba3660949bbf9e56d4ce754cc7de9792b1f4d56b7a11ec3f3"
+    },
+    "svm": {
+      "source": "helius-labs/core-ai",
+      "sourcePath": "helius-skills/svm",
+      "sourceType": "github",
+      "computedHash": "3ffbe3fb058be8eb68ca7115338ee32ded064e2f6fab5afa11b555e3e6f85903"
     }
   }
 }
