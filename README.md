@@ -22,11 +22,11 @@
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
 
-*0.0.1 release available wednesday march 3*
+*0.0.1 release tonight (wednesday)*
 
-### v0.0.1 Test Release Checklist
+## v0.0.1 Test Release Checklist
 
-- [x] Set up project with a bun-based runtime and monorepo structure.
+- [X] Set up project with a bun-based runtime and monorepo structure.
 - [x] Download dependencies, SDK's and core skills.
 - [x] Create backend typescript files and layout file structure for solana/ and ai/
 - [x] Added the action and routine systems.
@@ -53,7 +53,6 @@ Please give us a star if you're interested in seeing this project get fully buil
 - [ ] Finish rolling out protected write policy across runtime and wallet actions.
 - [ ] Make CI and release flow with proper versioning.
 - [ ] Update and push docs to website for actual use by other humans.
-
 
 # TrenchClaw
 
