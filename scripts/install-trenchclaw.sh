@@ -1,29 +1,28 @@
 #!/usr/bin/env sh
 set -eu
 
-# TrenchClaw bootstrap installer
+# TrenchClaw app-bundle installer
 # Installs/checks:
 # 1) Bun
-# 2) Solana CLI
-# 3) TrenchClaw binary
+# 2) TrenchClaw app bundle (runner + gui + runtime)
 #
 # Configurable environment variables:
-# - TRENCHCLAW_CHANNEL (default: stable)
 # - TRENCHCLAW_VERSION (default: latest)
-# - TRENCHCLAW_DOWNLOAD_BASE_URL (default: https://downloads.trenchclaw.dev)
-# - TRENCHCLAW_BINARY_NAME (default: trenchclaw)
+# - TRENCHCLAW_REPO (default: trenchclaw/trenchclaw)
+# - TRENCHCLAW_DOWNLOAD_BASE_URL (optional override; expected form: <base>/<version>/<artifact>)
+# - TRENCHCLAW_ARTIFACT_NAME (default: trenchclaw-app-$TRENCHCLAW_VERSION.tar.gz)
+# - TRENCHCLAW_APP_HOME (default: $HOME/.local/share/trenchclaw)
 # - TRENCHCLAW_BIN_DIR (default: $HOME/.local/bin)
 # - TRENCHCLAW_RELOAD_SHELL (default: 0; set to 1 to exec a login shell at end)
 
-TRENCHCLAW_CHANNEL="${TRENCHCLAW_CHANNEL:-stable}"
 TRENCHCLAW_VERSION="${TRENCHCLAW_VERSION:-latest}"
-TRENCHCLAW_DOWNLOAD_BASE_URL="${TRENCHCLAW_DOWNLOAD_BASE_URL:-https://downloads.trenchclaw.dev}"
-TRENCHCLAW_BINARY_NAME="${TRENCHCLAW_BINARY_NAME:-trenchclaw}"
+TRENCHCLAW_REPO="${TRENCHCLAW_REPO:-trenchclaw/trenchclaw}"
+TRENCHCLAW_DOWNLOAD_BASE_URL="${TRENCHCLAW_DOWNLOAD_BASE_URL:-}"
+TRENCHCLAW_ARTIFACT_NAME="${TRENCHCLAW_ARTIFACT_NAME:-}"
+TRENCHCLAW_APP_HOME="${TRENCHCLAW_APP_HOME:-$HOME/.local/share/trenchclaw}"
 TRENCHCLAW_BIN_DIR="${TRENCHCLAW_BIN_DIR:-$HOME/.local/bin}"
 TRENCHCLAW_RELOAD_SHELL="${TRENCHCLAW_RELOAD_SHELL:-0}"
 
-SOLANA_INSTALL_URL="https://release.anza.xyz/v3.1.9/install"
-SOLANA_PATH="$HOME/.local/share/solana/install/active_release/bin"
 BUN_PATH="$HOME/.bun/bin"
 
 info() {
@@ -102,60 +101,80 @@ install_bun_if_needed() {
   info "Bun installed: $(bun --version)"
 }
 
-install_solana_if_needed() {
-  if need_cmd solana; then
-    info "Solana CLI found: $(solana --version)"
-    return
-  fi
-
-  info "Solana CLI not found. Installing Solana CLI..."
-  if ! need_cmd curl; then
-    fail "curl is required to install Solana CLI"
-  fi
-  sh -c "$(curl -sSfL "$SOLANA_INSTALL_URL")"
-
-  add_path_for_current_process "$SOLANA_PATH"
-  ensure_path_in_shell_profiles "$SOLANA_PATH"
-
-  need_cmd solana || fail "Solana installation completed but solana is still not on PATH"
-  info "Solana CLI installed: $(solana --version)"
-}
-
-install_trenchclaw_binary() {
+install_trenchclaw_bundle() {
   detect_platform
-  mkdir -p "$TRENCHCLAW_BIN_DIR"
+  mkdir -p "$TRENCHCLAW_APP_HOME" "$TRENCHCLAW_BIN_DIR"
   add_path_for_current_process "$TRENCHCLAW_BIN_DIR"
   ensure_path_in_shell_profiles "$TRENCHCLAW_BIN_DIR"
 
-  binary_url="$TRENCHCLAW_DOWNLOAD_BASE_URL/$TRENCHCLAW_CHANNEL/$TRENCHCLAW_VERSION/$TRENCHCLAW_BINARY_NAME-$platform"
-  target="$TRENCHCLAW_BIN_DIR/$TRENCHCLAW_BINARY_NAME"
-  tmp_target="$target.tmp.$$"
+  resolved_version="$TRENCHCLAW_VERSION"
+  if [ "$resolved_version" = "latest" ] && [ -z "$TRENCHCLAW_DOWNLOAD_BASE_URL" ]; then
+    info "Resolving latest release tag from GitHub..."
+    release_json="$(curl -fsSL "https://api.github.com/repos/$TRENCHCLAW_REPO/releases/latest")" || fail "Failed to resolve latest release tag"
+    resolved_version="$(printf '%s' "$release_json" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | sed -n '1p')"
+    [ -n "$resolved_version" ] || fail "Could not parse latest release tag for $TRENCHCLAW_REPO"
+  fi
 
-  info "Downloading TrenchClaw binary from:"
-  info "$binary_url"
+  if [ -n "$TRENCHCLAW_ARTIFACT_NAME" ]; then
+    artifact_name="$TRENCHCLAW_ARTIFACT_NAME"
+  else
+    artifact_name="trenchclaw-app-$resolved_version.tar.gz"
+  fi
 
-  curl -fsSL "$binary_url" -o "$tmp_target" || fail "Failed to download TrenchClaw binary"
-  chmod +x "$tmp_target"
-  mv "$tmp_target" "$target"
+  if [ -n "$TRENCHCLAW_DOWNLOAD_BASE_URL" ]; then
+    bundle_url="$TRENCHCLAW_DOWNLOAD_BASE_URL/$resolved_version/$artifact_name"
+  else
+    bundle_url="https://github.com/$TRENCHCLAW_REPO/releases/download/$resolved_version/$artifact_name"
+  fi
+  version_root="$TRENCHCLAW_APP_HOME/$resolved_version"
+  current_link="$TRENCHCLAW_APP_HOME/current"
+  tmp_bundle="$TRENCHCLAW_APP_HOME/$artifact_name.tmp.$$"
 
-  need_cmd "$TRENCHCLAW_BINARY_NAME" || fail "TrenchClaw binary installed but command is not on PATH"
-  info "TrenchClaw installed: $($TRENCHCLAW_BINARY_NAME --version)"
+  info "Downloading TrenchClaw app bundle from:"
+  info "$bundle_url"
+
+  curl -fsSL "$bundle_url" -o "$tmp_bundle" || fail "Failed to download TrenchClaw app bundle"
+
+  rm -rf "$version_root"
+  mkdir -p "$version_root"
+  tar -xzf "$tmp_bundle" -C "$version_root" || fail "Failed to extract TrenchClaw bundle"
+  rm -f "$tmp_bundle"
+
+  rm -f "$current_link"
+  ln -s "$version_root/app" "$current_link"
+
+  launcher="$TRENCHCLAW_BIN_DIR/trenchclaw"
+  cat >"$launcher" <<'EOF'
+#!/usr/bin/env sh
+set -eu
+APP_HOME="${TRENCHCLAW_HOME:-$HOME/.local/share/trenchclaw/current}"
+if [ ! -x "$APP_HOME/start.sh" ]; then
+  echo "[trenchclaw] invalid app install at $APP_HOME" >&2
+  exit 1
+fi
+if [ ! -d "$APP_HOME/apps/trenchclaw/node_modules" ]; then
+  "$APP_HOME/setup.sh"
+fi
+exec "$APP_HOME/start.sh" "$@"
+EOF
+  chmod +x "$launcher"
+
+  need_cmd trenchclaw || fail "TrenchClaw launcher installed but command is not on PATH"
+  info "TrenchClaw app installed at $current_link"
 }
 
 print_summary() {
   info "Install complete."
   info "Verified:"
   info " - bun: $(bun --version)"
-  info " - solana: $(solana --version)"
-  info " - $TRENCHCLAW_BINARY_NAME: $($TRENCHCLAW_BINARY_NAME --version)"
+  info " - trenchclaw launcher: $(command -v trenchclaw)"
   info "If your current shell still cannot find these commands, run:"
   info "  exec \$SHELL -l"
 }
 
 main() {
   install_bun_if_needed
-  install_solana_if_needed
-  install_trenchclaw_binary
+  install_trenchclaw_bundle
   print_summary
 
   if [ "$TRENCHCLAW_RELOAD_SHELL" = "1" ]; then

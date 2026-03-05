@@ -29,7 +29,7 @@ If you cannot find documentation to support your answer, state that explicitly.
 
 ## Finding Documentation
 
-### ai@6.0.34+
+### ai@6.x (current workspace: 6.0.99)
 
 Search bundled docs and source in `node_modules/ai/`:
 
@@ -37,6 +37,10 @@ Search bundled docs and source in `node_modules/ai/`:
 - **Source**: `grep "query" node_modules/ai/src/`
 
 Provider packages include docs at `node_modules/@ai-sdk/<provider>/docs/`.
+
+If migrating code from v5 to v6, consult:
+
+- `node_modules/ai/docs/08-migration-guides/24-migration-guide-6-0.mdx`
 
 ### Earlier versions
 

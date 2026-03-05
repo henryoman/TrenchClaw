@@ -22,11 +22,63 @@ const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
   }
 };
 
+const runCapture = async (command: string[], cwd = REPO_ROOT): Promise<string> => {
+  const [bin, ...args] = command;
+  const proc = Bun.spawn([bin, ...args], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    stdin: "inherit",
+    env: process.env,
+  });
+  const [code, stdout, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+  ]);
+  if (code !== 0) {
+    throw new Error(
+      `Command failed (${code}): ${command.join(" ")}\n${stderr.trim()}`,
+    );
+  }
+  return stdout;
+};
+
 const copyIntoOutput = async (relativeSource: string, relativeTarget = relativeSource): Promise<void> => {
   const source = path.join(REPO_ROOT, relativeSource);
   const target = path.join(OUTPUT_ROOT, relativeTarget);
   await mkdir(path.dirname(target), { recursive: true });
   await cp(source, target, { recursive: true });
+};
+
+const copyTrackedTreeIntoOutput = async (
+  relativeSource: string,
+  relativeTarget = relativeSource,
+): Promise<void> => {
+  const raw = await runCapture([
+    "git",
+    "-C",
+    REPO_ROOT,
+    "ls-files",
+    "-z",
+    "--",
+    relativeSource,
+  ]);
+  const trackedFiles = raw.split("\u0000").filter((entry) => entry.length > 0);
+  if (trackedFiles.length === 0) {
+    throw new Error(`No tracked files found under ${relativeSource}`);
+  }
+
+  for (const trackedFile of trackedFiles) {
+    const source = path.join(REPO_ROOT, trackedFile);
+    const relativeWithinSource = path.relative(relativeSource, trackedFile);
+    if (relativeWithinSource.startsWith("..")) {
+      continue;
+    }
+    const target = path.join(OUTPUT_ROOT, relativeTarget, relativeWithinSource);
+    await mkdir(path.dirname(target), { recursive: true });
+    await cp(source, target);
+  }
 };
 
 const main = async (): Promise<void> => {
@@ -42,14 +94,33 @@ const main = async (): Promise<void> => {
   await copyIntoOutput("apps/frontends/gui/dist");
   await copyIntoOutput("apps/runner/dist");
   await copyIntoOutput("apps/trenchclaw/package.json");
-  await copyIntoOutput("apps/trenchclaw/src");
+  await copyTrackedTreeIntoOutput("apps/trenchclaw/src");
 
-  console.log("[build-app] installing runtime production deps");
-  await run(["bun", "install", "--production"], path.join(OUTPUT_ROOT, "apps/trenchclaw"));
+  const shouldInstallRuntimeDependencies = process.env.TRENCHCLAW_BUNDLE_INSTALL_DEPS === "1";
+  if (shouldInstallRuntimeDependencies) {
+    console.log("[build-app] installing runtime production deps");
+    await run(["bun", "install", "--production"], path.join(OUTPUT_ROOT, "apps/trenchclaw"));
+  } else {
+    console.log("[build-app] skipping runtime dependency install (set TRENCHCLAW_BUNDLE_INSTALL_DEPS=1 to include node_modules)");
+  }
+
+  const setupScript = `#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+echo "[trenchclaw-setup] installing runtime dependencies"
+bun install --production --cwd apps/trenchclaw
+echo "[trenchclaw-setup] done"
+`;
+  await writeFile(path.join(OUTPUT_ROOT, "setup.sh"), setupScript, "utf8");
+  await run(["chmod", "+x", "setup.sh"], OUTPUT_ROOT);
 
   const launcher = `#!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")"
+if [ ! -d "apps/trenchclaw/node_modules" ]; then
+  echo "[trenchclaw] runtime dependencies are missing. Run ./setup.sh first." >&2
+  exit 1
+fi
 exec bun apps/runner/dist/index.js "$@"
 `;
   await writeFile(path.join(OUTPUT_ROOT, "start.sh"), launcher, "utf8");
@@ -58,11 +129,14 @@ exec bun apps/runner/dist/index.js "$@"
   const notes = `# TrenchClaw App Bundle
 
 This bundle includes GUI assets, runner, and backend runtime source.
-Runtime dependencies are installed under apps/trenchclaw/node_modules.
 
 Not bundled intentionally:
 - Bun runtime
-- Solana CLI binaries/tooling
+- Any local user/runtime files (vault.json, keypairs, runtime db/events)
+
+First run:
+  ./setup.sh
+  ./start.sh
 
 Run:
   ./start.sh

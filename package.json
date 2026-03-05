@@ -12,6 +12,7 @@
   ],
   "scripts": {
     "app:build": "bun run scripts/build-app.ts",
+    "bundle:verify": "bun run scripts/verify-app-bundle.ts",
     "app:start": "bun --cwd apps/runner index.ts",
     "app:clean": "bun run cleanup:build",
     "launch": "bun run app:build && bun --cwd apps/runner index.ts",
@@ -44,6 +45,9 @@
     "cleanup:runtime": "bun run --cwd apps/trenchclaw cleanup:runtime",
     "cleanup:build": "bun run scripts/clean-build-artifacts.ts",
     "ship:verify": "bun run app:clean && bun run app:build && bun run build:all && bun run test && bun run test:launch-chat",
+    "release:notes": "bun run scripts/generate-release-notes.ts",
+    "release:package": "bun run scripts/package-app-release.ts",
+    "release:prepare": "bun run app:clean && bun run app:build && bun run bundle:verify && bun run release:package && bun run release:notes",
     "refresh": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run refresh --filter=@trenchclaw/core",
     "verify:generate": "bun run lint && bun run build:all && bun run typecheck && bun run test && bun run generate",
     "deps:dupes": "bun run scripts/check-dependency-duplicates.ts",

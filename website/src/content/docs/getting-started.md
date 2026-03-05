@@ -1,219 +1,134 @@
 ---
 title: Getting Started
-description: Detailed user setup from install to first launch, including one-command bootstrap, direct binary download, wallet setup, and GUI startup.
+description: Install and run the TrenchClaw app bundle (runner + GUI + core runtime) with no .env workflow.
 order: 1
 ---
 
-This guide covers a clean first-time local setup for TrenchClaw.
+This guide is for the current release path: app bundle (not final native binary yet).
 
-It focuses on dependencies outside your repo plus the fastest path to a working runtime.
+You install one bundle that already includes:
+- GUI build
+- Runner
+- Core runtime source
 
-## External Dependencies
+You do **not** need `.env` files.
 
-Install and verify these before launch:
+## Requirements
 
 - Bun `1.3.10+`
-- Solana CLI `3.0+`
-- Helius CLI (latest)
-- TrenchClaw binary
+- macOS or Linux shell with `curl` and `tar`
 
-## Step 1: Install TrenchClaw (Choose One Path)
+No Solana CLI or Helius CLI is required for normal app usage.
 
-### Path A (Recommended): One-Command Bootstrap Script
+## Install (Consumer Path)
 
-Use this if you want a single command that does everything needed.
+Run the installer script:
 
 ```bash
-curl -fsSL https://downloads.trenchclaw.dev/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/trenchclaw/trenchclaw/main/scripts/install-trenchclaw.sh | sh
 ```
 
-Optional channel/version example:
+Pin a specific release tag:
 
 ```bash
-curl -fsSL https://downloads.trenchclaw.dev/install.sh | \
-  TRENCHCLAW_CHANNEL=stable \
-  TRENCHCLAW_VERSION=latest \
+curl -fsSL https://raw.githubusercontent.com/trenchclaw/trenchclaw/main/scripts/install-trenchclaw.sh | \
+  TRENCHCLAW_VERSION=v0.0.2 \
   sh
 ```
 
-What this script should do:
+What this does:
+1. Installs Bun if needed.
+2. Downloads the TrenchClaw app bundle.
+3. Installs a `trenchclaw` launcher into `~/.local/bin`.
+4. Runs bundle dependency setup on first launch.
 
-1. Check whether `bun` is installed, install it if missing.
-2. Check whether Solana CLI is installed, install it if missing.
-3. Download and install TrenchClaw binary/app.
-4. Put TrenchClaw on your `PATH` when needed.
-5. Print a success summary and next commands.
-
-After script completes, verify:
+Then start:
 
 ```bash
-bun --version
-solana --version
-helius --version
-trenchclaw --version
+trenchclaw
 ```
 
-### Path B: Direct Binary Download (If Dependencies Already Installed)
+## Configure In-App
 
-Use this if you already have required dependencies and only need TrenchClaw.
+On first use, configure values through the app GUI/runtime flow:
+- RPC endpoint(s)
+- LLM provider key + model
+- Wallet/key workflows
 
-Download links (example release URLs):
+Do not use `.env` setup for this consumer path.
 
-- macOS binary: `https://downloads.placeholder/trenchclaw/stable/latest/trenchclaw-darwin-arm64`
-- Windows binary: `https://downloads.placeholder/trenchclaw/stable/latest/trenchclaw-windows-x64.exe`
-- Linux binary: `https://downloads.placeholder/trenchclaw/stable/latest/trenchclaw-linux-x64`
+## Source/Dev Path (Maintainers)
 
-After download:
-
-1. Install/extract binary for your OS.
-2. Ensure binary is available on `PATH`.
-3. Verify:
-
-```bash
-trenchclaw --version
-```
-
-### Path C: Manual Setup (Source / Advanced)
-
-Use this if you want full manual control.
-
-Install Bun:
-
-```bash
-curl -fsSL https://bun.sh/install | bash
-```
-
-Install Solana CLI:
-
-```bash
-sh -c "$(curl -sSfL https://release.anza.xyz/v3.1.9/install)"
-```
-
-Verify both:
-
-```bash
-bun --version
-solana --version
-```
-
-Install Helius CLI (Bun only):
-
-```bash
-bun add -g helius-cli@latest
-```
-
-Verify:
-
-```bash
-helius --version
-```
-
-Download source:
-
-- `https://github.com/trenchclaw/trenchclaw`
-
-Install workspace dependencies:
+If you are developing from source:
 
 ```bash
 bun install
-```
-
-## Step 2: Solana CLI Sanity Check
-
-If `solana` is not found, add:
-
-```bash
-export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
-```
-
-Restart terminal and verify again:
-
-```bash
-solana --version
-```
-
-Expected result: a version string like `solana-cli x.y.z`.
-
-## Step 3: Configure Runtime Inputs
-
-When TrenchClaw asks for setup values, provide:
-
-- RPC URL
-- LLM API key
-- Model name
-
-Minimum required to proceed successfully:
-
-- one valid RPC URL
-- one valid LLM API key
-
-Wallet creation/import is done inside the TrenchClaw app.
-
-## Step 4: CLI Launch
-
-If running via binary CLI, launch with:
-
-```bash
-trenchclaw
-```
-
-Optional health check:
-
-```bash
-trenchclaw --help
-```
-
-## Step 5: Start TrenchClaw UI
-
-If you installed app/binary:
-
-```bash
-trenchclaw
-```
-
-If you are running from source:
-
-```bash
 bun run launch:dev
 ```
 
-Expected behavior:
+## Build and Verify the User Bundle
 
-- startup logs appear
-- runtime and UI start
-- GUI URL opens (or is printed)
-
-## Step 6: Stop Point for This Guide
-
-You are done when the GUI opens and you can interact with the interface.
-
-At this point you should have:
-
-- TrenchClaw running
-- RPC configured
-- AI key configured
-
-## First-Run Issues
-
-### `solana: command not found`
+These are the exact commands used to prepare distributable app output:
 
 ```bash
-export PATH="$HOME/.local/share/solana/install/active_release/bin:$PATH"
+bun run app:clean
+bun run app:build
+bun run bundle:verify
 ```
 
-Restart terminal and rerun `solana --version`.
+Create a release artifact:
 
-### TrenchClaw command not found
+```bash
+bun run release:package -- --version v0.0.2
+```
 
-- Ensure binary install directory is on `PATH`.
-- Reopen terminal and rerun `trenchclaw --version`.
+Generate release notes from unreleased commits:
 
-### RPC errors/timeouts
+```bash
+bun run release:notes -- --version v0.0.2 --output dist/release/release-notes.md
+```
 
-- Re-check RPC URL.
-- Switch to a different endpoint.
+## Release Flow
 
-### AI provider errors
+Releases are manual (not on every push).
 
-- Re-check API key and model ID.
-- Confirm your provider account has access/quota.
+```mermaid
+flowchart TD
+  A["Push to GitHub"] --> B["CI runs checks + bundle verification"]
+  B --> C["Manual Release workflow_dispatch"]
+  C --> D["Build bundle + package tar.gz + sha256"]
+  D --> E["Generate release notes from commits since last tag"]
+  E --> F["Publish GitHub Release"]
+```
+
+## Troubleshooting
+
+### `trenchclaw: command not found`
+
+Add local bin to your shell path:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### Bun missing or outdated
+
+```bash
+bun --version
+```
+
+Re-run installer if needed.
+
+### Launcher says `Run ./setup.sh first`
+
+Run:
+
+```bash
+~/.local/share/trenchclaw/current/setup.sh
+```
+
+Then re-run:
+
+```bash
+trenchclaw
+```

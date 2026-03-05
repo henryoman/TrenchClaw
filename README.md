@@ -22,13 +22,13 @@
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
 
-*0.0.1 release tonight (wednesday)*
+*0.0.1 release tonight (thursday)*
 
 ## v0.0.1 Test Release Checklist
 
-[-] Set up project with a bun-based runtime and monorepo structure.
-[-] Download dependencies, SDK's and core skills.
-[-] Create backend typescript files and layout file structure for solana/ and ai/
+- [x] Set up project with a bun-based runtime and monorepo structure.
+- [x] Download dependencies, SDK's and core skills.
+- [x] Create backend typescript files and layout file structure for solana/ and ai/
 - [x] Added the action and routine systems.
 - [x] Added SQLite storage with a central zod schema.
 - [x] Create and implement the agent's brain, memory, loop and workspace primitives.
@@ -48,10 +48,10 @@ Please give us a star if you're interested in seeing this project get fully buil
 - [x] Create marketing and docs website
 - [x] Create Svelte gui and connect it to standardized trenclaw gateway.
 - [x] Create runner cli to build and startup everything properly
-[x] Test and ship model-triggered routines.
-[x] Test models ability to execute CLI and bash commands in its workspace.
-[ ] Finish rolling out protected write policy across runtime and wallet actions.
-[ ] Make CI and release flow with proper versioning.
+- [x] Test and ship model-triggered routines.
+- [x] Test models ability to execute CLI and bash commands in its workspace.
+- [ ] Finish rolling out protected write policy across runtime and wallet actions.
+- [ ] Make CI and release flow with proper versioning.
 - [ ] Update and push docs to website for actual use by other humans.
 
 # TrenchClaw
@@ -76,7 +76,37 @@ PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 ---
 ## [Get Started](https://trenchclaw.vercel.app/docs)
 
-COMING SOON
+Use the docs for install and first-run:
+- [Getting Started](https://trenchclaw.vercel.app/docs/getting-started)
+
+## Build + Release (Current Path)
+
+Consumer path right now is an app bundle (`runner + gui + core runtime`) that users launch with Bun.
+
+```bash
+# local verification
+bun run app:clean
+bun run app:build
+bun run bundle:verify
+
+# package release artifact + checksums
+bun run release:package -- --version v0.0.2
+
+# generate release notes from commits since last release tag
+bun run release:notes -- --version v0.0.2 --output dist/release/release-notes.md
+```
+
+Release publishing is manual only (GitHub Actions `Release` workflow via `workflow_dispatch`).
+
+```mermaid
+flowchart LR
+  A["Push / PR"] --> B["CI: test + app build + bundle verify"]
+  B --> C["Manual Release Trigger"]
+  C --> D["Build app bundle"]
+  D --> E["Package tar.gz + sha256"]
+  E --> F["Generate notes from commits since last tag"]
+  F --> G["Publish GitHub release artifacts"]
+```
 
 ## Dashboard UI
 

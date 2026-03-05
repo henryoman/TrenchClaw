@@ -189,6 +189,50 @@ const result = streamText({
 return result.toUIMessageStreamResponse();
 ```
 
+## `CoreMessage` / `convertToCoreMessages` removed
+
+In AI SDK 6, `CoreMessage` and `convertToCoreMessages` were removed.
+
+```typescript
+// ❌ Incorrect
+import { convertToCoreMessages, type CoreMessage } from 'ai';
+
+const coreMessages = convertToCoreMessages(messages);
+
+// ✅ Correct
+import { convertToModelMessages, type ModelMessage } from 'ai';
+
+const modelMessages = await convertToModelMessages(messages);
+```
+
+## `convertToModelMessages` is now async
+
+```typescript
+// ❌ Incorrect
+import { convertToModelMessages } from 'ai';
+
+const modelMessages = convertToModelMessages(messages);
+
+// ✅ Correct
+import { convertToModelMessages } from 'ai';
+
+const modelMessages = await convertToModelMessages(messages);
+```
+
+## `toModelOutput` now receives `{ output }`
+
+```typescript
+// ❌ Incorrect
+const myTool = tool({
+  toModelOutput: output => output,
+});
+
+// ✅ Correct
+const myTool = tool({
+  toModelOutput: ({ output }) => output,
+});
+```
+
 ## Removed managed input state in `useChat`
 
 The `useChat` hook no longer manages input state internally. You must now manage input state manually.
