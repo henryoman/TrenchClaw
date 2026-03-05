@@ -77,9 +77,7 @@ PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 ---
 ## [Get Started](https://trenchclaw.vercel.app/docs)
 
-Download Dependencies
-
-
+COMING SOON
 
 ## Dashboard UI
 
