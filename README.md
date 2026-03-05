@@ -48,11 +48,11 @@ Please give us a star if you're interested in seeing this project get fully buil
 - [x] Create marketing and docs website
 - [x] Create Svelte gui and connect it to standardized trenclaw gateway.
 - [x] Create runner cli to build and startup everything properly
-- [ ] Test and ship model-triggered routines.
-- [ ] Test models ability to execute CLI and bash commands in its workspace.
+- [x] Test and ship model-triggered routines.
+- [x] Test models ability to execute CLI and bash commands in its workspace.
 - [ ] Finish rolling out protected write policy across runtime and wallet actions.
 - [ ] Make CI and release flow with proper versioning.
-- [ ] Push updated docs to website.
+- [ ] Update and push docs to website for actual use by other humans.
 
 
 # TrenchClaw
@@ -81,7 +81,7 @@ COMING SOON
 
 ## Dashboard UI
 
-![TrenchClaw main dashboard UI](./public/ui.png)
+![TrenchClaw main dashboard UI](./public/ui-screenshot-chat.png)
 
 ---
 
