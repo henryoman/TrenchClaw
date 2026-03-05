@@ -4,22 +4,46 @@ description: Understand how the runner, runtime, and frontend apps connect in th
 order: 5
 ---
 
-TrenchClaw is split into a runtime and frontend surfaces:
+TrenchClaw runs as a split architecture: runtime core plus GUI served by a runner.
 
-- `apps/runner` is the runtime launcher and static server for GUI assets.
-- `apps/trenchclaw` is the core runtime.
-- `apps/frontends/gui` is the web UI bundle served by the runner.
+## Core Packages
 
-The runner build output is expected in:
+- `apps/trenchclaw`: core runtime
+- `apps/frontends/gui`: web UI
+- `apps/runner`: process launcher and static server for GUI assets
 
-- `apps/runner/dist`
+## Runtime Flow
 
-GUI build output is expected in:
+```mermaid
+flowchart LR
+  A["apps/frontends/gui (build)"] --> B["apps/frontends/gui/dist"]
+  C["apps/trenchclaw (runtime)"] --> D["runtime API"]
+  B --> E["apps/runner"]
+  D --> E
+  E --> F["Local app session"]
+```
 
-- `apps/frontends/gui/dist`
+The runner serves GUI assets and bridges UI requests to the runtime API.
 
-App bundle output is expected in:
+## Build Outputs
 
-- `dist/app`
+- Runner build: `apps/runner/dist`
+- GUI build: `apps/frontends/gui/dist`
+- App bundle output: `dist/app`
 
-Legacy path note: `apps/frontends/runner` is not a valid source package and should not be used.
+## Local Commands
+
+```bash
+bun run app:build
+bun run start
+```
+
+For GUI-only iteration:
+
+```bash
+bun run gui:dev
+```
+
+## Important Path Note
+
+`apps/frontends/runner` is legacy and not a valid source package path.

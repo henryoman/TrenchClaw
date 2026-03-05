@@ -104,7 +104,7 @@ const parseDoc = (filePath: string, source: string): DocPage => {
 
 const docs: DocPage[] = Object.entries(rawDocs)
   .map(([filePath, source]) => parseDoc(filePath, source))
-  .sort((a, b) => {
+  .toSorted((a, b) => {
     if (a.order !== b.order) {
       return a.order - b.order;
     }

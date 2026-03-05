@@ -68,7 +68,7 @@
     "wallet:vanity": "bun run --cwd apps/trenchclaw wallet:vanity"
   },
   "devDependencies": {
-    "turbo": "^2.8.12"
+    "turbo": "^2.8.13"
   },
   "overrides": {
     "@types/node": "25.3.0",

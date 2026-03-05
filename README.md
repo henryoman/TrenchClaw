@@ -53,6 +53,8 @@ Please give us a star if you're interested in seeing this project get fully buil
 - [ ] Finish rolling out protected write policy across runtime and wallet actions.
 - [ ] Make CI and release flow with proper versioning.
 - [ ] Update and push docs to website for actual use by other humans.
+- [ ] Test that model is fully able to make wallets and do basic research
+- [ ] Upload release.
 
 # TrenchClaw
 
