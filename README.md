@@ -26,7 +26,7 @@ Please give us a star if you're interested in seeing this project get fully buil
 
 ## v0.0.1 Test Release Checklist
 
-- [X] Set up project with a bun-based runtime and monorepo structure.
+- [-] Set up project with a bun-based runtime and monorepo structure.
 - [x] Download dependencies, SDK's and core skills.
 - [x] Create backend typescript files and layout file structure for solana/ and ai/
 - [x] Added the action and routine systems.
