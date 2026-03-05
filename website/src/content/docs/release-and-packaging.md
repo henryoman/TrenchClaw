@@ -30,6 +30,21 @@ bun run release:package -- --version vX.Y.Z
 bun run release:notes -- --version vX.Y.Z --output dist/release/release-notes.md
 ```
 
+## Versioning Commands (Not Auto-Applied)
+
+```bash
+bun run version:next
+bun run version:next:beta
+bun run version:next:patch
+```
+
+These are dry-run planning commands. Version changes are still manual.
+When you are ready to write the next version into `package.json`, use:
+
+```bash
+TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply:beta
+```
+
 ## CI + Manual Release
 
 ```mermaid

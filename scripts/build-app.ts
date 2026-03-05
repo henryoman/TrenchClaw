@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -81,9 +81,41 @@ const copyTrackedTreeIntoOutput = async (
   }
 };
 
+const readRootPackageVersion = async (): Promise<string> => {
+  const packageJsonPath = path.join(REPO_ROOT, "package.json");
+  const packageJsonRaw = await readFile(packageJsonPath, "utf8");
+  const packageJson = JSON.parse(packageJsonRaw) as { version?: unknown };
+  if (typeof packageJson.version === "string" && packageJson.version.trim().length > 0) {
+    return packageJson.version.trim();
+  }
+  return "0.0.0";
+};
+
+const resolveBuildMetadata = async (): Promise<{
+  version: string;
+  commit: string;
+}> => {
+  const packageVersion = await readRootPackageVersion();
+  const configuredVersion = process.env.TRENCHCLAW_BUILD_VERSION?.trim();
+  const configuredCommit = process.env.TRENCHCLAW_BUILD_COMMIT?.trim();
+  const gitShortSha = (await runCapture(["git", "-C", REPO_ROOT, "rev-parse", "--short", "HEAD"])).trim();
+
+  return {
+    version: configuredVersion && configuredVersion.length > 0 ? configuredVersion : `v${packageVersion}`,
+    commit: configuredCommit && configuredCommit.length > 0 ? configuredCommit : gitShortSha,
+  };
+};
+
 const main = async (): Promise<void> => {
   console.log("[build-app] cleaning old output");
   await rm(OUTPUT_ROOT, { recursive: true, force: true });
+
+  const buildMetadata = await resolveBuildMetadata();
+  process.env.TRENCHCLAW_BUILD_VERSION = buildMetadata.version;
+  process.env.TRENCHCLAW_BUILD_COMMIT = buildMetadata.commit;
+  console.log(
+    `[build-app] gui build metadata version=${buildMetadata.version} commit=${buildMetadata.commit}`,
+  );
 
   console.log("[build-app] building gui + runner + core runtime");
   await run(["bun", "run", "--cwd", "apps/frontends/gui", "build"]);

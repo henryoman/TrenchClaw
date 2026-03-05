@@ -2,6 +2,7 @@
   import { onDestroy } from "svelte";
   import type { GuiUpsertSecretRequest } from "@trenchclaw/types";
   import { CREATE_NEW_OPTION } from "./config";
+  import { APP_BUILD_COMMIT, APP_BUILD_VERSION } from "./config/build-info";
   import { SAFETY_PROFILE_OPTIONS } from "./config/app-config";
   import {
     ChatPanel,
@@ -25,6 +26,7 @@
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
   let activeTab: "chat" | "keys-secrets" | "wallets" = $state("chat");
+  const appVersionLabel = `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
 
   const ensureChatController = async (): Promise<void> => {
     if (chat) {
@@ -91,6 +93,7 @@
 {:else}
   <WorkspaceShell
     runtimeStatus={runtime.state.runtimeStatus}
+    appVersion={appVersionLabel}
     {activeTab}
     onTabChange={(tab) => {
       activeTab = tab;

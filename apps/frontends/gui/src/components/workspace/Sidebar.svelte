@@ -1,5 +1,6 @@
 <script lang="ts">
   export let runtimeStatus = "";
+  export let appVersion = "";
   export let activeTab: "chat" | "keys-secrets" | "wallets" = "chat";
   export let onTabChange: (tab: "chat" | "keys-secrets" | "wallets") => void;
 
@@ -27,6 +28,7 @@
 
 <aside class="sidebar">
   <p class="instance">trenchclaw</p>
+  <p class="version">version: {appVersion}</p>
   <nav class="tabs" aria-label="Workspace tabs">
     <button
       type="button"
@@ -96,6 +98,15 @@
     color: var(--tc-color-gray-3);
     font-size: var(--tc-sidebar-title-size);
     text-transform: uppercase;
+  }
+
+  .version {
+    margin: 0;
+    color: var(--tc-color-gray-2);
+    font-size: calc(var(--tc-sidebar-label-size) - 1px);
+    line-height: 1.4;
+    letter-spacing: 0.05em;
+    word-break: break-word;
   }
 
   .status-stack {

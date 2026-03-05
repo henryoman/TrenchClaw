@@ -31,6 +31,19 @@ Outputs:
 - `dist/release/release-notes.md`
 - `dist/release/release-metadata.json`
 
+## Versioning Readiness (Manual Only)
+
+Prepared commands:
+
+```bash
+bun run version:next
+bun run version:next:beta
+bun run version:next:patch
+```
+
+Nothing auto-bumps versions in CI/release workflows yet.
+See `docs/versioning-strategy.md` for exact increment behavior.
+
 ## GitHub Workflows
 
 - CI workflow: `.github/workflows/ci.yml`

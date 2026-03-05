@@ -94,6 +94,10 @@ bun run release:package -- --version v0.0.2
 
 # generate release notes from commits since last release tag
 bun run release:notes -- --version v0.0.2 --output dist/release/release-notes.md
+
+# dry-run next version (no automatic bumping yet)
+bun run version:next
+bun run version:next:beta
 ```
 
 Release publishing is manual only (GitHub Actions `Release` workflow via `workflow_dispatch`).
