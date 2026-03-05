@@ -4,17 +4,18 @@ description: Detailed user setup from install to first launch, including one-com
 order: 1
 ---
 
-This guide covers a full first-time local setup for TrenchClaw.
+This guide covers a clean first-time local setup for TrenchClaw.
 
-It includes everything you need that is not automatically bundled by JavaScript packages in `node_modules`.
+It focuses on dependencies outside your repo plus the fastest path to a working runtime.
 
-## Before You Start
+## External Dependencies
 
-this is what you need:
+Install and verify these before launch:
 
-- bun 1.3.10
-- solana cli 3.0+
-- the trenchclaw binary
+- Bun `1.3.10+`
+- Solana CLI `3.0+`
+- Helius CLI (latest)
+- TrenchClaw binary
 
 ## Step 1: Install TrenchClaw (Choose One Path)
 
@@ -48,6 +49,7 @@ After script completes, verify:
 ```bash
 bun --version
 solana --version
+helius --version
 trenchclaw --version
 ```
 
@@ -55,11 +57,11 @@ trenchclaw --version
 
 Use this if you already have required dependencies and only need TrenchClaw.
 
-Download links (placeholders):
+Download links (example release URLs):
 
-- macOS binary: `https://downloads.trenchclaw.dev/stable/latest/trenchclaw-darwin-arm64`
-- Windows binary: `https://downloads.trenchclaw.dev/stable/latest/trenchclaw-windows-x64.exe`
-- Linux binary: `https://downloads.trenchclaw.dev/stable/latest/trenchclaw-linux-x64`
+- macOS binary: `https://downloads.placeholder/trenchclaw/stable/latest/trenchclaw-darwin-arm64`
+- Windows binary: `https://downloads.placeholder/trenchclaw/stable/latest/trenchclaw-windows-x64.exe`
+- Linux binary: `https://downloads.placeholder/trenchclaw/stable/latest/trenchclaw-linux-x64`
 
 After download:
 
@@ -92,6 +94,18 @@ Verify both:
 ```bash
 bun --version
 solana --version
+```
+
+Install Helius CLI (Bun only):
+
+```bash
+bun add -g helius-cli@latest
+```
+
+Verify:
+
+```bash
+helius --version
 ```
 
 Download source:
@@ -135,7 +149,7 @@ Minimum required to proceed successfully:
 
 Wallet creation/import is done inside the TrenchClaw app.
 
-## Step 4: CLI Launch (Placeholder)
+## Step 4: CLI Launch
 
 If running via binary CLI, launch with:
 

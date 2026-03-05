@@ -64,8 +64,8 @@ TrenchClaw can run with any model your key can access, but for first-run stabili
 
 Set:
 
-- `OpenRouter API Key` -> your OpenRouter key
-- `Model` -> your selected model ID
+- `OpenRouter API Key`: your OpenRouter key
+- `Model`: your selected model ID
 
 Base URL defaults to OpenRouter endpoint in most cases. If asked explicitly, use:
 
@@ -113,8 +113,8 @@ If a model string is invalid, requests fail even if the API key is correct.
 
 Set:
 
-- `Vercel AI Gateway API Key` -> your gateway key
-- `Gateway Model` -> model route string
+- `Vercel AI Gateway API Key`: your gateway key
+- `Gateway Model`: model route string
 
 ### Step B4: Save and Validate
 
