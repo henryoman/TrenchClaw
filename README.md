@@ -22,7 +22,7 @@
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
 
-*0.0.1 release tonight (thursday)*
+*0.0.1 release Monday March 9*
 
 ## v0.0.1 Test Release Checklist
 
