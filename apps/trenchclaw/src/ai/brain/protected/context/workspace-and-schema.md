@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-05T03:46:58.359Z
+Generated at: 2026-03-07T02:21:51.678Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -28,6 +28,7 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-03-03.md
 |   |   |   |   |   |-- 2026-03-04.md
 |   |   |   |   |   |-- 2026-03-05.md
+|   |   |   |   |   |-- 2026-03-07.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
@@ -41,13 +42,15 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-03-02.log
 |   |   |   |   |   |-- 2026-03-03.log
 |   |   |   |   |   |-- 2026-03-04.log
-|   |   |   |   |   `-- 2026-03-05.log
+|   |   |   |   |   |-- 2026-03-05.log
+|   |   |   |   |   `-- 2026-03-07.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-03-02.log
 |   |   |   |   |   |-- 2026-03-03.log
 |   |   |   |   |   |-- 2026-03-04.log
-|   |   |   |   |   `-- 2026-03-05.log
+|   |   |   |   |   |-- 2026-03-05.log
+|   |   |   |   |   `-- 2026-03-07.log
 |   |   |   |   |-- .gitignore
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
@@ -68,6 +71,7 @@ apps/trenchclaw/
 |   |   |   |   |   |-- data-structures-as-json.md
 |   |   |   |   |   |-- helius-agents-llms.md
 |   |   |   |   |   |-- helius-docs-llms-full.md
+|   |   |   |   |   |-- helius-typescript-sdk.md
 |   |   |   |   |   `-- helius.md
 |   |   |   |   |-- skills/
 |   |   |   |   |   |-- agent-browser/
@@ -84,6 +88,70 @@ apps/trenchclaw/
 |   |   |   |   |   |   |   |-- capture-workflow.sh
 |   |   |   |   |   |   |   `-- form-automation.sh
 |   |   |   |   |   |   `-- SKILL.md
+|   |   |   |   |   |-- helius/
+|   |   |   |   |   |   |-- references/
+|   |   |   |   |   |   |   |-- das.md
+|   |   |   |   |   |   |   |-- enhanced-transactions.md
+|   |   |   |   |   |   |   |-- laserstream.md
+|   |   |   |   |   |   |   |-- onboarding.md
+|   |   |   |   |   |   |   |-- priority-fees.md
+|   |   |   |   |   |   |   |-- sender.md
+|   |   |   |   |   |   |   |-- wallet-api.md
+|   |   |   |   |   |   |   |-- webhooks.md
+|   |   |   |   |   |   |   `-- websockets.md
+|   |   |   |   |   |   |-- install.sh
+|   |   |   |   |   |   `-- SKILL.md
+|   |   |   |   |   |-- helius-dflow/
+|   |   |   |   |   |   |-- references/
+|   |   |   |   |   |   |   |-- dflow-prediction-markets.md
+|   |   |   |   |   |   |   |-- dflow-proof-kyc.md
+|   |   |   |   |   |   |   |-- dflow-spot-trading.md
+|   |   |   |   |   |   |   |-- dflow-websockets.md
+|   |   |   |   |   |   |   |-- helius-das.md
+|   |   |   |   |   |   |   |-- helius-laserstream.md
+|   |   |   |   |   |   |   |-- helius-onboarding.md
+|   |   |   |   |   |   |   |-- helius-priority-fees.md
+|   |   |   |   |   |   |   |-- helius-sender.md
+|   |   |   |   |   |   |   |-- helius-wallet-api.md
+|   |   |   |   |   |   |   |-- helius-websockets.md
+|   |   |   |   |   |   |   `-- integration-patterns.md
+|   |   |   |   |   |   |-- install.sh
+|   |   |   |   |   |   `-- SKILL.md
+|   |   |   |   |   |-- helius-phantom/
+|   |   |   |   |   |   |-- references/
+|   |   |   |   |   |   |   |-- browser-sdk.md
+|   |   |   |   |   |   |   |-- frontend-security.md
+|   |   |   |   |   |   |   |-- helius-das.md
+|   |   |   |   |   |   |   |-- helius-enhanced-transactions.md
+|   |   |   |   |   |   |   |-- helius-onboarding.md
+|   |   |   |   |   |   |   |-- helius-priority-fees.md
+|   |   |   |   |   |   |   |-- helius-sender.md
+|   |   |   |   |   |   |   |-- helius-wallet-api.md
+|   |   |   |   |   |   |   |-- helius-websockets.md
+|   |   |   |   |   |   |   |-- integration-patterns.md
+|   |   |   |   |   |   |   |-- nft-minting.md
+|   |   |   |   |   |   |   |-- payments.md
+|   |   |   |   |   |   |   |-- react-native-sdk.md
+|   |   |   |   |   |   |   |-- react-sdk.md
+|   |   |   |   |   |   |   |-- token-gating.md
+|   |   |   |   |   |   |   `-- transactions.md
+|   |   |   |   |   |   |-- install.sh
+|   |   |   |   |   |   `-- SKILL.md
+|   |   |   |   |   |-- svm/
+|   |   |   |   |   |   |-- references/
+|   |   |   |   |   |   |   |-- accounts.md
+|   |   |   |   |   |   |   |-- compilation.md
+|   |   |   |   |   |   |   |-- consensus.md
+|   |   |   |   |   |   |   |-- data.md
+|   |   |   |   |   |   |   |-- development.md
+|   |   |   |   |   |   |   |-- execution.md
+|   |   |   |   |   |   |   |-- programs.md
+|   |   |   |   |   |   |   |-- tokens.md
+|   |   |   |   |   |   |   |-- transactions.md
+|   |   |   |   |   |   |   `-- validators.md
+|   |   |   |   |   |   |-- install.sh
+|   |   |   |   |   |   `-- SKILL.md
+|   |   |   |   |   |-- helius-docs-llms.txt
 |   |   |   |   |   `-- skills-lock.json
 |   |   |   |   |-- bash-tool.md
 |   |   |   |   |-- file-system-wallet.md
@@ -101,8 +169,6 @@ apps/trenchclaw/
 |   |   |   |   |-- keypairs/
 |   |   |   |   |   |-- core-wallets/
 |   |   |   |   |   |   `-- core-wallets-wallet001-0001.json
-|   |   |   |   |   |-- smoke-test/
-|   |   |   |   |   |   `-- smoke-test-wallet001-0001.json
 |   |   |   |   |   |-- trading-wallets/
 |   |   |   |   |   `-- .keep
 |   |   |   |   |-- no-read/
@@ -129,14 +195,10 @@ apps/trenchclaw/
 |   |   |   |   |-- settings.yaml
 |   |   |   |   `-- swap.yaml
 |   |   |   |-- workspace/
-|   |   |   |   |-- configs/
-|   |   |   |   |-- notes/
-|   |   |   |   |-- output/
-|   |   |   |   |-- scratch/
+|   |   |   |   |-- .tests/
 |   |   |   |   |-- strategies/
 |   |   |   |   |   |-- .tests/
 |   |   |   |   |   `-- .keep
-|   |   |   |   |-- typescript/
 |   |   |   |   `-- rules.md
 |   |   |   |-- rules.md
 |   |   |   `-- soul.md
