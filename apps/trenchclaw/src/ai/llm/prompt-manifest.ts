@@ -7,8 +7,33 @@ export interface PromptPayloadManifestDefaults {
   includeWorkspaceDirectoryTree?: boolean;
 }
 
+export type PromptGeneratedSectionSource =
+  | "knowledgeManifest"
+  | "knowledgeDirectoryTree"
+  | "workspaceDirectoryTree"
+  | "resolvedUserSettings"
+  | "runtimeCapabilityAppendix"
+  | "filesystemPolicy";
+
+export interface PromptFileSectionConfig {
+  kind: "file";
+  title?: string;
+  path: string;
+}
+
+export interface PromptGeneratedSectionConfig {
+  kind: "generated";
+  title?: string;
+  source: PromptGeneratedSectionSource;
+  fallbackSource?: Extract<PromptGeneratedSectionSource, "knowledgeDirectoryTree">;
+}
+
+export type PromptSectionConfig = PromptFileSectionConfig | PromptGeneratedSectionConfig;
+
 export interface PromptModeConfig {
+  title?: string;
   promptFiles: string[];
+  sections: PromptSectionConfig[];
   includeKnowledgeManifest?: boolean;
   includeKnowledgeDirectoryTreeFallback?: boolean;
   includeWorkspaceDirectoryTree?: boolean;
@@ -56,19 +81,77 @@ export const parsePromptManifest = (source: string, filePath: string): PromptPay
       throw new Error(`Prompt manifest "${filePath}" mode "${modeName}" must be an object`);
     }
 
-    const promptFiles = config.promptFiles;
-    if (
-      !Array.isArray(promptFiles) ||
-      promptFiles.length === 0 ||
-      !promptFiles.every((value) => typeof value === "string")
-    ) {
-      throw new Error(
-        `Prompt manifest "${filePath}" mode "${modeName}" must define a non-empty string[] promptFiles`,
-      );
+    const promptFiles = Array.isArray(config.promptFiles) ? config.promptFiles.filter((value): value is string => typeof value === "string") : [];
+    const rawSections = config.sections;
+    const parsedSections: PromptSectionConfig[] = [];
+
+    if (rawSections !== undefined) {
+      if (!Array.isArray(rawSections) || rawSections.length === 0) {
+        throw new Error(`Prompt manifest "${filePath}" mode "${modeName}" sections must be a non-empty array`);
+      }
+
+      for (const [index, rawSection] of rawSections.entries()) {
+        if (!isRecord(rawSection)) {
+          throw new Error(`Prompt manifest "${filePath}" mode "${modeName}" section ${index + 1} must be an object`);
+        }
+
+        const kind = rawSection.kind;
+        if (kind === "file") {
+          if (typeof rawSection.path !== "string" || rawSection.path.trim().length === 0) {
+            throw new Error(
+              `Prompt manifest "${filePath}" mode "${modeName}" section ${index + 1} must define a non-empty file path`,
+            );
+          }
+          parsedSections.push({
+            kind,
+            title: typeof rawSection.title === "string" ? rawSection.title : undefined,
+            path: rawSection.path,
+          });
+          continue;
+        }
+
+        if (kind === "generated") {
+          const generatedSource = rawSection.source;
+          if (
+            generatedSource !== "knowledgeManifest" &&
+            generatedSource !== "knowledgeDirectoryTree" &&
+            generatedSource !== "workspaceDirectoryTree" &&
+            generatedSource !== "resolvedUserSettings" &&
+            generatedSource !== "runtimeCapabilityAppendix" &&
+            generatedSource !== "filesystemPolicy"
+          ) {
+            throw new Error(
+              `Prompt manifest "${filePath}" mode "${modeName}" section ${index + 1} has invalid generated source`,
+            );
+          }
+          const fallbackSource =
+            rawSection.fallbackSource === "knowledgeDirectoryTree" ? rawSection.fallbackSource : undefined;
+          parsedSections.push({
+            kind,
+            title: typeof rawSection.title === "string" ? rawSection.title : undefined,
+            source: generatedSource,
+            fallbackSource,
+          });
+          continue;
+        }
+
+        throw new Error(`Prompt manifest "${filePath}" mode "${modeName}" section ${index + 1} has invalid kind`);
+      }
+    }
+
+    if (parsedSections.length === 0) {
+      if (promptFiles.length === 0) {
+        throw new Error(
+          `Prompt manifest "${filePath}" mode "${modeName}" must define either non-empty sections or promptFiles`,
+        );
+      }
+      parsedSections.push(...promptFiles.map((promptFilePath) => ({ kind: "file" as const, path: promptFilePath })));
     }
 
     parsedModes[modeName] = {
+      title: typeof config.title === "string" ? config.title : undefined,
       promptFiles,
+      sections: parsedSections,
       includeKnowledgeManifest:
         typeof config.includeKnowledgeManifest === "boolean" ? config.includeKnowledgeManifest : undefined,
       includeKnowledgeDirectoryTreeFallback:

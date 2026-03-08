@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const OUTPUT_ROOT = path.join(REPO_ROOT, "dist", "app");
+const GUI_OUTPUT_ROOT = path.join(OUTPUT_ROOT, "gui");
+const CORE_OUTPUT_ROOT = path.join(OUTPUT_ROOT, "core");
 
 const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
   const [bin, ...args] = command;
@@ -37,48 +39,9 @@ const runCapture = async (command: string[], cwd = REPO_ROOT): Promise<string> =
     new Response(proc.stderr).text(),
   ]);
   if (code !== 0) {
-    throw new Error(
-      `Command failed (${code}): ${command.join(" ")}\n${stderr.trim()}`,
-    );
+    throw new Error(`Command failed (${code}): ${command.join(" ")}\n${stderr.trim()}`);
   }
   return stdout;
-};
-
-const copyIntoOutput = async (relativeSource: string, relativeTarget = relativeSource): Promise<void> => {
-  const source = path.join(REPO_ROOT, relativeSource);
-  const target = path.join(OUTPUT_ROOT, relativeTarget);
-  await mkdir(path.dirname(target), { recursive: true });
-  await cp(source, target, { recursive: true });
-};
-
-const copyTrackedTreeIntoOutput = async (
-  relativeSource: string,
-  relativeTarget = relativeSource,
-): Promise<void> => {
-  const raw = await runCapture([
-    "git",
-    "-C",
-    REPO_ROOT,
-    "ls-files",
-    "-z",
-    "--",
-    relativeSource,
-  ]);
-  const trackedFiles = raw.split("\u0000").filter((entry) => entry.length > 0);
-  if (trackedFiles.length === 0) {
-    throw new Error(`No tracked files found under ${relativeSource}`);
-  }
-
-  for (const trackedFile of trackedFiles) {
-    const source = path.join(REPO_ROOT, trackedFile);
-    const relativeWithinSource = path.relative(relativeSource, trackedFile);
-    if (relativeWithinSource.startsWith("..")) {
-      continue;
-    }
-    const target = path.join(OUTPUT_ROOT, relativeTarget, relativeWithinSource);
-    await mkdir(path.dirname(target), { recursive: true });
-    await cp(source, target);
-  }
 };
 
 const readRootPackageVersion = async (): Promise<string> => {
@@ -106,6 +69,79 @@ const resolveBuildMetadata = async (): Promise<{
   };
 };
 
+const shouldBundleBrainFile = (trackedFile: string): boolean => {
+  const relativeToBrain = path.posix.relative(
+    "apps/trenchclaw/src/ai/brain",
+    trackedFile.split(path.sep).join("/"),
+  );
+  if (!relativeToBrain || relativeToBrain.startsWith("..")) {
+    return false;
+  }
+
+  const fileName = path.posix.basename(relativeToBrain).toLowerCase();
+  if (relativeToBrain === "protected/no-read/vault.json") {
+    return false;
+  }
+  if (relativeToBrain === "protected/wallet-library.jsonl") {
+    return false;
+  }
+  if (relativeToBrain.startsWith("db/")) {
+    return false;
+  }
+  if (fileName.startsWith(".env") && fileName !== ".env.example") {
+    return false;
+  }
+  if (fileName.endsWith(".pem") || fileName.endsWith(".key") || fileName.endsWith(".p12")) {
+    return false;
+  }
+  if (relativeToBrain.startsWith("protected/keypairs/")) {
+    return fileName === ".keep" || fileName === ".gitkeep";
+  }
+  if (relativeToBrain.startsWith("protected/instance/")) {
+    return fileName === ".gitkeep";
+  }
+  if (relativeToBrain.startsWith("protected/no-read/")) {
+    return fileName === "readme.md" || fileName === "vault.template.json" || fileName === ".gitkeep";
+  }
+
+  return true;
+};
+
+const copyReleaseBrainAssets = async (): Promise<void> => {
+  const raw = await runCapture([
+    "git",
+    "-C",
+    REPO_ROOT,
+    "ls-files",
+    "-z",
+    "--",
+    "apps/trenchclaw/src/ai/brain",
+  ]);
+  const trackedFiles = raw.split("\u0000").filter((entry) => entry.length > 0);
+  if (trackedFiles.length === 0) {
+    throw new Error("No tracked brain assets found under apps/trenchclaw/src/ai/brain");
+  }
+
+  for (const trackedFile of trackedFiles) {
+    if (!shouldBundleBrainFile(trackedFile)) {
+      continue;
+    }
+    const source = path.join(REPO_ROOT, trackedFile);
+    if (!(await Bun.file(source).exists())) {
+      continue;
+    }
+    const relativePath = path.relative("apps/trenchclaw", trackedFile);
+    const target = path.join(CORE_OUTPUT_ROOT, relativePath);
+    await mkdir(path.dirname(target), { recursive: true });
+    await cp(source, target);
+  }
+};
+
+const ensurePlaceholderFile = async (filePath: string, contents = ""): Promise<void> => {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, contents, "utf8");
+};
+
 const main = async (): Promise<void> => {
   console.log("[build-app] cleaning old output");
   await rm(OUTPUT_ROOT, { recursive: true, force: true });
@@ -113,65 +149,42 @@ const main = async (): Promise<void> => {
   const buildMetadata = await resolveBuildMetadata();
   process.env.TRENCHCLAW_BUILD_VERSION = buildMetadata.version;
   process.env.TRENCHCLAW_BUILD_COMMIT = buildMetadata.commit;
-  console.log(
-    `[build-app] gui build metadata version=${buildMetadata.version} commit=${buildMetadata.commit}`,
-  );
+  console.log(`[build-app] build metadata version=${buildMetadata.version} commit=${buildMetadata.commit}`);
 
-  console.log("[build-app] building gui + runner + core runtime");
+  console.log("[build-app] building GUI assets");
   await run(["bun", "run", "--cwd", "apps/frontends/gui", "build"]);
-  await run(["bun", "run", "--cwd", "apps/runner", "build"]);
-  await run(["bun", "run", "--cwd", "apps/trenchclaw", "build"]);
 
-  console.log("[build-app] assembling distributable");
-  await copyIntoOutput("apps/frontends/gui/dist");
-  await copyIntoOutput("apps/runner/dist");
-  await copyIntoOutput("apps/trenchclaw/package.json");
-  await copyTrackedTreeIntoOutput("apps/trenchclaw/src");
+  console.log("[build-app] assembling release assets");
+  await mkdir(OUTPUT_ROOT, { recursive: true });
+  await cp(path.join(REPO_ROOT, "apps/frontends/gui/dist"), GUI_OUTPUT_ROOT, { recursive: true });
+  await copyReleaseBrainAssets();
+  await ensurePlaceholderFile(path.join(CORE_OUTPUT_ROOT, "src/ai/brain/protected/keypairs/.keep"));
+  await ensurePlaceholderFile(path.join(CORE_OUTPUT_ROOT, "src/ai/brain/protected/instance/.gitkeep"));
 
-  const shouldInstallRuntimeDependencies = process.env.TRENCHCLAW_BUNDLE_INSTALL_DEPS === "1";
-  if (shouldInstallRuntimeDependencies) {
-    console.log("[build-app] installing runtime production deps");
-    await run(["bun", "install", "--production"], path.join(OUTPUT_ROOT, "apps/trenchclaw"));
-  } else {
-    console.log("[build-app] skipping runtime dependency install (set TRENCHCLAW_BUNDLE_INSTALL_DEPS=1 to include node_modules)");
-  }
+  const metadata = {
+    version: buildMetadata.version,
+    commit: buildMetadata.commit,
+    createdAt: new Date().toISOString(),
+    layout: {
+      gui: "gui",
+      core: "core",
+    },
+  };
+  await writeFile(path.join(OUTPUT_ROOT, "build-metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 
-  const setupScript = `#!/usr/bin/env bash
-set -euo pipefail
-cd "$(dirname "$0")"
-echo "[trenchclaw-setup] installing runtime dependencies"
-bun install --production --cwd apps/trenchclaw
-echo "[trenchclaw-setup] done"
-`;
-  await writeFile(path.join(OUTPUT_ROOT, "setup.sh"), setupScript, "utf8");
-  await run(["chmod", "+x", "setup.sh"], OUTPUT_ROOT);
+  const notes = `# TrenchClaw Release Assets
 
-  const launcher = `#!/usr/bin/env bash
-set -euo pipefail
-cd "$(dirname "$0")"
-if [ ! -d "apps/trenchclaw/node_modules" ]; then
-  echo "[trenchclaw] runtime dependencies are missing. Run ./setup.sh first." >&2
-  exit 1
-fi
-exec bun apps/runner/dist/index.js "$@"
-`;
-  await writeFile(path.join(OUTPUT_ROOT, "start.sh"), launcher, "utf8");
-  await run(["chmod", "+x", "start.sh"], OUTPUT_ROOT);
+This staging directory contains the readonly assets required for standalone desktop releases.
 
-  const notes = `# TrenchClaw App Bundle
+Included:
+- GUI build output in \`gui/\`
+- readonly TrenchClaw brain/config assets in \`core/\`
 
-This bundle includes GUI assets, runner, and backend runtime source.
-
-Not bundled intentionally:
+Excluded intentionally:
 - Bun runtime
-- Any local user/runtime files (vault.json, keypairs, runtime db/events)
-
-First run:
-  ./setup.sh
-  ./start.sh
-
-Run:
-  ./start.sh
+- runtime databases, sessions, logs, and memory files
+- local vault contents and wallet library data
+- wallet keypairs beyond placeholder files
 `;
   await writeFile(path.join(OUTPUT_ROOT, "README.md"), notes, "utf8");
 

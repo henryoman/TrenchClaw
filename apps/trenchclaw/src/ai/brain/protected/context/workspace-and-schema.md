@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-07T02:21:51.678Z
+Generated at: 2026-03-08T00:04:15.353Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -19,10 +19,7 @@ apps/trenchclaw/
 |   |   |   |   |       `-- memory/
 |   |   |   |   |           `-- MEMORY.md
 |   |   |   |   |-- events/
-|   |   |   |   |   |-- .keep
-|   |   |   |   |   |-- 2026-03-02.jsonl
-|   |   |   |   |   |-- 2026-03-03.jsonl
-|   |   |   |   |   `-- 2026-03-05.jsonl
+|   |   |   |   |   `-- .keep
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-03-02.md
 |   |   |   |   |   |-- 2026-03-03.md
@@ -60,6 +57,10 @@ apps/trenchclaw/
 |   |   |   |   |-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db
 |   |   |   |   |-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db-shm
 |   |   |   |   `-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db-wal
+|   |   |   |-- instance-blockchain-settings/
+|   |   |   |   |-- alerts.yaml
+|   |   |   |   |-- settings.yaml
+|   |   |   |   `-- swaps.yaml
 |   |   |   |-- knowledge/
 |   |   |   |   |-- deep-knowledge/
 |   |   |   |   |   |-- dexscreener/
@@ -163,9 +164,6 @@ apps/trenchclaw/
 |   |   |   |   |   `-- operator.md
 |   |   |   |   |-- context/
 |   |   |   |   |   `-- workspace-and-schema.md
-|   |   |   |   |-- instance/
-|   |   |   |   |   |-- .gitkeep
-|   |   |   |   |   `-- user-1.json
 |   |   |   |   |-- keypairs/
 |   |   |   |   |   |-- core-wallets/
 |   |   |   |   |   |   `-- core-wallets-wallet001-0001.json
@@ -177,8 +175,6 @@ apps/trenchclaw/
 |   |   |   |   |   |-- README.md
 |   |   |   |   |   |-- vault.json
 |   |   |   |   |   `-- vault.template.json
-|   |   |   |   |-- notes/
-|   |   |   |   |   `-- .keep
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- modes/
 |   |   |   |   |   |   `-- operator.md
@@ -187,19 +183,18 @@ apps/trenchclaw/
 |   |   |   |   |   |   |-- safe.yaml
 |   |   |   |   |   |   `-- veryDangerous.yaml
 |   |   |   |   |   |-- filesystem-manifest.yaml
+|   |   |   |   |   |-- INSTRUCTIONS.md
 |   |   |   |   |   |-- payload-manifest.yaml
 |   |   |   |   |   `-- system.md
 |   |   |   |   `-- wallet-library.jsonl
-|   |   |   |-- user-blockchain-settings/
-|   |   |   |   |-- notifications.yaml
-|   |   |   |   |-- settings.yaml
-|   |   |   |   `-- swap.yaml
 |   |   |   |-- workspace/
 |   |   |   |   |-- .tests/
-|   |   |   |   |-- strategies/
+|   |   |   |   |-- notes/
+|   |   |   |   |-- routines/
 |   |   |   |   |   |-- .tests/
 |   |   |   |   |   `-- .keep
-|   |   |   |   `-- rules.md
+|   |   |   |   |-- ts-scripts/
+|   |   |   |   `-- routineRegistry.json
 |   |   |   |-- rules.md
 |   |   |   `-- soul.md
 |   |   |-- core/
@@ -244,6 +239,13 @@ apps/trenchclaw/
 |   |   |   `-- refresh-workspace-context.ts
 |   |   `-- commands.txt
 |   |-- runtime/
+|   |   |-- capabilities/
+|   |   |   |-- action-definitions.ts
+|   |   |   |-- index.ts
+|   |   |   |-- selectors.ts
+|   |   |   |-- snapshot.ts
+|   |   |   |-- types.ts
+|   |   |   `-- workspace-tool-definitions.ts
 |   |   |-- gui-transport/
 |   |   |   |-- domains/
 |   |   |   |   |-- chat.ts
@@ -270,7 +272,6 @@ apps/trenchclaw/
 |   |   |   |-- filesystem-manifest.ts
 |   |   |   `-- write-scope.ts
 |   |   |-- storage/
-|   |   |   |-- file-event-log.ts
 |   |   |   |-- index.ts
 |   |   |   |-- log-io-worker.ts
 |   |   |   |-- log-io.worker.ts
@@ -311,7 +312,10 @@ apps/trenchclaw/
 |   |   |   |   |   `-- shared.ts
 |   |   |   |   |-- runtime/
 |   |   |   |   |   |-- index.ts
+|   |   |   |   |   |-- instance-memory-shared.ts
+|   |   |   |   |   |-- mutateInstanceMemory.ts
 |   |   |   |   |   |-- pingRuntime.ts
+|   |   |   |   |   |-- queryInstanceMemory.ts
 |   |   |   |   |   |-- queryRuntimeStore.ts
 |   |   |   |   |   `-- upsertInstanceFact.ts
 |   |   |   |   `-- index.ts
@@ -397,35 +401,37 @@ apps/trenchclaw/
 Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelte-kit, dist, build, coverage
 
 ## Runtime Action Catalog (Generated)
-| actionName | category | subcategory | inputSchema | outputSchema |
-| --- | --- | --- | --- | --- |
-| createBlockchainAlert | data-based | read-only | yes | no |
-| createWalletGroupDirectory | wallet-based |  | yes | no |
-| createWallets | wallet-based |  | yes | no |
-| pingRuntime | data-based | read-only | yes | no |
-| privacyAirdrop | wallet-based | transfer | yes | no |
-| privacyTransfer | wallet-based | transfer | yes | no |
-| queryRuntimeStore | data-based | read-only | yes | no |
-| renameWallets | wallet-based |  | yes | no |
-| transfer | wallet-based | transfer | yes | no |
-| upsertInstanceFact | data-based |  | yes | no |
+| actionName | category | subcategory | enabledBySettings | chatExposed | requiresConfirmation | inputSchema | outputSchema |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| createBlockchainAlert | data-based | read-only | yes | yes | no | yes | no |
+| createWalletGroupDirectory | wallet-based |  | yes | yes | no | yes | no |
+| createWallets | wallet-based |  | yes | yes | no | yes | no |
+| mutateInstanceMemory | data-based |  | yes | yes | no | yes | no |
+| pingRuntime | data-based | read-only | yes | yes | no | yes | no |
+| privacyAirdrop | wallet-based | transfer | yes | yes | yes | yes | no |
+| privacyTransfer | wallet-based | transfer | yes | yes | yes | yes | no |
+| queryInstanceMemory | data-based | read-only | yes | yes | no | yes | no |
+| queryRuntimeStore | data-based | read-only | yes | yes | no | yes | no |
+| renameWallets | wallet-based |  | yes | yes | no | yes | no |
+| transfer | wallet-based | transfer | yes | yes | yes | yes | no |
 
 ## Runtime Chat Tool Catalog (Generated)
-| toolName |
-| --- |
-| createBlockchainAlert |
-| createWalletGroupDirectory |
-| createWallets |
-| pingRuntime |
-| privacyAirdrop |
-| privacyTransfer |
-| queryRuntimeStore |
-| renameWallets |
-| transfer |
-| upsertInstanceFact |
-| workspaceBash |
-| workspaceReadFile |
-| workspaceWriteFile |
+| toolName | kind | enabledBySettings | requiresConfirmation |
+| --- | --- | --- | --- |
+| createBlockchainAlert | action | yes | no |
+| createWalletGroupDirectory | action | yes | no |
+| createWallets | action | yes | no |
+| mutateInstanceMemory | action | yes | no |
+| pingRuntime | action | yes | no |
+| privacyAirdrop | action | yes | yes |
+| privacyTransfer | action | yes | yes |
+| queryInstanceMemory | action | yes | no |
+| queryRuntimeStore | action | yes | no |
+| renameWallets | action | yes | no |
+| transfer | action | yes | yes |
+| workspaceBash | workspace-tool | yes | no |
+| workspaceReadFile | workspace-tool | yes | no |
+| workspaceWriteFile | workspace-tool | yes | no |
 
 ## GUI API Route Catalog (Generated)
 | routePath |
@@ -452,12 +458,13 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 
 ## SQLite Schema Snapshot
 ```text
-SQLite schema snapshot (10 tables)
+SQLite schema snapshot (11 tables)
 - schema_migrations: version:INTEGER[pk], applied_at:INTEGER[not_null]
 - jobs: id:TEXT[pk], bot_id:TEXT[not_null], routine_name:TEXT[not_null], status:TEXT[not_null], config_json:TEXT[not_null], next_run_at:INTEGER, last_run_at:INTEGER, cycles_completed:INTEGER[not_null], total_cycles:INTEGER, last_result_json:TEXT, attempt_count:INTEGER, lease_owner:TEXT, lease_expires_at:INTEGER, last_error:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - action_receipts: idempotency_key:TEXT[pk], payload_json:TEXT[not_null], timestamp:INTEGER[not_null]
 - conversations: id:TEXT[pk], session_id:TEXT, title:TEXT, summary:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - chat_messages: id:TEXT[pk], conversation_id:TEXT[not_null,fk->conversations.id], role:TEXT[not_null], content:TEXT[not_null], metadata_json:TEXT, created_at:INTEGER[not_null]
+- instance_profiles: instance_id:TEXT[pk], display_name:TEXT, summary:TEXT, trading_style:TEXT, risk_tolerance:TEXT, preferred_assets_json:TEXT, disliked_assets_json:TEXT, metadata_json:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - instance_facts: id:TEXT[pk], instance_id:TEXT[not_null], fact_key:TEXT[not_null], fact_value_json:TEXT[not_null], confidence:REAL[not_null], source:TEXT[not_null], source_message_id:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null], expires_at:INTEGER
 - market_instruments: id:INTEGER[pk], chain:TEXT[not_null], address:TEXT[not_null], symbol:TEXT, name:TEXT, decimals:INTEGER, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - ohlcv_bars: instrument_id:INTEGER[not_null,fk->market_instruments.id], source:TEXT[not_null], interval:TEXT[not_null], open_time:INTEGER[not_null], close_time:INTEGER[not_null], open:REAL[not_null], high:REAL[not_null], low:REAL[not_null], close:REAL[not_null], volume:REAL, trades:INTEGER, vwap:REAL, fetched_at:INTEGER[not_null], raw_json:TEXT
@@ -516,6 +523,19 @@ CREATE TABLE "instance_facts" (
   "updated_at" INTEGER NOT NULL,
   "expires_at" INTEGER CHECK (expires_at IS NULL OR expires_at >= 0),
   UNIQUE(instance_id, fact_key)
+);
+
+CREATE TABLE "instance_profiles" (
+  "instance_id" TEXT PRIMARY KEY,
+  "display_name" TEXT,
+  "summary" TEXT,
+  "trading_style" TEXT,
+  "risk_tolerance" TEXT,
+  "preferred_assets_json" TEXT,
+  "disliked_assets_json" TEXT,
+  "metadata_json" TEXT,
+  "created_at" INTEGER NOT NULL,
+  "updated_at" INTEGER NOT NULL
 );
 
 CREATE TABLE "jobs" (
@@ -594,6 +614,8 @@ CREATE INDEX "idx_http_cache_source_endpoint" ON "http_cache"("source", "endpoin
 CREATE INDEX "idx_instance_facts_expires_at" ON "instance_facts"("expires_at");
 
 CREATE INDEX "idx_instance_facts_instance_updated" ON "instance_facts"("instance_id", "updated_at");
+
+CREATE INDEX "idx_instance_profiles_updated_at" ON "instance_profiles"("updated_at");
 
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
 

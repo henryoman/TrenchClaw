@@ -21,9 +21,9 @@ Use this map to navigate from intent -> decision -> execution:
 - `src/ai/brain/rules.md`: hard behavioral rules and non-negotiable constraints.
 
 ### 2) Prompting layer
-- `src/ai/brain/system-settings/system/prompts/payload-manifest.yaml`: central source of truth for prompt payload composition by mode.
-- `src/ai/brain/system-settings/system/prompts/system.md`: baseline system prompt for all runs.
-- `src/ai/brain/system-settings/system/prompts/modes/`: specialized mode prompts that tune behavior by mission.
+- `src/ai/brain/protected/system/payload-manifest.yaml`: central source of truth for prompt payload composition, section order, and file locations by mode.
+- `src/ai/brain/protected/system/system.md`: baseline system prompt for all runs.
+- `src/ai/brain/protected/system/modes/`: specialized mode prompts that tune behavior by mission.
 
 ### 3) Runtime AI core
 - `src/ai/core/action-registry.ts`: action capability catalog.
@@ -31,6 +31,7 @@ Use this map to navigate from intent -> decision -> execution:
 - `src/ai/core/policy-engine.ts`: policy evaluation before/after actions.
 - `src/ai/core/state-store.ts`: receipts and idempotency memory.
 - `src/ai/core/scheduler.ts`: timing and orchestration.
+- `src/runtime/capabilities/`: authoritative capability metadata for actions, workspace tools, generated capability docs, and prompt appendix rendering.
 
 ### 4) Action surface (what I can do)
 - `src/solana/actions/data-based/`: read market/account/token data.
@@ -52,7 +53,7 @@ When adding or changing behavior, follow this order:
 
 1. **Define intent** in `system/prompts/system.md` (via payload manifest) and one mode prompt.
 2. **Check constraints** in `rules.md` and wallet policy code.
-3. **Verify capability exists** in the action registry and action folders.
+3. **Verify capability exists** in `src/runtime/capabilities/` and the backing action folders.
 4. **Trace execution path** via dispatcher -> policy engine -> adapter.
 5. **Confirm observability** (events/receipts) so operators can audit outcomes.
 

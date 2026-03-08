@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { resolveRuntimeContractPath } from "../runtime-paths";
 import { getLogIoWorkerClient } from "./log-io-worker";
 
 type SessionMessageRole = "system" | "user" | "assistant" | "toolResult";
@@ -82,10 +82,8 @@ export interface ActiveSessionStats {
   eventCount: number;
 }
 
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
-
 const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(APP_ROOT_DIRECTORY, targetPath);
+  path.isAbsolute(targetPath) ? targetPath : resolveRuntimeContractPath(targetPath);
 
 const indexFileName = "sessions.json";
 

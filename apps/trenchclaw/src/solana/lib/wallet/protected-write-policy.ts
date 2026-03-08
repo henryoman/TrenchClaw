@@ -1,14 +1,16 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import type { RuntimeActor } from "../../../ai/runtime/types/context";
 import {
   assertModelFilesystemReadAllowed,
   assertModelFilesystemWriteAllowed,
 } from "../../../runtime/security/filesystem-manifest";
+import {
+  RUNTIME_PROTECTED_ROOT,
+  resolveRuntimeContractPath,
+} from "../../../runtime/runtime-paths";
 
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
-const BRAIN_PROTECTED_ROOT_DIRECTORY = path.resolve(APP_ROOT_DIRECTORY, "src/ai/brain/protected");
+const BRAIN_PROTECTED_ROOT_DIRECTORY = RUNTIME_PROTECTED_ROOT;
 
 export class ProtectedWriteForbiddenError extends Error {
   constructor(message: string) {
@@ -18,7 +20,7 @@ export class ProtectedWriteForbiddenError extends Error {
 }
 
 export const resolveAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(APP_ROOT_DIRECTORY, targetPath);
+  path.isAbsolute(targetPath) ? targetPath : resolveRuntimeContractPath(targetPath);
 
 export const assertWithinBrainProtectedDirectory = (targetPath: string): void => {
   const normalizedTarget = path.resolve(targetPath);

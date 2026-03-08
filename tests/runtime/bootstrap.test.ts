@@ -117,9 +117,6 @@ storage:
     path: /tmp/trenchclaw-tests.db
     walMode: true
     busyTimeoutMs: 5000
-  files:
-    enabled: false
-    eventsDirectory: /tmp/trenchclaw-events
   sessions:
     enabled: false
     directory: /tmp/trenchclaw-sessions

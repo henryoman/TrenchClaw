@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
 import type { StateStore } from "../../../../ai/runtime/types/state";
+import { normalizeFactKey, resolveInstanceId } from "./instance-memory-shared";
 
 const upsertInstanceFactInputSchema = z.object({
   instanceId: z.string().trim().min(1).max(64).optional(),
@@ -15,15 +16,6 @@ const upsertInstanceFactInputSchema = z.object({
 
 type UpsertInstanceFactInput = z.output<typeof upsertInstanceFactInputSchema>;
 
-const resolveInstanceId = (inputInstanceId: string | undefined): string | null => {
-  const explicit = inputInstanceId?.trim();
-  if (explicit) {
-    return explicit;
-  }
-  const fromEnv = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim();
-  return fromEnv && fromEnv.length > 0 ? fromEnv : null;
-};
-
 const asRuntimeStore = (value: unknown): StateStore | null => {
   if (!value || typeof value !== "object") {
     return null;
@@ -31,6 +23,7 @@ const asRuntimeStore = (value: unknown): StateStore | null => {
   return value as StateStore;
 };
 
+/** @deprecated Use mutateInstanceMemoryAction with request.type="upsertFact". */
 export const upsertInstanceFactAction: Action<UpsertInstanceFactInput, unknown> = {
   name: "upsertInstanceFact",
   category: "data-based",
@@ -65,9 +58,21 @@ export const upsertInstanceFactAction: Action<UpsertInstanceFactInput, unknown> 
     }
 
     const now = Date.now();
+    const factKey = normalizeFactKey(input.factKey);
+    if (!factKey) {
+      return {
+        ok: false,
+        retryable: false,
+        error: "factKey must contain at least one valid path segment",
+        code: "INVALID_FACT_KEY",
+        durationMs: Date.now() - startedAt,
+        timestamp: Date.now(),
+        idempotencyKey,
+      };
+    }
     const existing = store.getInstanceFact({
       instanceId,
-      factKey: input.factKey,
+      factKey,
       includeExpired: true,
     });
     const recordId = existing?.id ?? `fact-${crypto.randomUUID()}`;
@@ -75,7 +80,7 @@ export const upsertInstanceFactAction: Action<UpsertInstanceFactInput, unknown> 
     store.saveInstanceFact({
       id: recordId,
       instanceId,
-      factKey: input.factKey,
+      factKey,
       factValue: input.factValue,
       confidence: input.confidence,
       source: input.source,
@@ -91,7 +96,7 @@ export const upsertInstanceFactAction: Action<UpsertInstanceFactInput, unknown> 
       data: {
         id: recordId,
         instanceId,
-        factKey: input.factKey,
+        factKey,
         confidence: input.confidence,
         updatedAt: now,
         expiresAt: input.expiresAt ?? null,

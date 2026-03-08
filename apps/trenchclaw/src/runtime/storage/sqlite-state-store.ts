@@ -1,14 +1,15 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { Database } from "bun:sqlite";
-import { fileURLToPath } from "node:url";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { resolveRuntimeContractPath } from "../runtime-paths";
 
 import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
   ConversationState,
   InstanceFactState,
+  InstanceProfileState,
   JobState,
   JobStatus,
   RuntimeKnowledgeSurface,
@@ -21,6 +22,7 @@ import {
   chatMessageStateSchema,
   conversationStateSchema,
   instanceFactStateSchema,
+  instanceProfileStateSchema,
   httpCacheEntryInputSchema,
   httpCacheEntryRecordSchema,
   jobStateSchema,
@@ -46,6 +48,7 @@ import {
   sqliteChatMessageRowSchema,
   sqliteConversationRowSchema,
   sqliteInstanceFactRowSchema,
+  sqliteInstanceProfileRowSchema,
   sqliteJobRowSchema,
 } from "./sqlite-schema";
 
@@ -76,10 +79,8 @@ const parseJsonWithSchema = <T>(
   return result.data;
 };
 
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
-
 const toAbsolutePath = (filePath: string): string =>
-  path.isAbsolute(filePath) ? filePath : path.join(APP_ROOT_DIRECTORY, filePath);
+  path.isAbsolute(filePath) ? filePath : resolveRuntimeContractPath(filePath);
 
 const toFiniteNumber = (value: unknown): number | null => {
   const parsed = Number(value);
@@ -600,6 +601,87 @@ export class SqliteStateStore implements StateStore {
     });
   }
 
+  saveInstanceProfile(profile: InstanceProfileState): void {
+    const parsed = instanceProfileStateSchema.parse(profile);
+    this.db
+      .query(
+        `
+        INSERT INTO instance_profiles (
+          instance_id, display_name, summary, trading_style, risk_tolerance,
+          preferred_assets_json, disliked_assets_json, metadata_json, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(instance_id) DO UPDATE SET
+          display_name = excluded.display_name,
+          summary = excluded.summary,
+          trading_style = excluded.trading_style,
+          risk_tolerance = excluded.risk_tolerance,
+          preferred_assets_json = excluded.preferred_assets_json,
+          disliked_assets_json = excluded.disliked_assets_json,
+          metadata_json = excluded.metadata_json,
+          updated_at = excluded.updated_at
+      `,
+      )
+      .run(
+        parsed.instanceId,
+        parsed.displayName ?? null,
+        parsed.summary ?? null,
+        parsed.tradingStyle ?? null,
+        parsed.riskTolerance ?? null,
+        parsed.preferredAssets === undefined ? null : JSON.stringify(parsed.preferredAssets),
+        parsed.dislikedAssets === undefined ? null : JSON.stringify(parsed.dislikedAssets),
+        parsed.metadata === undefined ? null : JSON.stringify(parsed.metadata),
+        parsed.createdAt,
+        parsed.updatedAt,
+      );
+  }
+
+  getInstanceProfile(instanceId: string): InstanceProfileState | null {
+    const normalizedInstanceId = instanceId.trim();
+    if (!normalizedInstanceId) {
+      return null;
+    }
+
+    const row = this.db
+      .query(
+        `
+        SELECT
+          instance_id, display_name, summary, trading_style, risk_tolerance,
+          preferred_assets_json, disliked_assets_json, metadata_json, created_at, updated_at
+        FROM instance_profiles
+        WHERE instance_id = ?
+        LIMIT 1
+      `,
+      )
+      .get(normalizedInstanceId) as Record<string, unknown> | null;
+
+    if (!row) {
+      return null;
+    }
+
+    const parsed = sqliteInstanceProfileRowSchema.parse(row);
+    return instanceProfileStateSchema.parse({
+      instanceId: parsed.instance_id,
+      displayName: parsed.display_name ?? undefined,
+      summary: parsed.summary ?? undefined,
+      tradingStyle: parsed.trading_style ?? undefined,
+      riskTolerance: parsed.risk_tolerance ?? undefined,
+      preferredAssets:
+        parsed.preferred_assets_json == null
+          ? undefined
+          : parseJson<string[] | undefined>(parsed.preferred_assets_json, undefined),
+      dislikedAssets:
+        parsed.disliked_assets_json == null
+          ? undefined
+          : parseJson<string[] | undefined>(parsed.disliked_assets_json, undefined),
+      metadata:
+        parsed.metadata_json == null
+          ? undefined
+          : parseJson<Record<string, unknown> | undefined>(parsed.metadata_json, undefined),
+      createdAt: parsed.created_at,
+      updatedAt: parsed.updated_at,
+    });
+  }
+
   saveInstanceFact(fact: InstanceFactState): void {
     const parsed = instanceFactStateSchema.parse(fact);
     this.db
@@ -632,13 +714,19 @@ export class SqliteStateStore implements StateStore {
       );
   }
 
-  listInstanceFacts(input: { instanceId: string; limit?: number; includeExpired?: boolean }): InstanceFactState[] {
+  listInstanceFacts(input: {
+    instanceId: string;
+    limit?: number;
+    includeExpired?: boolean;
+    keyPrefix?: string;
+  }): InstanceFactState[] {
     const instanceId = input.instanceId.trim();
     if (!instanceId) {
       return [];
     }
 
     const includeExpired = input.includeExpired === true;
+    const keyPrefix = input.keyPrefix?.trim();
     const rows = this.db
       .query(
         `
@@ -646,6 +734,7 @@ export class SqliteStateStore implements StateStore {
           id, instance_id, fact_key, fact_value_json, confidence, source, source_message_id, created_at, updated_at, expires_at
         FROM instance_facts
         WHERE instance_id = ?
+          AND (? IS NULL OR fact_key LIKE ?)
           AND (? = 1 OR expires_at IS NULL OR expires_at > ?)
         ORDER BY updated_at DESC
         LIMIT ?
@@ -653,6 +742,8 @@ export class SqliteStateStore implements StateStore {
       )
       .all(
         instanceId,
+        keyPrefix ?? null,
+        keyPrefix ? `${keyPrefix}%` : null,
         includeExpired ? 1 : 0,
         Date.now(),
         Math.max(1, Math.trunc(input.limit ?? 200)),

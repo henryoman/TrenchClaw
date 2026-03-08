@@ -1,7 +1,6 @@
 export * from "./sqlite-state-store";
 export * from "./schema";
 export * from "./sqlite-orm";
-export * from "./file-event-log";
 export * from "./session-log-store";
 export * from "./session-summary-store";
 export * from "./memory-log-store";

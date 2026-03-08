@@ -1,6 +1,10 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type { RuntimeActor } from "../../ai/runtime/types/context";
+import {
+  resolveBundledBrainPath,
+  resolveRuntimeContractPath,
+  toRuntimeContractRelativePath,
+} from "../runtime-paths";
 
 type FilesystemSubject = "model" | "user" | "system";
 type FilesystemPermission = "none" | "read" | "write";
@@ -40,12 +44,10 @@ interface FilesystemManifest {
   rules: FilesystemRule[];
 }
 
-const MANIFEST_PATH_FROM_MODULE = fileURLToPath(new URL("../../ai/brain/protected/system/filesystem-manifest.yaml", import.meta.url));
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+const MANIFEST_PATH_FROM_MODULE = resolveBundledBrainPath("protected/system/filesystem-manifest.yaml");
 
 const DEFAULT_MANIFEST_CANDIDATE_PATHS = [
   MANIFEST_PATH_FROM_MODULE,
-  path.resolve(APP_ROOT_DIRECTORY, "src/ai/brain/protected/system/filesystem-manifest.yaml"),
 ];
 const MANIFEST_PATH_ENV = "TRENCHCLAW_FILESYSTEM_MANIFEST_FILE";
 
@@ -66,7 +68,7 @@ const toSubject = (actor: RuntimeActor | undefined): FilesystemSubject => {
   return "system";
 };
 
-const toRelativePath = (absolutePath: string): string => path.relative(APP_ROOT_DIRECTORY, absolutePath) || ".";
+const toRelativePath = (absolutePath: string): string => toRuntimeContractRelativePath(absolutePath);
 
 const resolveManifestPath = async (): Promise<string> => {
   const configured = process.env[MANIFEST_PATH_ENV]?.trim();
@@ -76,9 +78,9 @@ const resolveManifestPath = async (): Promise<string> => {
         return candidatePath;
       }
     }
-    return DEFAULT_MANIFEST_CANDIDATE_PATHS[0] ?? path.resolve(APP_ROOT_DIRECTORY, "src/ai/brain/protected/system/filesystem-manifest.yaml");
+    return DEFAULT_MANIFEST_CANDIDATE_PATHS[0] ?? MANIFEST_PATH_FROM_MODULE;
   }
-  return path.isAbsolute(configured) ? configured : path.resolve(APP_ROOT_DIRECTORY, configured);
+  return path.isAbsolute(configured) ? configured : resolveRuntimeContractPath(configured);
 };
 
 const canPerform = (permission: FilesystemPermission, operation: FilesystemOperation): boolean => {
@@ -108,7 +110,7 @@ const parseManifest = (raw: unknown): FilesystemManifest => {
       throw new Error("Filesystem manifest rule path must be a non-empty string");
     }
     return {
-      absolutePath: path.resolve(APP_ROOT_DIRECTORY, rule.path.trim()),
+      absolutePath: resolveRuntimeContractPath(rule.path.trim()),
       model: normalizePermission(rule.model, defaults.model),
       user: normalizePermission(rule.user, defaults.user),
       system: normalizePermission(rule.system, defaults.system),

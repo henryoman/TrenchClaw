@@ -1,29 +1,22 @@
 #!/usr/bin/env sh
 set -eu
 
-# TrenchClaw app-bundle installer
-# Installs/checks:
-# 1) Bun
-# 2) TrenchClaw app bundle (runner + gui + runtime)
-#
 # Configurable environment variables:
 # - TRENCHCLAW_VERSION (default: latest)
-# - TRENCHCLAW_REPO (default: trenchclaw/trenchclaw)
+# - TRENCHCLAW_REPO (default: henryoman/trenchclaw)
 # - TRENCHCLAW_DOWNLOAD_BASE_URL (optional override; expected form: <base>/<version>/<artifact>)
-# - TRENCHCLAW_ARTIFACT_NAME (default: trenchclaw-app-$TRENCHCLAW_VERSION.tar.gz)
+# - TRENCHCLAW_ARTIFACT_NAME (default: trenchclaw-$TRENCHCLAW_VERSION-$platform.tar.gz)
 # - TRENCHCLAW_APP_HOME (default: $HOME/.local/share/trenchclaw)
 # - TRENCHCLAW_BIN_DIR (default: $HOME/.local/bin)
 # - TRENCHCLAW_RELOAD_SHELL (default: 0; set to 1 to exec a login shell at end)
 
 TRENCHCLAW_VERSION="${TRENCHCLAW_VERSION:-latest}"
-TRENCHCLAW_REPO="${TRENCHCLAW_REPO:-trenchclaw/trenchclaw}"
+TRENCHCLAW_REPO="${TRENCHCLAW_REPO:-henryoman/trenchclaw}"
 TRENCHCLAW_DOWNLOAD_BASE_URL="${TRENCHCLAW_DOWNLOAD_BASE_URL:-}"
 TRENCHCLAW_ARTIFACT_NAME="${TRENCHCLAW_ARTIFACT_NAME:-}"
 TRENCHCLAW_APP_HOME="${TRENCHCLAW_APP_HOME:-$HOME/.local/share/trenchclaw}"
 TRENCHCLAW_BIN_DIR="${TRENCHCLAW_BIN_DIR:-$HOME/.local/bin}"
 TRENCHCLAW_RELOAD_SHELL="${TRENCHCLAW_RELOAD_SHELL:-0}"
-
-BUN_PATH="$HOME/.bun/bin"
 
 info() {
   printf '%s\n' "[trenchclaw-install] $1"
@@ -83,24 +76,6 @@ detect_platform() {
   esac
 }
 
-install_bun_if_needed() {
-  if need_cmd bun; then
-    info "Bun found: $(bun --version)"
-    return
-  fi
-
-  info "Bun not found. Installing Bun..."
-  if ! need_cmd curl; then
-    fail "curl is required to install Bun"
-  fi
-  curl -fsSL https://bun.sh/install | bash
-  add_path_for_current_process "$BUN_PATH"
-  ensure_path_in_shell_profiles "$BUN_PATH"
-
-  need_cmd bun || fail "Bun installation completed but bun is still not on PATH"
-  info "Bun installed: $(bun --version)"
-}
-
 install_trenchclaw_bundle() {
   detect_platform
   mkdir -p "$TRENCHCLAW_APP_HOME" "$TRENCHCLAW_BIN_DIR"
@@ -118,7 +93,7 @@ install_trenchclaw_bundle() {
   if [ -n "$TRENCHCLAW_ARTIFACT_NAME" ]; then
     artifact_name="$TRENCHCLAW_ARTIFACT_NAME"
   else
-    artifact_name="trenchclaw-app-$resolved_version.tar.gz"
+    artifact_name="trenchclaw-$resolved_version-$platform.tar.gz"
   fi
 
   if [ -n "$TRENCHCLAW_DOWNLOAD_BASE_URL" ]; then
@@ -129,51 +104,48 @@ install_trenchclaw_bundle() {
   version_root="$TRENCHCLAW_APP_HOME/$resolved_version"
   current_link="$TRENCHCLAW_APP_HOME/current"
   tmp_bundle="$TRENCHCLAW_APP_HOME/$artifact_name.tmp.$$"
+  extract_root="$version_root/$platform"
+  install_root="$extract_root/trenchclaw-$platform"
 
-  info "Downloading TrenchClaw app bundle from:"
+  info "Downloading TrenchClaw standalone release from:"
   info "$bundle_url"
 
-  curl -fsSL "$bundle_url" -o "$tmp_bundle" || fail "Failed to download TrenchClaw app bundle"
+  curl -fsSL "$bundle_url" -o "$tmp_bundle" || fail "Failed to download TrenchClaw release"
 
-  rm -rf "$version_root"
-  mkdir -p "$version_root"
-  tar -xzf "$tmp_bundle" -C "$version_root" || fail "Failed to extract TrenchClaw bundle"
+  rm -rf "$extract_root"
+  mkdir -p "$extract_root"
+  tar -xzf "$tmp_bundle" -C "$extract_root" || fail "Failed to extract TrenchClaw release"
   rm -f "$tmp_bundle"
 
   rm -f "$current_link"
-  ln -s "$version_root/app" "$current_link"
+  ln -s "$install_root" "$current_link"
 
   launcher="$TRENCHCLAW_BIN_DIR/trenchclaw"
   cat >"$launcher" <<'EOF'
 #!/usr/bin/env sh
 set -eu
 APP_HOME="${TRENCHCLAW_HOME:-$HOME/.local/share/trenchclaw/current}"
-if [ ! -x "$APP_HOME/start.sh" ]; then
+if [ ! -x "$APP_HOME/trenchclaw" ]; then
   echo "[trenchclaw] invalid app install at $APP_HOME" >&2
   exit 1
 fi
-if [ ! -d "$APP_HOME/apps/trenchclaw/node_modules" ]; then
-  "$APP_HOME/setup.sh"
-fi
-exec "$APP_HOME/start.sh" "$@"
+exec "$APP_HOME/trenchclaw" "$@"
 EOF
   chmod +x "$launcher"
 
   need_cmd trenchclaw || fail "TrenchClaw launcher installed but command is not on PATH"
-  info "TrenchClaw app installed at $current_link"
+  info "TrenchClaw installed at $current_link"
 }
 
 print_summary() {
   info "Install complete."
   info "Verified:"
-  info " - bun: $(bun --version)"
   info " - trenchclaw launcher: $(command -v trenchclaw)"
   info "If your current shell still cannot find these commands, run:"
   info "  exec \$SHELL -l"
 }
 
 main() {
-  install_bun_if_needed
   install_trenchclaw_bundle
   print_summary
 

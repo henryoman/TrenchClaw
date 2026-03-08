@@ -4,10 +4,13 @@ import { fileURLToPath } from "node:url";
 import { Database } from "bun:sqlite";
 
 import { loadRuntimeSettings } from "../../runtime/load";
-import { buildActionCatalog } from "../../runtime/bootstrap";
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import { buildRuntimeChatToolNameCatalog, workspaceToolsEnabledByRuntimeSettings } from "../../ai/tools";
+import {
+  getRuntimeCapabilitySnapshot,
+  renderRuntimeActionCatalogTable,
+  renderRuntimeChatToolCatalogTable,
+} from "../../runtime/capabilities";
 
 const APP_ROOT_DIR = fileURLToPath(new URL("../../../", import.meta.url));
 const CONTEXT_ROOT_LABEL = "apps/trenchclaw";
@@ -142,33 +145,6 @@ const toMarkdownTable = (headers: string[], rows: string[][]): string => {
   return [headerLine, dividerLine, body].filter((line) => line.length > 0).join("\n");
 };
 
-const getRuntimeActionCatalogTable = async (): Promise<string> => {
-  const settings = await loadRuntimeSettings();
-  const actions = buildActionCatalog(settings)
-    .map((action) => [
-      action.name,
-      action.category,
-      action.subcategory ?? "",
-      action.inputSchema ? "yes" : "no",
-      action.outputSchema ? "yes" : "no",
-    ])
-    .sort((a, b) => a[0]!.localeCompare(b[0]!));
-
-  return toMarkdownTable(
-    ["actionName", "category", "subcategory", "inputSchema", "outputSchema"],
-    actions,
-  );
-};
-
-const getChatToolCatalogTable = async (): Promise<string> => {
-  const settings = await loadRuntimeSettings();
-  const tools = buildRuntimeChatToolNameCatalog({
-    actionNames: buildActionCatalog(settings).map((action) => action.name),
-    workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings(settings),
-  }).map((toolName) => [toolName]);
-  return toMarkdownTable(["toolName"], tools);
-};
-
 const getGuiApiRoutesTable = async (): Promise<string> => {
   const source = await readFile(GUI_TRANSPORT_FILE, "utf8");
   const matches = source.matchAll(/pathname\s*===\s*"([^"]+)"/g);
@@ -179,16 +155,19 @@ const getGuiApiRoutesTable = async (): Promise<string> => {
   return toMarkdownTable(["routePath"], routes.map((route) => [route]));
 };
 
-const generatedAt = new Date().toISOString();
-const sourceTree = await buildTree(APP_ROOT_DIR, CONTEXT_ROOT_LABEL);
-const sqliteSchemaSnapshot = getSqliteSchemaSnapshot();
-const canonicalSchemaSql = getCanonicalSchemaSqlDump();
-const liveSchemaSql = await getLiveSchemaSqlDump();
-const runtimeActionCatalogTable = await getRuntimeActionCatalogTable();
-const runtimeChatToolCatalogTable = await getChatToolCatalogTable();
-const guiApiRoutesTable = await getGuiApiRoutesTable();
+export const refreshWorkspaceContext = async (): Promise<string[]> => {
+  const generatedAt = new Date().toISOString();
+  const runtimeSettings = await loadRuntimeSettings();
+  const capabilitySnapshot = getRuntimeCapabilitySnapshot(runtimeSettings);
+  const sourceTree = await buildTree(APP_ROOT_DIR, CONTEXT_ROOT_LABEL);
+  const sqliteSchemaSnapshot = getSqliteSchemaSnapshot();
+  const canonicalSchemaSql = getCanonicalSchemaSqlDump();
+  const liveSchemaSql = await getLiveSchemaSqlDump();
+  const runtimeActionCatalogTable = renderRuntimeActionCatalogTable(capabilitySnapshot);
+  const runtimeChatToolCatalogTable = renderRuntimeChatToolCatalogTable(capabilitySnapshot);
+  const guiApiRoutesTable = await getGuiApiRoutesTable();
 
-const markdown = `# Workspace Context Snapshot
+  const markdown = `# Workspace Context Snapshot
 
 Generated at: ${generatedAt}
 Root: ${CONTEXT_ROOT_LABEL}/
@@ -237,22 +216,31 @@ ${DEFAULT_LIVE_DB_PATH_CANDIDATES.map((pathCandidate) => `- \`${pathCandidate}\`
 }
 `;
 
-await mkdir(dirname(PROTECTED_CONTEXT_FILE), { recursive: true });
-assertWritePathInRoots({
-  targetPath: PROTECTED_CONTEXT_FILE,
-  roots: ["src/ai/brain/protected/context"],
-  scope: "system-context-refresh",
-  operation: "write workspace context snapshot",
-});
-await writeFile(PROTECTED_CONTEXT_FILE, markdown, "utf8");
-await mkdir(dirname(SQLITE_SQL_SNAPSHOT_FILE), { recursive: true });
-assertWritePathInRoots({
-  targetPath: SQLITE_SQL_SNAPSHOT_FILE,
-  roots: [fileURLToPath(new URL("../../../../../docs", import.meta.url))],
-  scope: "system-context-refresh",
-  operation: "write sqlite schema sql snapshot",
-});
-await writeFile(SQLITE_SQL_SNAPSHOT_FILE, canonicalSchemaSql, "utf8");
+  await mkdir(dirname(PROTECTED_CONTEXT_FILE), { recursive: true });
+  assertWritePathInRoots({
+    targetPath: PROTECTED_CONTEXT_FILE,
+    roots: ["src/ai/brain/protected/context"],
+    scope: "system-context-refresh",
+    operation: "write workspace context snapshot",
+  });
+  await writeFile(PROTECTED_CONTEXT_FILE, markdown, "utf8");
+  await mkdir(dirname(SQLITE_SQL_SNAPSHOT_FILE), { recursive: true });
+  assertWritePathInRoots({
+    targetPath: SQLITE_SQL_SNAPSHOT_FILE,
+    roots: [fileURLToPath(new URL("../../../../../docs", import.meta.url))],
+    scope: "system-context-refresh",
+    operation: "write sqlite schema sql snapshot",
+  });
+  await writeFile(SQLITE_SQL_SNAPSHOT_FILE, canonicalSchemaSql, "utf8");
 
-console.log(`Workspace context refreshed: ${PROTECTED_CONTEXT_FILE}`);
-console.log(`Canonical SQLite SQL snapshot written: ${SQLITE_SQL_SNAPSHOT_FILE}`);
+  return [
+    `Workspace context refreshed: ${PROTECTED_CONTEXT_FILE}`,
+    `Canonical SQLite SQL snapshot written: ${SQLITE_SQL_SNAPSHOT_FILE}`,
+  ];
+};
+
+if (import.meta.main) {
+  for (const line of await refreshWorkspaceContext()) {
+    console.log(line);
+  }
+}

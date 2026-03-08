@@ -1,33 +1,18 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 
-const resolveAppRoot = (): string => {
-  const candidates = [
-    path.resolve(import.meta.dir, "../.."),
-    path.resolve(import.meta.dir, "../../.."),
-    process.cwd(),
-  ];
-
-  for (const candidate of candidates) {
-    if (
-      existsSync(path.join(candidate, "apps/trenchclaw/package.json")) &&
-      existsSync(path.join(candidate, "apps/frontends/gui"))
-    ) {
-      return candidate;
-    }
-  }
-
-  return candidates[0] ?? process.cwd();
-};
-
-const APP_ROOT = resolveAppRoot();
+import { bootstrapRuntime } from "../trenchclaw/src/runtime/bootstrap";
+import {
+  resolveRuntimeSettingsProfile,
+  type RuntimeSettingsProfile,
+} from "../trenchclaw/src/runtime/load";
+import { startRuntimeServer, type RuntimeServerInfo } from "../trenchclaw/src/runtime/start-runtime-server";
 
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
 const DEFAULT_RUNTIME_PORT = Number.parseInt(process.env.RUNTIME_PORT || "4020", 10);
 const DEFAULT_GUI_PORT = Number.parseInt(process.env.GUI_PORT || "4173", 10);
-const SHUTDOWN_GRACE_MS = Number.parseInt(process.env.RELEASE_SHUTDOWN_GRACE_MS || "2500", 10);
-// Bun currently enforces idleTimeout <= 255 seconds.
 const GUI_IDLE_TIMEOUT_SECONDS = 255;
 
 const ANSI = {
@@ -42,11 +27,93 @@ const colorize = (value: string, color: keyof typeof ANSI): string =>
 const RUNNER_LOG_PREFIX = colorize("@trenchclaw:", "neonPurple");
 const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 
-const GUI_DIST_DIR = path.join(APP_ROOT, "apps/frontends/gui/dist");
-const GUI_INDEX_PATH = path.join(GUI_DIST_DIR, "index.html");
-const CORE_APP_ROOT = path.join(APP_ROOT, "apps/trenchclaw");
-const CORE_VAULT_FILE = path.join(CORE_APP_ROOT, "src/ai/brain/protected/no-read/vault.json");
-const CORE_VAULT_TEMPLATE_FILE = path.join(CORE_APP_ROOT, "src/ai/brain/protected/no-read/vault.template.json");
+type LayoutKind = "workspace" | "release";
+
+interface ResolvedLayout {
+  kind: LayoutKind;
+  root: string;
+  guiDistDir: string;
+  guiIndexPath: string;
+  coreAssetRoot: string;
+  runtimeStateRoot: string;
+}
+
+const normalizeConfiguredPath = (value: string): string =>
+  path.isAbsolute(value) ? path.resolve(value) : path.resolve(process.cwd(), value);
+
+const isWorkspaceRoot = (candidate: string): boolean =>
+  existsSync(path.join(candidate, "apps/trenchclaw/package.json")) &&
+  existsSync(path.join(candidate, "apps/frontends/gui"));
+
+const isReleaseRoot = (candidate: string): boolean =>
+  existsSync(path.join(candidate, "core", "src", "ai", "brain")) &&
+  existsSync(path.join(candidate, "gui", "index.html"));
+
+const resolveDefaultRuntimeHome = (): string => {
+  if (process.platform === "darwin") {
+    return path.join(os.homedir(), "Library/Application Support/TrenchClaw");
+  }
+  if (process.platform === "win32") {
+    return path.join(process.env.APPDATA || path.join(os.homedir(), "AppData/Roaming"), "TrenchClaw");
+  }
+  return path.join(os.homedir(), ".local", "share", "trenchclaw");
+};
+
+const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
+  const configured = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
+  if (configured) {
+    return normalizeConfiguredPath(configured);
+  }
+
+  if (kind === "workspace") {
+    return path.join(coreAssetRoot, "src", "ai", "brain");
+  }
+
+  return path.join(resolveDefaultRuntimeHome(), "state");
+};
+
+const resolveLayout = (): ResolvedLayout => {
+  const envReleaseRoot = process.env.TRENCHCLAW_RELEASE_ROOT?.trim();
+  const candidates = [
+    envReleaseRoot ? normalizeConfiguredPath(envReleaseRoot) : null,
+    path.dirname(process.execPath),
+    path.resolve(import.meta.dir, "../.."),
+    path.resolve(import.meta.dir, "../../.."),
+    process.cwd(),
+  ].filter((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0);
+
+  for (const candidate of candidates) {
+    if (isReleaseRoot(candidate)) {
+      const guiDistDir = path.join(candidate, "gui");
+      return {
+        kind: "release",
+        root: candidate,
+        guiDistDir,
+        guiIndexPath: path.join(guiDistDir, "index.html"),
+        coreAssetRoot: path.join(candidate, "core"),
+        runtimeStateRoot: resolveRuntimeStateRoot("release", path.join(candidate, "core")),
+      };
+    }
+    if (isWorkspaceRoot(candidate)) {
+      const guiDistDir = path.join(candidate, "apps/frontends/gui/dist");
+      const coreAssetRoot = path.join(candidate, "apps/trenchclaw");
+      return {
+        kind: "workspace",
+        root: candidate,
+        guiDistDir,
+        guiIndexPath: path.join(guiDistDir, "index.html"),
+        coreAssetRoot,
+        runtimeStateRoot: resolveRuntimeStateRoot("workspace", coreAssetRoot),
+      };
+    }
+  }
+
+  throw new Error(
+    `Unable to resolve TrenchClaw layout. Checked: ${candidates.join(", ")}. Set TRENCHCLAW_RELEASE_ROOT if launching a packaged release.`,
+  );
+};
+
+const LAYOUT = resolveLayout();
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value > 0 && value <= 65535;
 
@@ -82,102 +149,6 @@ const findAvailablePort = async (host: string, preferredPort: number, label: str
   }
 
   throw new Error(`No available ${label} port found from ${firstPort} to ${maxPort}`);
-};
-
-const waitForExitOrTimeout = async (proc: Bun.Subprocess, timeoutMs: number): Promise<boolean> =>
-  await Promise.race([
-    proc.exited.then(() => true),
-    Bun.sleep(timeoutMs).then(() => false),
-  ]);
-
-interface BufferedLogRelay {
-  write: (chunk: string) => void;
-  setPassthrough: (enabled: boolean) => void;
-}
-
-const createBufferedLogRelay = (
-  sink: NodeJS.WriteStream,
-  maxBufferedLines = 500,
-): BufferedLogRelay => {
-  const buffer: string[] = [];
-  let passthrough = false;
-
-  const flush = (): void => {
-    if (buffer.length === 0) {
-      return;
-    }
-    sink.write(buffer.join(""));
-    buffer.length = 0;
-  };
-
-  return {
-    write: (chunk: string) => {
-      if (passthrough) {
-        sink.write(chunk);
-        return;
-      }
-      buffer.push(chunk);
-      if (buffer.length > maxBufferedLines) {
-        buffer.splice(0, buffer.length - maxBufferedLines);
-      }
-    },
-    setPassthrough: (enabled: boolean) => {
-      passthrough = enabled;
-      if (enabled) {
-        flush();
-      }
-    },
-  };
-};
-
-const relaySubprocessOutput = async (
-  stream: ReadableStream<Uint8Array> | null,
-  relay: BufferedLogRelay,
-): Promise<void> => {
-  if (!stream) {
-    return;
-  }
-
-  const decoder = new TextDecoder();
-  const reader = stream.getReader();
-  let pending = "";
-
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) {
-        break;
-      }
-      pending += decoder.decode(value, { stream: true });
-      const lines = pending.split(/\r?\n/);
-      pending = lines.pop() ?? "";
-      for (const line of lines) {
-        relay.write(`${line}\n`);
-      }
-    }
-    pending += decoder.decode();
-    if (pending.length > 0) {
-      relay.write(`${pending}\n`);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-};
-
-const isSignalExitCode = (code: number): boolean => code === 130 || code === 143;
-
-const signalStop = (proc: Bun.Subprocess): void => {
-  if (proc.killed || proc.exitCode !== null) {
-    return;
-  }
-  proc.kill("SIGTERM");
-};
-
-const forceStop = (proc: Bun.Subprocess): void => {
-  if (proc.killed || proc.exitCode !== null) {
-    return;
-  }
-  proc.kill("SIGKILL");
 };
 
 const openBrowser = async (url: string): Promise<void> => {
@@ -222,6 +193,10 @@ const shouldPromptForGuiLaunch = (): boolean => {
 type GuiLaunchDecision = "launch" | "skip" | "quit";
 
 const waitForGuiLaunchConfirmation = async (): Promise<GuiLaunchDecision> => {
+  if (process.env.TRENCHCLAW_RUNNER_SMOKE_TEST === "1") {
+    return "skip";
+  }
+
   if (process.env.TRENCHCLAW_RUNNER_AUTO_OPEN_GUI === "1") {
     return "launch";
   }
@@ -276,7 +251,7 @@ const contentTypeByExt = new Map<string, string>([
 const toAssetPath = (urlPathname: string): string => {
   const decoded = decodeURIComponent(urlPathname);
   const sanitized = decoded.replace(/^\/+/, "");
-  return path.normalize(path.join(GUI_DIST_DIR, sanitized));
+  return path.normalize(path.join(LAYOUT.guiDistDir, sanitized));
 };
 
 const proxyApiRequest = async (request: Request, runtimeBaseUrl: string): Promise<Response> => {
@@ -310,7 +285,7 @@ const createStaticServer = (input: {
 
       const targetPath = toAssetPath(url.pathname);
       const isRegularFile = (() => {
-        if (!targetPath.startsWith(GUI_DIST_DIR) || !existsSync(targetPath)) {
+        if (!targetPath.startsWith(LAYOUT.guiDistDir) || !existsSync(targetPath)) {
           return false;
         }
 
@@ -328,17 +303,111 @@ const createStaticServer = (input: {
         return new Response(Bun.file(targetPath), { headers });
       }
 
-      return new Response(Bun.file(GUI_INDEX_PATH), {
+      return new Response(Bun.file(LAYOUT.guiIndexPath), {
         headers: { "content-type": "text/html; charset=utf-8" },
       });
     },
   });
 };
 
-const main = async (): Promise<void> => {
-  if (!existsSync(GUI_INDEX_PATH)) {
-    throw new Error(`GUI build output not found at ${GUI_INDEX_PATH}. Run: bun run app:build`);
+const copyFileIfMissing = (source: string, target: string): void => {
+  if (!existsSync(source) || existsSync(target)) {
+    return;
   }
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, readFileSync(source));
+};
+
+const ensureRuntimeStateLayout = (): void => {
+  const directories = [
+    path.join(LAYOUT.runtimeStateRoot, "db"),
+    path.join(LAYOUT.runtimeStateRoot, "db/events"),
+    path.join(LAYOUT.runtimeStateRoot, "db/sessions"),
+    path.join(LAYOUT.runtimeStateRoot, "db/memory"),
+    path.join(LAYOUT.runtimeStateRoot, "protected/no-read"),
+    path.join(LAYOUT.runtimeStateRoot, "protected/instance"),
+    path.join(LAYOUT.runtimeStateRoot, "protected/keypairs"),
+    path.join(LAYOUT.runtimeStateRoot, "protected/context"),
+  ];
+
+  for (const directory of directories) {
+    mkdirSync(directory, { recursive: true });
+  }
+
+  const placeholders: Array<{ source: string; target: string }> = [
+    {
+      source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/no-read/README.md"),
+      target: path.join(LAYOUT.runtimeStateRoot, "protected/no-read/README.md"),
+    },
+    {
+      source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/no-read/vault.template.json"),
+      target: path.join(LAYOUT.runtimeStateRoot, "protected/no-read/vault.template.json"),
+    },
+    {
+      source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/keypairs/.keep"),
+      target: path.join(LAYOUT.runtimeStateRoot, "protected/keypairs/.keep"),
+    },
+    {
+      source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/instance/.gitkeep"),
+      target: path.join(LAYOUT.runtimeStateRoot, "protected/instance/.gitkeep"),
+    },
+  ];
+
+  for (const placeholder of placeholders) {
+    copyFileIfMissing(placeholder.source, placeholder.target);
+  }
+};
+
+const toSettingsFileName = (profile: RuntimeSettingsProfile): string =>
+  profile === "veryDangerous" ? "veryDangerous.yaml" : `${profile}.yaml`;
+
+const configureRuntimeEnvironment = (runtimePort: number, guiUrl: string): void => {
+  const profile = resolveRuntimeSettingsProfile();
+  const bundledBrainRoot = path.join(LAYOUT.coreAssetRoot, "src/ai/brain");
+
+  process.env.RUNTIME_HOST = RUNTIME_HOST;
+  process.env.RUNTIME_PORT = String(runtimePort);
+  process.env.RUNTIME_STRICT_PORT = "1";
+  process.env.RUNTIME_REQUIRE_SERVER = "1";
+  process.env.TRENCHCLAW_GUI_URL = guiUrl;
+  process.env.TRENCHCLAW_RELEASE_ROOT = LAYOUT.root;
+  process.env.TRENCHCLAW_APP_ROOT = LAYOUT.coreAssetRoot;
+  process.env.TRENCHCLAW_RUNTIME_STATE_ROOT = LAYOUT.runtimeStateRoot;
+  process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER =
+    process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER || (LAYOUT.kind === "release" ? "1" : "0");
+  process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "0";
+  process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "0";
+  process.env.TRENCHCLAW_SETTINGS_BASE_FILE =
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE ||
+    path.join(bundledBrainRoot, "protected/system/safety-modes", toSettingsFileName(profile));
+  process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE =
+    process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE ||
+    path.join(bundledBrainRoot, "protected/system/filesystem-manifest.yaml");
+  process.env.TRENCHCLAW_PROMPT_MANIFEST_FILE =
+    process.env.TRENCHCLAW_PROMPT_MANIFEST_FILE ||
+    path.join(bundledBrainRoot, "protected/system/payload-manifest.yaml");
+  process.env.TRENCHCLAW_KNOWLEDGE_DIR =
+    process.env.TRENCHCLAW_KNOWLEDGE_DIR || path.join(bundledBrainRoot, "knowledge");
+  process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
+    process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
+    path.join(bundledBrainRoot, "knowledge/KNOWLEDGE_MANIFEST.md");
+  process.env.TRENCHCLAW_USER_SETTINGS_FILE =
+    process.env.TRENCHCLAW_USER_SETTINGS_FILE ||
+    path.join(bundledBrainRoot, "user-blockchain-settings/settings.yaml");
+  process.env.TRENCHCLAW_VAULT_FILE =
+    process.env.TRENCHCLAW_VAULT_FILE ||
+    path.join(LAYOUT.runtimeStateRoot, "protected/no-read/vault.json");
+  process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
+    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE ||
+    path.join(bundledBrainRoot, "protected/no-read/vault.template.json");
+};
+
+const main = async (): Promise<void> => {
+  if (!existsSync(LAYOUT.guiIndexPath)) {
+    throw new Error(`GUI build output not found at ${LAYOUT.guiIndexPath}. Run: bun run app:build`);
+  }
+
+  ensureRuntimeStateLayout();
 
   const runtimePort = await findAvailablePort(RUNTIME_HOST, DEFAULT_RUNTIME_PORT, "runtime");
   const guiPort =
@@ -349,98 +418,78 @@ const main = async (): Promise<void> => {
   const runtimeUrl = `http://${RUNTIME_HOST}:${runtimePort}`;
   const guiUrl = `http://${RUNTIME_HOST}:${guiPort}`;
 
+  configureRuntimeEnvironment(runtimePort, guiUrl);
+
+  console.log(`${RUNNER_LOG_PREFIX} mode: ${emphasize(LAYOUT.kind)}`);
+  console.log(`${RUNNER_LOG_PREFIX} runtime state: ${emphasize(LAYOUT.runtimeStateRoot)}`);
   console.log(`${RUNNER_LOG_PREFIX} runtime target: ${emphasize(runtimeUrl)}`);
   console.log(`${RUNNER_LOG_PREFIX} gui target: ${emphasize(guiUrl)}`);
 
-  const runtimeProc = Bun.spawn([process.execPath, "src/runtime/start-runtime-server.ts"], {
-    cwd: CORE_APP_ROOT,
-    stdout: "pipe",
-    stderr: "pipe",
-    stdin: "inherit",
-    env: {
-      ...process.env,
-      RUNTIME_HOST,
-      RUNTIME_PORT: String(runtimePort),
-      RUNTIME_REQUIRE_SERVER: "1",
-      RUNTIME_STRICT_PORT: "1",
-      TRENCHCLAW_GUI_URL: guiUrl,
-      TRENCHCLAW_BOOT_REFRESH_CONTEXT: process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "0",
-      TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE: process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "0",
-      TRENCHCLAW_APP_ROOT: CORE_APP_ROOT,
-      TRENCHCLAW_VAULT_FILE: CORE_VAULT_FILE,
-      TRENCHCLAW_VAULT_TEMPLATE_FILE: CORE_VAULT_TEMPLATE_FILE,
-    },
+  const runtime = await bootstrapRuntime();
+  const runtimeServerInfo: RuntimeServerInfo = startRuntimeServer(runtime);
+  let guiServer: Bun.Server<unknown> | null = createStaticServer({
+    host: RUNTIME_HOST,
+    port: guiPort,
+    runtimeBaseUrl: runtimeServerInfo.url,
   });
 
-  let guiServer: Bun.Server<unknown> | null = null;
-  const runtimeStdoutRelay = createBufferedLogRelay(process.stdout);
-  const runtimeStderrRelay = createBufferedLogRelay(process.stderr);
-  const runtimeStdoutPump = relaySubprocessOutput(runtimeProc.stdout, runtimeStdoutRelay);
-  const runtimeStderrPump = relaySubprocessOutput(runtimeProc.stderr, runtimeStderrRelay);
-  let runtimeConsoleAttached = false;
   let shuttingDown = false;
-  let shutdownRequested = false;
-  let shutdownPromise: Promise<void> | null = null;
+  let shutdownResolve: (() => void) | null = null;
+  const shutdownDone = new Promise<void>((resolve) => {
+    shutdownResolve = resolve;
+  });
 
-  const attachRuntimeConsole = (): void => {
-    if (runtimeConsoleAttached) {
+  const shutdown = (exitCode: number): void => {
+    if (shuttingDown) {
       return;
     }
-    runtimeConsoleAttached = true;
-    runtimeStdoutRelay.setPassthrough(true);
-    runtimeStderrRelay.setPassthrough(true);
-  };
-
-  const shutdown = (exitCode: number): Promise<void> => {
-    if (shutdownPromise) {
-      return shutdownPromise;
-    }
-
     shuttingDown = true;
-    process.exitCode = shutdownRequested ? 0 : exitCode;
-
-    shutdownPromise = (async () => {
-      signalStop(runtimeProc);
-      const exitedGracefully = await waitForExitOrTimeout(runtimeProc, SHUTDOWN_GRACE_MS);
-      if (!exitedGracefully) {
-        console.warn(
-          `${RUNNER_LOG_PREFIX} runtime did not exit after ${emphasize(`${SHUTDOWN_GRACE_MS}ms`)}; force-killing`,
-        );
-        forceStop(runtimeProc);
-        await waitForExitOrTimeout(runtimeProc, 1000);
-      }
-
-      guiServer?.stop(true);
-    })();
-
-    return shutdownPromise;
+    process.exitCode = exitCode;
+    runtimeServerInfo.stop();
+    runtime.stop();
+    guiServer?.stop(true);
+    guiServer = null;
+    shutdownResolve?.();
   };
 
   const handleTerminationSignal = (): void => {
-    shutdownRequested = true;
-    void shutdown(0);
+    shutdown(0);
   };
+
   process.on("SIGINT", handleTerminationSignal);
   process.on("SIGTERM", handleTerminationSignal);
   process.on("SIGHUP", handleTerminationSignal);
   process.once("exit", () => {
     if (!shuttingDown) {
-      signalStop(runtimeProc);
+      runtimeServerInfo.stop();
+      runtime.stop();
       guiServer?.stop(true);
     }
   });
 
-  guiServer = createStaticServer({
-    host: RUNTIME_HOST,
-    port: guiPort,
-    runtimeBaseUrl: runtimeUrl,
-  });
-
   console.log(`${RUNNER_LOG_PREFIX} GUI serving from ${emphasize(guiUrl)}`);
+  if (process.env.TRENCHCLAW_RUNNER_SMOKE_TEST === "1") {
+    const [runtimeHealth, guiResponse] = await Promise.all([
+      fetch(new URL("/health", runtimeServerInfo.url)),
+      fetch(guiUrl),
+    ]);
+    if (!runtimeHealth.ok) {
+      throw new Error(`Runtime smoke test failed: GET /health returned ${runtimeHealth.status}`);
+    }
+    if (!guiResponse.ok) {
+      throw new Error(`GUI smoke test failed: GET / returned ${guiResponse.status}`);
+    }
+    console.log(`${RUNNER_LOG_PREFIX} smoke test passed.`);
+    shutdown(0);
+    await shutdownDone;
+    return;
+  }
+
   const guiLaunchDecision = await waitForGuiLaunchConfirmation();
   if (guiLaunchDecision === "quit") {
     console.log(`${RUNNER_LOG_PREFIX} shutdown requested before GUI launch.`);
-    await shutdown(0);
+    shutdown(0);
+    await shutdownDone;
     return;
   }
   if (guiLaunchDecision === "skip") {
@@ -449,21 +498,10 @@ const main = async (): Promise<void> => {
   } else {
     await openBrowser(guiUrl);
   }
+
+  console.log(`${RUNNER_LOG_PREFIX} Runtime API listening at ${emphasize(runtimeServerInfo.url)}`);
   console.log(`${RUNNER_LOG_PREFIX} Press ${emphasize("Ctrl+C")} to stop.`);
-  attachRuntimeConsole();
-
-  const runtimeExitCode = (await runtimeProc.exited) ?? 0;
-  if (!runtimeConsoleAttached) {
-    attachRuntimeConsole();
-  }
-  await Promise.all([runtimeStdoutPump, runtimeStderrPump]);
-  if (runtimeExitCode !== 0 && !(shutdownRequested && isSignalExitCode(runtimeExitCode))) {
-    console.error(`${RUNNER_LOG_PREFIX} runtime exited with code ${runtimeExitCode}`);
-    await shutdown(runtimeExitCode);
-    return;
-  }
-
-  await shutdown(0);
+  await shutdownDone;
 };
 
 await main();

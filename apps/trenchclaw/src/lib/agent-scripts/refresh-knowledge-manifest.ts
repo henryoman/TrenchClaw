@@ -7,10 +7,11 @@ import { assertWritePathInRoots } from "../../runtime/security/write-scope";
 const KNOWLEDGE_DIR = fileURLToPath(new URL("../../ai/brain/knowledge/", import.meta.url));
 const MANIFEST_PATH = fileURLToPath(new URL("../../ai/brain/knowledge/KNOWLEDGE_MANIFEST.md", import.meta.url));
 
-const generatedAt = new Date().toISOString();
-const tree = await renderDirectoryTree(KNOWLEDGE_DIR);
+export const refreshKnowledgeManifest = async (): Promise<string[]> => {
+  const generatedAt = new Date().toISOString();
+  const tree = await renderDirectoryTree(KNOWLEDGE_DIR);
 
-const markdown = `# Knowledge Manifest
+  const markdown = `# Knowledge Manifest
 
 Generated at: ${generatedAt}
 Root: src/ai/brain/knowledge
@@ -22,13 +23,20 @@ ${tree}
 \`\`\`
 `;
 
-await mkdir(dirname(MANIFEST_PATH), { recursive: true });
-assertWritePathInRoots({
-  targetPath: MANIFEST_PATH,
-  roots: ["src/ai/brain/knowledge"],
-  scope: "system-knowledge-refresh",
-  operation: "write knowledge manifest",
-});
-await writeFile(MANIFEST_PATH, markdown, "utf8");
+  await mkdir(dirname(MANIFEST_PATH), { recursive: true });
+  assertWritePathInRoots({
+    targetPath: MANIFEST_PATH,
+    roots: ["src/ai/brain/knowledge"],
+    scope: "system-knowledge-refresh",
+    operation: "write knowledge manifest",
+  });
+  await writeFile(MANIFEST_PATH, markdown, "utf8");
 
-console.log(`Knowledge manifest refreshed: ${MANIFEST_PATH}`);
+  return [`Knowledge manifest refreshed: ${MANIFEST_PATH}`];
+};
+
+if (import.meta.main) {
+  for (const line of await refreshKnowledgeManifest()) {
+    console.log(line);
+  }
+}

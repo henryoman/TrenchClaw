@@ -3,11 +3,15 @@ import { renderDirectoryTree } from "../brain/knowledge/knowledge-tree";
 import {
   parsePromptManifest,
   resolvePromptModeConfig,
+  type PromptGeneratedSectionConfig,
   type PromptPayloadManifest,
 } from "./prompt-manifest";
 import { resolvePathFromModule } from "./shared";
 import { renderWorkspaceMapSection } from "./workspace-map";
 import { renderResolvedUserSettingsSection } from "./user-settings-loader";
+import { getRuntimeCapabilitySnapshot, renderOperatorCapabilityAppendix } from "../../runtime/capabilities";
+import { loadRuntimeSettings } from "../../runtime/load";
+import { buildFilesystemPolicyPrompt } from "../../runtime/security/filesystem-manifest";
 
 const DEFAULT_PROMPT_MANIFEST_FILE = "../brain/protected/system/payload-manifest.yaml";
 const DEFAULT_KNOWLEDGE_DIR = "../brain/knowledge/";
@@ -27,8 +31,15 @@ const WORKSPACE_DIR_ENV = "TRENCHCLAW_WORKSPACE_DIR";
 
 export interface SystemPromptPayload {
   mode: string;
+  title: string;
   systemPrompt: string;
   promptFiles: string[];
+  sections: Array<{
+    order: number;
+    title: string;
+    kind: "file" | "generated";
+    source: string;
+  }>;
 }
 
 let cachedManifest: PromptPayloadManifest | null = null;
@@ -56,10 +67,7 @@ Knowledge tree could not be generated from "${knowledgeDir}": ${detail}`;
   }
 };
 
-const injectKnowledgeManifest = async (
-  basePrompt: string,
-  includeFallbackTree: boolean,
-): Promise<string> => {
+const renderKnowledgeManifestSection = async (includeFallbackTree: boolean): Promise<string> => {
   const manifestPath = resolvePathFromModule(
     import.meta.url,
     DEFAULT_KNOWLEDGE_MANIFEST_FILE,
@@ -71,9 +79,7 @@ const injectKnowledgeManifest = async (
     if (await manifestFile.exists()) {
       const manifestText = (await manifestFile.text()).trim();
       if (manifestText.length > 0) {
-        return `${basePrompt}
-
-## Available Knowledge Manifest
+        return `## Available Knowledge Manifest
 ${manifestText}`;
       }
     }
@@ -82,35 +88,26 @@ ${manifestText}`;
   }
 
   if (!includeFallbackTree) {
-    return basePrompt;
+    return `## Available Knowledge Manifest
+Knowledge manifest could not be loaded from "${manifestPath}".`;
   }
 
-  return injectKnowledgeDirectoryTree(basePrompt);
+  return injectKnowledgeDirectoryTree("");
 };
 
-const injectWorkspaceDirectoryTree = async (basePrompt: string): Promise<string> => {
+const renderWorkspaceDirectoryTreeSection = async (): Promise<string> => {
   const workspaceDir = resolvePathFromModule(import.meta.url, DEFAULT_WORKSPACE_DIR, process.env[WORKSPACE_DIR_ENV]);
 
   try {
-    const workspaceSection = await renderWorkspaceMapSection(workspaceDir);
-    return `${basePrompt}
-
-${workspaceSection}`;
+    return await renderWorkspaceMapSection(workspaceDir);
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
-    return `${basePrompt}
-
-## Workspace Map
+    return `## Workspace Map
 Workspace map could not be generated from "${workspaceDir}": ${detail}`;
   }
 };
 
-const injectResolvedUserSettings = async (basePrompt: string): Promise<string> => {
-  const section = await renderResolvedUserSettingsSection();
-  return `${basePrompt}
-
-${section}`;
-};
+const renderResolvedUserSettingsPromptSection = async (): Promise<string> => renderResolvedUserSettingsSection();
 
 const loadPromptManifest = async (): Promise<{
   manifest: PromptPayloadManifest | null;
@@ -157,6 +154,79 @@ const loadPromptFileText = async (manifestPath: string, promptFilePath: string):
   return (await file.text()).trim();
 };
 
+const defaultGeneratedSectionTitle = (source: PromptGeneratedSectionConfig["source"]): string => {
+  switch (source) {
+    case "knowledgeManifest":
+      return "Knowledge Manifest";
+    case "knowledgeDirectoryTree":
+      return "Knowledge Directory Tree";
+    case "workspaceDirectoryTree":
+      return "Workspace Directory Tree";
+    case "resolvedUserSettings":
+      return "Resolved User Settings";
+    case "runtimeCapabilityAppendix":
+      return "Runtime Capability Appendix";
+    case "filesystemPolicy":
+      return "Filesystem Policy";
+  }
+};
+
+const renderRuntimeCapabilityAppendixSection = async (): Promise<string> => {
+  const settings = await loadRuntimeSettings();
+  return renderOperatorCapabilityAppendix(getRuntimeCapabilitySnapshot(settings));
+};
+
+const renderFilesystemPolicySection = async (): Promise<string> => {
+  try {
+    return `## Filesystem Policy\n${await buildFilesystemPolicyPrompt({ actor: "agent" })}`;
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return `## Filesystem Policy\nFilesystem policy could not be loaded: ${detail}`;
+  }
+};
+
+const renderGeneratedSection = async (
+  section: PromptGeneratedSectionConfig,
+  includeKnowledgeDirectoryTreeFallback: boolean,
+): Promise<string> => {
+  switch (section.source) {
+    case "knowledgeManifest":
+      return renderKnowledgeManifestSection(section.fallbackSource === "knowledgeDirectoryTree" || includeKnowledgeDirectoryTreeFallback);
+    case "knowledgeDirectoryTree":
+      return injectKnowledgeDirectoryTree("");
+    case "workspaceDirectoryTree":
+      return renderWorkspaceDirectoryTreeSection();
+    case "resolvedUserSettings":
+      return renderResolvedUserSettingsPromptSection();
+    case "runtimeCapabilityAppendix":
+      return renderRuntimeCapabilityAppendixSection();
+    case "filesystemPolicy":
+      return renderFilesystemPolicySection();
+  }
+};
+
+const formatPromptAssemblyHeader = (input: {
+  title: string;
+  mode: string;
+  sections: Array<{ order: number; title: string; kind: "file" | "generated"; source: string }>;
+}): string => {
+  const lines = [
+    `# ${input.title}`,
+    "",
+    `Mode: \`${input.mode}\``,
+    "",
+    "## Prompt Assembly Order",
+  ];
+
+  for (const section of input.sections) {
+    lines.push(`${section.order}. ${section.title}`);
+    lines.push(`   - kind: \`${section.kind}\``);
+    lines.push(`   - source: \`${section.source}\``);
+  }
+
+  return lines.join("\n");
+};
+
 export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]): Promise<SystemPromptPayload> => {
   const { manifest, manifestPath } = await loadPromptManifest();
   const cacheKey = mode?.trim().length ? mode.trim() : "__default__";
@@ -166,11 +236,19 @@ export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]
   }
 
   if (!manifest) {
-    const fallbackPrompt = await injectKnowledgeManifest(FALLBACK_SYSTEM_PROMPT, true);
+    const fallbackPrompt = `# Fallback Mode
+
+Mode: \`fallback\`
+
+${FALLBACK_SYSTEM_PROMPT}
+
+${(await renderKnowledgeManifestSection(true)).trim()}`.trim();
     const payload: SystemPromptPayload = {
       mode: "fallback",
+      title: "Fallback Mode",
       systemPrompt: fallbackPrompt,
       promptFiles: [],
+      sections: [],
     };
     cachedPromptByMode.set(cacheKey, payload);
     return payload;
@@ -185,20 +263,79 @@ export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]
   const includeWorkspaceDirectoryTree =
     modeConfig.includeWorkspaceDirectoryTree ?? manifest.defaults?.includeWorkspaceDirectoryTree ?? false;
 
-  const fileTexts = await Promise.all(modeConfig.promptFiles.map((filePath) => loadPromptFileText(manifestPath, filePath)));
-  const basePrompt = fileTexts.map((text) => text.trim()).filter((text) => text.length > 0).join("\n\n");
-  const withKnowledge = includeKnowledgeManifest
-    ? await injectKnowledgeManifest(basePrompt || FALLBACK_SYSTEM_PROMPT, includeKnowledgeDirectoryTreeFallback)
-    : basePrompt || FALLBACK_SYSTEM_PROMPT;
-  const withWorkspaceTree = includeWorkspaceDirectoryTree
-    ? await injectWorkspaceDirectoryTree(withKnowledge)
-    : withKnowledge;
-  const withUserSettings = await injectResolvedUserSettings(withWorkspaceTree);
+  const manifestSections = modeConfig.sections.length > 0
+    ? modeConfig.sections
+    : modeConfig.promptFiles.map((filePath) => ({ kind: "file" as const, title: undefined, path: filePath }));
+  const payloadTitle = modeConfig.title?.trim() || `${resolvedMode[0]?.toUpperCase() ?? ""}${resolvedMode.slice(1)} Mode`;
+  const visibleSections = manifestSections.filter((section) => {
+    if (section.kind !== "generated") {
+      return true;
+    }
+    if (section.source === "knowledgeManifest" && !includeKnowledgeManifest) {
+      return false;
+    }
+    if (section.source === "workspaceDirectoryTree" && !includeWorkspaceDirectoryTree) {
+      return false;
+    }
+    return true;
+  });
+  const renderedSections = await Promise.all(
+    visibleSections.map(async (section, index) => {
+      if (section.kind === "file") {
+        const resolvedPath = resolvePromptFilePath(manifestPath, section.path);
+        const content = await loadPromptFileText(manifestPath, section.path);
+        return {
+          order: index + 1,
+          title: section.title?.trim() || path.basename(section.path),
+          kind: "file" as const,
+          source: resolvedPath,
+          content,
+        };
+      }
+
+      const content = await renderGeneratedSection(section, includeKnowledgeDirectoryTreeFallback);
+      return {
+        order: index + 1,
+        title: section.title?.trim() || defaultGeneratedSectionTitle(section.source),
+        kind: "generated" as const,
+        source: `generated:${section.source}`,
+        content: content.trim(),
+      };
+    }),
+  );
+  const promptFiles = renderedSections.filter((section) => section.kind === "file").map((section) => section.source);
+
+  const header = formatPromptAssemblyHeader({
+    title: payloadTitle,
+    mode: resolvedMode,
+    sections: renderedSections.map(({ order, title: sectionTitle, kind, source }) => ({
+      order,
+      title: sectionTitle,
+      kind,
+      source,
+    })),
+  });
+  const body = renderedSections
+    .map(
+      (section) => `## Section ${section.order}: ${section.title}
+Source: \`${section.source}\`
+
+${section.content}`.trim(),
+    )
+    .join("\n\n");
+  const systemPrompt = [header, body].filter((text) => text.trim().length > 0).join("\n\n");
 
   const payload: SystemPromptPayload = {
     mode: resolvedMode,
-    systemPrompt: withUserSettings,
-    promptFiles: modeConfig.promptFiles.map((filePath) => resolvePromptFilePath(manifestPath, filePath)),
+    title: payloadTitle,
+    systemPrompt: systemPrompt.trim() || FALLBACK_SYSTEM_PROMPT,
+    promptFiles,
+    sections: renderedSections.map(({ order, title: sectionTitle, kind, source }) => ({
+      order,
+      title: sectionTitle,
+      kind,
+      source,
+    })),
   };
   cachedPromptByMode.set(cacheKey, payload);
   return payload;

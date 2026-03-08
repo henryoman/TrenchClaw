@@ -157,6 +157,23 @@ const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
     indexes: [{ name: "idx_chat_messages_conversation_created_at", columns: ["conversation_id", "created_at"] }],
   },
   {
+    name: "instance_profiles",
+    rowSchema: sqliteTables.instance_profiles,
+    columns: [
+      { name: "instance_id", type: "TEXT", primaryKey: true },
+      { name: "display_name", type: "TEXT" },
+      { name: "summary", type: "TEXT" },
+      { name: "trading_style", type: "TEXT" },
+      { name: "risk_tolerance", type: "TEXT" },
+      { name: "preferred_assets_json", type: "TEXT" },
+      { name: "disliked_assets_json", type: "TEXT" },
+      { name: "metadata_json", type: "TEXT" },
+      { name: "created_at", type: "INTEGER", notNull: true },
+      { name: "updated_at", type: "INTEGER", notNull: true },
+    ],
+    indexes: [{ name: "idx_instance_profiles_updated_at", columns: ["updated_at"] }],
+  },
+  {
     name: "instance_facts",
     rowSchema: sqliteTables.instance_facts,
     columns: [

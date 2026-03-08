@@ -5,6 +5,7 @@ export interface RuntimeServerInfo {
   host: string;
   port: number;
   url: string;
+  stop: () => void;
 }
 
 interface RuntimeBootSummary {
@@ -99,6 +100,9 @@ export const startRuntimeServer = (runtime: RuntimeBootstrap): RuntimeServerInfo
     host: hostname,
     port: activePort,
     url: `http://${hostname}:${activePort}`,
+    stop: () => {
+      server.stop(true);
+    },
   };
 };
 

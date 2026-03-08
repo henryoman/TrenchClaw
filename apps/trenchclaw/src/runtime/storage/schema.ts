@@ -5,6 +5,7 @@ import type {
   ChatMessageState,
   ConversationState,
   InstanceFactState,
+  InstanceProfileState,
   JobState,
 } from "../../ai/runtime/types/state";
 import { sqliteJobStatusSchema } from "./sqlite-schema";
@@ -68,6 +69,19 @@ export const chatMessageStateSchema: z.ZodType<ChatMessageState> = z.object({
   content: z.string(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   createdAt: unixMs,
+});
+
+export const instanceProfileStateSchema: z.ZodType<InstanceProfileState> = z.object({
+  instanceId: nonEmpty,
+  displayName: z.string().optional(),
+  summary: z.string().optional(),
+  tradingStyle: z.string().optional(),
+  riskTolerance: z.string().optional(),
+  preferredAssets: z.array(nonEmpty).optional(),
+  dislikedAssets: z.array(nonEmpty).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  createdAt: unixMs,
+  updatedAt: unixMs,
 });
 
 export const instanceFactStateSchema: z.ZodType<InstanceFactState> = z.object({

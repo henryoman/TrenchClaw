@@ -1,5 +1,15 @@
 <script lang="ts">
   const githubUrl = 'https://github.com/henryoman/trenchclaw';
+  const installTargets = [
+    {
+      label: 'macOS',
+      command: "curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | bash"
+    },
+    {
+      label: 'Linux',
+      command: "curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash"
+    }
+  ];
 
   const features = [
     {
@@ -166,6 +176,35 @@
           <div class="text-xs text-muted-dark font-extralight tracking-wide uppercase">Tree-Shakeable</div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- Install -->
+  <section class="max-w-6xl mx-auto px-6 py-20 border-t border-border-subtle">
+    <div class="max-w-4xl mx-auto text-center mb-12">
+      <h2 class="text-5xl md:text-6xl font-black mb-4 tracking-tight">
+        Install with <span class="text-purple-brand">One Command</span>
+      </h2>
+      <p class="text-sm text-muted font-extralight leading-relaxed max-w-2xl mx-auto">
+        Use the platform bootstrap to install or upgrade Bun, Solana CLI, Helius CLI, and TrenchClaw.
+      </p>
+    </div>
+
+    <div class="grid md:grid-cols-2 gap-8">
+      {#each installTargets as target (target.label)}
+        <div class="border border-border-subtle p-8">
+          <div class="flex items-center justify-between gap-4 mb-4">
+            <h3 class="text-xl font-bold">{target.label}</h3>
+            <span class="text-xs uppercase tracking-[0.3em] text-muted-dark font-light">curl</span>
+          </div>
+
+          <div class="border border-border-subtle bg-background/60 p-4 overflow-x-auto">
+            <code class="font-mono text-xs md:text-sm text-cyan-brand whitespace-pre-wrap break-all">
+              {target.command}
+            </code>
+          </div>
+        </div>
+      {/each}
     </div>
   </section>
 

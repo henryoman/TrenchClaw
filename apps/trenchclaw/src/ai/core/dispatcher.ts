@@ -103,16 +103,14 @@ export class ActionDispatcher {
 
       const first = stepResult.results[0];
       if (first) {
-        stepResults.set(resolveStepRefKey(step, index), first);
+        stepResults.set(resolveStepKey(step, index), first);
       }
 
       if (!first?.ok && !first?.retryable) {
         break;
       }
 
-      if (first?.idempotencyKey) {
-        completed.add(first.idempotencyKey);
-      }
+      completed.add(resolveStepKey(step, index));
     }
 
     return { results, policyHits };
@@ -272,7 +270,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-function resolveStepRefKey(step: ActionStep, index: number): string {
+function resolveStepKey(step: ActionStep, index: number): string {
+  if (step.key) {
+    return step.key;
+  }
   if (step.refKey) {
     return step.refKey;
   }

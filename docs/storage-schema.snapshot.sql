@@ -49,6 +49,19 @@ CREATE TABLE "instance_facts" (
   UNIQUE(instance_id, fact_key)
 );
 
+CREATE TABLE "instance_profiles" (
+  "instance_id" TEXT PRIMARY KEY,
+  "display_name" TEXT,
+  "summary" TEXT,
+  "trading_style" TEXT,
+  "risk_tolerance" TEXT,
+  "preferred_assets_json" TEXT,
+  "disliked_assets_json" TEXT,
+  "metadata_json" TEXT,
+  "created_at" INTEGER NOT NULL,
+  "updated_at" INTEGER NOT NULL
+);
+
 CREATE TABLE "jobs" (
   "id" TEXT PRIMARY KEY,
   "bot_id" TEXT NOT NULL,
@@ -125,6 +138,8 @@ CREATE INDEX "idx_http_cache_source_endpoint" ON "http_cache"("source", "endpoin
 CREATE INDEX "idx_instance_facts_expires_at" ON "instance_facts"("expires_at");
 
 CREATE INDEX "idx_instance_facts_instance_updated" ON "instance_facts"("instance_id", "updated_at");
+
+CREATE INDEX "idx_instance_profiles_updated_at" ON "instance_profiles"("updated_at");
 
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
 

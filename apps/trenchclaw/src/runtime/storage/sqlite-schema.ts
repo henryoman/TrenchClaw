@@ -55,6 +55,19 @@ export const sqliteChatMessageRowSchema = z.object({
   created_at: unixMs,
 });
 
+export const sqliteInstanceProfileRowSchema = z.object({
+  instance_id: nonEmpty,
+  display_name: z.string().nullable(),
+  summary: z.string().nullable(),
+  trading_style: z.string().nullable(),
+  risk_tolerance: z.string().nullable(),
+  preferred_assets_json: z.string().nullable(),
+  disliked_assets_json: z.string().nullable(),
+  metadata_json: z.string().nullable(),
+  created_at: unixMs,
+  updated_at: unixMs,
+});
+
 export const sqliteInstanceFactRowSchema = z.object({
   id: nonEmpty,
   instance_id: nonEmpty,
@@ -124,6 +137,7 @@ export const sqliteTables = {
   action_receipts: sqliteActionReceiptRowSchema,
   conversations: sqliteConversationRowSchema,
   chat_messages: sqliteChatMessageRowSchema,
+  instance_profiles: sqliteInstanceProfileRowSchema,
   instance_facts: sqliteInstanceFactRowSchema,
   market_instruments: sqliteMarketInstrumentRowSchema,
   ohlcv_bars: sqliteOhlcvBarRowSchema,
@@ -136,6 +150,7 @@ export type SqliteJobRow = z.infer<typeof sqliteJobRowSchema>;
 export type SqliteActionReceiptRow = z.infer<typeof sqliteActionReceiptRowSchema>;
 export type SqliteConversationRow = z.infer<typeof sqliteConversationRowSchema>;
 export type SqliteChatMessageRow = z.infer<typeof sqliteChatMessageRowSchema>;
+export type SqliteInstanceProfileRow = z.infer<typeof sqliteInstanceProfileRowSchema>;
 export type SqliteInstanceFactRow = z.infer<typeof sqliteInstanceFactRowSchema>;
 export type SqliteMarketInstrumentRow = z.infer<typeof sqliteMarketInstrumentRowSchema>;
 export type SqliteOhlcvBarRow = z.infer<typeof sqliteOhlcvBarRowSchema>;

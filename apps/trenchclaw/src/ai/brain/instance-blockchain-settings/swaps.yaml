@@ -1,0 +1,28 @@
+
+
+
+swapModes:
+  
+  swapType: ultra
+    slippagePresetBps: ultra
+
+
+quickBuyPresets:
+  preset1: ul
+  preset2:
+  preset3:
+
+UserDefinedPresets:
+  swapType: ultra
+  slippagePresetBps: ultra
+  retries: int 
+  priorityFeeLevel:
+  sendWithSender: bool
+  maxGasAmount:
+  useJito: bool
+    jitoTipSettings:
+      tipAccount: string
+      tipAmount: int
+      tipAmountPerTransaction: int
+      maxTipAmountPerTransaction: int
+
