@@ -6,12 +6,8 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
-BUN_BIN_DIR="$HOME/.bun/bin"
-SOLANA_BIN_DIR="$HOME/.local/share/solana/install/active_release/bin"
 LOCAL_BIN_DIR="$HOME/.local/bin"
-
-SOLANA_INSTALL_URL="${SOLANA_INSTALL_URL:-https://release.anza.xyz/stable/install}"
-TRENCHCLAW_INSTALLER_URL="${TRENCHCLAW_INSTALLER_URL:-https://raw.githubusercontent.com/trenchclaw/trenchclaw/main/scripts/install-trenchclaw.sh}"
+TRENCHCLAW_INSTALLER_URL="${TRENCHCLAW_INSTALLER_URL:-https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-trenchclaw.sh}"
 TRENCHCLAW_VERSION="${TRENCHCLAW_VERSION:-latest}"
 
 info() {
@@ -63,57 +59,6 @@ add_path_for_current_process() {
   esac
 }
 
-install_or_upgrade_bun() {
-  require_cmd curl
-
-  if need_cmd bun; then
-    info "Bun detected: $(bun --version)"
-    info "Upgrading Bun..."
-    bun upgrade
-  else
-    info "Installing Bun..."
-    curl_secure https://bun.sh/install | bash
-  fi
-
-  add_path_for_current_process "$BUN_BIN_DIR"
-  ensure_path_in_shell_profiles "$BUN_BIN_DIR"
-  need_cmd bun || fail "Bun is unavailable after install/upgrade"
-  info "Bun ready: $(bun --version)"
-}
-
-install_or_upgrade_solana() {
-  require_cmd curl
-
-  add_path_for_current_process "$SOLANA_BIN_DIR"
-  ensure_path_in_shell_profiles "$SOLANA_BIN_DIR"
-
-  if need_cmd solana; then
-    info "Solana CLI detected: $(solana --version)"
-    if need_cmd agave-install; then
-      info "Updating Solana CLI..."
-      agave-install update || true
-    else
-      info "agave-install missing; reinstalling stable Solana CLI..."
-      sh -c "$(curl_secure "$SOLANA_INSTALL_URL")"
-    fi
-  else
-    info "Installing Solana CLI..."
-    sh -c "$(curl_secure "$SOLANA_INSTALL_URL")"
-  fi
-
-  add_path_for_current_process "$SOLANA_BIN_DIR"
-  need_cmd solana || fail "Solana CLI is unavailable after install/upgrade"
-  info "Solana CLI ready: $(solana --version)"
-}
-
-install_or_upgrade_helius() {
-  info "Installing/upgrading Helius CLI with Bun..."
-  bun add -g helius-cli@latest
-  add_path_for_current_process "$BUN_BIN_DIR"
-  need_cmd helius || fail "Helius CLI is unavailable after install/upgrade"
-  info "Helius CLI ready: $(helius --version)"
-}
-
 install_or_upgrade_trenchclaw() {
   require_cmd curl
 
@@ -126,19 +71,12 @@ install_or_upgrade_trenchclaw() {
 }
 
 print_summary() {
-  info "All dependencies are ready."
-  info "Versions:"
-  info " - bun: $(bun --version)"
-  info " - solana: $(solana --version)"
-  info " - helius: $(helius --version)"
+  info "TrenchClaw is ready."
   info " - trenchclaw: $(trenchclaw --version)"
   info "If your shell still cannot find commands, run: exec \$SHELL -l"
 }
 
 main() {
-  install_or_upgrade_bun
-  install_or_upgrade_solana
-  install_or_upgrade_helius
   install_or_upgrade_trenchclaw
   print_summary
 }

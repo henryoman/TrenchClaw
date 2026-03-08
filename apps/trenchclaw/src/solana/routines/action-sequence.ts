@@ -25,7 +25,6 @@ const actionSequenceRoutineConfigSchema = z.object({
 
 export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
   const config = actionSequenceRoutineConfigSchema.parse(job.config);
-  const keyToIdempotency = new Map<string, string>();
   const seenKeys = new Set<string>();
 
   config.steps.forEach((step, index) => {
@@ -40,22 +39,17 @@ export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
         `Step "${stepKey}" depends on "${step.dependsOn}", but dependencies must reference a prior step key`,
       );
     }
-
-    const idempotencyKey = step.idempotencyKey ?? `${job.id}:${stepKey}`;
-    keyToIdempotency.set(stepKey, idempotencyKey);
   });
 
   return config.steps.map((step, index) => {
     const stepKey = step.key ?? `step-${index + 1}`;
-    const idempotencyKey = step.idempotencyKey ?? keyToIdempotency.get(stepKey);
-    const dependsOnIdempotency = step.dependsOn ? keyToIdempotency.get(step.dependsOn) ?? step.dependsOn : undefined;
 
     return {
-      refKey: stepKey,
+      key: stepKey,
       actionName: step.actionName,
       input: step.input,
-      dependsOn: dependsOnIdempotency,
-      idempotencyKey,
+      dependsOn: step.dependsOn,
+      idempotencyKey: step.idempotencyKey ?? `${job.id}:${stepKey}`,
       retryPolicy: step.retryPolicy,
     };
   });

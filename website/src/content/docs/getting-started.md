@@ -1,39 +1,52 @@
 ---
 title: Getting Started
-description: Clean macOS-first setup with one command that installs or updates Bun, Solana CLI, Helius CLI, and TrenchClaw.
+description: One-command macOS and Linux setup that installs the standalone TrenchClaw release with no Bun requirement.
 order: 1
 ---
 
-Install everything you need on macOS with one command, then launch TrenchClaw.
+Install the standalone TrenchClaw release on macOS or Linux with one command, then launch it.
 
-## macOS Quickstart (One Command)
+## Quickstart (One Command Per OS)
+
+### macOS
 
 Run once in Terminal:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.placeholder/install/macos-bootstrap.sh | bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | bash
 ```
 
-What this does:
+### Linux
 
-- installs or upgrades Bun
-- installs Solana CLI if missing and updates it when available
-- installs or upgrades Helius CLI with Bun
+Run once in Terminal:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash
+```
+
+What each installer does:
+
 - installs or upgrades TrenchClaw
-- prints all version checks at the end
+- installs a standalone binary release for your current platform
+- prints the installed TrenchClaw version at the end
 
 ### Pin a TrenchClaw version
 
+macOS:
+
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.placeholder/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
+```
+
+Linux:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
 ```
 
 ## Verify
 
 ```bash
-bun --version
-solana --version
-helius --version
 trenchclaw --version
 ```
 
@@ -70,7 +83,7 @@ bun run app:build
 bun run bundle:verify
 ```
 
-Create release artifact:
+Create standalone release artifacts:
 
 ```bash
 bun run release:package -- --version v0.0.2
@@ -93,17 +106,3 @@ export PATH="$HOME/.bun/bin:$HOME/.local/share/solana/install/active_release/bin
 ```
 
 Then rerun quickstart.
-
-### Launcher says `Run ./setup.sh first`
-
-Run:
-
-```bash
-~/.local/share/trenchclaw/current/setup.sh
-```
-
-Then re-run:
-
-```bash
-trenchclaw
-```

@@ -1,3 +1,6 @@
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
 type AppendUtf8Request = {
   id: string;
   type: "appendUtf8";
@@ -40,11 +43,21 @@ export const setLogIoWriteObserver = (observer: LogIoWriteObserver | null): void
 };
 
 export class LogIoWorkerClient {
-  private readonly worker: Worker;
+  private worker: Worker | null = null;
   private readonly pending = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
 
   constructor() {
-    this.worker = new Worker(new URL("./log-io.worker.ts", import.meta.url).href, { type: "module" });
+    if (process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER === "1") {
+      return;
+    }
+
+    try {
+      this.worker = new Worker(new URL("./log-io.worker.ts", import.meta.url).href, { type: "module" });
+    } catch {
+      this.worker = null;
+      return;
+    }
+
     this.worker.onmessage = (event: MessageEvent<LogIoResponse>) => {
       const response = event.data;
       const pending = this.pending.get(response.id);
@@ -70,14 +83,42 @@ export class LogIoWorkerClient {
       }
       pending.reject(new Error(response.error ?? "log io worker failed"));
     };
+    this.worker.onerror = () => {
+      this.worker?.terminate();
+      this.worker = null;
+    };
+  }
+
+  private async performDirectWrite(request: Omit<LogIoRequest, "id">): Promise<void> {
+    await mkdir(path.dirname(request.filePath), { recursive: true });
+    if (request.type === "appendUtf8") {
+      await appendFile(request.filePath, request.content, "utf8");
+    } else {
+      await writeFile(request.filePath, request.content, "utf8");
+    }
+    writeObserver?.({
+      ok: true,
+      operation: request.type,
+      filePath: request.filePath,
+      bytes: Buffer.byteLength(request.content, "utf8"),
+    });
   }
 
   request(request: Omit<LogIoRequest, "id">): Promise<void> {
+    if (!this.worker) {
+      return this.performDirectWrite(request);
+    }
+
     const id = crypto.randomUUID();
     const withId: LogIoRequest = { ...request, id };
     return new Promise<void>((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
-      this.worker.postMessage(withId);
+      try {
+        this.worker?.postMessage(withId);
+      } catch {
+        this.pending.delete(id);
+        void this.performDirectWrite(request).then(resolve, reject);
+      }
     });
   }
 

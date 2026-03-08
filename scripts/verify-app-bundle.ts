@@ -67,21 +67,22 @@ const run = async (): Promise<void> => {
   const relFiles = files.map((filePath) => toRelativeUnixPath(bundleRoot, filePath));
 
   const blockedExactPaths = new Set<string>([
-    "apps/trenchclaw/src/ai/brain/protected/no-read/vault.json",
-    "apps/trenchclaw/src/ai/brain/protected/wallet-library.jsonl",
+    "core/src/ai/brain/protected/no-read/vault.json",
+    "core/src/ai/brain/protected/wallet-library.jsonl",
   ]);
 
   const noReadAllowedPaths = new Set<string>([
-    "apps/trenchclaw/src/ai/brain/protected/no-read/.gitkeep",
-    "apps/trenchclaw/src/ai/brain/protected/no-read/README.md",
-    "apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json",
+    "core/src/ai/brain/protected/no-read/.gitkeep",
+    "core/src/ai/brain/protected/no-read/README.md",
+    "core/src/ai/brain/protected/no-read/vault.template.json",
   ]);
 
   const requiredPaths = [
-    "apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json",
-    "apps/trenchclaw/src/ai/brain/protected/no-read/README.md",
-    "apps/trenchclaw/src/ai/brain/protected/keypairs/.keep",
-    "apps/trenchclaw/src/ai/brain/protected/instance/.gitkeep",
+    "gui/index.html",
+    "core/src/ai/brain/protected/no-read/vault.template.json",
+    "core/src/ai/brain/protected/no-read/README.md",
+    "core/src/ai/brain/protected/keypairs/.keep",
+    "core/src/ai/brain/protected/instance/.gitkeep",
   ];
 
   const violations: string[] = [];
@@ -98,16 +99,32 @@ const run = async (): Promise<void> => {
       violations.push(`environment file present in bundle: ${relPath}`);
     }
 
-    if (relPath.startsWith("apps/trenchclaw/src/ai/brain/protected/keypairs/")) {
+    if (relPath.includes("/node_modules/") || relPath.startsWith("node_modules/")) {
+      violations.push(`node_modules should not be bundled: ${relPath}`);
+    }
+
+    if (relPath.startsWith("core/src/ai/brain/db/")) {
+      violations.push(`runtime db/state file present in readonly bundle: ${relPath}`);
+    }
+
+    if (relPath.startsWith("core/src/ai/brain/protected/keypairs/")) {
       if (fileName !== ".keep" && fileName !== ".gitkeep") {
         violations.push(`unexpected keypair file in bundle: ${relPath}`);
       }
     }
 
-    if (relPath.startsWith("apps/trenchclaw/src/ai/brain/protected/no-read/")) {
+    if (relPath.startsWith("core/src/ai/brain/protected/instance/") && fileName !== ".gitkeep") {
+      violations.push(`unexpected instance-state file in bundle: ${relPath}`);
+    }
+
+    if (relPath.startsWith("core/src/ai/brain/protected/no-read/")) {
       if (!noReadAllowedPaths.has(relPath)) {
         violations.push(`unexpected no-read file in bundle: ${relPath}`);
       }
+    }
+
+    if (fileName.endsWith(".sqlite") || fileName.endsWith(".jsonl") || fileName.endsWith(".log")) {
+      violations.push(`runtime artifact present in bundle: ${relPath}`);
     }
 
     if (lower.endsWith(".pem") || lower.endsWith(".key") || lower.endsWith(".p12")) {

@@ -36,6 +36,11 @@ Primary database: `storage.sqlite.path` (from runtime settings).
   - FK: `conversation_id -> conversations(id)`
   - Indexed: `(conversation_id, created_at DESC)`
 
+- `instance_profiles`
+: One-row-per-instance profile memory for stable traits and preferences.
+  - Key: `instance_id`
+  - Indexed: `updated_at DESC`
+
 - `instance_facts`
 : Per-instance durable fact store for model memory.
   - Key: `id`
@@ -85,9 +90,6 @@ All runtime log sinks are file-backed and write through a dedicated Bun worker q
 - `summary-log-store.ts`
 : Writes concise top-level runtime summaries into daily files (`summary/<YYYY-MM-DD>.log`), focused on runtime lifecycle, completed data downloads, and executed trades.
 
-- `file-event-log.ts`
-: Appends structured event JSONL lines into daily files (`events/<YYYY-MM-DD>.jsonl`).
-
 - `session-log-store.ts`
 : Session index (`sessions.json`) and per-session JSONL transcript files. By default, runtime boots with the same `sessionKey` append to the existing session file; set `storage.sessions.reuseSessionOnBoot=false` to force file rotation per boot.
 
@@ -104,6 +106,8 @@ All runtime log sinks are file-backed and write through a dedicated Bun worker q
 
 - Job/execution state: `jobs`, `action_receipts`
 - Conversation history: `conversations`, `chat_messages`
+- Stable instance memory: `instance_profiles`
+- Granular instance memory: `instance_facts`
 - Downloaded chart candles: `ohlcv_bars`
 - Latest computed market state: `market_snapshots`
 - Raw API cacheable responses: `http_cache`
@@ -116,6 +120,12 @@ The model-facing read API for runtime state is `queryRuntimeStore`:
 - Central request/response schema: `src/solana/actions/data-fetch/runtime/queryRuntimeStore.ts`
 - Search endpoint: `searchRuntimeText` (conversations/messages/jobs/receipts)
 - Context endpoint: `getRuntimeKnowledgeSurface` (schema snapshot, counts, recent runtime history)
+
+The model-facing memory API family is:
+
+- Read: `src/solana/actions/data-fetch/runtime/queryInstanceMemory.ts`
+- Write: `src/solana/actions/data-fetch/runtime/mutateInstanceMemory.ts`
+- Default bundled read: `getBundle`
 
 ## Retention
 

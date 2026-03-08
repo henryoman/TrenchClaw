@@ -6,13 +6,15 @@
 - `core/`: deterministic runtime implementations that satisfy `runtime/types`.
 - `llm/`: model I/O only (prompt loading + Vercel AI SDK calls).
 
+Live callable capability metadata now lives under `src/runtime/capabilities/`, and generated docs should derive from that registry instead of duplicating action/tool catalogs by hand.
+
 ## What Lives Where
 
 - `core/dispatcher.ts`: executes `ActionStep[]` with retries, policy checks, and idempotency.
 - `core/scheduler.ts`: runs due jobs and dispatches routine plans.
 - `core/state-store.ts`: in-memory state implementation (jobs, receipts, logs).
 - `llm/client.ts`: single OpenAI/Vercel AI SDK client wrapper.
-- `llm/prompt-loader.ts`: builds system payloads from `src/ai/brain/protected/system-settings/system/prompts/payload-manifest.yaml`.
+- `llm/prompt-loader.ts`: builds ordered system payloads from `src/ai/brain/protected/system/payload-manifest.yaml`.
 - `llm/prompt-manifest.ts`: prompt manifest parsing and mode resolution.
 - `llm/shared.ts`: shared path/structure parsing helpers for loaders.
 

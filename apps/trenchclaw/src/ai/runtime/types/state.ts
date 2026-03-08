@@ -54,6 +54,27 @@ export interface InstanceFactState {
   expiresAt?: number;
 }
 
+export interface InstanceProfileState {
+  instanceId: string;
+  displayName?: string;
+  summary?: string;
+  tradingStyle?: string;
+  riskTolerance?: string;
+  preferredAssets?: string[];
+  dislikedAssets?: string[];
+  metadata?: Record<string, unknown>;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface InstanceMemoryBundle {
+  instanceId: string;
+  profile: InstanceProfileState | null;
+  facts: InstanceFactState[];
+  factMap: Record<string, unknown>;
+  fetchedAt: number;
+}
+
 export type RuntimeSearchScope = "all" | "conversations" | "messages" | "jobs" | "receipts";
 
 export interface RuntimeSearchResult {
@@ -94,8 +115,15 @@ export interface StateStore {
   listConversations(limit?: number): ConversationState[];
   saveChatMessage(message: ChatMessageState): void;
   listChatMessages(conversationId: string, limit?: number): ChatMessageState[];
+  saveInstanceProfile(profile: InstanceProfileState): void;
+  getInstanceProfile(instanceId: string): InstanceProfileState | null;
   saveInstanceFact(fact: InstanceFactState): void;
-  listInstanceFacts(input: { instanceId: string; limit?: number; includeExpired?: boolean }): InstanceFactState[];
+  listInstanceFacts(input: {
+    instanceId: string;
+    limit?: number;
+    includeExpired?: boolean;
+    keyPrefix?: string;
+  }): InstanceFactState[];
   getInstanceFact(input: { instanceId: string; factKey: string; includeExpired?: boolean }): InstanceFactState | null;
   searchRuntimeText(input: {
     query: string;

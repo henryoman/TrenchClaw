@@ -1,16 +1,14 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
+import { resolveRuntimeContractPath } from "../runtime-paths";
 
 const isWithinRoot = (candidatePath: string, rootPath: string): boolean =>
   candidatePath === rootPath || candidatePath.startsWith(`${rootPath}${path.sep}`);
 
 const resolveAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? path.resolve(targetPath) : path.resolve(APP_ROOT_DIRECTORY, targetPath);
+  path.isAbsolute(targetPath) ? path.resolve(targetPath) : resolveRuntimeContractPath(targetPath);
 
 const normalizeRoot = (rootPath: string): string =>
-  path.isAbsolute(rootPath) ? path.resolve(rootPath) : path.resolve(APP_ROOT_DIRECTORY, rootPath);
+  path.isAbsolute(rootPath) ? path.resolve(rootPath) : resolveRuntimeContractPath(rootPath);
 
 export class WriteScopeViolationError extends Error {
   constructor(message: string) {

@@ -3,6 +3,7 @@ import type {
   ChatMessageState,
   ConversationState,
   InstanceFactState,
+  InstanceProfileState,
   JobState,
   JobStatus,
   RuntimeKnowledgeSurface,
@@ -16,6 +17,7 @@ export class InMemoryStateStore implements IStateStore {
   private readonly receipts = new Map<string, ActionResult>();
   private readonly conversations = new Map<string, ConversationState>();
   private readonly chatMessages = new Map<string, ChatMessageState[]>();
+  private readonly instanceProfiles = new Map<string, InstanceProfileState>();
   private readonly instanceFacts = new Map<string, InstanceFactState>();
 
   saveJob(job: JobState): void {
@@ -95,15 +97,30 @@ export class InMemoryStateStore implements IStateStore {
       .slice(0, Math.max(1, Math.trunc(limit)));
   }
 
+  saveInstanceProfile(profile: InstanceProfileState): void {
+    this.instanceProfiles.set(profile.instanceId, { ...profile });
+  }
+
+  getInstanceProfile(instanceId: string): InstanceProfileState | null {
+    return this.instanceProfiles.get(instanceId) ?? null;
+  }
+
   saveInstanceFact(fact: InstanceFactState): void {
     this.instanceFacts.set(fact.id, { ...fact });
   }
 
-  listInstanceFacts(input: { instanceId: string; limit?: number; includeExpired?: boolean }): InstanceFactState[] {
+  listInstanceFacts(input: {
+    instanceId: string;
+    limit?: number;
+    includeExpired?: boolean;
+    keyPrefix?: string;
+  }): InstanceFactState[] {
     const now = Date.now();
     const includeExpired = input.includeExpired === true;
+    const keyPrefix = input.keyPrefix?.trim();
     return Array.from(this.instanceFacts.values())
       .filter((entry) => entry.instanceId === input.instanceId)
+      .filter((entry) => !keyPrefix || entry.factKey.startsWith(keyPrefix))
       .filter((entry) => includeExpired || entry.expiresAt === undefined || entry.expiresAt > now)
       .toSorted((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, Math.max(1, Math.trunc(input.limit ?? 200)));

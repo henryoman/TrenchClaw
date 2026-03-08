@@ -121,7 +121,6 @@ Storage implementation lives in:
 
 Default normalized settings currently point to:
 - SQLite DB: `src/ai/brain/db/runtime.sqlite`
-- Event files: `src/ai/brain/db/events`
 - Sessions: `src/ai/brain/db/sessions`
 - Memory: `src/ai/brain/db/memory`
 
@@ -138,7 +137,6 @@ SQLite tables include:
 
 Active stores in runtime:
 - `SqliteStateStore`
-- `RuntimeFileEventLog`
 - `SessionLogStore`
 - `SessionSummaryStore`
 - `MemoryLogStore`

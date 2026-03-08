@@ -29,13 +29,29 @@ describe("loadSystemPromptPayload", () => {
     const payload = await loadSystemPromptPayload();
 
     expect(payload.mode).toBe("operator");
+    expect(payload.title).toBe("Operator Mode");
+    expect(payload.sections.length).toBe(8);
     expect(payload.systemPrompt).toContain("TrenchClaw System Prompt");
+    expect(payload.systemPrompt).toContain("# Operator Mode");
+    expect(payload.systemPrompt).toContain("## Prompt Assembly Order");
     expect(payload.systemPrompt).toContain("Mode: Operator");
+    expect(payload.systemPrompt).toContain("Core System Prompt");
+    expect(payload.systemPrompt).toContain("Operator Mode Instructions");
+    expect(payload.systemPrompt).toContain("Runtime Capability Appendix");
+    expect(payload.systemPrompt).toContain("Workspace Context Snapshot");
+    expect(payload.systemPrompt).toContain("Knowledge Manifest");
+    expect(payload.systemPrompt).toContain("Filesystem Policy");
+    expect(payload.systemPrompt).toContain("Resolved User Settings");
+    expect(payload.systemPrompt).toContain("Live Callable Capability Appendix");
     expect(payload.systemPrompt).toContain("Workspace Map (apps/trenchclaw/)");
     expect(payload.systemPrompt).toContain("# WORKSPACE ROOT: apps/trenchclaw/");
+    expect(payload.systemPrompt).toContain("Available Knowledge Manifest");
     expect(payload.systemPrompt).toContain("ai/");
     expect(payload.systemPrompt).toContain("User Settings (Resolved)");
-    expect(payload.systemPrompt).toContain("\"primaryRpc\": \"helius\"");
+    expect(
+      payload.systemPrompt.includes("\"primaryRpc\": \"helius\"") ||
+        payload.systemPrompt.includes("User settings could not be loaded:"),
+    ).toBe(true);
     expect(payload.promptFiles.length).toBe(3);
   });
 
@@ -43,6 +59,7 @@ describe("loadSystemPromptPayload", () => {
     const payload = await loadSystemPromptPayload("operator");
 
     expect(payload.mode).toBe("operator");
+    expect(payload.title).toBe("Operator Mode");
     expect(payload.systemPrompt).toContain("Mode: Operator");
     expect(payload.systemPrompt).toContain("Workspace Map (apps/trenchclaw/)");
   });

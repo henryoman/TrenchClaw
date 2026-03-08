@@ -1,5 +1,4 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import {
   convertToModelMessages,
@@ -11,7 +10,6 @@ import {
   type UIMessage,
 } from "ai";
 import { z } from "zod";
-import { buildRuntimeChatToolNameCatalog } from "../ai/tools";
 import { createActionContext } from "../ai/runtime/types/context";
 import type {
   ActionDispatcher,
@@ -26,7 +24,7 @@ import { resolveGatewayConfig, resolveLlmProviderConfig } from "../ai/llm/config
 import {
   createWorkspaceBashTools,
 } from "./workspace-bash";
-import { buildFilesystemPolicyPrompt } from "./security/filesystem-manifest";
+import type { RuntimeCapabilitySnapshot } from "./capabilities";
 import type { RuntimeLogger } from "./logging";
 
 export interface RuntimeChatService {
@@ -45,6 +43,7 @@ interface RuntimeChatServiceDeps {
   stateStore: StateStore;
   llm: LlmClient | null;
   logger?: RuntimeLogger;
+  capabilitySnapshot?: RuntimeCapabilitySnapshot;
   workspaceToolsEnabled?: boolean;
   workspaceRootDirectory?: string;
 }
@@ -76,34 +75,13 @@ const resolveStreamingModel = async (): Promise<LanguageModel> => {
   throw new Error("No model provider configured. Set vault llm api keys or TRENCHCLAW_* provider env vars.");
 };
 
-const buildSystemPrompt = async (deps: RuntimeChatServiceDeps, toolNames: string[]): Promise<string> => {
-  const base = deps.llm?.defaultSystemPrompt ?? "You are TrenchClaw's runtime assistant.";
-  const toolCatalog = toolNames.length > 0 ? toolNames.join(", ") : "none";
-  let filesystemPolicy = "Filesystem policy is enforced server-side; if a path is blocked, ask for an allowed target path.";
-  try {
-    filesystemPolicy = await buildFilesystemPolicyPrompt({ actor: "agent" });
-  } catch {
-    // Keep runtime chat available even if manifest cannot be loaded.
-  }
-  const generatedCatalogs = await loadGeneratedContextCatalogs();
-  return [
-    base,
-    "Use tools for real execution. Do not claim execution unless a tool call confirms success.",
-    "Always return at least one non-empty plain-text assistant response. Never end with reasoning-only output.",
-    "For data-heavy questions, use multi-step retrieval: query/search first, inspect results, then follow-up tool calls.",
-    `Available runtime tools: ${toolCatalog}`,
-    filesystemPolicy,
-    generatedCatalogs,
-  ].join("\n\n");
-};
+const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> =>
+  deps.llm?.defaultSystemPrompt ?? "You are TrenchClaw's runtime assistant.";
 
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
 const DEFAULT_WORKSPACE_ROOT_DIRECTORY = fileURLToPath(new URL("../ai/brain/workspace", import.meta.url));
-const GENERATED_CONTEXT_SNAPSHOT_FILE = fileURLToPath(
-  new URL("../ai/brain/protected/context/workspace-and-schema.md", import.meta.url),
-);
 const DEFAULT_CHAT_ID_PREFIX = "chat";
 const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 1200;
 
@@ -198,36 +176,6 @@ const withChatHeaders = (headers: HeadersInit | undefined, chatId: string): Head
   return merged;
 };
 
-const extractSection = (markdown: string, heading: string): string => {
-  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const pattern = new RegExp(`## ${escaped}\\n([\\s\\S]*?)(?=\\n## |$)`, "m");
-  const match = pattern.exec(markdown);
-  const body = match?.[1];
-  return typeof body === "string" ? `## ${heading}\n${body.trim()}` : "";
-};
-
-let cachedGeneratedContextCatalogs: string | null = null;
-
-const loadGeneratedContextCatalogs = async (): Promise<string> => {
-  if (cachedGeneratedContextCatalogs !== null) {
-    return cachedGeneratedContextCatalogs;
-  }
-  try {
-    const markdown = await readFile(GENERATED_CONTEXT_SNAPSHOT_FILE, "utf8");
-    const sections = [
-      extractSection(markdown, "Runtime Action Catalog (Generated)"),
-      extractSection(markdown, "Runtime Chat Tool Catalog (Generated)"),
-      extractSection(markdown, "GUI API Route Catalog (Generated)"),
-    ].filter((section) => section.length > 0);
-    cachedGeneratedContextCatalogs =
-      sections.length > 0 ? `Capability Snapshot (generated at startup):\n\n${sections.join("\n\n")}` : "";
-    return cachedGeneratedContextCatalogs;
-  } catch {
-    cachedGeneratedContextCatalogs = "";
-    return cachedGeneratedContextCatalogs;
-  }
-};
-
 const truncateText = (value: string, maxLength = 1_500): string =>
   value.length > maxLength ? `${value.slice(0, maxLength)}…[truncated]` : value;
 
@@ -262,8 +210,9 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
       continue;
     }
 
+    const capability = deps.capabilitySnapshot?.actions.find((entry) => entry.name === action.name);
     tools[action.name] = tool({
-      description: toToolDescription(action.name, action.category, action.subcategory),
+      description: capability?.description ?? toToolDescription(action.name, action.category, action.subcategory),
       inputSchema: action.inputSchema as z.ZodTypeAny,
       execute: async (rawInput: unknown) => {
         const dispatchStartedAt = Date.now();
@@ -349,13 +298,12 @@ export const createRuntimeChatService = (
   let workspaceToolPromise: Promise<Record<string, unknown>> | null = null;
 
   const listToolNames = (): string[] =>
-    buildRuntimeChatToolNameCatalog({
-      actionNames: deps.registry
-        .list()
-        .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
-        .map((entry) => entry.name),
-      workspaceToolsEnabled,
-    });
+    deps.capabilitySnapshot
+      ? deps.capabilitySnapshot.chatTools.map((toolEntry) => toolEntry.name)
+      : deps.registry
+          .list()
+          .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
+          .map((entry) => entry.name);
 
   const generateText = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
     if (!deps.llm) {
@@ -389,7 +337,6 @@ export const createRuntimeChatService = (
       durationMs: Date.now() - modelResolveStartedAt,
     });
 
-    const toolNames = listToolNames();
     const tools: Record<string, any> = buildActionTools(deps);
     const now = Date.now();
     const existingConversation = deps.stateStore.getConversation(chatId);
@@ -416,7 +363,7 @@ export const createRuntimeChatService = (
     }
     try {
       const prepareModelInputStartedAt = Date.now();
-      const systemPrompt = await buildSystemPrompt(deps, toolNames);
+      const systemPrompt = await buildSystemPrompt(deps);
       const modelMessages = await convertMessages(normalizedMessages);
       deps.logger?.info("chat:model_input_ready", {
         chatId,
@@ -533,7 +480,7 @@ export const createRuntimeChatService = (
           lastMessage: normalizedMessages.at(-1)?.parts ?? null,
         }),
       });
-      throw new Error(errorMessage);
+      throw new Error(errorMessage, { cause: error });
     }
   };
 

@@ -10,7 +10,6 @@ const TURBO_ROOT = join(APP_ROOT, ".turbo");
 const DB_FILES_TO_KEEP = new Set([
   ".gitignore",
   "README.md",
-  "events/.keep",
   "memory/MEMORY.md",
   "sessions/.keep",
   "summaries/.keep",

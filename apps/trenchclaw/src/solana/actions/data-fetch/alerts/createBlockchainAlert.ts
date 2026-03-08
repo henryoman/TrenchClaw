@@ -1,6 +1,5 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
@@ -8,6 +7,7 @@ import {
   assertModelFilesystemReadAllowed,
   assertModelFilesystemWriteAllowed,
 } from "../../../../runtime/security/filesystem-manifest";
+import { resolveRuntimeContractPath } from "../../../../runtime/runtime-paths";
 
 const alertConditionSchema = z.discriminatedUnion("type", [
   z.object({
@@ -56,8 +56,6 @@ interface CreateBlockchainAlertOutput {
   alertCount: number;
 }
 
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../../..", import.meta.url)));
-
 const readExistingAlerts = async (storageFilePath: string): Promise<StoredBlockchainAlert[]> => {
   try {
     const raw = await readFile(storageFilePath, "utf-8");
@@ -89,7 +87,7 @@ export const createBlockchainAlertAction: Action<CreateBlockchainAlertInput, Cre
       const now = new Date().toISOString();
       const storageFilePath = path.isAbsolute(input.storageFilePath)
         ? input.storageFilePath
-        : path.join(APP_ROOT_DIRECTORY, input.storageFilePath);
+        : resolveRuntimeContractPath(input.storageFilePath);
 
       await assertModelFilesystemReadAllowed({
         actor: _ctx.actor,

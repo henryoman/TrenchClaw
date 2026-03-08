@@ -1,5 +1,4 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import {
   ActionDispatcher,
@@ -14,7 +13,6 @@ import {
   type JobState,
   type RuntimeEventBus,
   type RuntimeEventName,
-  type RuntimeEventMap,
   type StateStore,
   type LlmClient,
   type LlmGenerateInput,
@@ -33,15 +31,17 @@ import {
   isRuntimeActionEnabledBySettings,
   type RuntimeAction,
 } from "../ai/tools";
+import { getRuntimeCapabilitySnapshot, type RuntimeCapabilitySnapshot } from "./capabilities";
 import {
   loadRuntimeSettings,
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
 } from "./load";
 import { createRuntimeLogger, type RuntimeLogger } from "./logging";
+import { refreshWorkspaceContext } from "../lib/agent-scripts/refresh-workspace-context";
+import { refreshKnowledgeManifest } from "../lib/agent-scripts/refresh-knowledge-manifest";
 import {
   MemoryLogStore,
-  RuntimeFileEventLog,
   SessionLogStore,
   SessionSummaryStore,
   SummaryLogStore,
@@ -51,11 +51,11 @@ import {
   type ActiveSessionInfo,
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
+import { CORE_APP_ROOT } from "./runtime-paths";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "privacySwap"]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
@@ -79,33 +79,23 @@ const envFlagEnabled = (name: string, fallback: boolean): boolean => {
   return configured === "1" || configured.toLowerCase() === "true";
 };
 
-const runBootstrapScript = async (logger: RuntimeLogger, relativeScriptPath: string): Promise<void> => {
-  const proc = Bun.spawn([process.execPath, "run", relativeScriptPath], {
-    cwd: APP_ROOT_DIRECTORY,
-    stdout: "pipe",
-    stderr: "pipe",
-    env: process.env,
-  });
-  const [exitCode, stdout, stderr] = await Promise.all([
-    proc.exited,
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-  ]);
-
-  if (exitCode !== 0) {
+const runBootstrapTask = async (
+  logger: RuntimeLogger,
+  label: string,
+  task: () => Promise<string[]>,
+): Promise<void> => {
+  try {
+    const output = (await task()).join("\n").trim();
+    if (output) {
+      logger.info("context:refresh", {
+        script: label,
+        output,
+      });
+    }
+  } catch (error) {
     logger.warn("context:refresh_failed", {
-      script: relativeScriptPath,
-      exitCode,
-      stderr: stderr.trim(),
-    });
-    return;
-  }
-
-  const output = stdout.trim();
-  if (output) {
-    logger.info("context:refresh", {
-      script: relativeScriptPath,
-      output,
+      script: label,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 };
@@ -115,10 +105,10 @@ const runBootContextRefresh = async (logger: RuntimeLogger): Promise<void> => {
     return;
   }
 
-  await runBootstrapScript(logger, "src/lib/agent-scripts/refresh-workspace-context.ts");
+  await runBootstrapTask(logger, "refresh-workspace-context", refreshWorkspaceContext);
 
   if (envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE", true)) {
-    await runBootstrapScript(logger, "src/lib/agent-scripts/refresh-knowledge-manifest.ts");
+    await runBootstrapTask(logger, "refresh-knowledge-manifest", refreshKnowledgeManifest);
   }
 };
 
@@ -213,7 +203,7 @@ const resolveStorageRootDirectory = (settings: RuntimeSettings): string => {
   const sqlitePath = settings.storage.sqlite.path;
   const sqliteDir = path.isAbsolute(sqlitePath)
     ? path.dirname(sqlitePath)
-    : path.join(APP_ROOT_DIRECTORY, path.dirname(sqlitePath));
+    : path.join(CORE_APP_ROOT, path.dirname(sqlitePath));
   return path.basename(sqliteDir) === "runtime" ? path.dirname(sqliteDir) : sqliteDir;
 };
 
@@ -325,18 +315,10 @@ const attachEventLogging = (
   settings: RuntimeSettings,
   logger: RuntimeLogger,
   eventBus: RuntimeEventBus,
-  fileEventLog?: RuntimeFileEventLog,
   sessionLogStore?: SessionLogStore,
   memoryLogStore?: MemoryLogStore,
   summaryLogStore?: SummaryLogStore,
 ): void => {
-  if (fileEventLog) {
-    for (const eventName of EVENT_NAMES) {
-      eventBus.on<typeof eventName>(eventName, (event) => {
-        fileEventLog.write(event.type, event.payload as RuntimeEventMap[typeof eventName], event.timestamp);
-      });
-    }
-  }
   if (sessionLogStore) {
     for (const eventName of EVENT_NAMES) {
       eventBus.on<typeof eventName>(eventName, (event) => {
@@ -609,6 +591,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       cache: pruneResult.cacheDeleted,
     });
   }
+  const capabilitySnapshot: RuntimeCapabilitySnapshot = getRuntimeCapabilitySnapshot(settings);
   const baseLlm = await createLlmClientFromEnv();
   const llm = baseLlm ? instrumentLlmClient(baseLlm, logger) : null;
   const registry = new ActionRegistry();
@@ -655,9 +638,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     settings.runtime.scheduler.tickMs,
   );
 
-  const fileEventLog = settings.storage.files.enabled
-    ? new RuntimeFileEventLog({ directory: settings.storage.files.eventsDirectory })
-    : undefined;
   const sessionLogStore = settings.storage.sessions.enabled
     ? new SessionLogStore({
         directory: settings.storage.sessions.directory,
@@ -691,7 +671,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     );
   }
 
-  attachEventLogging(settings, logger, eventBus, fileEventLog, sessionLogStore, memoryLogStore, summaryLogStore);
+  attachEventLogging(settings, logger, eventBus, sessionLogStore, memoryLogStore, summaryLogStore);
   scheduler.start();
 
   const enqueueJob = (input: {
@@ -749,6 +729,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       stateStore,
       llm,
       logger,
+      capabilitySnapshot,
       workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings(settings),
     }),
     session,

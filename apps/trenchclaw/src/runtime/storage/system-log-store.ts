@@ -1,19 +1,17 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import type { RuntimeLogEntry } from "../logging";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
+import { resolveRuntimeContractPath } from "../runtime-paths";
 import { getLogIoWorkerClient } from "./log-io-worker";
 
 export interface SystemLogStoreConfig {
   directory: string;
 }
 
-const APP_ROOT_DIRECTORY = path.resolve(fileURLToPath(new URL("../../..", import.meta.url)));
-
 const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : path.join(APP_ROOT_DIRECTORY, targetPath);
+  path.isAbsolute(targetPath) ? targetPath : resolveRuntimeContractPath(targetPath);
 
 const dateKey = (timestampIso: string): string => timestampIso.slice(0, 10);
 

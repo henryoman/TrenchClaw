@@ -1,6 +1,10 @@
 import path from "node:path";
 import type { GuiPublicRpcOptionView, GuiSecretOptionView } from "@trenchclaw/types";
-import { CORE_APP_ROOT } from "../runtime-paths";
+import {
+  RUNTIME_INSTANCE_ROOT,
+  RUNTIME_NO_READ_ROOT,
+  resolveBundledBrainPath,
+} from "../runtime-paths";
 
 export const MAX_ACTIVITY_ITEMS = 250;
 export const GUI_QUEUE_INCLUDE_HISTORY = process.env.GUI_QUEUE_INCLUDE_HISTORY === "1";
@@ -10,10 +14,10 @@ export const CORS_HEADERS = {
   "access-control-allow-methods": "GET,POST,PUT,DELETE,OPTIONS",
   "access-control-allow-headers": "content-type,accept",
 };
-export const INSTANCE_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/instance");
-export const NO_READ_DIRECTORY = path.join(CORE_APP_ROOT, "src/ai/brain/protected/no-read");
+export const INSTANCE_DIRECTORY = RUNTIME_INSTANCE_ROOT;
+export const NO_READ_DIRECTORY = RUNTIME_NO_READ_ROOT;
 export const VAULT_FILE_PATH = path.join(NO_READ_DIRECTORY, "vault.json");
-export const VAULT_TEMPLATE_FILE_PATH = path.join(NO_READ_DIRECTORY, "vault.template.json");
+export const VAULT_TEMPLATE_FILE_PATH = resolveBundledBrainPath("protected/no-read/vault.template.json");
 export const DISPATCH_TEST_DEFAULT_WAIT_MS = 4000;
 export const DISPATCH_TEST_MAX_WAIT_MS = 20000;
 

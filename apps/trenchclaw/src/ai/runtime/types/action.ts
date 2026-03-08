@@ -25,6 +25,7 @@ export interface ActionResult<TData = unknown> {
 }
 
 export interface ActionStep<TInput = unknown> {
+  key?: string;
   refKey?: string;
   actionName: string;
   input: TInput;
