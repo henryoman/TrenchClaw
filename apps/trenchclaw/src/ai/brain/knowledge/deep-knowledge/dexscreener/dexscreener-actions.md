@@ -1,73 +1,97 @@
-# Dexscreener Actions Invocation Standard
+# Dexscreener Data Retrieval Guide
 
-This is the **standard invocation format** for all Dexscreener data actions in TrenchClaw.
+TrenchClaw uses Dexscreener as a **Solana-only market discovery surface**.
+These actions are for finding boosted tokens, recent paid promotion activity, token profiles, pairs, and pair-level market context.
 
-## Global invocation shape
+Do not pass a chain field. The runtime hardcodes Solana where needed and filters multi-chain responses down to Solana before returning them.
+
+## What to use for what
+
+Use these actions when you want:
+
+- **Top promoted tokens right now**: `getDexscreenerTopTokenBoosts()`
+- **Newest paid boosts**: `getDexscreenerLatestTokenBoosts()`
+- **Newest token profile listings**: `getDexscreenerLatestTokenProfiles()`
+- **Recent promoted/ad activity**: `getDexscreenerLatestAds()`
+- **Recent community-led claim/takeover activity**: `getDexscreenerLatestCommunityTakeovers()`
+- **A token's paid order / promotion status**: `getDexscreenerOrdersByToken({ tokenAddress })`
+- **Search by symbol, name, token address, or pair address**: `searchDexscreenerPairs({ query })`
+- **Get a specific pair**: `getDexscreenerPairByChainAndPairId({ pairAddress })`
+- **Get all Solana pools for one token**: `getDexscreenerTokenPairsByChain({ tokenAddress })`
+- **Batch-load market context for up to 30 Solana token addresses**: `getDexscreenerTokensByChain({ tokenAddresses })`
+
+## Practical guidance
+
+- `getDexscreenerTopTokenBoosts()` is the best first pass for "top tokens" if the request is really about current paid momentum.
+- `getDexscreenerLatestTokenBoosts()` is better for "who just upgraded / who just boosted recently".
+- `getDexscreenerLatestAds()` and `getDexscreenerLatestCommunityTakeovers()` are separate feeds and should not be confused with boosts.
+- `getDexscreenerLatestTokenProfiles()` is discovery metadata, not proof of quality or liquidity.
+- `searchDexscreenerPairs()` is good for open-ended discovery, but pair-level follow-up should usually use `getDexscreenerPairByChainAndPairId()` or `getDexscreenerTokenPairsByChain()`.
+- For a watchlist or candidate set, use `getDexscreenerTokensByChain()` after discovery to load price, liquidity, volume, FDV, market cap, and boosts in one batch.
+- Dexscreener does not mean "safe" or "good". These actions return market discovery data only.
+
+## Robustness rules
+
+- Empty `tokenAddress`, `pairAddress`, and `query` values are rejected.
+- `tokenAddresses` must contain between `1` and `30` addresses.
+- Multi-chain "latest" and search endpoints are filtered to Solana before returning.
+- The fetch layer now retries short-lived Dexscreener failures on `429`, `500`, `502`, `503`, and `504`.
+- If Dexscreener sends a `Retry-After` header, the runtime respects it before retrying.
+- Hard failures still include the endpoint path and HTTP status in the thrown error.
+
+## Canonical invocation shapes
 
 ```ts
-{
-  // action-specific fields
-  options?: {
-    signal?: AbortSignal;
-  };
-}
+getDexscreenerTopTokenBoosts({});
+getDexscreenerLatestTokenBoosts({});
+getDexscreenerLatestTokenProfiles({});
+getDexscreenerLatestAds({});
+getDexscreenerLatestCommunityTakeovers({});
+getDexscreenerOrdersByToken({ tokenAddress: "..." });
+searchDexscreenerPairs({ query: "SOL/USDC" });
+getDexscreenerPairByChainAndPairId({ pairAddress: "..." });
+getDexscreenerTokenPairsByChain({ tokenAddress: "..." });
+getDexscreenerTokensByChain({ tokenAddresses: ["...", "..."] });
 ```
 
-## Control and validation rules
+## Returned data expectations
 
-- `chainId`, `tokenAddress`, `pairAddress`, and `query` are required when listed for an action.
-- All required string fields are trimmed and rejected if empty.
-- `tokenAddresses` must contain between **1 and 30** addresses.
-- HTTP failures throw errors with endpoint path and status details.
+Key returned shapes you can rely on:
 
-## Action reference
+- Boost feeds include Solana token addresses and paid boost totals.
+- Profile feeds include token address, optional icon/header/description, and outbound links.
+- Pair feeds include pair address, base token, quote token, price, liquidity, volume, price change, FDV, market cap, and boost count when available.
+- Ads feed includes recent ad metadata such as `date`, `type`, `durationHours`, and `impressions` when Dexscreener provides them.
+- Community takeover feed includes recent takeover metadata and `claimDate` when Dexscreener provides it.
+- Orders feed returns the token's Dexscreener-paid order status entries.
 
-### 1) `getDexscreenerLatestTokenProfiles(input?)`
-- **Input**: `{ options? }`
-- **Endpoint**: `GET /token-profiles/latest/v1`
-- **Returns**: `DexscreenerTokenProfilesResponse`
+## Recommended flow patterns
 
-### 2) `getDexscreenerLatestTokenBoosts(input?)`
-- **Input**: `{ options? }`
-- **Endpoint**: `GET /token-boosts/latest/v1`
-- **Returns**: `DexscreenerTokenBoostsResponse`
+### "Show me top Solana tokens right now"
 
-### 3) `getDexscreenerTopTokenBoosts(input?)`
-- **Input**: `{ options? }`
-- **Endpoint**: `GET /token-boosts/top/v1`
-- **Returns**: `DexscreenerTokenBoostsResponse`
+1. Call `getDexscreenerTopTokenBoosts()`.
+2. Extract the strongest Solana candidates.
+3. Call `getDexscreenerTokensByChain()` with those token addresses.
+4. Rank or explain them using liquidity, volume, price action, FDV, market cap, and boost context.
 
-### 4) `getDexscreenerOrdersByToken(input)`
-- **Input**: `{ chainId: string; tokenAddress: string; options? }`
-- **Endpoint**: `GET /orders/v1/{chainId}/{tokenAddress}`
-- **Returns**: `DexscreenerOrdersResponse`
+### "Who recently upgraded / boosted / paid for visibility?"
 
-### 5) `searchDexscreenerPairs(input)`
-- **Input**: `{ query: string; options? }`
-- **Endpoint**: `GET /latest/dex/search?q=text`
-- **Returns**: `DexscreenerPairsResponse`
+Use this order:
 
-### 6) `getDexscreenerPairByChainAndPairId(input)`
-- **Input**: `{ chainId: string; pairAddress: string; options? }`
-- **Endpoint**: `GET /latest/dex/pairs/{chainId}/{pairId}`
-- **Returns**: `DexscreenerPairInfo | null`
+1. `getDexscreenerLatestTokenBoosts()`
+2. `getDexscreenerLatestAds()`
+3. `getDexscreenerLatestCommunityTakeovers()`
+4. `getDexscreenerOrdersByToken({ tokenAddress })` for confirmation on one token
 
-### 7) `getDexscreenerTokenPairsByChain(input)`
-- **Input**: `{ chainId: string; tokenAddress: string; options? }`
-- **Endpoint**: `GET /token-pairs/v1/{chainId}/{tokenAddress}`
-- **Returns**: `DexscreenerPairInfo[]`
+### "Find the real pair for this ticker"
 
-### 8) `getDexscreenerTokensByChain(input)`
-- **Input**: `{ chainId: string; tokenAddresses: string[]; options? }`
-- **Endpoint**: `GET /tokens/v1/{chainId}/{tokenAddresses}`
-- **Returns**: `DexscreenerPairInfo[]`
+1. `searchDexscreenerPairs({ query })`
+2. Filter to the most liquid / relevant Solana pair
+3. Follow with `getDexscreenerPairByChainAndPairId({ pairAddress })`
 
-### 9) `getDexscreenerLatestCommunityTakeovers(input?)`
-- **Input**: `{ options? }`
-- **Endpoint**: `GET /community-takeovers/latest/v1`
-- **Returns**: `DexscreenerCommunityTakeoversResponse`
+## Do not do this
 
-### 10) `getDexscreenerLatestAds(input?)`
-- **Input**: `{ options? }`
-- **Endpoint**: `GET /ads/latest/v1`
-- **Returns**: `DexscreenerAdsResponse`
+- Do not ask for Ethereum, Base, or any non-Solana chain through these actions.
+- Do not treat token profiles, ads, boosts, or takeovers as trust signals.
+- Do not call `searchDexscreenerPairs()` when you already have the exact Solana pair address.
+- Do not call `getDexscreenerTokensByChain()` with more than `30` token addresses in one request.

@@ -105,11 +105,38 @@
     </aside>
 
     <section class="min-w-0">
+      <div class="mb-4 lg:hidden">
+        <label class="mb-2 block font-mono text-[11px] uppercase tracking-[0.16em] text-muted" for="docs-mobile-nav">Navigate docs</label>
+        <select
+          id="docs-mobile-nav"
+          class="docs-mobile-nav"
+          value={data.doc.slug}
+          onchange={(event) => {
+            const target = event.currentTarget;
+            if (target instanceof HTMLSelectElement) {
+              window.location.href = `/docs/${target.value}`;
+            }
+          }}
+        >
+          {#each data.docs as doc (doc.slug)}
+            <option value={doc.slug}>{doc.title}</option>
+          {/each}
+        </select>
+      </div>
+
       <a href="/docs" class="docs-back-link">&larr; All docs</a>
-      <article class="docs-content mt-4" use:copyCodeBlocks={data.doc.html}>
-        <h1>{data.doc.title}</h1>
-        {@html data.doc.html}
-      </article>
+      <div class="docs-article-shell mt-4">
+        <div class="docs-article-topbar">
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="terminal-dot"></span>
+          <span class="docs-article-title">{data.doc.slug}.md</span>
+        </div>
+        <article class="docs-content" use:copyCodeBlocks={data.doc.html}>
+          <h1>{data.doc.title}</h1>
+          {@html data.doc.html}
+        </article>
+      </div>
     </section>
   </main>
 </div>

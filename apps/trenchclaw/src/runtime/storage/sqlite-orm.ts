@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import type { ZodTypeAny } from "zod";
+import type { ZodType } from "zod";
 
 import { sqliteTables } from "./sqlite-schema";
 
@@ -29,7 +29,7 @@ type IndexSpec = {
 
 type TableSpec = {
   name: keyof typeof sqliteTables;
-  rowSchema: ZodTypeAny;
+  rowSchema: ZodType;
   columns: readonly ColumnSpec[];
   tableChecks?: readonly string[];
   tableConstraints?: readonly string[];

@@ -1,17 +1,20 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap');
 @import 'tailwindcss';
 
 @theme inline {
-  --font-sans: 'Space Grotesk', sans-serif;
-  --font-mono: 'Space Mono', monospace;
+  --font-sans: 'Manrope', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 
-  --color-background: #000000;
-  --color-foreground: #ffffff;
-  --color-cyan-brand: #22EED3;
-  --color-purple-brand: #A858F9;
-  --color-border-subtle: rgba(234 234 234 / 0.4);
-  --color-muted: #7A8496;
-  --color-muted-dark: #5C6372;
+  --color-background: #050505;
+  --color-background-elevated: #0c0c0d;
+  --color-background-panel: #111214;
+  --color-foreground: #f3f4f6;
+  --color-foreground-soft: #d1d5db;
+  --color-border-subtle: rgba(255 255 255 / 0.1);
+  --color-border-strong: rgba(255 255 255 / 0.16);
+  --color-muted: #9ca3af;
+  --color-muted-dark: #6b7280;
+  --color-accent: #e5e7eb;
 }
 
 *,
@@ -25,16 +28,18 @@ html {
 }
 
 body {
-  background-color: #000000;
-  color: #ffffff;
-  font-family: 'Space Grotesk', sans-serif;
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(255, 255, 255, 0.07), transparent 65%),
+    linear-gradient(180deg, #09090b 0%, #050505 45%, #030303 100%);
+  color: #f3f4f6;
+  font-family: 'Manrope', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 body.site-root {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: #050505;
+  color: #f3f4f6;
 }
 
 .site-body {
@@ -45,38 +50,108 @@ body.site-root {
   filter: brightness(0) invert(1) saturate(0);
 }
 
-.min-h-screen h1,
-.min-h-screen h2 {
-  font-family: 'Archivo Black', 'Arial Black', 'Space Grotesk', sans-serif;
-  font-weight: 900;
-  letter-spacing: -0.01em;
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-position: center;
+  background-size: 48px 48px;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1), rgba(0, 0, 0, 0.2));
+}
+
+.terminal-window {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
+    #09090b;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.terminal-window::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 18%);
+}
+
+.terminal-topbar {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.terminal-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.terminal-label {
+  color: #9ca3af;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.terminal-body {
+  position: relative;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+
+.terminal-line {
+  color: #d1d5db;
+}
+
+.terminal-line-dim {
+  color: #6b7280;
+}
+
+.terminal-line-bright {
+  color: #f9fafb;
+}
+
+.surface-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.01)),
+    rgba(10, 10, 11, 0.88);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .docs-shell {
   background:
-    radial-gradient(1200px 400px at 50% -120px, rgba(34, 238, 211, 0.09), transparent 70%),
-    #000000;
-  color: #ffffff;
+    radial-gradient(800px 320px at 50% -5%, rgba(255, 255, 255, 0.08), transparent 70%),
+    linear-gradient(180deg, #080809 0%, #050505 58%, #030303 100%);
+  color: #f3f4f6;
 }
 
 .docs-header {
   position: sticky;
   top: 0;
   z-index: 30;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(7, 7, 8, 0.82);
+  backdrop-filter: blur(16px);
 }
 
 .docs-logo {
-  font-size: 0.95rem;
+  color: #f3f4f6;
+  font-size: 0.98rem;
   font-weight: 700;
-  letter-spacing: -0.01em;
-  color: #ffffff;
+  letter-spacing: -0.02em;
 }
 
 .docs-header-link {
   color: #9ca3af;
+  transition: color 160ms ease;
 }
 
 .docs-header-link:hover {
@@ -84,183 +159,235 @@ body.site-root {
 }
 
 .docs-sidebar {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012)),
+    rgba(10, 10, 11, 0.84);
+  padding: 1rem;
   position: sticky;
   top: 5.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 0.9rem;
 }
 
 .docs-sidebar-label {
   color: #9ca3af;
-  font-size: 0.7rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .docs-nav-link {
   display: block;
-  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.8rem;
   color: #d1d5db;
-  font-size: 0.92rem;
-  line-height: 1.3;
-  margin-top: 0.2rem;
-  padding: 0.45rem 0.55rem;
-  transition: background-color 150ms ease, color 150ms ease;
+  font-size: 0.94rem;
+  line-height: 1.35;
+  margin-top: 0.28rem;
+  padding: 0.6rem 0.72rem;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
 }
 
 .docs-nav-link:hover {
-  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
   color: #ffffff;
+  transform: translateX(2px);
 }
 
 .docs-nav-link-active {
-  background: rgba(34, 238, 211, 0.18);
-  color: #67e8f9;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
   font-weight: 600;
 }
 
 .docs-kicker {
-  color: #22eed3;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  color: #9ca3af;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 .docs-index-hero {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.25rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.012)),
+    rgba(10, 10, 11, 0.88);
   padding: 1.5rem;
 }
 
 .docs-index-title {
-  margin-top: 0.4rem;
-  color: #ffffff;
-  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  margin-top: 0.55rem;
+  color: #f9fafb;
+  font-size: clamp(2rem, 5vw, 3.1rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  max-width: 12ch;
 }
 
 .docs-index-description {
-  margin-top: 0.75rem;
-  max-width: 60ch;
-  color: #cbd5e1;
+  margin-top: 0.9rem;
+  max-width: 62ch;
+  color: #d1d5db;
   font-size: 1rem;
-  line-height: 1.6;
+  line-height: 1.75;
 }
 
 .docs-card {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 0.9rem;
-  background: rgba(255, 255, 255, 0.03);
-  padding: 1rem;
-  transition: border-color 150ms ease, transform 150ms ease, box-shadow 150ms ease;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01)),
+    rgba(12, 12, 13, 0.84);
+  padding: 1.15rem;
+  transition:
+    border-color 160ms ease,
+    transform 160ms ease,
+    box-shadow 160ms ease;
 }
 
 .docs-card:hover {
-  border-color: rgba(34, 238, 211, 0.45);
-  box-shadow: 0 8px 24px rgba(34, 238, 211, 0.14);
-  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.14);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+  transform: translateY(-2px);
 }
 
 .docs-card-label {
   color: #9ca3af;
-  font-size: 0.74rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
 .docs-card-title {
-  color: #ffffff;
+  color: #f9fafb;
   font-size: 1.05rem;
   font-weight: 700;
-  margin-top: 0.35rem;
+  margin-top: 0.45rem;
+  letter-spacing: -0.02em;
 }
 
 .docs-card-description {
-  color: #cbd5e1;
+  color: #c4c8d0;
   font-size: 0.93rem;
-  line-height: 1.6;
-  margin-top: 0.45rem;
+  line-height: 1.65;
+  margin-top: 0.48rem;
 }
 
 .docs-back-link {
-  color: #22eed3;
+  color: #d1d5db;
   font-size: 0.88rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .docs-back-link:hover {
-  text-decoration: underline;
+  color: #ffffff;
+}
+
+.docs-mobile-nav {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.03);
+  color: #d1d5db;
+  font-size: 0.92rem;
+  padding: 0.85rem 0.95rem;
+  width: 100%;
+}
+
+.docs-article-shell {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.01)),
+    rgba(10, 10, 11, 0.9);
+  overflow: hidden;
+}
+
+.docs-article-topbar {
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+}
+
+.docs-article-title {
+  color: #9ca3af;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  margin-left: 0.35rem;
 }
 
 .docs-content {
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  padding: 1.3rem 1.1rem;
+  padding: 1.3rem 1.1rem 1.6rem;
 }
 
 @media (min-width: 640px) {
   .docs-content {
-    padding: 1.8rem;
+    padding: 1.9rem;
   }
 }
 
 @media (min-width: 1024px) {
   .docs-content {
-    padding: 2.2rem;
+    padding: 2.35rem 2.4rem;
   }
 }
 
 .docs-content h1 {
-  margin: 0 0 1.2rem;
-  color: #ffffff;
-  font-size: clamp(2rem, 5vw, 2.65rem);
+  color: #f9fafb;
+  font-size: clamp(2.2rem, 5vw, 3.4rem);
   font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.06;
+  letter-spacing: -0.05em;
+  line-height: 0.98;
+  margin: 0 0 1.4rem;
+  max-width: 14ch;
 }
 
 .docs-content h2 {
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  font-size: clamp(1.35rem, 2vw, 1.68rem);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f3f4f6;
+  font-size: clamp(1.45rem, 2vw, 1.78rem);
   font-weight: 700;
-  line-height: 1.2;
-  margin-top: 2rem;
-  padding-top: 1.2rem;
+  line-height: 1.18;
+  margin-top: 2.3rem;
+  padding-top: 1.25rem;
 }
 
 .docs-content h3 {
-  color: #f8fafc;
+  color: #f3f4f6;
   font-size: 1.08rem;
   font-weight: 700;
   line-height: 1.3;
-  margin-top: 1.4rem;
+  margin-top: 1.5rem;
 }
 
 .docs-content p,
 .docs-content li {
   color: #d1d5db;
-  font-size: 0.98rem;
-  line-height: 1.72;
+  font-size: 1rem;
+  line-height: 1.76;
 }
 
 .docs-content p {
-  margin: 0.82rem 0;
+  margin: 0.9rem 0;
 }
 
 .docs-content ul,
 .docs-content ol {
-  margin: 0.85rem 0;
-  padding-left: 1.3rem;
+  margin: 0.9rem 0;
+  padding-left: 1.35rem;
 }
 
 .docs-content ul {
@@ -273,65 +400,97 @@ body.site-root {
 
 .docs-content strong {
   color: #ffffff;
-  font-weight: 650;
+  font-weight: 700;
 }
 
 .docs-content a {
-  color: #67e8f9;
+  color: #ffffff;
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration-color: rgba(255, 255, 255, 0.4);
+  text-underline-offset: 3px;
+}
+
+.docs-content a:hover {
+  text-decoration-color: rgba(255, 255, 255, 0.8);
 }
 
 .docs-content code {
-  font-family: 'Space Mono', monospace;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 0.84em;
-  background: #000000;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 0.35rem;
-  color: #f8fafc;
-  padding: 0.09rem 0.32rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.45rem;
+  color: #f9fafb;
+  padding: 0.12rem 0.36rem;
 }
 
 .docs-content pre {
-  background: #000000;
-  border: 1px solid #0f172a;
-  border-radius: 0.75rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    #09090b;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.9rem;
   margin: 1rem 0;
   overflow-x: auto;
-  padding: 0.92rem 4.4rem 0.92rem 1rem;
+  padding: 1.1rem 4.6rem 1.05rem 1rem;
   position: relative;
+}
+
+.docs-content pre::before {
+  content: 'terminal';
+  position: absolute;
+  left: 1rem;
+  top: 0.55rem;
+  color: #6b7280;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.67rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .docs-content pre code {
   background: transparent;
   border: 0;
-  color: #e2e8f0;
-  padding: 0;
+  color: #e5e7eb;
+  display: block;
+  padding: 0.95rem 0 0;
 }
 
 .code-copy-button {
   position: absolute;
-  right: 0.6rem;
+  right: 0.7rem;
   top: 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0.45rem;
-  background: #000000;
-  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f3f4f6;
   cursor: pointer;
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   line-height: 1;
-  padding: 0.35rem 0.5rem;
+  padding: 0.42rem 0.56rem;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
 }
 
 .code-copy-button:hover {
-  border-color: rgba(34, 238, 211, 0.7);
-  color: #22eed3;
+  border-color: rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
 .docs-content hr {
   border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  margin: 1.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 1.8rem 0;
+}
+
+.docs-content blockquote {
+  border-left: 2px solid rgba(255, 255, 255, 0.18);
+  color: #e5e7eb;
+  margin: 1.2rem 0;
+  padding-left: 1rem;
 }

@@ -214,7 +214,6 @@ export const createChatController = () => {
     try {
       chat.messages = normalizeUiMessages(chat.messages as UIMessage[]);
       await chat.sendMessage({ text: nextMessage });
-      chat.messages = normalizeUiMessages(chat.messages as UIMessage[]);
       if (chat.status === "error" && !hasTerminalAssistantText(chat.messages as UIMessage[])) {
         const rawErrorText = chat.error?.message || DEFAULT_CHAT_ERROR;
         appendAssistantRuntimeError(rawErrorText);

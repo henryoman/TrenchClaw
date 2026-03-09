@@ -16,6 +16,7 @@
         "@openrouter/ai-sdk-provider": "^2.2.5",
         "@trenchclaw/types": "workspace:*",
         "ai": "^6.0.116",
+        "marked": "^17.0.4",
         "zod": "^4.3.6",
       },
       "devDependencies": {

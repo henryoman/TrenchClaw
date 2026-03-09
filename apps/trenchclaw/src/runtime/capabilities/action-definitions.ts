@@ -1,12 +1,28 @@
 import { createBlockchainAlertAction } from "../../solana/actions/data-fetch/alerts/createBlockchainAlert";
+import {
+  getDexscreenerLatestAdsAction,
+  getDexscreenerLatestCommunityTakeoversAction,
+  getDexscreenerLatestTokenBoostsAction,
+  getDexscreenerLatestTokenProfilesAction,
+  getDexscreenerOrdersByTokenAction,
+  getDexscreenerPairByChainAndPairIdAction,
+  getDexscreenerTokenPairsByChainAction,
+  getDexscreenerTokensByChainAction,
+  getDexscreenerTopTokenBoostsAction,
+  searchDexscreenerPairsAction,
+} from "../../solana/actions/data-fetch/api/dexscreener-actions";
+import { getSwapHistoryAction } from "../../solana/actions/data-fetch/api/swapHistory";
 import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/mutateInstanceMemory";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
 import { queryRuntimeStoreAction } from "../../solana/actions/data-fetch/runtime/queryRuntimeStore";
+import { sleepAction } from "../../solana/actions/data-fetch/runtime/sleep";
+import { devnetAirdropAction } from "../../solana/actions/wallet-based/airdrop/devnetAirdrop";
 import { createWalletGroupDirectoryAction } from "../../solana/actions/wallet-based/create-wallets/createWalletGroupDirectory";
 import { createWalletsAction } from "../../solana/actions/wallet-based/create-wallets/createWallets";
 import { renameWalletsAction } from "../../solana/actions/wallet-based/create-wallets/renameWallets";
 import { ultraExecuteSwapAction } from "../../solana/actions/wallet-based/swap/ultra/executeSwap";
+import { managedUltraSwapAction } from "../../solana/actions/wallet-based/swap/ultra/managedSwap";
 import { ultraQuoteSwapAction } from "../../solana/actions/wallet-based/swap/ultra/quoteSwap";
 import { ultraSwapAction } from "../../solana/actions/wallet-based/swap/ultra/swap";
 import {
@@ -29,6 +45,21 @@ const canUseUltraSwap = ({ settings }: { settings: Parameters<RuntimeActionCapab
   settings.trading.jupiter.ultra.allowExecutions;
 
 export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilityDefinition[] = [
+  {
+    kind: "action",
+    action: devnetAirdropAction,
+    description: "Request confirmed SOL airdrops on Solana devnet for raw addresses or managed wallets.",
+    purpose: "Fund test wallets so JSON routines can create wallets, airdrop devnet SOL, and run transfers or swaps.",
+    tags: ["wallets", "devnet", "airdrops", "testing"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletNames: ["example-wallet-1", "example-wallet-2"],
+      amountSol: 2,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
   {
     kind: "action",
     action: createWalletGroupDirectoryAction,
@@ -100,6 +131,143 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   },
   {
     kind: "action",
+    action: getSwapHistoryAction,
+    description: "Fetch the 20 most recent Solana swaps for a wallet using Helius enhanced transaction history.",
+    purpose: "Show recent swap activity with backend UTC timestamps plus Pacific display timestamps for chat responses and UI rendering.",
+    tags: ["swaps", "history", "helius", "read"],
+    exampleInput: {
+      walletAddress: "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF",
+      limit: 20,
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestTokenProfilesAction,
+    description: "Fetch the latest token profiles from Dexscreener.",
+    purpose: "Get a lightweight trending token feed without scraping docs or using workspace file reads.",
+    tags: ["dexscreener", "market-data", "profiles"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestTokenBoostsAction,
+    description: "Fetch the latest boosted tokens from Dexscreener.",
+    purpose: "Inspect tokens currently receiving paid boosts.",
+    tags: ["dexscreener", "market-data", "boosts"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerTopTokenBoostsAction,
+    description: "Fetch the top boosted tokens from Dexscreener.",
+    purpose: "Rank current Dexscreener boost activity.",
+    tags: ["dexscreener", "market-data", "boosts"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerOrdersByTokenAction,
+    description: "Fetch Dexscreener paid order status for a token.",
+    purpose: "Check listing and paid promotion order state for a token address.",
+    tags: ["dexscreener", "orders", "token"],
+    exampleInput: {
+      tokenAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: searchDexscreenerPairsAction,
+    description: "Search Dexscreener pairs by query text.",
+    purpose: "Find pairs for symbols, names, or addresses using direct API search.",
+    tags: ["dexscreener", "search", "pairs"],
+    exampleInput: {
+      query: "SOL/USDC",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerPairByChainAndPairIdAction,
+    description: "Fetch a Dexscreener pair by Solana pair address.",
+    purpose: "Get detailed market data for a specific pair.",
+    tags: ["dexscreener", "pair", "market-data"],
+    exampleInput: {
+      pairAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerTokenPairsByChainAction,
+    description: "Fetch Dexscreener pools for a token address on Solana.",
+    purpose: "Inspect all pools associated with a token address.",
+    tags: ["dexscreener", "token", "pairs"],
+    exampleInput: {
+      tokenAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerTokensByChainAction,
+    description: "Fetch Dexscreener market data for up to 30 token addresses on Solana.",
+    purpose: "Batch-load pair data for a watchlist of token addresses.",
+    tags: ["dexscreener", "tokens", "market-data"],
+    exampleInput: {
+      tokenAddresses: [
+        "So11111111111111111111111111111111111111112",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      ],
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestCommunityTakeoversAction,
+    description: "Fetch the latest community takeovers from Dexscreener.",
+    purpose: "Inspect current community takeover listings.",
+    tags: ["dexscreener", "community", "market-data"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestAdsAction,
+    description: "Fetch the latest ads from Dexscreener.",
+    purpose: "Inspect recent Dexscreener ad inventory and promoted listings.",
+    tags: ["dexscreener", "ads", "market-data"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
     action: queryInstanceMemoryAction,
     description: "Read instance-scoped profile and durable fact memory.",
     purpose: "Fetch stable preferences, notes, and granular memory for the active or requested instance.",
@@ -140,6 +308,19 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     tags: ["runtime", "health", "read"],
     exampleInput: {
       message: "health-check",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: sleepAction,
+    description: "Pause a sequential routine for a fixed number of milliseconds.",
+    purpose: "Insert deterministic waits between action-sequence steps.",
+    tags: ["runtime", "timing", "sequence"],
+    exampleInput: {
+      waitMs: 2500,
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,
@@ -243,6 +424,26 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
       settings.trading.enabled &&
       settings.trading.jupiter.ultra.enabled &&
       settings.trading.jupiter.ultra.allowExecutions,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedUltraSwapAction,
+    description: "Run a Jupiter Ultra swap using a managed filesystem wallet selected by group and name.",
+    purpose: "Execute swaps across multiple managed wallets inside an action sequence.",
+    tags: ["swaps", "execution", "jupiter", "wallets"],
+    exampleInput: {
+      swapType: "ultra",
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "SOL",
+      outputCoin: "JUP",
+      amount: "0.1",
+      amountUnit: "ui",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
+    enabledBySettings: canUseUltraSwap,
     requiresUserConfirmation: true,
     chatExposed: true,
   },

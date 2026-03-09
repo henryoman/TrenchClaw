@@ -18,12 +18,10 @@ import {
   type LlmGenerateInput,
   type LlmGenerateResult,
 } from "../ai";
-import type { RoutinePlanner } from "../ai/runtime/types/scheduler";
 import { createJupiterUltraAdapterFromEnv } from "../solana/lib/adapters/jupiter-ultra";
 import { createTokenAccountAdapterFromEnv } from "../solana/lib/adapters/token-account";
 import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-signer";
-import { actionSequenceRoutine } from "../solana/routines/action-sequence";
-import { createWalletsRoutine } from "../solana/routines/create-wallets";
+import { loadRoutinePlanner } from "../solana/routines/load";
 import {
   workspaceToolsEnabledByRuntimeSettings,
   getRuntimeActionCatalog,
@@ -54,7 +52,7 @@ import { createRuntimeChatService, type RuntimeChatService } from "./chat";
 import { CORE_APP_ROOT } from "./runtime-paths";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
-const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "privacySwap"]);
+const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "managedUltraSwap", "privacySwap"]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -118,19 +116,6 @@ const toSupportedActionMap = (actions: RuntimeAction[]): Map<string, RuntimeActi
     map.set(action.name, action);
   }
   return map;
-};
-
-const resolveRoutinePlanner = (routineName: string): RoutinePlanner => {
-  if (routineName === "createWallets") {
-    return createWalletsRoutine;
-  }
-  if (routineName === "actionSequence") {
-    return actionSequenceRoutine;
-  }
-
-  throw new Error(
-    `Unsupported routine "${routineName}". Supported routines: "createWallets", "actionSequence".`,
-  );
 };
 
 const createSettingsPolicy = (settings: RuntimeSettings, supportedActions: ReadonlySet<string>): Policy => ({
@@ -481,7 +466,12 @@ export interface RuntimeBootstrap {
   chat: RuntimeChatService;
   session: ActiveSessionInfo | null;
   stop: () => void;
-  enqueueJob: (input: { botId: string; routineName: string; config?: Record<string, unknown> }) => JobState;
+  enqueueJob: (input: {
+    botId: string;
+    routineName: string;
+    config?: Record<string, unknown>;
+    totalCycles?: number;
+  }) => JobState;
   describe: () => {
     profile: RuntimeSettings["profile"];
     registeredActions: string[];
@@ -633,7 +623,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
           ultraSigner,
           stateStore,
         }),
-      resolveRoutine: (routineName) => resolveRoutinePlanner(routineName),
+      resolveRoutine: (routineName) => loadRoutinePlanner(routineName),
     },
     settings.runtime.scheduler.tickMs,
   );
@@ -678,6 +668,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     botId: string;
     routineName: string;
     config?: Record<string, unknown>;
+    totalCycles?: number;
   }): JobState => {
     const now = Date.now();
     const job: JobState = {
@@ -687,6 +678,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       status: "pending",
       config: input.config ?? {},
       cyclesCompleted: 0,
+      totalCycles: input.totalCycles,
       createdAt: now,
       updatedAt: now,
       nextRunAt: now,

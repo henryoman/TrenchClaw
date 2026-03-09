@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-09T20:51:58.440Z
+Generated at: 2026-03-09T23:01:34.235Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -169,14 +169,8 @@ apps/trenchclaw/
 |   |   |   |   |-- context/
 |   |   |   |   |   `-- workspace-and-schema.md
 |   |   |   |   |-- instance/
-|   |   |   |   |   |-- i-test-wallet-groups/
-|   |   |   |   |   |   `-- keypairs/
 |   |   |   |   |   `-- i-01.json
 |   |   |   |   |-- keypairs/
-|   |   |   |   |   |-- core-wallets/
-|   |   |   |   |   |   `-- core-wallets-wallet001-0001.json
-|   |   |   |   |   |-- trading-wallets/
-|   |   |   |   |   `-- .keep
 |   |   |   |   |-- no-read/
 |   |   |   |   |   |-- .gitkeep
 |   |   |   |   |   |-- ai.json
@@ -196,17 +190,14 @@ apps/trenchclaw/
 |   |   |   |   |   `-- system.md
 |   |   |   |   `-- wallet-library.jsonl
 |   |   |   |-- workspace/
-|   |   |   |   |-- .tests/
 |   |   |   |   |-- configs/
 |   |   |   |   |-- notes/
 |   |   |   |   |-- output/
 |   |   |   |   |-- routines/
-|   |   |   |   |   |-- .tests/
-|   |   |   |   |   `-- .keep
+|   |   |   |   |   `-- example.routine.json
 |   |   |   |   |-- scratch/
 |   |   |   |   |-- strategies/
 |   |   |   |   |   `-- .tests/
-|   |   |   |   |-- ts-scripts/
 |   |   |   |   |-- typescript/
 |   |   |   |   `-- routineRegistry.json
 |   |   |   |-- rules.md
@@ -316,7 +307,9 @@ apps/trenchclaw/
 |   |   |   |   |   |-- createBlockchainAlert.ts
 |   |   |   |   |   `-- index.ts
 |   |   |   |   |-- api/
-|   |   |   |   |   `-- dexscreener.ts
+|   |   |   |   |   |-- dexscreener-actions.ts
+|   |   |   |   |   |-- dexscreener.ts
+|   |   |   |   |   `-- swapHistory.ts
 |   |   |   |   |-- rpc/
 |   |   |   |   |   |-- getAccountInfo.ts
 |   |   |   |   |   |-- getBalance.ts
@@ -332,9 +325,14 @@ apps/trenchclaw/
 |   |   |   |   |   |-- pingRuntime.ts
 |   |   |   |   |   |-- queryInstanceMemory.ts
 |   |   |   |   |   |-- queryRuntimeStore.ts
+|   |   |   |   |   |-- sleep.ts
 |   |   |   |   |   `-- upsertInstanceFact.ts
 |   |   |   |   `-- index.ts
+|   |   |   |-- devnet/
+|   |   |   |   `-- airdrop.ts
 |   |   |   |-- wallet-based/
+|   |   |   |   |-- airdrop/
+|   |   |   |   |   `-- devnetAirdrop.ts
 |   |   |   |   |-- create-wallets/
 |   |   |   |   |   |-- create-vanity-wallet.sh
 |   |   |   |   |   |-- create-vanity-wallet.ts
@@ -357,6 +355,7 @@ apps/trenchclaw/
 |   |   |   |   |   |   |-- confirmationTracker.ts
 |   |   |   |   |   |   |-- executeSwap.ts
 |   |   |   |   |   |   |-- index.ts
+|   |   |   |   |   |   |-- managedSwap.ts
 |   |   |   |   |   |   |-- quoteSwap.ts
 |   |   |   |   |   |   |-- shared.ts
 |   |   |   |   |   |   `-- swap.ts
@@ -370,6 +369,8 @@ apps/trenchclaw/
 |   |   |   |   |   `-- transfer.ts
 |   |   |   |   `-- index.ts
 |   |   |   `-- index.ts
+|   |   |-- devnet/
+|   |   |   `-- airdrop.ts
 |   |   |-- lib/
 |   |   |   |-- adapters/
 |   |   |   |   |-- index.ts
@@ -395,8 +396,8 @@ apps/trenchclaw/
 |   |   |-- routines/
 |   |   |   |-- action-sequence.ts
 |   |   |   |-- create-wallets.ts
-|   |   |   |-- dca.ts
-|   |   |   |-- index.ts
+|   |   |   |-- execute.ts
+|   |   |   |-- load.ts
 |   |   |   `-- routines.json
 |   |   |-- triggers/
 |   |   |   |-- index.ts
@@ -421,6 +422,17 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | createBlockchainAlert | data-based | read-only | yes | yes | no | yes | no |
 | createWalletGroupDirectory | wallet-based |  | yes | yes | no | yes | no |
 | createWallets | wallet-based |  | yes | yes | no | yes | no |
+| devnetAirdrop | wallet-based |  | yes | yes | no | yes | no |
+| getDexscreenerLatestAds | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerLatestCommunityTakeovers | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerLatestTokenBoosts | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerLatestTokenProfiles | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerOrdersByToken | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerPairByChainAndPairId | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerTokenPairsByChain | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerTokensByChain | data-based |  | yes | yes | no | yes | no |
+| getDexscreenerTopTokenBoosts | data-based |  | yes | yes | no | yes | no |
+| getSwapHistory | data-based |  | yes | yes | no | yes | no |
 | mutateInstanceMemory | data-based |  | yes | yes | no | yes | no |
 | pingRuntime | data-based | read-only | yes | yes | no | yes | no |
 | privacyAirdrop | wallet-based | transfer | yes | yes | yes | yes | no |
@@ -428,6 +440,8 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | queryInstanceMemory | data-based | read-only | yes | yes | no | yes | no |
 | queryRuntimeStore | data-based | read-only | yes | yes | no | yes | no |
 | renameWallets | wallet-based |  | yes | yes | no | yes | no |
+| searchDexscreenerPairs | data-based |  | yes | yes | no | yes | no |
+| sleep | data-based |  | yes | yes | no | yes | no |
 | transfer | wallet-based | transfer | yes | yes | yes | yes | no |
 
 ## Runtime Chat Tool Catalog (Generated)
@@ -436,6 +450,17 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | createBlockchainAlert | action | yes | no |
 | createWalletGroupDirectory | action | yes | no |
 | createWallets | action | yes | no |
+| devnetAirdrop | action | yes | no |
+| getDexscreenerLatestAds | action | yes | no |
+| getDexscreenerLatestCommunityTakeovers | action | yes | no |
+| getDexscreenerLatestTokenBoosts | action | yes | no |
+| getDexscreenerLatestTokenProfiles | action | yes | no |
+| getDexscreenerOrdersByToken | action | yes | no |
+| getDexscreenerPairByChainAndPairId | action | yes | no |
+| getDexscreenerTokenPairsByChain | action | yes | no |
+| getDexscreenerTokensByChain | action | yes | no |
+| getDexscreenerTopTokenBoosts | action | yes | no |
+| getSwapHistory | action | yes | no |
 | mutateInstanceMemory | action | yes | no |
 | pingRuntime | action | yes | no |
 | privacyAirdrop | action | yes | yes |
@@ -443,6 +468,8 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | queryInstanceMemory | action | yes | no |
 | queryRuntimeStore | action | yes | no |
 | renameWallets | action | yes | no |
+| searchDexscreenerPairs | action | yes | no |
+| sleep | action | yes | no |
 | transfer | action | yes | yes |
 | workspaceBash | workspace-tool | yes | no |
 | workspaceReadFile | workspace-tool | yes | no |

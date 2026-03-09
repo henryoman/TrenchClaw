@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
-  import type { UIMessage } from "ai";
+  import { isToolUIPart, type UIMessage } from "ai";
+  import { marked } from "marked";
   import type { GuiConversationView } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
 
@@ -37,6 +38,111 @@
   let lastRenderKey = "";
   const SCROLL_BOTTOM_TOLERANCE_PX = 20;
   const COMPOSER_MAX_LINES = 5;
+
+  type MessagePart = UIMessage["parts"][number];
+
+  interface ToolActivityLine {
+    key: string;
+    label: string;
+  }
+
+  interface AssistantMessageSegments {
+    visibleTextParts: string[];
+    activityTextParts: string[];
+    errorTexts: string[];
+    toolActivity: ToolActivityLine[];
+  }
+
+  const normalizeDisplayText = (value: string): string =>
+    value
+      .replace(/\r\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+  const renderMarkdown = (value: string): string => {
+    const text = normalizeDisplayText(value);
+    if (!text) {
+      return "";
+    }
+
+    return marked.parse(text, { breaks: true }) as string;
+  };
+
+  const isTextPart = (part: MessagePart): part is Extract<MessagePart, { type: "text" }> => part.type === "text";
+
+  const isErrorPart = (part: MessagePart): part is MessagePart & { errorText: string } =>
+    "errorText" in part && typeof part.errorText === "string";
+
+  const summarizeToolState = (state: string | undefined): string => {
+    switch (state) {
+      case "input-streaming":
+        return "preparing";
+      case "input-available":
+        return "running";
+      case "output-available":
+        return "done";
+      default:
+        return state ?? "working";
+    }
+  };
+
+  const getToolName = (part: MessagePart): string =>
+    part.type.startsWith("tool-") ? part.type.slice(5) : part.type;
+
+  const getAssistantMessageSegments = (message: UIMessage): AssistantMessageSegments => {
+    const visibleTextParts: string[] = [];
+    const activityTextParts: string[] = [];
+    const errorTexts: string[] = [];
+    const toolActivity: ToolActivityLine[] = [];
+
+    const activityIndexes = message.parts
+      .map((part, index) => (isToolUIPart(part) || isErrorPart(part) ? index : -1))
+      .filter((index) => index >= 0);
+
+    const lastActivityIndex = activityIndexes.length > 0 ? Math.max(...activityIndexes) : -1;
+
+    message.parts.forEach((part, index) => {
+      if (isTextPart(part)) {
+        const text = normalizeDisplayText(part.text ?? "");
+        if (!text) {
+          return;
+        }
+
+        if (lastActivityIndex >= 0 && index <= lastActivityIndex) {
+          activityTextParts.push(text);
+          return;
+        }
+
+        visibleTextParts.push(text);
+        return;
+      }
+
+      if (isErrorPart(part)) {
+        const text = normalizeDisplayText(part.errorText);
+        if (text) {
+          errorTexts.push(text);
+        }
+        return;
+      }
+
+      if (isToolUIPart(part)) {
+        toolActivity.push({
+          key: part.toolCallId,
+          label: `${getToolName(part)}: ${summarizeToolState(part.state)}`,
+        });
+      }
+    });
+
+    return {
+      visibleTextParts,
+      activityTextParts,
+      errorTexts,
+      toolActivity,
+    };
+  };
+
+  const hasAssistantActivity = (segments: AssistantMessageSegments): boolean =>
+    segments.activityTextParts.length > 0 || segments.errorTexts.length > 0 || segments.toolActivity.length > 0;
 
   const isNearBottom = (): boolean => {
     if (!messageViewport) {
@@ -185,17 +291,55 @@
 
   <div class="chat-messages" bind:this={messageViewport} onscroll={onMessagesScroll}>
     {#each messages as message (message.id)}
-      <div class="message-row {message.role}">
-        <div class="bubble {message.role}">
-          {#each message.parts as part, partIndex (`${message.id}:${partIndex}:${part.type}`)}
-            {#if part.type === "text"}
-              <p>{part.text}</p>
-            {:else if "errorText" in part}
-              <p class="error-text">Runtime error: {part.errorText}</p>
-            {/if}
-          {/each}
+      {#if message.role === "assistant"}
+        {@const segments = getAssistantMessageSegments(message)}
+
+        {#if hasAssistantActivity(segments)}
+          <div class="message-row assistant activity-row">
+            <details class="activity-panel">
+              <summary>thinking</summary>
+              <div class="activity-body">
+                {#each segments.activityTextParts as text, textIndex (`${message.id}:activity:${textIndex}`)}
+                  <p>{text}</p>
+                {/each}
+
+                {#each segments.toolActivity as tool (`${message.id}:tool:${tool.key}`)}
+                  <p class="tool-activity">{tool.label}</p>
+                {/each}
+
+                {#each segments.errorTexts as errorText, errorIndex (`${message.id}:error:${errorIndex}`)}
+                  <p class="error-text">Runtime error: {errorText}</p>
+                {/each}
+              </div>
+            </details>
+          </div>
+        {/if}
+
+        {#if segments.visibleTextParts.length > 0}
+          <div class="message-row assistant">
+            <div class="bubble assistant">
+              {#each segments.visibleTextParts as text, textIndex (`${message.id}:visible:${textIndex}`)}
+                {@const html = renderMarkdown(text)}
+                {#if html}
+                  <div class="markdown-content">{@html html}</div>
+                {/if}
+              {/each}
+            </div>
+          </div>
+        {/if}
+      {:else}
+        <div class="message-row {message.role}">
+          <div class="bubble {message.role}">
+            {#each message.parts as part, partIndex (`${message.id}:${partIndex}:${part.type}`)}
+              {#if part.type === "text"}
+                <p>{normalizeDisplayText(part.text ?? "")}</p>
+              {:else if "errorText" in part && typeof part.errorText === "string"}
+                <p class="error-text">Runtime error: {normalizeDisplayText(part.errorText)}</p>
+              {/if}
+            {/each}
+          </div>
         </div>
-      </div>
+      {/if}
     {/each}
     {#if sending}
       <div class="message-row assistant">
@@ -379,7 +523,6 @@
     border: var(--tc-border-muted);
     padding: var(--tc-space-2) var(--tc-space-3);
     font-size: var(--tc-chat-text-size);
-    font-weight: 300;
     line-height: 1.4;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
@@ -389,16 +532,60 @@
     color: var(--tc-color-black);
     background: var(--tc-color-turquoise);
     border-color: var(--tc-color-turquoise);
+    font-weight: 100;
   }
 
   .bubble.assistant {
     color: var(--tc-color-gray-3);
     background: var(--tc-color-black);
+    font-weight: 100;
   }
 
   .thinking-bubble {
     opacity: 0.9;
     animation: pulse 1.1s ease-in-out infinite;
+  }
+
+  .activity-row {
+    margin-bottom: calc(var(--tc-space-1) * -1);
+  }
+
+  .activity-panel {
+    width: min(90%, 32rem);
+    border: var(--tc-border-muted);
+    color: var(--tc-color-gray-2);
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.78rem;
+  }
+
+  .activity-panel summary {
+    cursor: pointer;
+    list-style: none;
+    padding: var(--tc-space-2) var(--tc-space-3);
+    color: var(--tc-color-turquoise);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .activity-panel summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .activity-body {
+    border-top: var(--tc-border-muted);
+    padding: var(--tc-space-2) var(--tc-space-3);
+    display: grid;
+    gap: var(--tc-space-2);
+  }
+
+  .activity-body p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .tool-activity {
+    color: var(--tc-color-gray-3);
   }
 
   .bubble.system {
@@ -408,6 +595,75 @@
 
   .bubble p {
     margin: 0;
+  }
+
+  .markdown-content {
+    white-space: normal;
+  }
+
+  .markdown-content + .markdown-content {
+    margin-top: var(--tc-space-2);
+  }
+
+  .markdown-content :global(*) {
+    max-width: 100%;
+  }
+
+  .markdown-content :global(p),
+  .markdown-content :global(ul),
+  .markdown-content :global(ol),
+  .markdown-content :global(pre),
+  .markdown-content :global(blockquote),
+  .markdown-content :global(h1),
+  .markdown-content :global(h2),
+  .markdown-content :global(h3),
+  .markdown-content :global(h4),
+  .markdown-content :global(h5),
+  .markdown-content :global(h6) {
+    margin: 0 0 var(--tc-space-2) 0;
+  }
+
+  .markdown-content :global(:last-child) {
+    margin-bottom: 0;
+  }
+
+  .markdown-content :global(ul),
+  .markdown-content :global(ol) {
+    padding-left: 1.25rem;
+  }
+
+  .markdown-content :global(li + li) {
+    margin-top: 0.2rem;
+  }
+
+  .markdown-content :global(code) {
+    font-family: inherit;
+  }
+
+  .markdown-content :global(strong),
+  .markdown-content :global(b) {
+    font-weight: 600;
+  }
+
+  .markdown-content :global(pre) {
+    overflow-x: auto;
+    border: var(--tc-border-muted);
+    padding: var(--tc-space-2);
+  }
+
+  .markdown-content :global(pre code) {
+    white-space: pre;
+  }
+
+  .markdown-content :global(a) {
+    color: var(--tc-color-turquoise);
+  }
+
+  .markdown-content :global(blockquote) {
+    margin-left: 0;
+    padding-left: var(--tc-space-2);
+    border-left: var(--tc-border-muted);
+    color: var(--tc-color-gray-2);
   }
 
   .error-text {

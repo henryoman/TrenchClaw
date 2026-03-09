@@ -1,8 +1,12 @@
 {
+  "routineName": "actionSequence",
   "config": {
-    "type": "swapSequence",
+    "type": "swapRoutine",
+    "swapType": "ultra",
     "executionMode": "synchronous",
-    "sleepBehavior": "sleepAfterEachTrade",
+    "walletGroup": "core-wallets",
+    "swapActionName": "managedUltraSwap",
+    "sleepActionName": "sleep",
     "buyAmountKinds": [
       "sol",
       "percentOfSolBalance"
@@ -13,127 +17,238 @@
     ]
   },
   "wallets": [
-    "example-wallet-1",
-    "example-wallet-2",
-    "example-wallet-3"
+    {
+      "walletGroup": "core-wallets",
+      "walletName": "example-wallet-1"
+    },
+    {
+      "walletGroup": "core-wallets",
+      "walletName": "example-wallet-2"
+    },
+    {
+      "walletGroup": "core-wallets",
+      "walletName": "example-wallet-3"
+    }
   ],
   "steps": [
     {
-      "step": 1,
-      "walletName": "example-wallet-1",
-      "action": "swap",
-      "side": "buy",
-      "inputToken": "SOL",
-      "outputToken": "JUP",
-      "amount": {
-        "kind": "sol",
-        "value": 0.12
-      },
-      "sleepMs": 2500
+      "key": "wallet-1-buy-jup",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-1",
+        "inputCoin": "SOL",
+        "outputCoin": "JUP",
+        "amount": "0.12",
+        "amountUnit": "ui",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
     },
     {
-      "step": 2,
-      "walletName": "example-wallet-2",
-      "action": "swap",
-      "side": "buy",
-      "inputToken": "SOL",
-      "outputToken": "BONK",
-      "amount": {
-        "kind": "percentOfSolBalance",
-        "value": 20
-      },
-      "sleepMs": 3000
+      "key": "sleep-after-wallet-1-buy-jup",
+      "dependsOn": "wallet-1-buy-jup",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 2500
+      }
     },
     {
-      "step": 3,
-      "walletName": "example-wallet-3",
-      "action": "swap",
-      "side": "buy",
-      "inputToken": "SOL",
-      "outputToken": "USDC",
-      "amount": {
-        "kind": "sol",
-        "value": 0.08
-      },
-      "sleepMs": 2000
+      "key": "wallet-2-buy-usdc",
+      "dependsOn": "sleep-after-wallet-1-buy-jup",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-2",
+        "inputCoin": "SOL",
+        "outputCoin": "USDC",
+        "amount": "20%",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
     },
     {
-      "step": 4,
-      "walletName": "example-wallet-1",
-      "action": "swap",
-      "side": "sell",
-      "inputToken": "JUP",
-      "outputToken": "SOL",
-      "amount": {
-        "kind": "percentOfTokenBalance",
-        "value": 50
-      },
-      "sleepMs": 4000
+      "key": "sleep-after-wallet-2-buy-usdc",
+      "dependsOn": "wallet-2-buy-usdc",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 3000
+      }
     },
     {
-      "step": 5,
-      "walletName": "example-wallet-2",
-      "action": "swap",
-      "side": "sell",
-      "inputToken": "BONK",
-      "outputToken": "SOL",
-      "amount": {
-        "kind": "token",
-        "value": 250000
-      },
-      "sleepMs": 3500
+      "key": "wallet-3-buy-usdt",
+      "dependsOn": "sleep-after-wallet-2-buy-usdc",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-3",
+        "inputCoin": "SOL",
+        "outputCoin": "USDT",
+        "amount": "0.08",
+        "amountUnit": "ui",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
     },
     {
-      "step": 6,
-      "walletName": "example-wallet-3",
-      "action": "swap",
-      "side": "buy",
-      "inputToken": "SOL",
-      "outputToken": "JUP",
-      "amount": {
-        "kind": "percentOfSolBalance",
-        "value": 15
-      },
-      "sleepMs": 2500
+      "key": "sleep-after-wallet-3-buy-usdt",
+      "dependsOn": "wallet-3-buy-usdt",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 2000
+      }
     },
     {
-      "step": 7,
-      "walletName": "example-wallet-1",
-      "action": "swap",
-      "side": "buy",
-      "inputToken": "SOL",
-      "outputToken": "USDC",
-      "amount": {
-        "kind": "percentOfSolBalance",
-        "value": 10
-      },
-      "sleepMs": 3000
+      "key": "wallet-1-sell-jup",
+      "dependsOn": "sleep-after-wallet-3-buy-usdt",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-1",
+        "inputCoin": "JUP",
+        "outputCoin": "SOL",
+        "amount": "50%",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
     },
     {
-      "step": 8,
-      "walletName": "example-wallet-2",
-      "action": "swap",
-      "side": "buy",
-      "inputToken": "SOL",
-      "outputToken": "USDT",
-      "amount": {
-        "kind": "sol",
-        "value": 0.05
-      },
-      "sleepMs": 2000
+      "key": "sleep-after-wallet-1-sell-jup",
+      "dependsOn": "wallet-1-sell-jup",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 4000
+      }
     },
     {
-      "step": 9,
-      "walletName": "example-wallet-3",
-      "action": "swap",
-      "side": "sell",
-      "inputToken": "JUP",
-      "outputToken": "SOL",
-      "amount": {
-        "kind": "percentOfTokenBalance",
-        "value": 100
-      },
-      "sleepMs": 5000
+      "key": "wallet-2-sell-usdc",
+      "dependsOn": "sleep-after-wallet-1-sell-jup",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-2",
+        "inputCoin": "USDC",
+        "outputCoin": "SOL",
+        "amount": "25",
+        "amountUnit": "ui",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
+    },
+    {
+      "key": "sleep-after-wallet-2-sell-usdc",
+      "dependsOn": "wallet-2-sell-usdc",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 3500
+      }
+    },
+    {
+      "key": "wallet-3-buy-jup",
+      "dependsOn": "sleep-after-wallet-2-sell-usdc",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-3",
+        "inputCoin": "SOL",
+        "outputCoin": "JUP",
+        "amount": "15%",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
+    },
+    {
+      "key": "sleep-after-wallet-3-buy-jup",
+      "dependsOn": "wallet-3-buy-jup",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 2500
+      }
+    },
+    {
+      "key": "wallet-1-buy-usdc",
+      "dependsOn": "sleep-after-wallet-3-buy-jup",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-1",
+        "inputCoin": "SOL",
+        "outputCoin": "USDC",
+        "amount": "10%",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
+    },
+    {
+      "key": "sleep-after-wallet-1-buy-usdc",
+      "dependsOn": "wallet-1-buy-usdc",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 3000
+      }
+    },
+    {
+      "key": "wallet-2-buy-jup",
+      "dependsOn": "sleep-after-wallet-1-buy-usdc",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-2",
+        "inputCoin": "SOL",
+        "outputCoin": "JUP",
+        "amount": "0.05",
+        "amountUnit": "ui",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
+    },
+    {
+      "key": "sleep-after-wallet-2-buy-jup",
+      "dependsOn": "wallet-2-buy-jup",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 2000
+      }
+    },
+    {
+      "key": "wallet-3-sell-jup",
+      "dependsOn": "sleep-after-wallet-2-buy-jup",
+      "actionName": "managedUltraSwap",
+      "input": {
+        "swapType": "ultra",
+        "walletGroup": "core-wallets",
+        "walletName": "example-wallet-3",
+        "inputCoin": "JUP",
+        "outputCoin": "SOL",
+        "amount": "100%",
+        "mode": "ExactIn",
+        "slippageBps": 50,
+        "executeTimeoutMs": 10000
+      }
+    },
+    {
+      "key": "sleep-after-wallet-3-sell-jup",
+      "dependsOn": "wallet-3-sell-jup",
+      "actionName": "sleep",
+      "input": {
+        "waitMs": 5000
+      }
     }
   ]
 }

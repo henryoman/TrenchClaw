@@ -1,6 +1,9 @@
 const DEXSCREENER_API_BASE_URL = "https://api.dexscreener.com";
 const MAX_TOKEN_ADDRESSES_PER_REQUEST = 30;
 const DEXSCREENER_SOLANA_CHAIN_ID = "solana";
+const DEXSCREENER_MAX_RETRIES = 2;
+const DEXSCREENER_RETRYABLE_STATUS_CODES = new Set([429, 500, 502, 503, 504]);
+const DEXSCREENER_RETRY_BACKOFF_MS = 750;
 
 export interface DexscreenerRequestOptions {
   signal?: AbortSignal;
@@ -54,6 +57,7 @@ function assertTokenAddresses(tokenAddresses: string[]): string[] {
 async function fetchDexscreener<T>(
   path: string,
   requestOptions: DexscreenerRequestOptions = {},
+  attempt = 0,
 ): Promise<T> {
   const response = await fetch(`${DEXSCREENER_API_BASE_URL}${path}`, {
     method: "GET",
@@ -64,10 +68,44 @@ async function fetchDexscreener<T>(
   });
 
   if (!response.ok) {
+    if (
+      DEXSCREENER_RETRYABLE_STATUS_CODES.has(response.status) &&
+      attempt < DEXSCREENER_MAX_RETRIES &&
+      !requestOptions.signal?.aborted
+    ) {
+      await Bun.sleep(getDexscreenerRetryDelayMs(response, attempt));
+      return fetchDexscreener<T>(path, requestOptions, attempt + 1);
+    }
+
     throw new Error(`Dexscreener request failed (${response.status} ${response.statusText}) for ${path}`);
   }
 
   return (await response.json()) as T;
+}
+
+function getDexscreenerRetryDelayMs(response: Response, attempt: number): number {
+  const retryAfter = response.headers.get("retry-after");
+  if (retryAfter) {
+    const retryAfterSeconds = Number(retryAfter);
+    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0) {
+      return Math.round(retryAfterSeconds * 1000);
+    }
+
+    const retryAfterDate = Date.parse(retryAfter);
+    if (Number.isFinite(retryAfterDate)) {
+      return Math.max(0, retryAfterDate - Date.now());
+    }
+  }
+
+  return DEXSCREENER_RETRY_BACKOFF_MS * (attempt + 1);
+}
+
+function isSolanaChainId(value: unknown): boolean {
+  return typeof value === "string" && value.trim().toLowerCase() === DEXSCREENER_SOLANA_CHAIN_ID;
+}
+
+function filterSolanaItems<T extends { chainId: string }>(items: T[]): T[] {
+  return items.filter((item) => isSolanaChainId(item.chainId));
 }
 
 export interface DexscreenerTokenProfile {
@@ -89,7 +127,8 @@ export type DexscreenerTokenProfilesResponse = DexscreenerTokenProfile[];
 export function getDexscreenerLatestTokenProfiles(
   input: DexscreenerInvokeBase = {},
 ): Promise<DexscreenerTokenProfilesResponse> {
-  return fetchDexscreener<DexscreenerTokenProfilesResponse>("/token-profiles/latest/v1", input.options);
+  return fetchDexscreener<DexscreenerTokenProfilesResponse>("/token-profiles/latest/v1", input.options)
+    .then(filterSolanaItems);
 }
 
 export interface DexscreenerTokenBoost {
@@ -113,13 +152,15 @@ export type DexscreenerTokenBoostsResponse = DexscreenerTokenBoost[];
 export function getDexscreenerLatestTokenBoosts(
   input: DexscreenerInvokeBase = {},
 ): Promise<DexscreenerTokenBoostsResponse> {
-  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/latest/v1", input.options);
+  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/latest/v1", input.options)
+    .then(filterSolanaItems);
 }
 
 export function getDexscreenerTopTokenBoosts(
   input: DexscreenerInvokeBase = {},
 ): Promise<DexscreenerTokenBoostsResponse> {
-  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/top/v1", input.options);
+  return fetchDexscreener<DexscreenerTokenBoostsResponse>("/token-boosts/top/v1", input.options)
+    .then(filterSolanaItems);
 }
 
 export interface DexscreenerOrderStatus {
@@ -183,7 +224,10 @@ export function searchDexscreenerPairs(input: DexscreenerInvokeSearchPairs): Pro
   return fetchDexscreener<DexscreenerPairsResponse>(
     `/latest/dex/search?q=${encodeURIComponent(query)}`,
     input.options,
-  );
+  ).then((response) => ({
+    ...response,
+    pairs: filterSolanaItems(response.pairs ?? []),
+  }));
 }
 
 export interface DexscreenerPairResponse {
@@ -231,8 +275,6 @@ export interface DexscreenerCommunityTakeover {
   url?: string;
   chainId: string;
   tokenAddress: string;
-  amount: number;
-  totalAmount: number;
   icon?: string;
   header?: string;
   description?: string;
@@ -241,6 +283,7 @@ export interface DexscreenerCommunityTakeover {
     label?: string;
     url: string;
   }>;
+  claimDate?: string;
 }
 
 export type DexscreenerCommunityTakeoversResponse = DexscreenerCommunityTakeover[];
@@ -251,27 +294,22 @@ export function getDexscreenerLatestCommunityTakeovers(
   return fetchDexscreener<DexscreenerCommunityTakeoversResponse>(
     "/community-takeovers/latest/v1",
     input.options,
-  );
+  ).then(filterSolanaItems);
 }
 
 export interface DexscreenerAd {
   url?: string;
   chainId: string;
   tokenAddress: string;
-  amount: number;
-  totalAmount: number;
-  icon?: string;
-  header?: string;
-  description?: string;
-  links?: Array<{
-    type?: string;
-    label?: string;
-    url: string;
-  }>;
+  date?: string;
+  type?: string;
+  durationHours?: number | null;
+  impressions?: number | null;
 }
 
 export type DexscreenerAdsResponse = DexscreenerAd[];
 
 export function getDexscreenerLatestAds(input: DexscreenerInvokeBase = {}): Promise<DexscreenerAdsResponse> {
-  return fetchDexscreener<DexscreenerAdsResponse>("/ads/latest/v1", input.options);
+  return fetchDexscreener<DexscreenerAdsResponse>("/ads/latest/v1", input.options)
+    .then(filterSolanaItems);
 }

@@ -35,10 +35,27 @@
     <section>
       <div class="docs-index-hero">
         <p class="docs-kicker">Documentation</p>
-        <h1 class="docs-index-title">Everything you need to install and launch TrenchClaw</h1>
+        <h1 class="docs-index-title">Technical docs that feel like part of the product.</h1>
         <p class="docs-index-description">
-          Follow the setup guides in order, from first install to your first successful GUI launch.
+          Start with install and runtime setup, then move into wallet, vault, and frontend workflows. The layout is intentionally
+          grayscale, terminal-heavy, and easy to scan under pressure.
         </p>
+
+        <div class="terminal-window relative mt-8">
+          <div class="terminal-topbar flex items-center gap-2 px-4 py-3">
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-label ml-3">docs index</span>
+          </div>
+          <div class="terminal-body space-y-2 px-5 py-5">
+            <p class="terminal-line-dim">$ open /docs/getting-started</p>
+            <p class="terminal-line-bright">install checklist</p>
+            <p class="terminal-line-bright">vault + AI provider wiring</p>
+            <p class="terminal-line-bright">runtime + GUI launch flow</p>
+            <p class="terminal-line-dim">copyable commands and cleaner code blocks</p>
+          </div>
+        </div>
       </div>
 
       <div class="mt-8 grid gap-4 sm:grid-cols-2">
