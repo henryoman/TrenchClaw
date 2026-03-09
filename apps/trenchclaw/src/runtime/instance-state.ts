@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,6 +9,7 @@ import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 
 const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-instance.json");
 const INSTANCE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/u;
+const INSTANCE_FILE_PATTERN = /^i-\d+\.json$/u;
 
 const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileView => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -59,16 +60,77 @@ const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | nul
   }
 };
 
-export const readPersistedActiveInstanceSync = (): GuiInstanceProfileView | null => {
-  if (!existsSync(ACTIVE_INSTANCE_STATE_FILE)) {
-    return null;
-  }
-
+const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
   try {
-    return parsePersistedActiveInstance(readFileSync(ACTIVE_INSTANCE_STATE_FILE, "utf8"));
+    const files = readdirSync(RUNTIME_INSTANCE_ROOT, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && INSTANCE_FILE_PATTERN.test(entry.name))
+      .map((entry) => entry.name)
+      .toSorted((left, right) => left.localeCompare(right));
+
+    if (files.length !== 1) {
+      return null;
+    }
+
+    const fileName = files[0];
+    if (!fileName) {
+      return null;
+    }
+
+    const content = readFileSync(path.join(RUNTIME_INSTANCE_ROOT, fileName), "utf8");
+    const parsed = JSON.parse(content) as {
+      instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
+      runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };
+    };
+
+    const name = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
+    const localInstanceId =
+      typeof parsed.instance?.localInstanceId === "string" ? normalizeInstanceId(parsed.instance.localInstanceId) : "";
+    const safetyProfile =
+      parsed.runtime?.safetyProfile === "safe"
+      || parsed.runtime?.safetyProfile === "dangerous"
+      || parsed.runtime?.safetyProfile === "veryDangerous"
+        ? parsed.runtime.safetyProfile
+        : "dangerous";
+    const createdAt =
+      typeof parsed.runtime?.createdAt === "string" ? parsed.runtime.createdAt : new Date(0).toISOString();
+    const updatedAt = typeof parsed.runtime?.updatedAt === "string" ? parsed.runtime.updatedAt : createdAt;
+
+    if (!name || !localInstanceId) {
+      return null;
+    }
+
+    return {
+      fileName,
+      localInstanceId,
+      name,
+      safetyProfile,
+      userPinRequired: parsed.instance?.userPin !== null && parsed.instance?.userPin !== undefined,
+      createdAt,
+      updatedAt,
+    };
   } catch {
     return null;
   }
+};
+
+export const readPersistedActiveInstanceSync = (): GuiInstanceProfileView | null => {
+  if (existsSync(ACTIVE_INSTANCE_STATE_FILE)) {
+    try {
+      const persisted = parsePersistedActiveInstance(readFileSync(ACTIVE_INSTANCE_STATE_FILE, "utf8"));
+      if (persisted) {
+        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = persisted.localInstanceId;
+        return persisted;
+      }
+    } catch {
+      // Fall through to single-instance restore below.
+    }
+  }
+
+  const restored = readSingleAvailableInstanceSync();
+  if (restored) {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = restored.localInstanceId;
+  }
+  return restored;
 };
 
 export const resolveCurrentActiveInstanceIdSync = (): string | null => {
