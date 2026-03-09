@@ -5,7 +5,7 @@
     "": {
       "name": "trenchclaw",
       "devDependencies": {
-        "turbo": "latest",
+        "turbo": "^2.8.14",
       },
     },
     "apps/frontends/gui": {

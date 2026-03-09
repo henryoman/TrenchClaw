@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-08T00:04:15.353Z
+Generated at: 2026-03-08T22:58:29.585Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -18,8 +18,6 @@ apps/trenchclaw/
 |   |   |   |   |   `-- memory-92446690-a66f-490d-b282-76cf88adab1d/
 |   |   |   |   |       `-- memory/
 |   |   |   |   |           `-- MEMORY.md
-|   |   |   |   |-- events/
-|   |   |   |   |   `-- .keep
 |   |   |   |   |-- memory/
 |   |   |   |   |   |-- 2026-03-02.md
 |   |   |   |   |   |-- 2026-03-03.md
