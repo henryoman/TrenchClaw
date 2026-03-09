@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-09T23:01:34.235Z
+Generated at: 2026-03-09T23:27:43.337Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -165,7 +165,8 @@ apps/trenchclaw/
 |   |   |   |   `-- knowledge-tree.ts
 |   |   |   |-- protected/
 |   |   |   |   |-- agent-modes/
-|   |   |   |   |   `-- operator.md
+|   |   |   |   |   |-- operator.md
+|   |   |   |   |   `-- summarize-and-extract.md
 |   |   |   |   |-- context/
 |   |   |   |   |   `-- workspace-and-schema.md
 |   |   |   |   |-- instance/

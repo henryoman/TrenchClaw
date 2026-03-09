@@ -499,7 +499,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: var(--tc-space-2);
+    padding: 0 var(--tc-space-2) var(--tc-space-2);
     display: flex;
     flex-direction: column;
     gap: var(--tc-space-2);
