@@ -1,0 +1,139 @@
+{
+  "config": {
+    "type": "swapSequence",
+    "executionMode": "synchronous",
+    "sleepBehavior": "sleepAfterEachTrade",
+    "buyAmountKinds": [
+      "sol",
+      "percentOfSolBalance"
+    ],
+    "sellAmountKinds": [
+      "token",
+      "percentOfTokenBalance"
+    ]
+  },
+  "wallets": [
+    "example-wallet-1",
+    "example-wallet-2",
+    "example-wallet-3"
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "walletName": "example-wallet-1",
+      "action": "swap",
+      "side": "buy",
+      "inputToken": "SOL",
+      "outputToken": "JUP",
+      "amount": {
+        "kind": "sol",
+        "value": 0.12
+      },
+      "sleepMs": 2500
+    },
+    {
+      "step": 2,
+      "walletName": "example-wallet-2",
+      "action": "swap",
+      "side": "buy",
+      "inputToken": "SOL",
+      "outputToken": "BONK",
+      "amount": {
+        "kind": "percentOfSolBalance",
+        "value": 20
+      },
+      "sleepMs": 3000
+    },
+    {
+      "step": 3,
+      "walletName": "example-wallet-3",
+      "action": "swap",
+      "side": "buy",
+      "inputToken": "SOL",
+      "outputToken": "USDC",
+      "amount": {
+        "kind": "sol",
+        "value": 0.08
+      },
+      "sleepMs": 2000
+    },
+    {
+      "step": 4,
+      "walletName": "example-wallet-1",
+      "action": "swap",
+      "side": "sell",
+      "inputToken": "JUP",
+      "outputToken": "SOL",
+      "amount": {
+        "kind": "percentOfTokenBalance",
+        "value": 50
+      },
+      "sleepMs": 4000
+    },
+    {
+      "step": 5,
+      "walletName": "example-wallet-2",
+      "action": "swap",
+      "side": "sell",
+      "inputToken": "BONK",
+      "outputToken": "SOL",
+      "amount": {
+        "kind": "token",
+        "value": 250000
+      },
+      "sleepMs": 3500
+    },
+    {
+      "step": 6,
+      "walletName": "example-wallet-3",
+      "action": "swap",
+      "side": "buy",
+      "inputToken": "SOL",
+      "outputToken": "JUP",
+      "amount": {
+        "kind": "percentOfSolBalance",
+        "value": 15
+      },
+      "sleepMs": 2500
+    },
+    {
+      "step": 7,
+      "walletName": "example-wallet-1",
+      "action": "swap",
+      "side": "buy",
+      "inputToken": "SOL",
+      "outputToken": "USDC",
+      "amount": {
+        "kind": "percentOfSolBalance",
+        "value": 10
+      },
+      "sleepMs": 3000
+    },
+    {
+      "step": 8,
+      "walletName": "example-wallet-2",
+      "action": "swap",
+      "side": "buy",
+      "inputToken": "SOL",
+      "outputToken": "USDT",
+      "amount": {
+        "kind": "sol",
+        "value": 0.05
+      },
+      "sleepMs": 2000
+    },
+    {
+      "step": 9,
+      "walletName": "example-wallet-3",
+      "action": "swap",
+      "side": "sell",
+      "inputToken": "JUP",
+      "outputToken": "SOL",
+      "amount": {
+        "kind": "percentOfTokenBalance",
+        "value": 100
+      },
+      "sleepMs": 5000
+    }
+  ]
+}

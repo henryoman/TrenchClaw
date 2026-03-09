@@ -20,20 +20,20 @@
     "wallet:vanity": "bun run src/solana/actions/wallet-based/create-wallets/create-vanity-wallet.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
-    "oxlint": "^1.49.0",
-    "typescript": "^5.9.2"
+    "@types/bun": "^1.3.10",
+    "oxlint": "^1.51.0",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@ai-sdk/openai": "3.0.33",
-    "@openrouter/ai-sdk-provider": "^2.2.3",
-    "@solana/kit": "^6.1.0",
-    "@solana/transactions": "^6.1.0",
-    "ai": "6.0.99",
+    "@ai-sdk/openai": "^3.0.41",
+    "@openrouter/ai-sdk-provider": "^2.2.5",
+    "@solana/kit": "^6.2.0",
+    "@solana/transactions": "^6.2.0",
+    "ai": "^6.0.116",
     "bash-tool": "^1.3.15",
     "helius-sdk": "^2.2.2",
-    "just-bash": "^2.11.2",
-    "privacycash": "^1.0.16",
+    "just-bash": "^2.12.7",
+    "privacycash": "^1.1.20",
     "zod": "^4.3.6"
   }
 }

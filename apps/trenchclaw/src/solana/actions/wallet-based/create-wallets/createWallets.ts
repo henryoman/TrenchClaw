@@ -13,57 +13,80 @@ import {
   resolveWalletGroupDirectoryPath,
   resolveWalletKeypairRootPath,
   resolveWalletLabelFilePath,
+  toWalletId,
   resolveWalletLibraryFilePath,
   walletGroupNameSchema,
 } from "./wallet-storage";
 
 const walletSegmentSchema = z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/);
 
-const walletLocatorSchema = z.object({
-  group: walletSegmentSchema.optional(),
-  wallet: walletSegmentSchema.optional(),
-  startIndex: z.number().int().positive().default(1),
-});
-
 const createWalletsInputSchema = z.object({
   count: z.number().int().positive().max(100).default(1),
-  includePrivateKey: z.boolean().default(true),
-  privateKeyEncoding: z.enum(["base64", "hex", "bytes"]).default("base64"),
-  walletPath: z
-    .string()
-    .trim()
-    .regex(/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/)
-    .optional(),
-  walletLocator: walletLocatorSchema.optional(),
+  walletName: walletSegmentSchema.optional(),
+  walletNames: z.array(walletSegmentSchema).min(1).max(100).optional(),
   storage: z
     .object({
       walletGroup: walletGroupNameSchema.default(DEFAULT_WALLET_GROUP),
       createGroupIfMissing: z.boolean().default(true),
-      keypairGenerator: z.enum(["bun", "solana-cli"]).default("bun"),
     })
     .default({
       walletGroup: DEFAULT_WALLET_GROUP,
       createGroupIfMissing: true,
-      keypairGenerator: "bun",
     }),
   output: z
     .object({
       filePrefix: z.string().min(1).default("wallet"),
+      startIndex: z.number().int().positive().default(1),
       includeIndexInFileName: z.boolean().default(true),
     })
     .default({
       filePrefix: "wallet",
+      startIndex: 1,
       includeIndexInFileName: true,
     }),
+}).superRefine((value, ctx) => {
+  if (value.walletName && value.count !== 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "walletName can only be used when count is 1",
+      path: ["walletName"],
+    });
+  }
+
+  if (value.walletNames && value.count !== value.walletNames.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `walletNames length (${value.walletNames.length}) must match count (${value.count})`,
+      path: ["walletNames"],
+    });
+  }
+
+  if (value.walletNames) {
+    const seen = new Set<string>();
+    for (const walletName of value.walletNames) {
+      if (seen.has(walletName)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `walletNames contains duplicate value "${walletName}"`,
+          path: ["walletNames"],
+        });
+        break;
+      }
+      seen.add(walletName);
+    }
+  }
 });
 
 type CreateWalletsInput = z.output<typeof createWalletsInputSchema>;
 
 interface CreatedWallet {
-  walletPath: string;
+  walletId: string;
+  walletGroup: string;
+  walletName: string;
   address: string;
   publicKeyBytes: number[];
-  keypairFilePath?: string;
+  keypairFilePath: string;
+  walletLabelFilePath: string;
 }
 
 interface CreateWalletsOutput {
@@ -76,62 +99,30 @@ interface CreateWalletsOutput {
 
 interface WalletLabelFile {
   version: 1;
-  walletPath: string;
-  group: string;
-  wallet: string;
-  address: string;
+  walletId: string;
   walletGroup: string;
+  walletName: string;
+  address: string;
   walletFileName: string;
-  keypairGenerator: "bun" | "solana-cli";
   createdAt: string;
   updatedAt: string;
 }
 
-const resolveWalletNaming = (
-  input: CreateWalletsInput,
-  effectiveWalletGroupForLocator: string,
-  index: number,
-): { group: string; wallet: string; walletPath: string } => {
-  if (input.walletPath) {
-    const [group, wallet] = input.walletPath.split(".");
-    if (!group || !wallet) {
-      throw new Error(`Invalid walletPath: ${input.walletPath}. Expected format group.wallet`);
+const resolveWalletName = (input: CreateWalletsInput, index: number): string => {
+  if (input.walletNames) {
+    const walletName = input.walletNames[index];
+    if (!walletName) {
+      throw new Error(`Missing wallet name for index ${index}`);
     }
-
-    if (input.count > 1) {
-      return {
-        group,
-        wallet: `${wallet}-${String(index + 1).padStart(4, "0")}`,
-        walletPath: `${group}.${wallet}-${String(index + 1).padStart(4, "0")}`,
-      };
-    }
-
-    return { group, wallet, walletPath: input.walletPath };
+    return walletName;
   }
 
-  const walletLocator = input.walletLocator;
-  const group = walletLocator?.group ?? effectiveWalletGroupForLocator;
-
-  if (walletLocator?.wallet && input.count === 1) {
-    return { group, wallet: walletLocator.wallet, walletPath: `${group}.${walletLocator.wallet}` };
+  if (input.walletName) {
+    return input.walletName;
   }
 
-  const indexValue = (walletLocator?.startIndex ?? 1) + index;
-  const wallet = `${input.output.filePrefix}${String(indexValue).padStart(3, "0")}`;
-  return { group, wallet, walletPath: `${group}.${wallet}` };
-};
-
-const parseSolanaSecretKeyArray = (value: unknown): number[] => {
-  if (!Array.isArray(value) || value.length < 64) {
-    throw new Error("solana-keygen output is not a valid keypair array");
-  }
-
-  const numeric = value.map((entry) => Number(entry));
-  const allValid = numeric.every((entry) => Number.isInteger(entry) && entry >= 0 && entry <= 255);
-  if (!allValid) {
-    throw new Error("solana-keygen output contains invalid key bytes");
-  }
-  return numeric;
+  const indexValue = input.output.startIndex + index;
+  return `${input.output.filePrefix}${String(indexValue).padStart(3, "0")}`;
 };
 
 const directoryExists = async (directoryPath: string): Promise<boolean> => {
@@ -143,27 +134,11 @@ const directoryExists = async (directoryPath: string): Promise<boolean> => {
   }
 };
 
-const createWalletWithGenerator = async (input: {
-  generator: "bun" | "solana-cli";
-  keypairFilePath: string;
-}): Promise<{ address: string; publicKeyBytes: Uint8Array; secretKeyBytes: number[] }> => {
-  if (input.generator === "solana-cli") {
-    try {
-      await Bun.$`solana-keygen new --no-bip39-passphrase --silent --outfile ${input.keypairFilePath}`.quiet();
-      const address = (await Bun.$`solana-keygen pubkey ${input.keypairFilePath}`.text()).trim();
-      const secretKey = parseSolanaSecretKeyArray(await Bun.file(input.keypairFilePath).json());
-      const publicKeyBytes = Uint8Array.from(secretKey.slice(32, 64));
-      return {
-        address,
-        publicKeyBytes,
-        secretKeyBytes: secretKey,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`solana-keygen wallet generation failed: ${message}`, { cause: error });
-    }
-  }
-
+const createFilesystemWalletKeypair = async (): Promise<{
+  address: string;
+  publicKeyBytes: Uint8Array;
+  secretKeyBytes: number[];
+}> => {
   const seedPrivateKeyBytes = crypto.getRandomValues(new Uint8Array(32));
   const keyPair = await createKeyPairFromPrivateKeyBytes(seedPrivateKeyBytes);
   const address = await getAddressFromPublicKey(keyPair.publicKey);
@@ -219,16 +194,17 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
 
       await Bun.$`mkdir -p ${path.dirname(walletLibraryFilePath)}`.quiet();
 
-      const effectiveWalletGroupForLocator = input.walletLocator?.group ?? walletGroup;
       const createWalletAtIndex = async (index: number): Promise<void> => {
         if (index >= input.count) {
           return;
         }
-        const { group, wallet, walletPath } = resolveWalletNaming(input, effectiveWalletGroupForLocator, index);
+        const group = walletGroup;
+        const wallet = resolveWalletName(input, index);
+        const walletId = toWalletId(group, wallet);
 
         const baseName = input.output.includeIndexInFileName
-          ? `${group}-${wallet}-${String(index + 1).padStart(4, "0")}`
-          : `${group}-${wallet}`;
+          ? `${wallet}-${String(input.output.startIndex + index).padStart(4, "0")}`
+          : wallet;
         const keypairFilePath = path.join(outputDirectory, `${baseName}.json`);
         const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);
 
@@ -245,24 +221,17 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
           operation: "write wallet label file",
         });
 
-        const generated = await createWalletWithGenerator({
-          generator: input.storage.keypairGenerator,
-          keypairFilePath,
-        });
-        if (input.storage.keypairGenerator === "bun") {
-          await Bun.write(keypairFilePath, `${JSON.stringify(generated.secretKeyBytes)}\n`);
-        }
+        const generated = await createFilesystemWalletKeypair();
+        await Bun.write(keypairFilePath, `${JSON.stringify(generated.secretKeyBytes)}\n`);
 
         const createdAt = new Date().toISOString();
         const walletLabel: WalletLabelFile = {
           version: 1,
-          walletPath,
-          group,
-          wallet,
+          walletId,
+          walletGroup: group,
+          walletName: wallet,
           address: generated.address,
-          walletGroup,
           walletFileName: path.basename(keypairFilePath),
-          keypairGenerator: input.storage.keypairGenerator,
           createdAt,
           updatedAt: createdAt,
         };
@@ -271,14 +240,14 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
         await appendFile(
           walletLibraryFilePath,
           `${JSON.stringify({
-            walletPath,
-            group,
-            wallet,
+            walletId,
+            walletGroup: group,
+            walletName: wallet,
             address: generated.address,
             keypairFilePath,
             walletLabelFilePath,
-            walletGroup,
             createdAt,
+            updatedAt: createdAt,
           })}\n`,
           { encoding: "utf8" },
         );
@@ -286,10 +255,13 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
         files.push(keypairFilePath);
 
         wallets.push({
-          walletPath,
+          walletId,
+          walletGroup: group,
+          walletName: wallet,
           address: generated.address,
           publicKeyBytes: Array.from(generated.publicKeyBytes),
           keypairFilePath,
+          walletLabelFilePath,
         });
         await createWalletAtIndex(index + 1);
       };

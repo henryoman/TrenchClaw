@@ -46,7 +46,7 @@ If a machine-readable response is requested, return strict JSON using this shape
       {
         "key": "check_balance",
         "actionName": "checkSolBalance",
-        "input": { "walletPath": "core-wallets.wallet001" },
+        "input": { "walletName": "wallet001", "storage": { "walletGroup": "core-wallets" } },
         "dependsOn": null,
         "retryPolicy": {
           "maxAttempts": 1,

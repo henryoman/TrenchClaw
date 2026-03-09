@@ -65,7 +65,7 @@
   --tc-row-box-bg: var(--tc-color-black-2);
   --tc-row-box-border: var(--tc-border-muted);
 
-  --tc-sidebar-width: 110px;
+  --tc-sidebar-width: 128px;
   --tc-layout-breakpoint: 980px;
   --tc-right-column-rows: 1fr 1fr;
 

@@ -4,7 +4,6 @@
     runtimeStatus?: string;
     appVersion?: string;
     instanceName?: string;
-    instanceId?: string;
     activeTab?: SidebarTab;
     onTabChange: (tab: SidebarTab) => void;
   };
@@ -13,7 +12,6 @@
     runtimeStatus = "",
     appVersion = "",
     instanceName = "",
-    instanceId = "",
     activeTab = "chat",
     onTabChange,
   }: SidebarProps = $props();
@@ -43,9 +41,6 @@
 <aside class="sidebar">
   <div class="sidebar-head">
     <p class="instance">{instanceName || "trenchclaw"}</p>
-    {#if instanceId}
-      <p class="instance-id">{instanceId}</p>
-    {/if}
     <p class="version">{appVersion}</p>
   </div>
   <nav class="tabs" aria-label="Workspace tabs">
@@ -81,7 +76,7 @@
   .sidebar {
     border: var(--tc-border);
     background: var(--tc-color-black);
-    padding: var(--tc-space-2);
+    padding: var(--tc-space-2) 0;
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -92,7 +87,7 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding-bottom: var(--tc-space-2);
+    padding: 0 var(--tc-space-2) var(--tc-space-2);
   }
 
   .tabs {
@@ -106,7 +101,7 @@
     border-top: 1px solid var(--tc-color-gray-2);
     background: transparent;
     color: var(--tc-color-gray-1);
-    padding: 6px 0;
+    padding: 6px var(--tc-space-2);
     font-family: inherit;
     font-size: var(--tc-sidebar-label-size);
     text-transform: uppercase;
@@ -133,19 +128,13 @@
   .version {
     margin: 0;
     color: var(--tc-color-gray-2);
-    font-size: calc(var(--tc-sidebar-label-size) - 1px);
-    line-height: 1.4;
-    letter-spacing: 0.05em;
-    word-break: break-word;
-  }
-
-  .instance-id {
-    margin: 0;
-    color: var(--tc-color-turquoise);
-    font-size: calc(var(--tc-sidebar-label-size) - 1px);
-    line-height: 1.35;
-    letter-spacing: 0.08em;
+    font-size: 9px;
+    line-height: 1;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .status-stack {
@@ -155,7 +144,7 @@
     align-items: flex-start;
     gap: 2px;
     border-top: 1px solid var(--tc-color-gray-2);
-    padding-top: var(--tc-space-2);
+    padding: var(--tc-space-2) var(--tc-space-2) 0;
   }
 
   .status {

@@ -4,13 +4,12 @@
   export let runtimeStatus = "";
   export let appVersion = "";
   export let instanceName = "";
-  export let instanceId = "";
   export let activeTab: "chat" | "keys-secrets" | "wallets" = "chat";
   export let onTabChange: (tab: "chat" | "keys-secrets" | "wallets") => void;
 </script>
 
 <main class="layout">
-  <Sidebar {runtimeStatus} {appVersion} {instanceName} {instanceId} {activeTab} {onTabChange} />
+  <Sidebar {runtimeStatus} {appVersion} {instanceName} {activeTab} {onTabChange} />
   <section class="workspace">
     <slot />
   </section>
@@ -22,8 +21,8 @@
     display: grid;
     grid-template-columns: var(--tc-sidebar-width) 1fr;
     grid-template-rows: 1fr;
-    gap: var(--tc-space-3);
-    padding: var(--tc-space-3);
+    gap: var(--tc-space-2);
+    padding: var(--tc-space-2);
     box-sizing: border-box;
   }
 
@@ -32,7 +31,7 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr;
-    gap: var(--tc-space-3);
+    gap: var(--tc-space-2);
   }
 
   @media (max-width: var(--tc-layout-breakpoint)) {

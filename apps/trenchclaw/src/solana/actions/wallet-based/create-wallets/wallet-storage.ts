@@ -64,6 +64,9 @@ export const resolveWalletLibraryFilePath = (): string => {
 export const isWalletLabelFileName = (fileName: string): boolean =>
   fileName.toLowerCase().endsWith(WALLET_LABEL_FILE_SUFFIX);
 
+export const toWalletId = (walletGroup: string, walletName: string): string =>
+  `${walletGroupNameSchema.parse(walletGroup)}.${z.string().min(1).regex(/^[a-zA-Z0-9_-]+$/).parse(walletName)}`;
+
 export const resolveWalletLabelFilePath = (keypairFilePath: string): string => {
   const absoluteKeypairFilePath = resolveAbsolutePath(keypairFilePath);
   const extension = path.extname(absoluteKeypairFilePath);

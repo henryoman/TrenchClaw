@@ -3,7 +3,6 @@
   import type { UIMessage } from "ai";
   import type { GuiConversationView } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
-  import RetroInput from "../ui/RetroInput.svelte";
 
   type ChatPanelProps = {
     messages?: UIMessage[];
@@ -32,10 +31,12 @@
   let showConversationModal = $state(false);
   const chatDisabled = $derived(chatDisabledReason.trim().length > 0);
   let messageViewport: HTMLDivElement | null = $state(null);
+  let composer: HTMLTextAreaElement | null = $state(null);
   let shouldFollowStream = $state(true);
   const renderKey = $derived(`${messages.length}:${sending ? "1" : "0"}`);
   let lastRenderKey = "";
   const SCROLL_BOTTOM_TOLERANCE_PX = 20;
+  const COMPOSER_MAX_LINES = 5;
 
   const isNearBottom = (): boolean => {
     if (!messageViewport) {
@@ -70,6 +71,42 @@
     scrollToBottom(behavior);
   };
 
+  const resizeComposer = (): void => {
+    if (!composer) {
+      return;
+    }
+
+    const styles = window.getComputedStyle(composer);
+    const lineHeight = Number.parseFloat(styles.lineHeight) || 18;
+    const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
+    const borderTop = Number.parseFloat(styles.borderTopWidth) || 0;
+    const borderBottom = Number.parseFloat(styles.borderBottomWidth) || 0;
+    const maxHeight = lineHeight * COMPOSER_MAX_LINES + paddingTop + paddingBottom + borderTop + borderBottom;
+
+    composer.style.height = "auto";
+    const nextHeight = Math.min(composer.scrollHeight, maxHeight);
+    composer.style.height = `${nextHeight}px`;
+    composer.style.overflowY = composer.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  const submitChat = (): void => {
+    if (chatDisabled || sending) {
+      return;
+    }
+    onSubmit();
+    void syncScrollForLatestMessages("smooth");
+  };
+
+  const onComposerKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== "Enter" || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    event.preventDefault();
+    submitChat();
+  };
+
   $effect(() => {
     if (renderKey !== lastRenderKey) {
       lastRenderKey = renderKey;
@@ -77,8 +114,14 @@
     }
   });
 
+  $effect(() => {
+    input;
+    resizeComposer();
+  });
+
   onMount(() => {
     scrollToBottom("auto");
+    resizeComposer();
   });
 </script>
 
@@ -171,14 +214,20 @@
     class="chat-form"
     onsubmit={(event) => {
       event.preventDefault();
-      if (chatDisabled) {
-        return;
-      }
-      onSubmit();
-      void syncScrollForLatestMessages("smooth");
+      submitChat();
     }}
   >
-    <RetroInput bind:value={input} placeholder="Ask TrenchClaw..." disabled={chatDisabled} />
+    <textarea
+      bind:this={composer}
+      bind:value={input}
+      class="chat-composer"
+      placeholder="Ask TrenchClaw..."
+      disabled={chatDisabled}
+      rows="1"
+      spellcheck="false"
+      oninput={resizeComposer}
+      onkeydown={onComposerKeyDown}
+    ></textarea>
     <RetroButton type="submit" disabled={sending || chatDisabled}>Send</RetroButton>
   </form>
 </section>
@@ -379,7 +428,6 @@
 
   .chat-form {
     flex-shrink: 0;
-    border-top: var(--tc-border-muted);
     padding: var(--tc-space-2);
     display: grid;
     grid-template-columns: 1fr auto;
@@ -396,12 +444,35 @@
     letter-spacing: var(--tc-sidebar-letter-spacing);
   }
 
-  :global(.chat-form .retro-input) {
+  .chat-composer {
+    width: 100%;
+    min-width: 0;
+    min-height: calc(1.4em + (var(--tc-control-padding-y) * 2));
+    max-height: calc((1.4em * 5) + (var(--tc-control-padding-y) * 2) + 2px);
+    border: var(--tc-border-muted);
+    background: var(--tc-color-black);
+    color: var(--tc-color-gray-3);
+    padding: var(--tc-control-padding-y) var(--tc-control-padding-x);
+    font-family: inherit;
     font-size: var(--tc-chat-text-size);
     line-height: 1.4;
+    resize: none;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    scrollbar-width: none;
   }
 
-  :global(.chat-form .retro-input::placeholder) {
+  .chat-composer:focus {
+    border-color: var(--tc-color-turquoise);
+    outline: none;
+  }
+
+  .chat-composer::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chat-composer::placeholder {
     color: var(--tc-color-turquoise);
   }
 </style>

@@ -38,16 +38,14 @@ describe("createWalletsAction", () => {
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
-      includePrivateKey: true,
-      privateKeyEncoding: "base64",
-      walletPath: "group1.wallet001",
+      walletName: "wallet001",
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        keypairGenerator: "bun",
       },
       output: {
         filePrefix: "wallet",
+        startIndex: 1,
         includeIndexInFileName: true,
       },
     });
@@ -64,8 +62,9 @@ describe("createWalletsAction", () => {
     }
 
     expect(data.wallets).toHaveLength(1);
-    expect(data.wallets[0]?.walletPath).toBe("group1.wallet001");
-    expect(data.wallets[0]).not.toHaveProperty("privateKey");
+    expect(data.wallets[0]?.walletId).toBe(`${walletGroup}.wallet001`);
+    expect(data.wallets[0]?.walletGroup).toBe(walletGroup);
+    expect(data.wallets[0]?.walletName).toBe("wallet001");
     expect(data.walletGroup).toBe(walletGroup);
     expect(data.outputDirectory).toContain(`/instance/${TEST_INSTANCE_ID}/keypairs/${walletGroup}`);
 
@@ -76,7 +75,8 @@ describe("createWalletsAction", () => {
     expect(libraryLines).toHaveLength(1);
 
     const libraryEntry = JSON.parse(libraryLines[0] ?? "{}");
-    expect(libraryEntry.walletPath).toBe("group1.wallet001");
+    expect(libraryEntry.walletId).toBe(`${walletGroup}.wallet001`);
+    expect(libraryEntry.walletName).toBe("wallet001");
     expect(typeof libraryEntry.keypairFilePath).toBe("string");
     expect(typeof libraryEntry.walletLabelFilePath).toBe("string");
     expect(libraryEntry.walletGroup).toBe(walletGroup);
@@ -86,7 +86,9 @@ describe("createWalletsAction", () => {
     expect(keypairJson).toHaveLength(64);
 
     const walletLabelJson = await Bun.file(libraryEntry.walletLabelFilePath).json();
-    expect(walletLabelJson.walletPath).toBe("group1.wallet001");
+    expect(walletLabelJson.walletId).toBe(`${walletGroup}.wallet001`);
+    expect(walletLabelJson.walletGroup).toBe(walletGroup);
+    expect(walletLabelJson.walletName).toBe("wallet001");
     expect(walletLabelJson.walletFileName).toBe(path.basename(data.files[0] ?? ""));
     expect(walletLabelJson.address).toBe(libraryEntry.address);
   });
@@ -95,19 +97,13 @@ describe("createWalletsAction", () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
-      includePrivateKey: false,
-      privateKeyEncoding: "base64",
       storage: {
         walletGroup: "../uploaded-wallets",
         createGroupIfMissing: true,
-        keypairGenerator: "bun",
-      },
-      walletLocator: {
-        group: "tmp",
-        startIndex: 1,
       },
       output: {
         filePrefix: "wallet",
+        startIndex: 1,
         includeIndexInFileName: true,
       },
     });
@@ -132,19 +128,13 @@ describe("createWalletsAction", () => {
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
-      includePrivateKey: false,
-      privateKeyEncoding: "base64",
       storage: {
         walletGroup,
         createGroupIfMissing: false,
-        keypairGenerator: "bun",
-      },
-      walletLocator: {
-        group: walletGroup,
-        startIndex: 1,
       },
       output: {
         filePrefix: "wallet",
+        startIndex: 1,
         includeIndexInFileName: true,
       },
     });

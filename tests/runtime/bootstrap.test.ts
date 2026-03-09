@@ -243,19 +243,14 @@ wallet:
           actionName: "createWallets",
           input: {
             count: 1,
-            includePrivateKey: false,
-            privateKeyEncoding: "base64",
-            walletLocator: {
-              group: "blocked",
-              startIndex: 1,
-            },
+            walletName: "blocked001",
             storage: {
               walletGroup: "core-wallets",
               createGroupIfMissing: true,
-              keypairGenerator: "bun",
             },
             output: {
               filePrefix: "blocked",
+              startIndex: 1,
               includeIndexInFileName: true,
             },
           },

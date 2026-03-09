@@ -7,20 +7,18 @@ import {
   assertWithinBrainProtectedDirectory,
   resolveAbsolutePath,
 } from "../../../lib/wallet/protected-write-policy";
-import { resolveWalletLabelFilePath, resolveWalletLibraryFilePath } from "./wallet-storage";
+import { resolveWalletLabelFilePath, resolveWalletLibraryFilePath, toWalletId, walletGroupNameSchema } from "./wallet-storage";
 
-const walletPathSchema = z
-  .string()
-  .trim()
-  .regex(/^[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+$/);
+const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
 
 const renameWalletsInputSchema = z.object({
+  walletGroup: walletGroupNameSchema,
   updateKeypairFiles: z.boolean().default(true),
   renames: z
     .array(
       z.object({
-        from: walletPathSchema,
-        to: walletPathSchema,
+        fromWalletName: walletNameSchema,
+        toWalletName: walletNameSchema,
       }),
     )
     .min(1),
@@ -29,22 +27,15 @@ const renameWalletsInputSchema = z.object({
 type RenameWalletsInput = z.output<typeof renameWalletsInputSchema>;
 
 interface RenameWalletsOutput {
+  walletGroup: string;
   walletLibraryFilePath: string;
   renamed: Array<{
-    from: string;
-    to: string;
+    fromWalletName: string;
+    toWalletName: string;
     keypairFilePath?: string;
     address?: string;
   }>;
 }
-
-const parseWalletPath = (walletPath: string): { group: string; wallet: string } => {
-  const [group, wallet] = walletPath.split(".");
-  if (!group || !wallet) {
-    throw new Error(`Invalid walletPath: ${walletPath}. Expected format group.wallet`);
-  }
-  return { group, wallet };
-};
 
 const toObjectRecord = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -95,17 +86,20 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         }
       });
 
-      const entryIndexByWalletPath = new Map<string, number>();
+      const entryIndexByWalletId = new Map<string, number>();
       entries.forEach((entry, index) => {
-        const walletPath = entry.walletPath;
-        if (typeof walletPath !== "string" || walletPath.length === 0) {
-          throw new Error(`Wallet library line ${index + 1} is missing string field "walletPath"`);
+        const walletId = entry.walletId;
+        if (typeof walletId !== "string" || walletId.length === 0) {
+          throw new Error(`Wallet library line ${index + 1} is missing string field "walletId"`);
         }
 
-        if (entryIndexByWalletPath.has(walletPath)) {
-          throw new Error(`Duplicate walletPath in library: ${walletPath}`);
+        if (entry.walletGroup !== input.walletGroup) {
+          return;
         }
-        entryIndexByWalletPath.set(walletPath, index);
+        if (entryIndexByWalletId.has(walletId)) {
+          throw new Error(`Duplicate walletId in library: ${walletId}`);
+        }
+        entryIndexByWalletId.set(walletId, index);
       });
 
       const renamed: RenameWalletsOutput["renamed"] = [];
@@ -115,34 +109,35 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         if (!rename) {
           return;
         }
-        if (rename.from === rename.to) {
+        if (rename.fromWalletName === rename.toWalletName) {
           await applyRenameAtIndex(index + 1);
           return;
         }
 
-        const sourceIndex = entryIndexByWalletPath.get(rename.from);
+        const fromWalletId = toWalletId(input.walletGroup, rename.fromWalletName);
+        const toWalletIdValue = toWalletId(input.walletGroup, rename.toWalletName);
+        const sourceIndex = entryIndexByWalletId.get(fromWalletId);
         if (sourceIndex === undefined) {
-          throw new Error(`Cannot rename missing walletPath "${rename.from}"`);
+          throw new Error(`Cannot rename missing wallet "${fromWalletId}"`);
         }
 
-        const existingTargetIndex = entryIndexByWalletPath.get(rename.to);
+        const existingTargetIndex = entryIndexByWalletId.get(toWalletIdValue);
         if (existingTargetIndex !== undefined && existingTargetIndex !== sourceIndex) {
-          throw new Error(`Cannot rename "${rename.from}" to "${rename.to}": target already exists`);
+          throw new Error(`Cannot rename "${fromWalletId}" to "${toWalletIdValue}": target already exists`);
         }
 
         const entry = entries[sourceIndex] ?? {};
         const next = { ...entry };
-        const parsed = parseWalletPath(rename.to);
 
-        next.walletPath = rename.to;
-        next.group = parsed.group;
-        next.wallet = parsed.wallet;
+        next.walletId = toWalletIdValue;
+        next.walletGroup = input.walletGroup;
+        next.walletName = rename.toWalletName;
         next.updatedAt = new Date().toISOString();
 
         entries[sourceIndex] = next;
 
-        entryIndexByWalletPath.delete(rename.from);
-        entryIndexByWalletPath.set(rename.to, sourceIndex);
+        entryIndexByWalletId.delete(fromWalletId);
+        entryIndexByWalletId.set(toWalletIdValue, sourceIndex);
 
         const keypairFilePath = typeof next.keypairFilePath === "string" ? next.keypairFilePath : undefined;
         const walletLabelFilePath = typeof next.walletLabelFilePath === "string"
@@ -173,11 +168,10 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
             return { ...(walletLabelJson as Record<string, unknown>) };
           })();
           nextWalletLabel.version = 1;
-          nextWalletLabel.walletPath = rename.to;
-          nextWalletLabel.group = parsed.group;
-          nextWalletLabel.wallet = parsed.wallet;
+          nextWalletLabel.walletId = toWalletIdValue;
+          nextWalletLabel.walletGroup = input.walletGroup;
+          nextWalletLabel.walletName = rename.toWalletName;
           nextWalletLabel.address = typeof next.address === "string" ? next.address : nextWalletLabel.address;
-          nextWalletLabel.walletGroup = typeof next.walletGroup === "string" ? next.walletGroup : nextWalletLabel.walletGroup;
           if (keypairFilePath) {
             nextWalletLabel.walletFileName = path.basename(keypairFilePath);
           }
@@ -189,8 +183,8 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         }
 
         renamed.push({
-          from: rename.from,
-          to: rename.to,
+          fromWalletName: rename.fromWalletName,
+          toWalletName: rename.toWalletName,
           keypairFilePath,
           address: typeof next.address === "string" ? next.address : undefined,
         });
@@ -211,6 +205,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         ok: true,
         retryable: false,
         data: {
+          walletGroup: input.walletGroup,
           walletLibraryFilePath,
           renamed,
         },

@@ -1,11 +1,12 @@
 {
   "createWallets": {
     "routineName": "createWallets",
-    "command": "createWallets [count=<number>] [walletPath=<group.wallet>] [walletLocator.group=<group>] [walletLocator.wallet=<wallet>] [walletLocator.startIndex=<number>] [storage.walletGroup=<group>] [storage.createGroupIfMissing=true|false] [storage.keypairGenerator=bun|solana-cli] [groups='[{\"name\":\"core\",\"wallets\":[{\"name\":\"maker\"}],\"children\":[{\"name\":\"snipers\",\"count\":2,\"startIndex\":1}]}]'] [renames='[{\"from\":\"core.maker\",\"to\":\"core.makerMain\"}]'] [includePrivateKey=true|false] [privateKeyEncoding=base64|hex|bytes] [output.filePrefix=<prefix>] [output.includeIndexInFileName=true|false]",
+    "command": "createWallets [count=<number>] [walletName=<wallet>] [walletNames='[\"wallet001\",\"wallet002\"]'] [storage.walletGroup=<group>] [storage.createGroupIfMissing=true|false] [walletGroups='[{\"name\":\"core-wallets\",\"wallets\":[{\"name\":\"maker\"}]},{\"name\":\"snipers\",\"count\":2,\"startIndex\":5,\"filePrefix\":\"s\"}]'] [renames='[{\"walletGroup\":\"core-wallets\",\"fromWalletName\":\"maker\",\"toWalletName\":\"makerMain\"}]'] [output.filePrefix=<prefix>] [output.startIndex=<number>] [output.includeIndexInFileName=true|false]",
     "defaults": {
       "count": 1,
       "storage.walletGroup": "core-wallets",
       "output.filePrefix": "wallet",
+      "output.startIndex": 1,
       "output.includeIndexInFileName": true
     }
   },
@@ -18,15 +19,13 @@
           "actionName": "createWallets",
           "input": {
             "count": 1,
-            "includePrivateKey": false,
-            "privateKeyEncoding": "base64",
             "storage": {
               "walletGroup": "core-wallets",
-              "createGroupIfMissing": true,
-              "keypairGenerator": "bun"
+              "createGroupIfMissing": true
             },
             "output": {
               "filePrefix": "wallet",
+              "startIndex": 1,
               "includeIndexInFileName": true
             }
           }

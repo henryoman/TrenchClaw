@@ -45,21 +45,19 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: createWalletsAction,
-    description: "Create one or more wallets and optionally write key material to managed storage.",
-    purpose: "Provision fresh wallets in a deterministic batch.",
+    description: "Create one or more filesystem wallets inside a single wallet group directory.",
+    purpose: "Provision fresh wallets with one sidecar label file per wallet.",
     tags: ["wallets", "setup", "keys"],
     exampleInput: {
       count: 2,
-      includePrivateKey: false,
-      privateKeyEncoding: "base58",
-      walletLocator: {
-        walletGroup: "ops/market-makers",
-      },
       storage: {
-        mode: "library",
+        walletGroup: "ops-market-makers",
+        createGroupIfMissing: true,
       },
       output: {
-        includeSummary: true,
+        filePrefix: "mm",
+        startIndex: 1,
+        includeIndexInFileName: true,
       },
     },
     includeInCatalog: () => true,
@@ -73,11 +71,11 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     purpose: "Clean up or reorganize existing managed wallet inventories.",
     tags: ["wallets", "maintenance"],
     exampleInput: {
-      updateKeypairFiles: true,
+      walletGroup: "ops-market-makers",
       renames: [
         {
-          from: "ops/market-makers/wallet-001",
-          to: "ops/market-makers/mm-hot-001",
+          fromWalletName: "mm001",
+          toWalletName: "mm-hot-001",
         },
       ],
     },

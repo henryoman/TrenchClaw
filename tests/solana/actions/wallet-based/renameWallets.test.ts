@@ -29,7 +29,7 @@ afterEach(async () => {
 });
 
 describe("renameWalletsAction", () => {
-  test("renames walletPath in library and updates the colocated wallet label file", async () => {
+  test("renames wallet metadata in the library and updates the colocated wallet label file", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-wallet-library-${crypto.randomUUID()}.jsonl`);
@@ -39,16 +39,14 @@ describe("renameWalletsAction", () => {
 
     const createResult = await createWalletsAction.execute({} as never, {
       count: 1,
-      includePrivateKey: true,
-      privateKeyEncoding: "base64",
-      walletPath: "ops.wallet001",
+      walletName: "wallet001",
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        keypairGenerator: "bun",
       },
       output: {
         filePrefix: "wallet",
+        startIndex: 1,
         includeIndexInFileName: true,
       },
     });
@@ -68,7 +66,8 @@ describe("renameWalletsAction", () => {
     const originalKeypairText = await Bun.file(keypairFile).text();
 
     const renameResult = await renameWalletsAction.execute({} as never, {
-      renames: [{ from: "ops.wallet001", to: "ops.wallet-main" }],
+      walletGroup,
+      renames: [{ fromWalletName: "wallet001", toWalletName: "wallet-main" }],
       updateKeypairFiles: true,
     });
 
@@ -90,9 +89,9 @@ describe("renameWalletsAction", () => {
 
     expect(libraryLines).toHaveLength(1);
     const updatedEntry = JSON.parse(libraryLines[0] ?? "{}");
-    expect(updatedEntry.walletPath).toBe("ops.wallet-main");
-    expect(updatedEntry.group).toBe("ops");
-    expect(updatedEntry.wallet).toBe("wallet-main");
+    expect(updatedEntry.walletId).toBe(`${walletGroup}.wallet-main`);
+    expect(updatedEntry.walletGroup).toBe(walletGroup);
+    expect(updatedEntry.walletName).toBe("wallet-main");
 
     const keypairJson = JSON.parse(originalKeypairText);
     expect(Array.isArray(keypairJson)).toBe(true);
@@ -101,12 +100,12 @@ describe("renameWalletsAction", () => {
 
     expect(typeof updatedEntry.walletLabelFilePath).toBe("string");
     const walletLabelJson = await Bun.file(updatedEntry.walletLabelFilePath).json();
-    expect(walletLabelJson.walletPath).toBe("ops.wallet-main");
-    expect(walletLabelJson.group).toBe("ops");
-    expect(walletLabelJson.wallet).toBe("wallet-main");
+    expect(walletLabelJson.walletId).toBe(`${walletGroup}.wallet-main`);
+    expect(walletLabelJson.walletGroup).toBe(walletGroup);
+    expect(walletLabelJson.walletName).toBe("wallet-main");
   });
 
-  test("rejects rename when target walletPath already exists", async () => {
+  test("rejects rename when target wallet name already exists", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-conflict-wallet-library-${crypto.randomUUID()}.jsonl`);
@@ -116,39 +115,36 @@ describe("renameWalletsAction", () => {
 
     await createWalletsAction.execute({} as never, {
       count: 1,
-      includePrivateKey: true,
-      privateKeyEncoding: "base64",
-      walletPath: "ops.one",
+      walletName: "one",
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        keypairGenerator: "bun",
       },
       output: {
         filePrefix: "wallet",
+        startIndex: 1,
         includeIndexInFileName: true,
       },
     });
 
     await createWalletsAction.execute({} as never, {
       count: 1,
-      includePrivateKey: true,
-      privateKeyEncoding: "base64",
-      walletPath: "ops.two",
+      walletName: "two",
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-        keypairGenerator: "bun",
       },
       output: {
         filePrefix: "wallet",
+        startIndex: 1,
         includeIndexInFileName: true,
       },
     });
 
     const renameResult = await renameWalletsAction.execute({} as never, {
+      walletGroup,
       updateKeypairFiles: true,
-      renames: [{ from: "ops.one", to: "ops.two" }],
+      renames: [{ fromWalletName: "one", toWalletName: "two" }],
     });
 
     expect(renameResult.ok).toBe(false);

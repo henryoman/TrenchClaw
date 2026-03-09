@@ -94,7 +94,6 @@
     runtimeStatus={runtime.state.runtimeStatus}
     appVersion={appVersionLabel}
     instanceName={runtime.state.activeInstance?.name ?? ""}
-    instanceId={runtime.state.activeInstance?.localInstanceId ?? ""}
     {activeTab}
     onTabChange={(tab) => {
       activeTab = tab;
@@ -185,7 +184,7 @@
     min-height: 0;
     display: grid;
     grid-template-rows: var(--tc-right-column-rows);
-    gap: var(--tc-space-3);
+    gap: var(--tc-space-2);
   }
 
   .chat-init-error {

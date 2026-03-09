@@ -14,19 +14,19 @@
     "lint:fix": "oxlint --fix ."
   },
   "dependencies": {
-    "@ai-sdk/svelte": "^4.0.99",
-    "@openrouter/ai-sdk-provider": "^2.2.3",
+    "@ai-sdk/svelte": "^4.0.116",
+    "@openrouter/ai-sdk-provider": "^2.2.5",
     "@trenchclaw/types": "workspace:*",
-    "ai": "^6.0.99",
+    "ai": "^6.0.116",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "6.2.4",
+    "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@types/json-schema": "^7.0.15",
-    "oxlint": "^1.49.0",
-    "svelte": "5.53.3",
-    "svelte-check": "^4.4.3",
-    "typescript": "^5.9.2",
-    "vite": "7.3.1"
+    "oxlint": "^1.51.0",
+    "svelte": "^5.53.8",
+    "svelte-check": "^4.4.5",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
   }
 }
