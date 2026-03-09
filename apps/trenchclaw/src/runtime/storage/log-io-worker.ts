@@ -58,7 +58,7 @@ export class LogIoWorkerClient {
       return;
     }
 
-    this.worker.onmessage = (event: MessageEvent<LogIoResponse>) => {
+    this.worker.addEventListener("message", (event: MessageEvent<LogIoResponse>) => {
       const response = event.data;
       const pending = this.pending.get(response.id);
       if (!pending) {
@@ -82,11 +82,11 @@ export class LogIoWorkerClient {
         return;
       }
       pending.reject(new Error(response.error ?? "log io worker failed"));
-    };
-    this.worker.onerror = () => {
+    });
+    this.worker.addEventListener("error", () => {
       this.worker?.terminate();
       this.worker = null;
-    };
+    });
   }
 
   private async performDirectWrite(request: Omit<LogIoRequest, "id">): Promise<void> {

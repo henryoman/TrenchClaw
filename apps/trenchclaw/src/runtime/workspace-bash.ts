@@ -163,7 +163,7 @@ class HostWorkspaceSandbox {
   }
 
   async writeFiles(files: Array<{ path: string; content: string | Buffer }>): Promise<void> {
-    for (const file of files) {
+    await Promise.all(files.map(async (file) => {
       const absolutePath = assertWorkspacePath(this.workspaceRoot, file.path);
       await assertModelFilesystemWriteAllowed({
         actor: this.actor,
@@ -172,7 +172,7 @@ class HostWorkspaceSandbox {
       });
       await mkdir(path.dirname(absolutePath), { recursive: true });
       await writeFile(absolutePath, file.content);
-    }
+    }));
   }
 }
 

@@ -43,7 +43,7 @@ const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promi
     });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new Error(`Runtime request timed out after ${REQUEST_TIMEOUT_MS}ms`);
+      throw new Error(`Runtime request timed out after ${REQUEST_TIMEOUT_MS}ms`, { cause: error });
     }
     throw error;
   } finally {

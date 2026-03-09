@@ -25,11 +25,6 @@ const DEFAULT_VAULT_TEMPLATE_FILE = "../brain/protected/no-read/vault.template.j
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 
-const trimOrUndefined = (value: string | undefined): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
 const resolveProvider = (rawProvider: string | undefined): LlmProvider =>
   providerSchema.parse(rawProvider?.trim() || "openrouter");
 

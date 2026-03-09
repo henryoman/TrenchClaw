@@ -5,20 +5,35 @@
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroInput from "../ui/RetroInput.svelte";
 
-  export let messages: UIMessage[] = [];
-  export let input = "";
-  export let conversations: GuiConversationView[] = [];
-  export let activeConversationId: string | null = null;
-  export let sending = false;
-  export let chatDisabledReason = "";
-  export let onSelectConversation: (conversationId: string) => void;
-  export let onCreateConversation: () => void;
-  export let onSubmit: () => void;
+  type ChatPanelProps = {
+    messages?: UIMessage[];
+    input?: string;
+    conversations?: GuiConversationView[];
+    activeConversationId?: string | null;
+    sending?: boolean;
+    chatDisabledReason?: string;
+    onSelectConversation: (conversationId: string) => void;
+    onCreateConversation: () => void;
+    onSubmit: () => void;
+  };
 
-  let showConversationModal = false;
-  $: chatDisabled = chatDisabledReason.trim().length > 0;
-  let messageViewport: HTMLDivElement | null = null;
-  let shouldFollowStream = true;
+  let {
+    messages = [],
+    input = $bindable(""),
+    conversations = [],
+    activeConversationId = null,
+    sending = false,
+    chatDisabledReason = "",
+    onSelectConversation,
+    onCreateConversation,
+    onSubmit,
+  }: ChatPanelProps = $props();
+
+  let showConversationModal = $state(false);
+  const chatDisabled = $derived(chatDisabledReason.trim().length > 0);
+  let messageViewport: HTMLDivElement | null = $state(null);
+  let shouldFollowStream = $state(true);
+  const renderKey = $derived(`${messages.length}:${sending ? "1" : "0"}`);
   let lastRenderKey = "";
   const SCROLL_BOTTOM_TOLERANCE_PX = 20;
 
@@ -44,8 +59,6 @@
     shouldFollowStream = isNearBottom();
   };
 
-  const buildRenderKey = (): string => `${messages.length}:${sending ? "1" : "0"}`;
-
   const syncScrollForLatestMessages = async (behavior: ScrollBehavior): Promise<void> => {
     await tick();
     if (!messageViewport) {
@@ -57,13 +70,12 @@
     scrollToBottom(behavior);
   };
 
-  $: {
-    const nextKey = buildRenderKey();
-    if (nextKey !== lastRenderKey) {
-      lastRenderKey = nextKey;
+  $effect(() => {
+    if (renderKey !== lastRenderKey) {
+      lastRenderKey = renderKey;
       void syncScrollForLatestMessages(messages.length <= 1 ? "auto" : "smooth");
     }
-  }
+  });
 
   onMount(() => {
     scrollToBottom("auto");
@@ -78,7 +90,7 @@
         type="button"
         class="conversation-picker-button"
         aria-label="Create new conversation"
-        on:click={() => {
+        onclick={() => {
           onCreateConversation();
           showConversationModal = false;
         }}><span class="plus-icon">+</span></button
@@ -87,7 +99,7 @@
         type="button"
         class="conversation-picker-button"
         aria-label="Open conversation picker"
-        on:click={() => {
+        onclick={() => {
           showConversationModal = !showConversationModal;
         }}>▼</button
       >
@@ -102,7 +114,7 @@
           type="button"
           class="conversation-modal-close"
           aria-label="Close conversation picker"
-          on:click={() => {
+          onclick={() => {
             showConversationModal = false;
           }}>x</button
         >
@@ -111,11 +123,11 @@
         {#if conversations.length === 0}
           <p class="conversation-empty">No conversations yet</p>
         {:else}
-          {#each conversations as conversation}
+          {#each conversations as conversation (conversation.id)}
             <button
               type="button"
               class="conversation-option {activeConversationId === conversation.id ? 'active' : ''}"
-              on:click={() => {
+              onclick={() => {
                 onSelectConversation(conversation.id);
                 showConversationModal = false;
               }}
@@ -128,11 +140,11 @@
     </section>
   {/if}
 
-  <div class="chat-messages" bind:this={messageViewport} on:scroll={onMessagesScroll}>
-    {#each messages as message}
+  <div class="chat-messages" bind:this={messageViewport} onscroll={onMessagesScroll}>
+    {#each messages as message (message.id)}
       <div class="message-row {message.role}">
         <div class="bubble {message.role}">
-          {#each message.parts as part}
+          {#each message.parts as part, partIndex (`${message.id}:${partIndex}:${part.type}`)}
             {#if part.type === "text"}
               <p>{part.text}</p>
             {:else if "errorText" in part}
@@ -157,7 +169,8 @@
 
   <form
     class="chat-form"
-    on:submit|preventDefault={() => {
+    onsubmit={(event) => {
+      event.preventDefault();
       if (chatDisabled) {
         return;
       }
@@ -317,6 +330,7 @@
     border: var(--tc-border-muted);
     padding: var(--tc-space-2) var(--tc-space-3);
     font-size: var(--tc-chat-text-size);
+    font-weight: 300;
     line-height: 1.4;
     white-space: pre-wrap;
     overflow-wrap: anywhere;

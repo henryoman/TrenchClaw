@@ -338,7 +338,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
     if (request.method === "GET" && url.pathname === "/api/gui/wallets") {
       try {
-        return Response.json(await listWalletTree(), { headers: CORS_HEADERS });
+        return Response.json(await listWalletTree(context), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
       }
@@ -350,7 +350,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
         return Response.json({ error: "Missing wallet file path" }, { status: 400, headers: CORS_HEADERS });
       }
       try {
-        const backup = await readWalletBackupFile(relativePath);
+        const backup = await readWalletBackupFile(context, relativePath);
         return new Response(backup.content, {
           status: 200,
           headers: {

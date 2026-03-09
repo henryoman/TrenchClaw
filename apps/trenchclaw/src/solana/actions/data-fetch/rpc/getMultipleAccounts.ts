@@ -51,29 +51,28 @@ export async function getMultipleAccounts(
   const uniqueInputAccounts = uniqueAccounts(params.accounts);
   const inputChunks = chunkArray(uniqueInputAccounts, chunkSize);
 
+  const chunkResponses = await Promise.all(
+    inputChunks.map(async (chunk) => {
+      const chunkAddresses = chunk.map((item) => address(item));
+      const response = await (encoding === "jsonParsed"
+        ? rpc.getMultipleAccounts(chunkAddresses, {
+            commitment: params.commitment,
+            encoding: "jsonParsed",
+            minContextSlot: params.minContextSlot,
+          })
+        : rpc.getMultipleAccounts(chunkAddresses, {
+            commitment: params.commitment,
+            dataSlice: params.dataSlice,
+            encoding: "base64",
+            minContextSlot: params.minContextSlot,
+          })).send();
+      return { chunk, response };
+    }),
+  );
+
   let contextSlot = 0n;
   const accountMap = new Map<string, unknown | null>();
-
-  for (const chunk of inputChunks) {
-    const chunkAddresses = chunk.map((item) => address(item));
-    const response =
-      encoding === "jsonParsed"
-        ? await rpc
-            .getMultipleAccounts(chunkAddresses, {
-              commitment: params.commitment,
-              encoding: "jsonParsed",
-              minContextSlot: params.minContextSlot,
-            })
-            .send()
-        : await rpc
-            .getMultipleAccounts(chunkAddresses, {
-              commitment: params.commitment,
-              dataSlice: params.dataSlice,
-              encoding: "base64",
-              minContextSlot: params.minContextSlot,
-            })
-            .send();
-
+  for (const { chunk, response } of chunkResponses) {
     if (response.context.slot > contextSlot) {
       contextSlot = response.context.slot;
     }

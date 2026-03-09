@@ -12,6 +12,7 @@ import {
   DEFAULT_WALLET_GROUP,
   resolveWalletGroupDirectoryPath,
   resolveWalletKeypairRootPath,
+  resolveWalletLabelFilePath,
   resolveWalletLibraryFilePath,
   walletGroupNameSchema,
 } from "./wallet-storage";
@@ -73,15 +74,18 @@ interface CreateWalletsOutput {
   walletGroup: string;
 }
 
-const encodePrivateKey = (privateKeyBytes: Uint8Array, encoding: CreateWalletsInput["privateKeyEncoding"]) => {
-  if (encoding === "bytes") {
-    return Array.from(privateKeyBytes);
-  }
-  if (encoding === "hex") {
-    return Buffer.from(privateKeyBytes).toString("hex");
-  }
-  return Buffer.from(privateKeyBytes).toString("base64");
-};
+interface WalletLabelFile {
+  version: 1;
+  walletPath: string;
+  group: string;
+  wallet: string;
+  address: string;
+  walletGroup: string;
+  walletFileName: string;
+  keypairGenerator: "bun" | "solana-cli";
+  createdAt: string;
+  updatedAt: string;
+}
 
 const resolveWalletNaming = (
   input: CreateWalletsInput,
@@ -142,22 +146,21 @@ const directoryExists = async (directoryPath: string): Promise<boolean> => {
 const createWalletWithGenerator = async (input: {
   generator: "bun" | "solana-cli";
   keypairFilePath: string;
-}): Promise<{ address: string; publicKeyBytes: Uint8Array; privateKeyBytes: Uint8Array }> => {
+}): Promise<{ address: string; publicKeyBytes: Uint8Array; secretKeyBytes: number[] }> => {
   if (input.generator === "solana-cli") {
     try {
       await Bun.$`solana-keygen new --no-bip39-passphrase --silent --outfile ${input.keypairFilePath}`.quiet();
       const address = (await Bun.$`solana-keygen pubkey ${input.keypairFilePath}`.text()).trim();
       const secretKey = parseSolanaSecretKeyArray(await Bun.file(input.keypairFilePath).json());
-      const privateKeyBytes = Uint8Array.from(secretKey);
       const publicKeyBytes = Uint8Array.from(secretKey.slice(32, 64));
       return {
         address,
         publicKeyBytes,
-        privateKeyBytes,
+        secretKeyBytes: secretKey,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`solana-keygen wallet generation failed: ${message}`);
+      throw new Error(`solana-keygen wallet generation failed: ${message}`, { cause: error });
     }
   }
 
@@ -165,11 +168,12 @@ const createWalletWithGenerator = async (input: {
   const keyPair = await createKeyPairFromPrivateKeyBytes(seedPrivateKeyBytes);
   const address = await getAddressFromPublicKey(keyPair.publicKey);
   const publicKeyBytes = new Uint8Array(await crypto.subtle.exportKey("raw", keyPair.publicKey));
+  const secretKeyBytes = [...seedPrivateKeyBytes, ...publicKeyBytes];
 
   return {
     address: String(address),
     publicKeyBytes,
-    privateKeyBytes: seedPrivateKeyBytes,
+    secretKeyBytes,
   };
 };
 
@@ -216,43 +220,53 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
       await Bun.$`mkdir -p ${path.dirname(walletLibraryFilePath)}`.quiet();
 
       const effectiveWalletGroupForLocator = input.walletLocator?.group ?? walletGroup;
-
-      for (let index = 0; index < input.count; index += 1) {
+      const createWalletAtIndex = async (index: number): Promise<void> => {
+        if (index >= input.count) {
+          return;
+        }
         const { group, wallet, walletPath } = resolveWalletNaming(input, effectiveWalletGroupForLocator, index);
 
         const baseName = input.output.includeIndexInFileName
           ? `${group}-${wallet}-${String(index + 1).padStart(4, "0")}`
           : `${group}-${wallet}`;
         const keypairFilePath = path.join(outputDirectory, `${baseName}.json`);
+        const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);
 
         if (await Bun.file(keypairFilePath).exists()) {
           throw new Error(`Refusing to overwrite existing wallet file: ${keypairFilePath}`);
         }
+        if (await Bun.file(walletLabelFilePath).exists()) {
+          throw new Error(`Refusing to overwrite existing wallet label file: ${walletLabelFilePath}`);
+        }
         await assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: keypairFilePath, operation: "write keypair file" });
+        await assertProtectedWriteAllowed({
+          actor: _ctx.actor,
+          targetPath: walletLabelFilePath,
+          operation: "write wallet label file",
+        });
 
         const generated = await createWalletWithGenerator({
           generator: input.storage.keypairGenerator,
           keypairFilePath,
         });
+        if (input.storage.keypairGenerator === "bun") {
+          await Bun.write(keypairFilePath, `${JSON.stringify(generated.secretKeyBytes)}\n`);
+        }
 
-        const privateKey = input.includePrivateKey
-          ? encodePrivateKey(generated.privateKeyBytes, input.privateKeyEncoding)
-          : undefined;
-
-        await Bun.write(
-          keypairFilePath,
-          `${JSON.stringify(
-            {
-              walletPath,
-              address: generated.address,
-              publicKeyBytes: Array.from(generated.publicKeyBytes),
-              privateKey,
-              keypairGenerator: input.storage.keypairGenerator,
-            },
-            null,
-            2,
-          )}\n`,
-        );
+        const createdAt = new Date().toISOString();
+        const walletLabel: WalletLabelFile = {
+          version: 1,
+          walletPath,
+          group,
+          wallet,
+          address: generated.address,
+          walletGroup,
+          walletFileName: path.basename(keypairFilePath),
+          keypairGenerator: input.storage.keypairGenerator,
+          createdAt,
+          updatedAt: createdAt,
+        };
+        await Bun.write(walletLabelFilePath, `${JSON.stringify(walletLabel, null, 2)}\n`);
 
         await appendFile(
           walletLibraryFilePath,
@@ -262,8 +276,9 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
             wallet,
             address: generated.address,
             keypairFilePath,
+            walletLabelFilePath,
             walletGroup,
-            createdAt: new Date().toISOString(),
+            createdAt,
           })}\n`,
           { encoding: "utf8" },
         );
@@ -276,7 +291,10 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
           publicKeyBytes: Array.from(generated.publicKeyBytes),
           keypairFilePath,
         });
-      }
+        await createWalletAtIndex(index + 1);
+      };
+
+      await createWalletAtIndex(0);
 
       return {
         ok: true,

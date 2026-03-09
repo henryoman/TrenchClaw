@@ -7,8 +7,15 @@ import { createWalletGroupDirectoryAction } from "../../../../apps/trenchclaw/sr
 import { coreAppPath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
+const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+const TEST_INSTANCE_ID = "i-test-wallet-groups";
 
 afterEach(async () => {
+  if (previousActiveInstanceId === undefined) {
+    delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+  } else {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+  }
   for (const targetPath of createdPaths) {
     await rm(targetPath, { recursive: true, force: true });
   }
@@ -17,8 +24,9 @@ afterEach(async () => {
 
 describe("createWalletGroupDirectoryAction", () => {
   test("creates group directories under protected keypairs root", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
-    const expectedPath = path.join(coreAppPath("src/ai/brain/protected/keypairs"), walletGroup);
+    const expectedPath = path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID, "keypairs", walletGroup);
 
     const result = await createWalletGroupDirectoryAction.execute({} as never, { walletGroup });
 
@@ -30,11 +38,12 @@ describe("createWalletGroupDirectoryAction", () => {
     const createdDirectoryPath = result.data?.directoryPath ?? expectedPath;
     createdPaths.add(createdDirectoryPath);
     expect(result.data?.walletGroup).toBe(walletGroup);
-    expect(createdDirectoryPath.endsWith(`/keypairs/${walletGroup}`)).toBe(true);
+    expect(createdDirectoryPath.endsWith(`/instance/${TEST_INSTANCE_ID}/keypairs/${walletGroup}`)).toBe(true);
     expect((await stat(createdDirectoryPath)).isDirectory()).toBe(true);
   });
 
   test("rejects invalid group names", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const result = await createWalletGroupDirectoryAction.execute({} as never, {
       walletGroup: "../escape",
     });

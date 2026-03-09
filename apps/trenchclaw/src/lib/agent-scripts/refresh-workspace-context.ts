@@ -46,28 +46,31 @@ const sortEntries = (a: TreeEntry, b: TreeEntry): number => {
 
 const buildTree = async (rootPath: string, rootLabel?: string): Promise<string> => {
   const { readdir } = await import("node:fs/promises");
-  const lines: string[] = [`${rootLabel ?? basename(rootPath)}/`];
-
-  const walk = async (dirPath: string, prefix: string): Promise<void> => {
+  const walk = async (dirPath: string, prefix: string): Promise<string[]> => {
     const entries = (await readdir(dirPath, { withFileTypes: true }))
       .filter((entry) => !OMITTED_DIR_NAMES.has(entry.name))
       .map((entry) => ({ name: entry.name, isDirectory: entry.isDirectory() }))
-      .sort(sortEntries);
+      .toSorted(sortEntries);
 
-    for (let index = 0; index < entries.length; index += 1) {
-      const entry = entries[index]!;
-      const isLast = index === entries.length - 1;
-      const connector = isLast ? "`-- " : "|-- ";
-      const nextPrefix = prefix + (isLast ? "    " : "|   ");
-      lines.push(`${prefix}${connector}${entry.isDirectory ? `${entry.name}/` : entry.name}`);
+    const renderedEntries = await Promise.all(
+      entries.map(async (entry, index) => {
+        const isLast = index === entries.length - 1;
+        const connector = isLast ? "`-- " : "|-- ";
+        const nextPrefix = prefix + (isLast ? "    " : "|   ");
+        const rendered = [`${prefix}${connector}${entry.isDirectory ? `${entry.name}/` : entry.name}`];
 
-      if (entry.isDirectory) {
-        await walk(join(dirPath, entry.name), nextPrefix);
-      }
-    }
+        if (entry.isDirectory) {
+          rendered.push(...(await walk(join(dirPath, entry.name), nextPrefix)));
+        }
+
+        return rendered;
+      }),
+    );
+
+    return renderedEntries.flat();
   };
 
-  await walk(rootPath, "");
+  const lines = [`${rootLabel ?? basename(rootPath)}/`, ...(await walk(rootPath, ""))];
   return lines.join("\n");
 };
 
@@ -115,10 +118,15 @@ const getCanonicalSchemaSqlDump = (): string => {
 const resolveLiveDbPath = async (): Promise<string | null> => {
   const envPath = process.env[CONTEXT_DB_PATH_ENV]?.trim();
   const candidates = envPath ? [envPath, ...DEFAULT_LIVE_DB_PATH_CANDIDATES] : DEFAULT_LIVE_DB_PATH_CANDIDATES;
-  for (const pathCandidate of candidates) {
-    if (await Bun.file(pathCandidate).exists()) {
-      return pathCandidate;
-    }
+  const existenceResults = await Promise.all(
+    candidates.map(async (pathCandidate) => ({
+      pathCandidate,
+      exists: await Bun.file(pathCandidate).exists(),
+    })),
+  );
+  const firstExisting = existenceResults.find((candidate) => candidate.exists)?.pathCandidate;
+  if (firstExisting) {
+    return firstExisting;
   }
   return null;
 };

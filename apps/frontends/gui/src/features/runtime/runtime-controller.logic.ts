@@ -35,14 +35,16 @@ export const applyCreateInstanceSuccess = (
   createdInstance: GuiInstanceProfileView,
 ): {
   availableInstances: GuiInstanceProfileView[];
+  activeInstance: GuiInstanceProfileView;
   signInInstanceId: string;
   signInPin: string;
   showCreateModal: false;
-  phase: "login";
+  phase: "app";
 } => ({
   availableInstances: [createdInstance, ...availableInstances],
+  activeInstance: createdInstance,
   signInInstanceId: createdInstance.localInstanceId,
   signInPin: "",
   showCreateModal: false,
-  phase: "login",
+  phase: "app",
 });

@@ -68,7 +68,7 @@ function parsePrivateKey(value: string, encoding: string): Uint8Array {
       return new Uint8Array(parsed as number[]);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Unable to parse bytes private key: ${message}`);
+      throw new Error(`Unable to parse bytes private key: ${message}`, { cause: error });
     }
   }
 

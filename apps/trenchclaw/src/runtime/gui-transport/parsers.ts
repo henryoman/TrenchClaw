@@ -16,15 +16,15 @@ export interface DispatcherTestRequest {
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
+const toUserMessage = (text: string): UIMessage => ({
+  id: `msg-${crypto.randomUUID()}`,
+  role: "user",
+  parts: [{ type: "text", text }],
+});
+
 export const parseUiChatRequest = async (
   request: Request,
 ): Promise<{ messages: UIMessage[]; chatId?: string; conversationTitle?: string; metadata?: Record<string, unknown> } | null> => {
-  const toUserMessage = (text: string): UIMessage => ({
-    id: `msg-${crypto.randomUUID()}`,
-    role: "user",
-    parts: [{ type: "text", text }],
-  });
-
   const toUiMessage = (value: unknown): UIMessage | null => {
     if (!isRecord(value)) {
       return null;

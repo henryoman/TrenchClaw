@@ -141,14 +141,17 @@ const canBindPort = async (host: string, port: number): Promise<boolean> => {
 const findAvailablePort = async (host: string, preferredPort: number, label: string): Promise<number> => {
   const firstPort = ensureValidPort(preferredPort, label);
   const maxPort = Math.min(65535, firstPort + 200);
-
-  for (let port = firstPort; port <= maxPort; port += 1) {
+  const tryPort = async (port: number): Promise<number> => {
+    if (port > maxPort) {
+      throw new Error(`No available ${label} port found from ${firstPort} to ${maxPort}`);
+    }
     if (await canBindPort(host, port)) {
       return port;
     }
-  }
+    return tryPort(port + 1);
+  };
 
-  throw new Error(`No available ${label} port found from ${firstPort} to ${maxPort}`);
+  return tryPort(firstPort);
 };
 
 const openBrowser = async (url: string): Promise<void> => {
@@ -158,8 +161,13 @@ const openBrowser = async (url: string): Promise<void> => {
       : process.platform === "win32"
         ? [["cmd", "/c", "start", "", url]]
         : [["xdg-open", url]];
+  const tryCommand = async (index: number): Promise<void> => {
+    const command = commands[index];
+    if (!command) {
+      console.warn(`${RUNNER_LOG_PREFIX} unable to auto-open browser. open manually: ${emphasize(url)}`);
+      return;
+    }
 
-  for (const command of commands) {
     try {
       const proc = Bun.spawn(command, {
         stdout: "ignore",
@@ -172,9 +180,11 @@ const openBrowser = async (url: string): Promise<void> => {
     } catch {
       // Try next opener.
     }
-  }
 
-  console.warn(`${RUNNER_LOG_PREFIX} unable to auto-open browser. open manually: ${emphasize(url)}`);
+    await tryCommand(index + 1);
+  };
+
+  await tryCommand(0);
 };
 
 const shouldPromptForGuiLaunch = (): boolean => {

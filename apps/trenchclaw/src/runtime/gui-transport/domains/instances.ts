@@ -11,6 +11,7 @@ import type {
 import {
   assertInstanceSystemWritePath,
 } from "../../security/write-scope";
+import { persistActiveInstance } from "../../instance-state";
 import { INSTANCE_DIRECTORY } from "../constants";
 import { isRecord } from "../parsers";
 import type { RuntimeGuiDomainContext } from "../contracts";
@@ -29,6 +30,11 @@ interface InstanceDocument {
     updatedAt: string;
   };
 }
+
+const INSTANCE_FILE_REGEX = /^i-(\d+)\.json$/u;
+const formatInstanceNumber = (value: number): string => String(value).padStart(2, "0");
+const formatInstanceId = (value: number): string => `i-${formatInstanceNumber(value)}`;
+const formatInstanceFileName = (value: number): string => `${formatInstanceId(value)}.json`;
 
 const toInstanceView = (fileName: string, document: InstanceDocument): GuiInstanceProfileView => ({
   fileName,
@@ -84,7 +90,7 @@ const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: 
   await mkdir(INSTANCE_DIRECTORY, { recursive: true });
   const entries = await readdir(INSTANCE_DIRECTORY, { withFileTypes: true, encoding: "utf8" });
   const files = entries
-    .filter((entry) => entry.isFile() && /^user-\d+\.json$/u.test(entry.name))
+    .filter((entry) => entry.isFile() && INSTANCE_FILE_REGEX.test(entry.name))
     .map((entry) => entry.name)
     .toSorted((a, b) => a.localeCompare(b));
 
@@ -102,7 +108,7 @@ const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: 
 
 const nextInstanceNumberFromFiles = (fileNames: string[]): number => {
   const numbers = fileNames
-    .map((fileName) => /^user-(\d+)\.json$/u.exec(fileName)?.[1])
+    .map((fileName) => INSTANCE_FILE_REGEX.exec(fileName)?.[1])
     .filter((value): value is string => value !== undefined)
     .map((value) => Number(value))
     .filter((value) => Number.isInteger(value) && value > 0);
@@ -127,8 +133,8 @@ export const createInstance = async (
   await mkdir(INSTANCE_DIRECTORY, { recursive: true });
   const existing = await readInstanceFiles();
   const nextNumber = nextInstanceNumberFromFiles(existing.map((entry) => entry.fileName));
-  const localInstanceId = String(nextNumber).padStart(4, "0");
-  const fileName = `user-${nextNumber}.json`;
+  const localInstanceId = formatInstanceId(nextNumber);
+  const fileName = formatInstanceFileName(nextNumber);
   const nowIso = new Date().toISOString();
   const safetyProfile = payload.safetyProfile ?? "dangerous";
 
@@ -151,6 +157,7 @@ export const createInstance = async (
   const instance = toInstanceView(fileName, document);
   context.setActiveInstance(instance);
   context.setActiveChatId(null);
+  await persistActiveInstance(instance);
   process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
   process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
   process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instance.localInstanceId;
@@ -177,6 +184,7 @@ export const signInInstance = async (
   const instance = toInstanceView(target.fileName, target.document);
   context.setActiveInstance(instance);
   context.setActiveChatId(null);
+  await persistActiveInstance(instance);
   process.env.TRENCHCLAW_OPERATOR_ALIAS = instance.name;
   process.env.TRENCHCLAW_PROFILE = instance.safetyProfile;
   process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instance.localInstanceId;

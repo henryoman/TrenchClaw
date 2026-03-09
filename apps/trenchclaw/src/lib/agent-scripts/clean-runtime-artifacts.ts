@@ -18,48 +18,42 @@ const DB_FILES_TO_KEEP = new Set([
 ]);
 
 const listFilesRecursively = async (rootDir: string): Promise<string[]> => {
-  const results: string[] = [];
-
-  const walk = async (currentDir: string): Promise<void> => {
+  const walk = async (currentDir: string): Promise<string[]> => {
     let entries: Dirent<string>[];
     try {
       entries = await readdir(currentDir, { withFileTypes: true, encoding: "utf8" });
     } catch {
-      return;
+      return [];
     }
 
-    for (const entry of entries) {
+    const nestedResults = await Promise.all(entries.map(async (entry) => {
       const absolutePath = join(currentDir, entry.name);
       if (entry.isDirectory()) {
-        await walk(absolutePath);
-        continue;
+        return walk(absolutePath);
       }
 
       if (entry.isFile()) {
-        results.push(absolutePath);
+        return [absolutePath];
       }
-    }
+      return [];
+    }));
+
+    return nestedResults.flat();
   };
 
-  await walk(rootDir);
-  return results;
+  return walk(rootDir);
 };
 
 const cleanDbArtifacts = async (): Promise<number> => {
   const files = await listFilesRecursively(DB_ROOT);
-  let removedCount = 0;
-
-  for (const absolutePath of files) {
+  const removableFiles = files.filter((absolutePath) => {
     const normalizedRelative = relative(DB_ROOT, absolutePath).replaceAll("\\", "/");
-    if (DB_FILES_TO_KEEP.has(normalizedRelative)) {
-      continue;
-    }
-
+    return !DB_FILES_TO_KEEP.has(normalizedRelative);
+  });
+  await Promise.all(removableFiles.map(async (absolutePath) => {
     await unlink(absolutePath);
-    removedCount += 1;
-  }
-
-  return removedCount;
+  }));
+  return removableFiles.length;
 };
 
 const cleanTurboLogs = async (): Promise<number> => {
@@ -70,21 +64,11 @@ const cleanTurboLogs = async (): Promise<number> => {
     return 0;
   }
 
-  let removedCount = 0;
-  for (const entry of entries) {
-    if (!entry.isFile()) {
-      continue;
-    }
-
-    if (!/^turbo-.*\.log$/u.test(entry.name)) {
-      continue;
-    }
-
+  const logEntries = entries.filter((entry) => entry.isFile() && /^turbo-.*\.log$/u.test(entry.name));
+  await Promise.all(logEntries.map(async (entry) => {
     await rm(join(TURBO_ROOT, entry.name), { force: true });
-    removedCount += 1;
-  }
-
-  return removedCount;
+  }));
+  return logEntries.length;
 };
 
 const dbRemoved = await cleanDbArtifacts();

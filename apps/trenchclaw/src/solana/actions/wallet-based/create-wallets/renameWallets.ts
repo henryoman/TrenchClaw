@@ -1,3 +1,4 @@
+import path from "node:path";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
@@ -6,7 +7,7 @@ import {
   assertWithinBrainProtectedDirectory,
   resolveAbsolutePath,
 } from "../../../lib/wallet/protected-write-policy";
-import { resolveWalletLibraryFilePath } from "./wallet-storage";
+import { resolveWalletLabelFilePath, resolveWalletLibraryFilePath } from "./wallet-storage";
 
 const walletPathSchema = z
   .string()
@@ -90,7 +91,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
           return toObjectRecord(JSON.parse(line));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          throw new Error(`Invalid JSON on wallet library line ${index + 1}: ${message}`);
+          throw new Error(`Invalid JSON on wallet library line ${index + 1}: ${message}`, { cause: error });
         }
       });
 
@@ -109,9 +110,14 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
 
       const renamed: RenameWalletsOutput["renamed"] = [];
 
-      for (const rename of input.renames) {
+      const applyRenameAtIndex = async (index: number): Promise<void> => {
+        const rename = input.renames[index];
+        if (!rename) {
+          return;
+        }
         if (rename.from === rename.to) {
-          continue;
+          await applyRenameAtIndex(index + 1);
+          return;
         }
 
         const sourceIndex = entryIndexByWalletPath.get(rename.from);
@@ -139,25 +145,47 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         entryIndexByWalletPath.set(rename.to, sourceIndex);
 
         const keypairFilePath = typeof next.keypairFilePath === "string" ? next.keypairFilePath : undefined;
+        const walletLabelFilePath = typeof next.walletLabelFilePath === "string"
+          ? next.walletLabelFilePath
+          : (keypairFilePath ? resolveWalletLabelFilePath(keypairFilePath) : undefined);
+        if (walletLabelFilePath) {
+          next.walletLabelFilePath = walletLabelFilePath;
+        }
 
-        if (input.updateKeypairFiles && keypairFilePath) {
-          const absoluteKeypairFilePath = resolveAbsolutePath(keypairFilePath);
-          assertWithinBrainProtectedDirectory(absoluteKeypairFilePath);
+        if (input.updateKeypairFiles && walletLabelFilePath) {
+          const absoluteWalletLabelFilePath = resolveAbsolutePath(walletLabelFilePath);
+          assertWithinBrainProtectedDirectory(absoluteWalletLabelFilePath);
           await assertProtectedWriteAllowed({
             actor: _ctx.actor,
-            targetPath: absoluteKeypairFilePath,
-            operation: "rewrite keypair metadata",
+            targetPath: absoluteWalletLabelFilePath,
+            operation: "rewrite wallet label metadata",
           });
 
-          const keypairFile = Bun.file(absoluteKeypairFilePath);
-          if (await keypairFile.exists()) {
-            const keypairJson = await keypairFile.json();
-            if (keypairJson && typeof keypairJson === "object" && !Array.isArray(keypairJson)) {
-              const nextKeypair = { ...(keypairJson as Record<string, unknown>) };
-              nextKeypair.walletPath = rename.to;
-              await Bun.write(absoluteKeypairFilePath, `${JSON.stringify(nextKeypair, null, 2)}\n`);
+          const walletLabelFile = Bun.file(absoluteWalletLabelFilePath);
+          const nextWalletLabel = await (async (): Promise<Record<string, unknown>> => {
+            if (!(await walletLabelFile.exists())) {
+              return {};
             }
+            const walletLabelJson = await walletLabelFile.json();
+            if (!walletLabelJson || typeof walletLabelJson !== "object" || Array.isArray(walletLabelJson)) {
+              return {};
+            }
+            return { ...(walletLabelJson as Record<string, unknown>) };
+          })();
+          nextWalletLabel.version = 1;
+          nextWalletLabel.walletPath = rename.to;
+          nextWalletLabel.group = parsed.group;
+          nextWalletLabel.wallet = parsed.wallet;
+          nextWalletLabel.address = typeof next.address === "string" ? next.address : nextWalletLabel.address;
+          nextWalletLabel.walletGroup = typeof next.walletGroup === "string" ? next.walletGroup : nextWalletLabel.walletGroup;
+          if (keypairFilePath) {
+            nextWalletLabel.walletFileName = path.basename(keypairFilePath);
           }
+          nextWalletLabel.updatedAt = new Date().toISOString();
+          if (typeof nextWalletLabel.createdAt !== "string") {
+            nextWalletLabel.createdAt = typeof next.createdAt === "string" ? next.createdAt : nextWalletLabel.updatedAt;
+          }
+          await Bun.write(absoluteWalletLabelFilePath, `${JSON.stringify(nextWalletLabel, null, 2)}\n`);
         }
 
         renamed.push({
@@ -166,7 +194,10 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
           keypairFilePath,
           address: typeof next.address === "string" ? next.address : undefined,
         });
-      }
+        await applyRenameAtIndex(index + 1);
+      };
+
+      await applyRenameAtIndex(0);
 
       const nextLibrary = entries.map((entry) => JSON.stringify(entry)).join("\n");
       await assertProtectedWriteAllowed({

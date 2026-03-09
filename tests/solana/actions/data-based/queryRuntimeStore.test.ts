@@ -208,7 +208,7 @@ describe("queryRuntimeStoreAction", () => {
   });
 
   test("accepts stringified request payloads produced by model tool calls", () => {
-    const parsed = queryRuntimeStoreAction.inputSchema.parse({
+    const parsed = queryRuntimeStoreAction.inputSchema!.parse({
       request: "{\"type\":\"getRuntimeKnowledgeSurface\",\"recentConversationsLimit\":20,\"recentJobsLimit\":20,\"recentReceiptsLimit\":20}",
     });
 

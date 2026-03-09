@@ -11,6 +11,7 @@ import { streamChat } from "./domains/chat";
 import { runDispatcherQueueTest } from "./domains/tests";
 import type { UIMessage } from "ai";
 import type { DispatcherTestRequest } from "./parsers";
+import { readPersistedActiveInstanceSync } from "../instance-state";
 
 const createMessageId = (): string => crypto.randomUUID();
 
@@ -21,6 +22,7 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
   private activeChatId: string | null = null;
 
   constructor(public readonly runtime: RuntimeBootstrap) {
+    this.activeInstance = readPersistedActiveInstanceSync();
     this.addActivity("runtime", "Runtime transport initialized");
 
     this.unsubscribers.push(
@@ -125,15 +127,19 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
 
   async waitForJobResult(jobId: string, waitMs: number): Promise<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>> {
     const timeoutAt = Date.now() + waitMs;
-    let job = this.runtime.stateStore.getJob(jobId);
-    while (Date.now() < timeoutAt) {
+    const poll = async (): Promise<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>> => {
+      const job = this.runtime.stateStore.getJob(jobId);
       if (job?.lastResult) {
         return job;
       }
+      if (Date.now() >= timeoutAt) {
+        return job;
+      }
       await Bun.sleep(100);
-      job = this.runtime.stateStore.getJob(jobId);
-    }
-    return job;
+      return poll();
+    };
+
+    return poll();
   }
 
   async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string }): Promise<Response> {

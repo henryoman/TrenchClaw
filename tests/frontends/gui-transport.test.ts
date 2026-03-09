@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { UIMessage } from "ai";
-import { InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
+import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { RuntimeGuiTransport } from "../../apps/trenchclaw/src/runtime/gui-transport";
 
@@ -11,6 +11,7 @@ const buildRuntime = (input?: {
   ) => Promise<Response>;
 }): RuntimeBootstrap => {
   const stateStore = new InMemoryStateStore();
+  const registry = new ActionRegistry();
 
   const streamImpl =
     input?.streamImpl ??
@@ -22,7 +23,7 @@ const buildRuntime = (input?: {
 
   return {
     llm: null,
-    settings: { profile: "dangerous" },
+    settings: { profile: "dangerous" } as RuntimeBootstrap["settings"],
     chat: {
       listToolNames: () => [],
       generateText: async () => ({ text: "ok", finishReason: "stop" }),
@@ -32,7 +33,7 @@ const buildRuntime = (input?: {
     stateStore,
     scheduler: { start: () => {}, stop: () => {} } as RuntimeBootstrap["scheduler"],
     dispatcher: {} as RuntimeBootstrap["dispatcher"],
-    registry: { list: () => [] } as RuntimeBootstrap["registry"],
+    registry,
     session: null,
     stop: () => {},
     enqueueJob: () =>

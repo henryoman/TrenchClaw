@@ -20,9 +20,7 @@ rules:
     model: read
   - path: src/ai/brain/workspace
     model: write
-  - path: src/ai/brain/protected/wallet-library.jsonl
-    model: write
-  - path: src/ai/brain/protected/keypairs
+  - path: src/ai/brain/protected/instance
     model: write
   - path: src/ai/brain/protected/no-read
     model: none

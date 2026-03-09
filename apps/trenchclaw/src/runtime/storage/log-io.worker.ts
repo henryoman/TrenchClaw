@@ -30,7 +30,7 @@ const postResponse = (response: LogIoResponse): void => {
   (postMessage as (message: LogIoResponse) => void)(response);
 };
 
-self.onmessage = async (event: MessageEvent<LogIoRequest>) => {
+self.addEventListener("message", async (event: MessageEvent<LogIoRequest>) => {
   const request = event.data;
   const bytes = Buffer.byteLength(request.content, "utf8");
   try {
@@ -57,4 +57,4 @@ self.onmessage = async (event: MessageEvent<LogIoRequest>) => {
       bytes,
     });
   }
-};
+});

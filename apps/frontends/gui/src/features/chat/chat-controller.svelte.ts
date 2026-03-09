@@ -12,6 +12,23 @@ interface ChatUiState {
   conversations: GuiConversationView[];
 }
 
+const toTimestampTitle = (unixMs: number): string => new Date(unixMs).toISOString();
+
+const toDisplayErrorText = (rawErrorText: string): string =>
+  rawErrorText.includes("User not found")
+    ? "LLM authentication failed (OpenRouter: User not found). Update your OpenRouter key in Vault > LLM secrets."
+    : rawErrorText;
+
+const hasTerminalAssistantText = (messages: UIMessage[]): boolean => {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage || lastMessage.role !== "assistant") {
+    return false;
+  }
+  return lastMessage.parts.some(
+    (part) => part.type === "text" && typeof part.text === "string" && part.text.trim().length > 0,
+  );
+};
+
 export const createChatController = () => {
   let manuallySending = $state(false);
   let submitInFlight = false;
@@ -21,8 +38,6 @@ export const createChatController = () => {
     activeConversationId: null,
     conversations: [],
   });
-
-  const toTimestampTitle = (unixMs: number): string => new Date(unixMs).toISOString();
 
   const toConversationView = (conversation: GuiConversationView): GuiConversationView => ({
     ...conversation,
@@ -104,11 +119,6 @@ export const createChatController = () => {
     return normalized;
   };
 
-  const toDisplayErrorText = (rawErrorText: string): string =>
-    rawErrorText.includes("User not found")
-      ? "LLM authentication failed (OpenRouter: User not found). Update your OpenRouter key in Vault > LLM secrets."
-      : rawErrorText;
-
   const appendAssistantRuntimeError = (rawErrorText: string): void => {
     const errorText = toDisplayErrorText(rawErrorText);
     console.error(errorText);
@@ -120,16 +130,6 @@ export const createChatController = () => {
         parts: [{ type: "text", text: `Runtime error: ${errorText}` }],
       },
     ]);
-  };
-
-  const hasTerminalAssistantText = (messages: UIMessage[]): boolean => {
-    const lastMessage = messages.at(-1);
-    if (!lastMessage || lastMessage.role !== "assistant") {
-      return false;
-    }
-    return lastMessage.parts.some(
-      (part) => part.type === "text" && typeof part.text === "string" && part.text.trim().length > 0,
-    );
   };
 
   const chat = new Chat({

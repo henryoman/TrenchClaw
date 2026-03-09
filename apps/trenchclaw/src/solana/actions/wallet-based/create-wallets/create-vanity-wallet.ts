@@ -43,6 +43,7 @@ const fail = (message: string): never => {
   console.error(`Error: ${message}`);
   console.error(HELP_TEXT.trim());
   process.exit(1);
+  throw new Error(message);
 };
 
 const parsePositiveInteger = (value: string, flag: string): number => {
@@ -58,6 +59,13 @@ const ensureSingleMode = (currentMode: MatchMode | null, nextMode: MatchMode): M
     fail("Only one match mode can be provided");
   }
   return nextMode;
+};
+
+const expectString = (value: string | undefined, message: string): string => {
+  if (typeof value !== "string" || value.length === 0) {
+    fail(message);
+  }
+  return value as string;
 };
 
 const parseArgs = (argv: string[]): VanityArgs => {
@@ -113,19 +121,13 @@ const parseArgs = (argv: string[]): VanityArgs => {
         break;
       }
       case "--count": {
-        const value = argv[index + 1];
-        if (!value) {
-          fail("--count requires a value");
-        }
+        const value = expectString(argv[index + 1], "--count requires a value");
         count = parsePositiveInteger(value, "--count");
         index += 1;
         break;
       }
       case "--num-threads": {
-        const value = argv[index + 1];
-        if (!value) {
-          fail("--num-threads requires a value");
-        }
+        const value = expectString(argv[index + 1], "--num-threads requires a value");
         numThreads = parsePositiveInteger(value, "--num-threads");
         index += 1;
         break;
@@ -161,7 +163,7 @@ const parseArgs = (argv: string[]): VanityArgs => {
     }
   }
 
-  if (!mode) {
+  if (mode === null) {
     fail("You must provide one match mode: --starts-with, --ends-with, or --starts-and-ends-with");
   }
 
@@ -175,8 +177,10 @@ const parseArgs = (argv: string[]): VanityArgs => {
     fail("--starts-and-ends-with mode requires both prefix and suffix");
   }
 
+  const resolvedMode = mode as MatchMode;
+
   return {
-    mode,
+    mode: resolvedMode,
     prefix,
     suffix,
     count,
@@ -199,12 +203,12 @@ const ensureSolanaKeygenAvailable = async (): Promise<void> => {
 
 const buildModeArg = (args: VanityArgs): string => {
   if (args.mode === "starts-with") {
-    return `${args.prefix}:${args.count}`;
+    return `${expectString(args.prefix, "--starts-with mode requires a prefix")}:${args.count}`;
   }
   if (args.mode === "ends-with") {
-    return `${args.suffix}:${args.count}`;
+    return `${expectString(args.suffix, "--ends-with mode requires a suffix")}:${args.count}`;
   }
-  return `${args.prefix}:${args.suffix}:${args.count}`;
+  return `${expectString(args.prefix, "--starts-and-ends-with mode requires a prefix")}:${expectString(args.suffix, "--starts-and-ends-with mode requires a suffix")}:${args.count}`;
 };
 
 const run = async (): Promise<void> => {

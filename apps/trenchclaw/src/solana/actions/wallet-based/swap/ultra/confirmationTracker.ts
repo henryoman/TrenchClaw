@@ -49,7 +49,7 @@ export function getTrackedUltraTransaction(signatureValue: string): UltraTracked
 
 export function listTrackedUltraTransactions(limit = 100): UltraTrackedTransaction[] {
   return Array.from(trackedTransactions.values())
-    .sort((a, b) => b.registeredAt - a.registeredAt)
+    .toSorted((a, b) => b.registeredAt - a.registeredAt)
     .slice(0, limit);
 }
 
@@ -66,6 +66,7 @@ function startTracker(): void {
 async function pollTrackedTransactions(): Promise<void> {
   const now = Date.now();
   const signatures = Array.from(trackedTransactions.keys());
+  const pendingChecks: Promise<void>[] = [];
 
   for (const signatureValue of signatures) {
     const current = trackedTransactions.get(signatureValue);
@@ -81,7 +82,11 @@ async function pollTrackedTransactions(): Promise<void> {
       continue;
     }
 
-    await checkSignature(signatureValue);
+    pendingChecks.push(checkSignature(signatureValue));
+  }
+
+  if (pendingChecks.length > 0) {
+    await Promise.all(pendingChecks);
   }
 
   if (trackedTransactions.size === 0 && trackerTimer) {

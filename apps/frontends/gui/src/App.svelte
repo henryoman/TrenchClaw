@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import type { GuiUpsertSecretRequest } from "@trenchclaw/types";
   import { CREATE_NEW_OPTION } from "./config";
   import { APP_BUILD_COMMIT, APP_BUILD_VERSION } from "./config/build-info";
   import { SAFETY_PROFILE_OPTIONS } from "./config/app-config";
@@ -26,7 +25,7 @@
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
   let activeTab: "chat" | "keys-secrets" | "wallets" = $state("chat");
-  const appVersionLabel = `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
+  const appVersionLabel = APP_BUILD_COMMIT === "local" ? APP_BUILD_VERSION : `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
 
   const ensureChatController = async (): Promise<void> => {
     if (chat) {
@@ -94,6 +93,8 @@
   <WorkspaceShell
     runtimeStatus={runtime.state.runtimeStatus}
     appVersion={appVersionLabel}
+    instanceName={runtime.state.activeInstance?.name ?? ""}
+    instanceId={runtime.state.activeInstance?.localInstanceId ?? ""}
     {activeTab}
     onTabChange={(tab) => {
       activeTab = tab;
@@ -109,13 +110,13 @@
           sending={chat.state.sending}
           chatDisabledReason={runtime.state.llmAvailable ? "" : runtime.state.llmCheckMessage}
           onSelectConversation={(conversationId) => {
-            void chat!.selectConversation(conversationId);
+            void chat?.selectConversation(conversationId);
           }}
           onCreateConversation={() => {
-            chat!.createNewConversation();
+            chat?.createNewConversation();
           }}
           onSubmit={() => {
-            void chat!.submitChat();
+            void chat?.submitChat();
           }}
         />
       {:else}
@@ -138,10 +139,10 @@
         onCheckLlm={() => {
           void runtime.checkLlm();
         }}
-        onSave={(input: GuiUpsertSecretRequest) => {
+        onSave={(input) => {
           void runtime.upsertSecret(input);
         }}
-        onClear={(optionId: string) => {
+        onClear={(optionId) => {
           void runtime.clearSecret(optionId);
         }}
       />

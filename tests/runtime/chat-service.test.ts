@@ -149,7 +149,7 @@ describe("RuntimeChatService", () => {
     expect(dispatchCalls[0]).toEqual({ actor: "agent", actionName: "echo", input: { value: 42 } });
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });
-    expect(capturedSystemPrompt).toContain("Filesystem policy");
+    expect(capturedSystemPrompt).toBe("test system prompt");
   });
 
   test("preserves assistant role/history when preparing streaming messages", async () => {

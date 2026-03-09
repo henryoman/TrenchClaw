@@ -1,7 +1,12 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { GuiWalletNodeView, GuiWalletsResponse } from "@trenchclaw/types";
-import { WALLET_KEYPAIRS_ROOT, resolveWalletKeypairRootPath } from "../../../solana/actions/wallet-based/create-wallets/wallet-storage";
+import {
+  isWalletLabelFileName,
+  resolveWalletKeypairRootRelativePath,
+  resolveWalletKeypairRootPath,
+} from "../../../solana/actions/wallet-based/create-wallets/wallet-storage";
+import type { RuntimeGuiDomainContext } from "../contracts";
 
 const toPosixPath = (value: string): string => value.split(path.sep).join("/");
 
@@ -25,8 +30,7 @@ const canonicalizeWalletRelativePath = (rawPath: string): string => {
 };
 
 const buildWalletTree = async (absoluteDirectoryPath: string, absoluteRootPath: string): Promise<GuiWalletNodeView[]> => {
-  const entries = await readdir(absoluteDirectoryPath, { withFileTypes: true });
-  entries.sort((a, b) => {
+  const entries = (await readdir(absoluteDirectoryPath, { withFileTypes: true })).toSorted((a, b) => {
     if (a.isDirectory() && !b.isDirectory()) {
       return -1;
     }
@@ -36,32 +40,38 @@ const buildWalletTree = async (absoluteDirectoryPath: string, absoluteRootPath: 
     return a.name.localeCompare(b.name);
   });
 
-  const nodes: GuiWalletNodeView[] = [];
-  for (const entry of entries) {
-    const absoluteEntryPath = path.join(absoluteDirectoryPath, entry.name);
-    ensureWithinWalletRoot(absoluteRootPath, absoluteEntryPath);
-    const relativePath = toPosixPath(path.relative(absoluteRootPath, absoluteEntryPath));
+  const nodes = await Promise.all(
+    entries.map(async (entry): Promise<GuiWalletNodeView | null> => {
+      const absoluteEntryPath = path.join(absoluteDirectoryPath, entry.name);
+      ensureWithinWalletRoot(absoluteRootPath, absoluteEntryPath);
+      const relativePath = toPosixPath(path.relative(absoluteRootPath, absoluteEntryPath));
 
-    if (entry.isDirectory()) {
-      nodes.push({
-        name: entry.name,
-        relativePath,
-        kind: "directory",
-        children: await buildWalletTree(absoluteEntryPath, absoluteRootPath),
-      });
-      continue;
-    }
+      if (entry.isDirectory()) {
+        return {
+          name: entry.name,
+          relativePath,
+          kind: "directory",
+          children: await buildWalletTree(absoluteEntryPath, absoluteRootPath),
+        };
+      }
 
-    if (entry.isFile() && entry.name.toLowerCase().endsWith(".json")) {
-      nodes.push({
-        name: entry.name,
-        relativePath,
-        kind: "file",
-      });
-    }
-  }
+      if (
+        entry.isFile()
+        && entry.name.toLowerCase().endsWith(".json")
+        && !isWalletLabelFileName(entry.name)
+      ) {
+        return {
+          name: entry.name,
+          relativePath,
+          kind: "file",
+        };
+      }
 
-  return nodes;
+      return null;
+    }),
+  );
+
+  return nodes.filter((node): node is GuiWalletNodeView => node !== null);
 };
 
 const countWalletFiles = (nodes: GuiWalletNodeView[]): number =>
@@ -72,12 +82,13 @@ const countWalletFiles = (nodes: GuiWalletNodeView[]): number =>
     return count + countWalletFiles(node.children ?? []);
   }, 0);
 
-export const listWalletTree = async (): Promise<GuiWalletsResponse> => {
+export const listWalletTree = async (_context: RuntimeGuiDomainContext): Promise<GuiWalletsResponse> => {
   const absoluteRootPath = resolveWalletKeypairRootPath();
+  const rootRelativePath = resolveWalletKeypairRootRelativePath();
   const rootStats = await stat(absoluteRootPath).catch(() => null);
   if (!rootStats || !rootStats.isDirectory()) {
     return {
-      rootRelativePath: WALLET_KEYPAIRS_ROOT,
+      rootRelativePath,
       rootExists: false,
       nodes: [],
       walletFileCount: 0,
@@ -86,14 +97,17 @@ export const listWalletTree = async (): Promise<GuiWalletsResponse> => {
 
   const nodes = await buildWalletTree(absoluteRootPath, absoluteRootPath);
   return {
-    rootRelativePath: WALLET_KEYPAIRS_ROOT,
+    rootRelativePath,
     rootExists: true,
     nodes,
     walletFileCount: countWalletFiles(nodes),
   };
 };
 
-export const readWalletBackupFile = async (relativePathInput: string): Promise<{ fileName: string; content: string }> => {
+export const readWalletBackupFile = async (
+  _context: RuntimeGuiDomainContext,
+  relativePathInput: string,
+): Promise<{ fileName: string; content: string }> => {
   const absoluteRootPath = resolveWalletKeypairRootPath();
   const relativePath = canonicalizeWalletRelativePath(relativePathInput);
   const absoluteFilePath = path.resolve(absoluteRootPath, relativePath);

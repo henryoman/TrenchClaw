@@ -105,6 +105,13 @@ export const createRuntimeController = () => {
     walletsError: "",
   });
 
+  const resetWalletState = (): void => {
+    state.walletsRootRelativePath = "";
+    state.walletsRootExists = false;
+    state.walletNodes = [];
+    state.walletFileCount = 0;
+  };
+
   const loadInstances = async (): Promise<void> => {
     const response = await runtimeApi.instances();
     state.availableInstances = response.instances;
@@ -227,6 +234,7 @@ export const createRuntimeController = () => {
       } else {
         state.activeInstance = null;
         state.signInPin = "";
+        resetWalletState();
         await loadInstances();
         state.phase = "login";
       }
@@ -285,10 +293,15 @@ export const createRuntimeController = () => {
       );
       const nextState = applyCreateInstanceSuccess(state.availableInstances, created.instance);
       state.availableInstances = nextState.availableInstances;
+      state.activeInstance = nextState.activeInstance;
       state.signInInstanceId = nextState.signInInstanceId;
       state.signInPin = nextState.signInPin;
       state.showCreateModal = nextState.showCreateModal;
       state.phase = nextState.phase;
+      await loadAppData();
+      await loadSecrets();
+      await checkLlm();
+      await loadWallets();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_CREATE_INSTANCE_ERROR;
     } finally {
@@ -435,6 +448,7 @@ export const createRuntimeController = () => {
   const loadWallets = async (): Promise<void> => {
     state.walletsBusy = true;
     state.walletsError = "";
+    resetWalletState();
     try {
       const payload = await runtimeApi.wallets();
       state.walletsRootRelativePath = payload.rootRelativePath;
@@ -443,6 +457,7 @@ export const createRuntimeController = () => {
       state.walletFileCount = payload.walletFileCount;
     } catch (error) {
       state.walletsError = error instanceof Error ? error.message : "Failed to load wallets.";
+      resetWalletState();
     } finally {
       state.walletsBusy = false;
     }

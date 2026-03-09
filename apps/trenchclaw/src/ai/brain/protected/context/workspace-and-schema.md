@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-08T22:58:29.585Z
+Generated at: 2026-03-09T04:45:17.577Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -24,6 +24,8 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-03-04.md
 |   |   |   |   |   |-- 2026-03-05.md
 |   |   |   |   |   |-- 2026-03-07.md
+|   |   |   |   |   |-- 2026-03-08.md
+|   |   |   |   |   |-- 2026-03-09.md
 |   |   |   |   |   `-- MEMORY.md
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
@@ -38,14 +40,18 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-03-03.log
 |   |   |   |   |   |-- 2026-03-04.log
 |   |   |   |   |   |-- 2026-03-05.log
-|   |   |   |   |   `-- 2026-03-07.log
+|   |   |   |   |   |-- 2026-03-07.log
+|   |   |   |   |   |-- 2026-03-08.log
+|   |   |   |   |   `-- 2026-03-09.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-03-02.log
 |   |   |   |   |   |-- 2026-03-03.log
 |   |   |   |   |   |-- 2026-03-04.log
 |   |   |   |   |   |-- 2026-03-05.log
-|   |   |   |   |   `-- 2026-03-07.log
+|   |   |   |   |   |-- 2026-03-07.log
+|   |   |   |   |   |-- 2026-03-08.log
+|   |   |   |   |   `-- 2026-03-09.log
 |   |   |   |   |-- .gitignore
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
@@ -162,6 +168,10 @@ apps/trenchclaw/
 |   |   |   |   |   `-- operator.md
 |   |   |   |   |-- context/
 |   |   |   |   |   `-- workspace-and-schema.md
+|   |   |   |   |-- instance/
+|   |   |   |   |   |-- i-test-wallet-groups/
+|   |   |   |   |   |   `-- keypairs/
+|   |   |   |   |   `-- i-01.json
 |   |   |   |   |-- keypairs/
 |   |   |   |   |   |-- core-wallets/
 |   |   |   |   |   |   `-- core-wallets-wallet001-0001.json
@@ -187,11 +197,17 @@ apps/trenchclaw/
 |   |   |   |   `-- wallet-library.jsonl
 |   |   |   |-- workspace/
 |   |   |   |   |-- .tests/
+|   |   |   |   |-- configs/
 |   |   |   |   |-- notes/
+|   |   |   |   |-- output/
 |   |   |   |   |-- routines/
 |   |   |   |   |   |-- .tests/
 |   |   |   |   |   `-- .keep
+|   |   |   |   |-- scratch/
+|   |   |   |   |-- strategies/
+|   |   |   |   |   `-- .tests/
 |   |   |   |   |-- ts-scripts/
+|   |   |   |   |-- typescript/
 |   |   |   |   `-- routineRegistry.json
 |   |   |   |-- rules.md
 |   |   |   `-- soul.md
@@ -287,6 +303,7 @@ apps/trenchclaw/
 |   |   |-- chat.ts
 |   |   |-- gui-transport.ts
 |   |   |-- index.ts
+|   |   |-- instance-state.ts
 |   |   |-- runtime-paths.ts
 |   |   |-- start-runtime-server.ts
 |   |   `-- workspace-bash.ts
@@ -684,6 +701,19 @@ CREATE TABLE "instance_facts" (
   UNIQUE(instance_id, fact_key)
 );
 
+CREATE TABLE "instance_profiles" (
+  "instance_id" TEXT PRIMARY KEY,
+  "display_name" TEXT,
+  "summary" TEXT,
+  "trading_style" TEXT,
+  "risk_tolerance" TEXT,
+  "preferred_assets_json" TEXT,
+  "disliked_assets_json" TEXT,
+  "metadata_json" TEXT,
+  "created_at" INTEGER NOT NULL,
+  "updated_at" INTEGER NOT NULL
+);
+
 CREATE TABLE "jobs" (
   "id" TEXT PRIMARY KEY,
   "bot_id" TEXT NOT NULL,
@@ -760,6 +790,8 @@ CREATE INDEX "idx_http_cache_source_endpoint" ON "http_cache"("source", "endpoin
 CREATE INDEX "idx_instance_facts_expires_at" ON "instance_facts"("expires_at");
 
 CREATE INDEX "idx_instance_facts_instance_updated" ON "instance_facts"("instance_id", "updated_at");
+
+CREATE INDEX "idx_instance_profiles_updated_at" ON "instance_profiles"("updated_at");
 
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
 

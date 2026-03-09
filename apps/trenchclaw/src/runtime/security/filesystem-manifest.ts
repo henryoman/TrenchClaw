@@ -73,10 +73,15 @@ const toRelativePath = (absolutePath: string): string => toRuntimeContractRelati
 const resolveManifestPath = async (): Promise<string> => {
   const configured = process.env[MANIFEST_PATH_ENV]?.trim();
   if (!configured) {
-    for (const candidatePath of DEFAULT_MANIFEST_CANDIDATE_PATHS) {
-      if (await Bun.file(candidatePath).exists()) {
-        return candidatePath;
-      }
+    const existenceResults = await Promise.all(
+      DEFAULT_MANIFEST_CANDIDATE_PATHS.map(async (candidatePath) => ({
+        candidatePath,
+        exists: await Bun.file(candidatePath).exists(),
+      })),
+    );
+    const firstExisting = existenceResults.find((candidate) => candidate.exists)?.candidatePath;
+    if (firstExisting) {
+      return firstExisting;
     }
     return DEFAULT_MANIFEST_CANDIDATE_PATHS[0] ?? MANIFEST_PATH_FROM_MODULE;
   }

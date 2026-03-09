@@ -8,12 +8,19 @@ import { coreAppPath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
 const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
+const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+const TEST_INSTANCE_ID = "i-test-rename-wallets";
 
 afterEach(async () => {
   if (previousWalletLibraryPath === undefined) {
     delete process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
   } else {
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = previousWalletLibraryPath;
+  }
+  if (previousActiveInstanceId === undefined) {
+    delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+  } else {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
   }
   for (const targetPath of createdPaths) {
     await rm(targetPath, { recursive: true, force: true });
@@ -22,11 +29,12 @@ afterEach(async () => {
 });
 
 describe("renameWalletsAction", () => {
-  test("renames walletPath in library and updates keypair walletPath", async () => {
+  test("renames walletPath in library and updates the colocated wallet label file", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/keypairs"), walletGroup));
+    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
     createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
 
     const createResult = await createWalletsAction.execute({} as never, {
@@ -49,6 +57,15 @@ describe("renameWalletsAction", () => {
     if (!createResult.ok) {
       return;
     }
+
+    const createData = createResult.data;
+    expect(createData).toBeDefined();
+    if (!createData) {
+      return;
+    }
+
+    const keypairFile = createData.files[0] ?? "";
+    const originalKeypairText = await Bun.file(keypairFile).text();
 
     const renameResult = await renameWalletsAction.execute({} as never, {
       renames: [{ from: "ops.wallet001", to: "ops.wallet-main" }],
@@ -77,22 +94,24 @@ describe("renameWalletsAction", () => {
     expect(updatedEntry.group).toBe("ops");
     expect(updatedEntry.wallet).toBe("wallet-main");
 
-    const createData = createResult.data;
-    expect(createData).toBeDefined();
-    if (!createData) {
-      return;
-    }
+    const keypairJson = JSON.parse(originalKeypairText);
+    expect(Array.isArray(keypairJson)).toBe(true);
+    expect(keypairJson).toHaveLength(64);
+    expect(await Bun.file(keypairFile).text()).toBe(originalKeypairText);
 
-    const keypairFile = createData.files[0] ?? "";
-    const keypairJson = await Bun.file(keypairFile).json();
-    expect(keypairJson.walletPath).toBe("ops.wallet-main");
+    expect(typeof updatedEntry.walletLabelFilePath).toBe("string");
+    const walletLabelJson = await Bun.file(updatedEntry.walletLabelFilePath).json();
+    expect(walletLabelJson.walletPath).toBe("ops.wallet-main");
+    expect(walletLabelJson.group).toBe("ops");
+    expect(walletLabelJson.wallet).toBe("wallet-main");
   });
 
   test("rejects rename when target walletPath already exists", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-conflict-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/keypairs"), walletGroup));
+    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
     createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
 
     await createWalletsAction.execute({} as never, {

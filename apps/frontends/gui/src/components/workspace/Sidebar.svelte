@@ -1,8 +1,22 @@
 <script lang="ts">
-  export let runtimeStatus = "";
-  export let appVersion = "";
-  export let activeTab: "chat" | "keys-secrets" | "wallets" = "chat";
-  export let onTabChange: (tab: "chat" | "keys-secrets" | "wallets") => void;
+  type SidebarTab = "chat" | "keys-secrets" | "wallets";
+  type SidebarProps = {
+    runtimeStatus?: string;
+    appVersion?: string;
+    instanceName?: string;
+    instanceId?: string;
+    activeTab?: SidebarTab;
+    onTabChange: (tab: SidebarTab) => void;
+  };
+
+  let {
+    runtimeStatus = "",
+    appVersion = "",
+    instanceName = "",
+    instanceId = "",
+    activeTab = "chat",
+    onTabChange,
+  }: SidebarProps = $props();
 
   const getSidebarStatus = (status: string): string => {
     const runtimeMatch = /^runtime:\s*([^|]+?)(?:\s*\|.*)?$/i.exec(status.trim());
@@ -27,27 +41,32 @@
 </script>
 
 <aside class="sidebar">
-  <p class="instance">trenchclaw</p>
-  <p class="version">version: {appVersion}</p>
+  <div class="sidebar-head">
+    <p class="instance">{instanceName || "trenchclaw"}</p>
+    {#if instanceId}
+      <p class="instance-id">{instanceId}</p>
+    {/if}
+    <p class="version">{appVersion}</p>
+  </div>
   <nav class="tabs" aria-label="Workspace tabs">
     <button
       type="button"
       class="tab-button {activeTab === 'chat' ? 'active' : ''}"
-      on:click={() => {
+      onclick={() => {
         onTabChange("chat");
       }}>Chat</button
     >
     <button
       type="button"
       class="tab-button {activeTab === 'keys-secrets' ? 'active' : ''}"
-      on:click={() => {
+      onclick={() => {
         onTabChange("keys-secrets");
       }}>Keys & Secrets</button
     >
     <button
       type="button"
       class="tab-button {activeTab === 'wallets' ? 'active' : ''}"
-      on:click={() => {
+      onclick={() => {
         onTabChange("wallets");
       }}>Wallets</button
     >
@@ -62,24 +81,32 @@
   .sidebar {
     border: var(--tc-border);
     background: var(--tc-color-black);
-    padding: var(--tc-space-3);
+    padding: var(--tc-space-2);
     display: flex;
     flex-direction: column;
-    gap: var(--tc-space-2);
+    gap: 0;
     min-width: var(--tc-sidebar-width);
+  }
+
+  .sidebar-head {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: var(--tc-space-2);
   }
 
   .tabs {
     display: flex;
     flex-direction: column;
-    gap: var(--tc-space-2);
+    align-items: stretch;
   }
 
   .tab-button {
-    border: var(--tc-border-muted);
+    border: 0;
+    border-top: 1px solid var(--tc-color-gray-2);
     background: transparent;
     color: var(--tc-color-gray-1);
-    padding: var(--tc-space-2);
+    padding: 6px 0;
     font-family: inherit;
     font-size: var(--tc-sidebar-label-size);
     text-transform: uppercase;
@@ -88,8 +115,11 @@
     cursor: pointer;
   }
 
+  .tab-button:last-child {
+    border-bottom: 1px solid var(--tc-color-gray-2);
+  }
+
   .tab-button.active {
-    border-color: var(--tc-color-turquoise);
     color: var(--tc-color-turquoise);
   }
 
@@ -109,16 +139,28 @@
     word-break: break-word;
   }
 
+  .instance-id {
+    margin: 0;
+    color: var(--tc-color-turquoise);
+    font-size: calc(var(--tc-sidebar-label-size) - 1px);
+    line-height: 1.35;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   .status-stack {
     margin-top: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--tc-space-2);
+    align-items: flex-start;
+    gap: 2px;
+    border-top: 1px solid var(--tc-color-gray-2);
+    padding-top: var(--tc-space-2);
   }
 
   .status {
-    border: var(--tc-border-muted);
-    padding: var(--tc-space-2);
+    margin: 0;
+    padding: 0;
     color: var(--tc-color-gray-1);
     font-size: var(--tc-sidebar-label-size);
     text-transform: uppercase;
@@ -126,7 +168,7 @@
   }
 
   .live-status {
-    margin: 0;
+    color: var(--tc-color-gray-2);
   }
 
   @media (max-width: var(--tc-layout-breakpoint)) {

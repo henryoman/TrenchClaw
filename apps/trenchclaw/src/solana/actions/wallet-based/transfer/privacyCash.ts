@@ -213,8 +213,11 @@ const runPrivacyTransfers = async (
 
   const results: PrivacyTransferResultItem[] = [];
   const txSignatures: string[] = [];
-
-  for (const entry of plannedTransfers) {
+  const runTransferAtIndex = async (index: number): Promise<void> => {
+    const entry = plannedTransfers[index];
+    if (!entry) {
+      return;
+    }
     const withdrawal = await client.withdraw({
       lamports: entry.amountLamports,
       recipientAddress: entry.address,
@@ -225,7 +228,10 @@ const runPrivacyTransfers = async (
       feeLamports: withdrawal.fee_in_lamports,
     });
     txSignatures.push(withdrawal.tx);
-  }
+    await runTransferAtIndex(index + 1);
+  };
+
+  await runTransferAtIndex(0);
 
   const remainingBalance = await client.getPrivateBalance();
   return {
