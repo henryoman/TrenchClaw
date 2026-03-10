@@ -130,7 +130,7 @@
           <span class="terminal-dot"></span>
           <span class="terminal-dot"></span>
           <span class="terminal-dot"></span>
-          <span class="docs-article-title">{data.doc.slug}.md</span>
+          <span class="docs-article-title">{data.doc.title}</span>
         </div>
         <article class="docs-content" use:copyCodeBlocks={data.doc.html}>
           <h1>{data.doc.title}</h1>

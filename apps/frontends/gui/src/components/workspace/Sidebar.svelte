@@ -19,7 +19,7 @@
   const getSidebarStatus = (status: string): string => {
     const runtimeMatch = /^runtime:\s*([^|]+?)(?:\s*\|.*)?$/i.exec(status.trim());
     if (runtimeMatch) {
-      return `mode:\n${runtimeMatch[1].trim()}`;
+      return runtimeMatch[1].trim();
     }
 
     return status;
@@ -28,13 +28,13 @@
   const getSidebarLiveStatus = (status: string): string => {
     const normalized = status.trim().toLowerCase();
     if (normalized.includes("offline")) {
-      return "status: offline";
+      return "Offline";
     }
     if (normalized.includes("checking")) {
-      return "status: checking";
+      return "Checking connection";
     }
 
-    return "status: live";
+    return "Connected";
   };
 </script>
 

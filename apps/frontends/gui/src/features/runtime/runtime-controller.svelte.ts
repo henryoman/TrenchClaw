@@ -63,8 +63,21 @@ interface RuntimeUiState {
   walletsError: string;
 }
 
+const humanizeProfile = (profile: string): string => {
+  if (profile === "safe") {
+    return "View only";
+  }
+  if (profile === "dangerous") {
+    return "Confirm trading";
+  }
+  if (profile === "veryDangerous") {
+    return "Allow trading without confirmation";
+  }
+  return profile;
+};
+
 const formatRuntimeStatus = (profile: string, llmEnabled: boolean): string =>
-  `runtime: ${profile}${llmEnabled ? " | llm on" : " | llm off"}`;
+  `${humanizeProfile(profile)}${llmEnabled ? " | AI on" : " | AI off"}`;
 
 export const formatTime = (unixMs: number): string =>
   new Date(unixMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -241,7 +254,7 @@ export const createRuntimeController = () => {
     } catch (error) {
       const errorText = error instanceof Error ? error.message : DEFAULT_RUNTIME_ERROR;
       state.runtimeStatus = RUNTIME_STATUS_OFFLINE;
-      state.splashError = `${errorText}. Start runtime and retry.`;
+      state.splashError = `${errorText}. Couldn't connect. Try again.`;
       state.phase = "landing";
     } finally {
       state.splashBusy = false;
@@ -431,15 +444,15 @@ export const createRuntimeController = () => {
       const result = await runtimeApi.llmCheck();
       state.llmAvailable = result.keyConfigured && result.probeOk;
       if (state.llmAvailable) {
-        state.llmCheckMessage = "LLM ready.";
+        state.llmCheckMessage = "AI connection is ready.";
       } else if (!result.keyConfigured) {
-        state.llmCheckMessage = "LLM not configured. Add a provider API key in Vault > LLM secrets.";
+        state.llmCheckMessage = "Add an AI provider key to use chat.";
       } else {
-        state.llmCheckMessage = `LLM unavailable: ${result.probeMessage}`;
+        state.llmCheckMessage = `AI connection unavailable: ${result.probeMessage}`;
       }
     } catch (error) {
       state.llmAvailable = false;
-      state.llmCheckMessage = error instanceof Error ? error.message : "Failed to run LLM check.";
+      state.llmCheckMessage = error instanceof Error ? error.message : "Couldn't verify the AI connection.";
     } finally {
       state.llmCheckBusy = false;
     }

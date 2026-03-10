@@ -4,7 +4,7 @@
 
 <main class="loading-shell">
   <div class="loading-card">
-    <span>Connecting to runtime...</span>
+    <span>Connecting...</span>
     {#if runtimeStatus}
       <span class="status">{runtimeStatus}</span>
     {/if}

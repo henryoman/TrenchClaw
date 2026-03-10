@@ -97,7 +97,7 @@ const extractUiMessageText = (message: UIMessage): string => {
         return part.text.trim();
       }
       if ("errorText" in part && typeof part.errorText === "string") {
-        return `Runtime error: ${part.errorText}`.trim();
+        return `Something went wrong: ${part.errorText}`.trim();
       }
       return "";
     })

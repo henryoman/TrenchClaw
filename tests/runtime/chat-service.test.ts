@@ -462,6 +462,6 @@ describe("RuntimeChatService", () => {
     const persisted = stateStore.listChatMessages("chat-error-part-1", 10);
     const assistant = persisted.find((message) => message.role === "assistant");
     expect(assistant).toBeDefined();
-    expect(assistant?.content).toContain("Runtime error: User not found.");
+    expect(assistant?.content).toContain("Something went wrong: User not found.");
   });
 });

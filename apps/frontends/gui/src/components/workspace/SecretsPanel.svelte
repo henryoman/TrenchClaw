@@ -258,12 +258,12 @@
   $: llmStatusText = llmCheckMessage.trim();
 </script>
 
-<section class="secrets-panel" aria-label="Manage keys and secrets panel">
+<section class="secrets-panel" aria-label="Keys and secrets panel">
   <header class="secrets-header">
-    <RetroSectionHeader title="Manage keys and secrets" />
+    <RetroSectionHeader title="Keys and secrets" />
     <div class="actions">
       <RetroButton variant="secondary" disabled={busy} on:click={handleReload}>Reload</RetroButton>
-      <RetroButton variant="secondary" disabled={busy || llmCheckBusy} on:click={onCheckLlm}>Check LLM key</RetroButton>
+      <RetroButton variant="secondary" disabled={busy || llmCheckBusy} on:click={onCheckLlm}>Test AI connection</RetroButton>
     </div>
   </header>
 

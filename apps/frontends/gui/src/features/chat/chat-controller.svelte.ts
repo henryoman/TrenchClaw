@@ -16,7 +16,7 @@ const toTimestampTitle = (unixMs: number): string => new Date(unixMs).toISOStrin
 
 const toDisplayErrorText = (rawErrorText: string): string =>
   rawErrorText.includes("User not found")
-    ? "LLM authentication failed (OpenRouter: User not found). Update your OpenRouter key in Vault > LLM secrets."
+    ? "Your AI provider key is invalid. Update it in AI settings."
     : rawErrorText;
 
 const hasTerminalAssistantText = (messages: UIMessage[]): boolean => {
@@ -96,7 +96,7 @@ export const createChatController = () => {
           }
 
           if ("errorText" in part && typeof part.errorText === "string") {
-            return `Runtime error: ${part.errorText}`;
+            return `Something went wrong: ${part.errorText}`;
           }
 
           return "";
@@ -127,7 +127,7 @@ export const createChatController = () => {
       {
         id: `msg-${crypto.randomUUID()}`,
         role: "assistant",
-        parts: [{ type: "text", text: `Runtime error: ${errorText}` }],
+        parts: [{ type: "text", text: `Something went wrong: ${errorText}` }],
       },
     ]);
   };

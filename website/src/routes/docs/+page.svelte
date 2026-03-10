@@ -37,7 +37,7 @@
         <p class="docs-kicker">Documentation</p>
         <h1 class="docs-index-title">Documentation</h1>
         <p class="docs-index-description">
-          Installation, runtime setup, wallet, vault, and frontend guides.
+          Installation, runtime setup, wallet, vault, and web app guides.
         </p>
 
         <div class="terminal-window relative mt-8">
@@ -45,14 +45,14 @@
             <span class="terminal-dot"></span>
             <span class="terminal-dot"></span>
             <span class="terminal-dot"></span>
-            <span class="terminal-label ml-3">docs index</span>
+            <span class="terminal-label ml-3">documentation</span>
           </div>
           <div class="terminal-body space-y-2 px-5 py-5">
             <p class="terminal-line-dim">$ open /docs/getting-started</p>
             <p class="terminal-line-bright">install checklist</p>
             <p class="terminal-line-bright">vault + AI provider wiring</p>
-            <p class="terminal-line-bright">runtime + GUI launch flow</p>
-            <p class="terminal-line-dim">commands, configuration, and startup steps</p>
+            <p class="terminal-line-bright">runtime and web app launch steps</p>
+            <p class="terminal-line-dim">commands, configuration, and startup</p>
           </div>
         </div>
       </div>
@@ -68,7 +68,7 @@
       </div>
 
       {#if data.docs.length === 0}
-        <p class="mt-6 text-sm text-[#525866]">No docs found yet.</p>
+        <p class="mt-6 text-sm text-[#525866]">No documentation is available yet.</p>
       {/if}
     </section>
   </main>

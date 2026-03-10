@@ -1,49 +1,20 @@
 ---
-title: Runtime and Frontends
-description: Understand how the runner, runtime, and frontend apps connect in this monorepo.
+title: Runtime and Web App
+description: Understand how the runtime and web app work together.
 order: 5
 ---
 
-TrenchClaw runs as a split architecture: runtime core plus GUI served by a runner.
+TrenchClaw uses a local runtime plus a web app.
 
-## Core Packages
+## How It Works
 
-- `apps/trenchclaw`: core runtime
-- `apps/frontends/gui`: web UI
-- `apps/runner`: process launcher and static server for GUI assets
+- the runtime handles actions, routines, and local state
+- the web app connects to the local runtime and shows status, chat, wallets, and settings
+- both surfaces work against the same local instance
 
-## Runtime Flow
+## Typical Flow
 
-```mermaid
-flowchart LR
-  A["apps/frontends/gui (build)"] --> B["apps/frontends/gui/dist"]
-  C["apps/trenchclaw (runtime)"] --> D["runtime API"]
-  B --> E["apps/runner"]
-  D --> E
-  E --> F["Local app session"]
-```
-
-The runner serves GUI assets and bridges UI requests to the runtime API.
-
-## Build Outputs
-
-- Runner build: `apps/runner/dist`
-- GUI build: `apps/frontends/gui/dist`
-- App bundle output: `dist/app`
-
-## Local Commands
-
-```bash
-bun run app:build
-bun run start
-```
-
-For GUI-only iteration:
-
-```bash
-bun run gui:dev
-```
-
-## Important Path Note
-
-`apps/frontends/runner` is legacy and not a valid source package path.
+1. Start TrenchClaw.
+2. Open the local web app.
+3. Configure providers, wallets, and runtime settings.
+4. Run actions or routines from the app or CLI.

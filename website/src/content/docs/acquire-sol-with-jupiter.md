@@ -1,10 +1,10 @@
 ---
 title: Acquire SOL with Jupiter
-description: Fast path to fund your wallet with SOL using Jupiter onramp or swap flows.
+description: How to fund your wallet with SOL using Jupiter onramp or swaps.
 order: 3
 ---
 
-Use this when your wallet needs SOL before running TrenchClaw actions.
+Use this guide if you need SOL in your wallet before sending transactions.
 
 ## Before You Start
 

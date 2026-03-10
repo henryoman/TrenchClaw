@@ -4,7 +4,7 @@ description: Practical overview of how Solana works, from accounts and transacti
 order: 4
 ---
 
-This page gives you a practical model of Solana so TrenchClaw behavior is easier to reason about.
+This guide explains the Solana concepts behind TrenchClaw behavior.
 
 ## High-Level Model
 
@@ -74,7 +74,7 @@ If your RPC is unstable, app behavior can look inconsistent even when wallet sig
 
 ## Token Accounts and SOL vs SPL Tokens
 
-SOL is native gas/payment asset of Solana.
+SOL is Solana's native token and is used to pay network fees.
 
 Most other assets are SPL tokens and live in token accounts.
 

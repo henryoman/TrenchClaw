@@ -247,7 +247,7 @@
       <button
         type="button"
         class="conversation-picker-button"
-        aria-label="Open conversation picker"
+        aria-label="Open conversations"
         onclick={() => {
           showConversationModal = !showConversationModal;
         }}>▼</button
@@ -256,16 +256,16 @@
   </header>
 
   {#if showConversationModal}
-    <section class="conversation-modal" aria-label="Conversation picker">
+    <section class="conversation-modal" aria-label="Conversations">
       <header class="conversation-modal-header">
         <span>Conversations</span>
         <button
           type="button"
           class="conversation-modal-close"
-          aria-label="Close conversation picker"
+          aria-label="Close conversations"
           onclick={() => {
             showConversationModal = false;
-          }}>x</button
+          }}>Close</button
         >
       </header>
       <div class="conversation-modal-list">
@@ -297,7 +297,7 @@
         {#if hasAssistantActivity(segments)}
           <div class="message-row assistant activity-row">
             <details class="activity-panel">
-              <summary>thinking</summary>
+              <summary>Activity</summary>
               <div class="activity-body">
                 {#each segments.activityTextParts as text, textIndex (`${message.id}:activity:${textIndex}`)}
                   <p>{text}</p>
@@ -308,7 +308,7 @@
                 {/each}
 
                 {#each segments.errorTexts as errorText, errorIndex (`${message.id}:error:${errorIndex}`)}
-                  <p class="error-text">Runtime error: {errorText}</p>
+                  <p class="error-text">Something went wrong: {errorText}</p>
                 {/each}
               </div>
             </details>
@@ -334,7 +334,7 @@
               {#if part.type === "text"}
                 <p>{normalizeDisplayText(part.text ?? "")}</p>
               {:else if "errorText" in part && typeof part.errorText === "string"}
-                <p class="error-text">Runtime error: {normalizeDisplayText(part.errorText)}</p>
+                <p class="error-text">Something went wrong: {normalizeDisplayText(part.errorText)}</p>
               {/if}
             {/each}
           </div>
@@ -344,7 +344,7 @@
     {#if sending}
       <div class="message-row assistant">
         <div class="bubble assistant thinking-bubble">
-          <p>thinking...</p>
+          <p>Working...</p>
         </div>
       </div>
     {/if}
@@ -365,7 +365,7 @@
       bind:this={composer}
       bind:value={input}
       class="chat-composer"
-      placeholder="Ask TrenchClaw..."
+      placeholder="Type a message"
       disabled={chatDisabled}
       rows="1"
       spellcheck="false"

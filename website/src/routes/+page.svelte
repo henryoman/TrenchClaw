@@ -20,21 +20,21 @@
 
   const principles = [
     {
-      title: 'Agentic operator flow',
-      description: 'Typed actions, routines, and runtime controls are organized around the workflows operators actually run.'
+      title: 'Automate repeatable tasks',
+      description: 'Actions, routines, and runtime controls are organized around the workflows operators actually run.'
     },
     {
-      title: 'Filesystem-native wallet flow',
+      title: 'Manage wallets locally',
       description: 'Wallet groups, keypair dumps, and sidecar metadata stay aligned with the runtime contract.'
     },
     {
-      title: 'Strict runtime contracts',
-      description: 'Schema-driven actions, policy checks, and small composable routines keep execution legible.'
+      title: 'Use validated actions',
+      description: 'Validated actions, policy checks, and local state make runs easier to inspect and debug.'
     }
   ];
 
   const terminalLines = [
-    { tone: 'dim', text: '$ trenchclaw start --profile dangerous' },
+    { tone: 'dim', text: '$ trenchclaw start' },
     { tone: 'dim', text: 'booting runtime...' },
     { tone: 'bright', text: 'openrouter model resolved' },
     { tone: 'bright', text: 'wallet library loaded from protected instance path' },
@@ -45,14 +45,14 @@
   ];
 
   const stack = [
-    { label: 'Runtime', value: 'Bun + TypeScript + SvelteKit website' },
+    { label: 'Stack', value: 'Bun, TypeScript, and a local web app' },
     { label: 'Solana', value: '@solana/kit with provider-agnostic RPC adapters' },
     { label: 'Agent', value: 'AI SDK orchestration with runtime policies' },
     { label: 'State', value: 'SQLite, JSONL indexes, and protected filesystem storage' }
   ];
 
   const comparison = [
-    { feature: 'Actions', current: 'Typed modules for on-chain and runtime tasks', prior: 'Explicit schemas reduce invalid execution' },
+    { feature: 'Actions', current: 'Validated modules for on-chain and runtime tasks', prior: 'Reduces invalid execution' },
     { feature: 'Routines', current: 'Automated flows for repeated operator work', prior: 'Keeps execution consistent across runs' },
     { feature: 'Storage', current: 'SQLite, JSONL sidecars, and protected filesystem paths', prior: 'Local state stays inspectable and durable' }
   ];
@@ -84,10 +84,10 @@
       <div class="max-w-3xl">
         <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Operator runtime for Solana</p>
         <h1 class="mt-4 max-w-4xl text-6xl font-extrabold leading-[0.94] tracking-[-0.06em] text-balance md:text-8xl">
-          the solana native agentic assistant
+          The Solana-native AI assistant.
         </h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-foreground-soft">
-          TrenchClaw is a Bun-based Solana operator runtime with typed actions, filesystem-backed wallets, agent orchestration,
+          TrenchClaw is a Bun-based Solana operator runtime with validated actions, filesystem-backed wallets, AI orchestration,
           and local state built for actions, routines, and operator control.
         </p>
 
@@ -111,7 +111,7 @@
           </div>
           <div class="surface-card p-5">
             <div class="text-2xl font-bold tracking-[-0.04em]">CLI first</div>
-            <div class="mt-1 text-sm text-muted">The web layer mirrors operator workflows</div>
+            <div class="mt-1 text-sm text-muted">Use the same workflows in the web app and CLI</div>
           </div>
         </div>
       </div>
@@ -137,7 +137,7 @@
             <span class="text-xs text-muted">Bootstrap script</span>
           </div>
           {#each installTargets as target (target.label)}
-            <div class="rounded-2xl border border-border-subtle bg-white/[0.02] p-4">
+            <div class="rounded-2xl border border-border-subtle bg-white/2 p-4">
               <div class="mb-2 flex items-center justify-between gap-3">
                 <h2 class="text-sm font-semibold">{target.label}</h2>
                 <span class="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">copy + run</span>
@@ -187,7 +187,7 @@
           <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Built for operator control.</h2>
         </div>
         <p class="max-w-xl text-sm leading-7 text-foreground-soft">
-          Typed actions, policy checks, and local state keep runtime behavior legible when the agent is allowed to act.
+          Validated actions, policy checks, and local state make behavior easier to inspect when the agent is allowed to act.
         </p>
       </div>
 
@@ -206,7 +206,7 @@
   <section class="border-t border-border-subtle px-6 py-20">
     <div class="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.95fr_minmax(0,1.05fr)]">
       <div class="surface-card p-6">
-        <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Runtime shape</p>
+        <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Stack</p>
         <div class="mt-5 grid gap-px overflow-hidden rounded-2xl border border-border-subtle bg-border-subtle">
           {#each stack as item (item.label)}
             <div class="grid gap-2 bg-background-panel p-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-start">
@@ -221,7 +221,7 @@
         <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Runtime capabilities</p>
         <div class="mt-5 overflow-hidden rounded-2xl border border-border-subtle">
           <table class="w-full text-left text-sm">
-            <thead class="bg-white/[0.03]">
+            <thead class="bg-white/3">
               <tr>
                 <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Area</th>
                 <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">What it covers</th>
@@ -248,7 +248,7 @@
       <div class="mb-8 flex items-end justify-between gap-6">
         <div>
           <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Operator dashboard</p>
-          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Operator dashboard preview.</h2>
+          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Operator dashboard</h2>
         </div>
       </div>
 
@@ -257,9 +257,9 @@
           <span class="terminal-dot"></span>
           <span class="terminal-dot"></span>
           <span class="terminal-dot"></span>
-          <span class="terminal-label ml-3">gui preview</span>
+          <span class="terminal-label ml-3">dashboard</span>
         </div>
-        <img src="/ui.png" alt="TrenchClaw operator dashboard UI" class="w-full object-cover" width="1024" height="780" />
+        <img src="/ui.png" alt="TrenchClaw operator dashboard" class="w-full object-cover" width="1024" height="780" />
       </div>
     </div>
   </section>

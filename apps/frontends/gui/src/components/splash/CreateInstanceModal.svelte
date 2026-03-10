@@ -15,11 +15,11 @@
   export let onCreate: () => void;
 </script>
 
-<RetroModal title="Create New Instance">
-  <RetroField label="Instance Name">
+<RetroModal title="Create instance">
+  <RetroField label="Instance name">
     <RetroInput bind:value={name} placeholder="e.g. Alpha Desk" />
   </RetroField>
-  <RetroField label="Security Level">
+  <RetroField label="Access level">
     <RetroSelect bind:value={safetyProfile}>
       {#each safetyProfileOptions as option}
         <option value={option.value}>{option.label}</option>
@@ -29,7 +29,7 @@
       {safetyProfileOptions.find((option) => option.value === safetyProfile)?.description ?? ""}
     </p>
   </RetroField>
-  <RetroField label="PIN (Optional)">
+  <RetroField label="PIN (optional)">
     <RetroInput bind:value={pin} placeholder="Set a PIN for this instance" />
   </RetroField>
   <div class="actions">

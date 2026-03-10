@@ -7,7 +7,7 @@
 
 <svelte:head>
   <title>TrenchClaw — Solana Agent Runtime</title>
-  <meta name="description" content="High-performance agentic framework and runtime for Solana. Built with @solana/kit, TypeScript, and Bun." />
+  <meta name="description" content="Local-first Solana runtime for wallets, actions, and AI workflows." />
 </svelte:head>
 
 {@render children()}

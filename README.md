@@ -20,49 +20,21 @@
   <a href="https://bun.sh/docs/api/sqlite"><img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" /></a>
 </p>
 
-Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
+If this project is useful, consider starring the repository.
 
 *0.0.1 release Wednesday March 11*
 
 # TrenchClaw
 
-TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected.
+TrenchClaw is a Solana runtime for operator-controlled on-chain actions and automated workflows. It provides a local interface for configuring actions, routines, wallets, and runtime status.
 
-Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
+Built with [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh). The current release targets local operator workflows and uses the modern Solana client stack instead of legacy `@solana/web3.js` v1.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
-## v0.0.1 Test Release Checklist
+## Current Status
 
-- [x] Set up project with a bun-based runtime and monorepo structure.
-- [x] Download dependencies, SDK's and core skills.
-- [x] Create backend typescript files and layout file structure for solana/ and ai/
-- [x] Added the action and routine systems.
-- [x] Added SQLite storage with a central zod schema.
-- [x] Create and implement the agent's brain, memory, loop and workspace primitives.
-- [x] Create loggers and split logs into 3 styles (`system`, `sessions`, `summaries`).
-- [x] Added raw file read/write permission.
-- [x] Create standardized AI gateway and dispatcher than can accept tool calls.
-- [x] Add native paths and scripts for wallet creation and organization.
-- [x] Add native paths and scripts for blockchain data retreival.
-- [x] Add bash-tool and solana cli 3.0 capabilities.
-- [x] Create temprory vault system for storage of keys and passwords.
-- [x] Isolate and restrict runtime/system writes to allowed /workspace/ and protected paths.
-- [x] Connect AI SDK runtime calls (`generate`, `stream`) during startup to our backend app.
-- [x] Build payload builder and standardized tool schema.
-- [x] Add Solana swap actions, including Jupiter Ultra swap, Metis swap, Sender swap helper and more.
-- [x] Add runtime start commands and health/status endpoints.
-- [x] Create in-depth test suite
-- [x] Create marketing and docs website
-- [x] Create Svelte gui and connect it to standardized trenclaw gateway.
-- [x] Create runner cli to build and startup everything properly
-- [x] Test and ship model-triggered routines.
-- [x] Test models ability to execute CLI and bash commands in its workspace.
-- [ ] Finish rolling out protected write policy across runtime and wallet actions.
-- [ ] Make CI and release flow with proper versioning.
-- [ ] Update and push docs to website for actual use by other humans.
-- [ ] Test that model is fully able to make wallets and do basic research
-- [ ] Upload release.
+TrenchClaw is in an early release state. Core runtime workflows, local storage, actions, routines, docs, and the web app are present, but the project should still be treated as experimental.
 
 Quick links:
 - [Quickstart](https://trenchclaw.vercel.app/docs)
@@ -71,9 +43,9 @@ Quick links:
 - [Why Solana Kit](#why-solana-kit)
 - [TrenchClaw vs ElizaOS and Agent Kit](#trenchclaw-vs-elizaos-and-agent-kit)
 
-PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
+### Experimental release
 
-### THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
+This release can move real assets. Test in isolated environments before using real funds.
 
 ---
 ## [Get Started](https://trenchclaw.vercel.app/docs)
@@ -476,6 +448,4 @@ bun run gui:dev
 
 ## License
 
-TBD
-
-# use at your own risk
+License not yet assigned.

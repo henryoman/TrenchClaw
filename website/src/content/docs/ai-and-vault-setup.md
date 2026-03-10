@@ -1,10 +1,10 @@
 ---
 title: AI and Vault Setup
-description: Configure one AI provider path in TrenchClaw and validate it quickly.
+description: Set up one AI provider in TrenchClaw and verify that requests work.
 order: 2
 ---
 
-Use this page to get a clean, working AI setup before any higher-risk actions.
+Set up your AI provider and confirm it works before running live actions.
 
 - OpenRouter
 - Vercel AI Gateway
@@ -29,7 +29,7 @@ TrenchClaw stores AI config in local vault entries:
 - `llm/gateway/api-key`
 - `llm/gateway/model`
 
-If key/model values are invalid, UI can still open but AI responses will fail.
+If the key or model is invalid, the app may open but AI requests will fail.
 
 ## Path A: OpenRouter (Recommended First)
 
@@ -43,6 +43,7 @@ If key/model values are invalid, UI can still open but AI responses will fail.
    ```text
    https://openrouter.ai/api/v1
    ```
+
 5. Save and run one read-only test prompt.
 
 ## Path B: Vercel AI Gateway
@@ -88,6 +89,6 @@ If key/model values are invalid, UI can still open but AI responses will fail.
 - Check provider usage/billing
 - Retry with a lower-cost model available on your plan
 
-## Done
+## Setup Complete
 
-AI setup is complete when one provider path returns successful test prompts with no auth/model errors.
+AI setup is complete when one provider returns successful test prompts with no authentication or model errors.

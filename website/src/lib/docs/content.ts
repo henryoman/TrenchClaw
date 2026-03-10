@@ -91,7 +91,7 @@ const parseDoc = (filePath: string, source: string): DocPage => {
 
   const { data: frontMatter, content } = parseFrontMatter(source);
   const title = frontMatter.title?.trim() || headingFromContent(content) || titleFromSlug(slug);
-  const description = frontMatter.description?.trim() || 'TrenchClaw documentation page.';
+  const description = frontMatter.description?.trim() || `Installation and usage guide for ${title}.`;
 
   return {
     slug,

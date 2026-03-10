@@ -30,16 +30,16 @@
           <option value="">Select instance...</option>
           {#each instances as instance}
             <option value={instance.localInstanceId}>
-              {instance.name} ({instance.localInstanceId}) | {instance.safetyProfile}{instance.userPinRequired ? " | pin" : ""}
+              {instance.name}{instance.userPinRequired ? " (PIN required)" : ""}
             </option>
           {/each}
-          <option value={createNewOption}>Create New Instance</option>
+          <option value={createNewOption}>Create new instance</option>
         </RetroSelect>
       </RetroField>
       <RetroField label="PIN">
-        <RetroInput bind:value={pin} placeholder="Pin if required" />
+        <RetroInput bind:value={pin} placeholder="Enter PIN if required" />
       </RetroField>
-      <RetroButton type="submit" disabled={busy}>{busy ? "Signing In..." : "Continue"}</RetroButton>
+      <RetroButton type="submit" disabled={busy}>{busy ? "Signing in..." : "Sign in"}</RetroButton>
     </form>
     {#if error}
       <p class="error">{error}</p>

@@ -13,12 +13,12 @@
 <main class="splash-shell">
   <RetroCard center={true}>
     <h1>TrenchClaw</h1>
-    <p class="tagline">Runtime instance operator</p>
+    <p class="tagline">Choose an instance to continue</p>
     <div class="actions">
-      <RetroButton disabled={busy} on:click={onCreate}>Create Instance</RetroButton>
+      <RetroButton disabled={busy} on:click={onCreate}>Create instance</RetroButton>
       <RetroButton variant="secondary" disabled={busy} on:click={onLogin}>Log In</RetroButton>
       <RetroButton variant="secondary" disabled={busy} on:click={onRetry}>
-        {busy ? "Checking Runtime..." : "Retry Runtime Check"}
+        {busy ? "Connecting..." : "Retry connection"}
       </RetroButton>
     </div>
     {#if error}

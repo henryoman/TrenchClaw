@@ -37,7 +37,7 @@
       await chat.initialize();
       chatInitError = "";
     } catch (error) {
-      chatInitError = error instanceof Error ? error.message : "Failed to initialize chat module.";
+      chatInitError = error instanceof Error ? error.message : "Chat is unavailable right now.";
       console.error("Chat initialization failed:", error);
     }
   };
@@ -120,7 +120,7 @@
         />
       {:else}
         <section class="chat-init-error">
-          <p>{chatInitError || "Initializing chat..."}</p>
+          <p>{chatInitError || "Loading chat..."}</p>
         </section>
       {/if}
     {:else if activeTab === "keys-secrets"}

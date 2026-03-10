@@ -56,7 +56,7 @@ trenchclaw --version
 trenchclaw
 ```
 
-## Configure In App
+## Initial Configuration
 
 On first launch, set:
 
@@ -65,35 +65,6 @@ On first launch, set:
 - Wallet/key workflows
 
 No `.env` setup is required for this path.
-
-## Source/Dev Path (Maintainers)
-
-For local development from source:
-
-```bash
-bun install
-bun run launch:dev
-```
-
-## Build + Verify User Bundle
-
-```bash
-bun run app:clean
-bun run app:build
-bun run bundle:verify
-```
-
-Create standalone release artifacts:
-
-```bash
-bun run release:package -- --version v0.0.2
-```
-
-Generate release notes:
-
-```bash
-bun run release:notes -- --version v0.0.2 --output dist/release/release-notes.md
-```
 
 ## Troubleshooting
 

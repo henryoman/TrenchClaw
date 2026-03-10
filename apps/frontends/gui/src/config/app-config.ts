@@ -8,8 +8,8 @@ export const RUNTIME_ACTIVITY_LIMIT = 80;
 export const RUNTIME_REFRESH_INTERVAL_MS = 2000;
 export const STARTUP_GUARD_TIMEOUT_MS = 12000;
 
-export const RUNTIME_STATUS_CHECKING = "runtime: checking...";
-export const RUNTIME_STATUS_OFFLINE = "runtime: offline";
+export const RUNTIME_STATUS_CHECKING = "Checking connection...";
+export const RUNTIME_STATUS_OFFLINE = "Offline";
 
 export const DEFAULT_RUNTIME_ERROR = "Unable to connect to runtime.";
 export const DEFAULT_CREATE_INSTANCE_ERROR = "Failed to create instance.";
@@ -27,18 +27,18 @@ export interface SafetyProfileOption {
 export const SAFETY_PROFILE_OPTIONS: SafetyProfileOption[] = [
   {
     value: "safe",
-    label: "Safe",
-    description: "Read-focused mode. Trading and dangerous wallet operations are blocked.",
+    label: "View only",
+    description: "Trading and wallet-changing actions are blocked.",
   },
   {
     value: "dangerous",
-    label: "Dangerous",
-    description: "Trading-capable mode. Dangerous actions require explicit confirmation.",
+    label: "Confirm trading",
+    description: "Trading is enabled, but high-impact actions require confirmation.",
   },
   {
     value: "veryDangerous",
-    label: "Very Dangerous",
-    description: "Full execution mode. Dangerous actions do not require confirmation.",
+    label: "Allow trading without confirmation",
+    description: "Trading is enabled and high-impact actions do not require confirmation.",
   },
 ];
 
