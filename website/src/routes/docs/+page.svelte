@@ -23,7 +23,7 @@
   <main class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
     <aside class="hidden lg:block">
       <div class="docs-sidebar">
-        <p class="docs-sidebar-label">Getting Started</p>
+        <p class="docs-sidebar-label">Guides</p>
         <nav class="mt-2">
           {#each data.docs as doc (doc.slug)}
             <a class="docs-nav-link" href={`/docs/${doc.slug}`}>{doc.title}</a>
@@ -35,10 +35,9 @@
     <section>
       <div class="docs-index-hero">
         <p class="docs-kicker">Documentation</p>
-        <h1 class="docs-index-title">Technical docs that feel like part of the product.</h1>
+        <h1 class="docs-index-title">Documentation</h1>
         <p class="docs-index-description">
-          Start with install and runtime setup, then move into wallet, vault, and frontend workflows. The layout is intentionally
-          grayscale, terminal-heavy, and easy to scan under pressure.
+          Installation, runtime setup, wallet, vault, and frontend guides.
         </p>
 
         <div class="terminal-window relative mt-8">
@@ -53,7 +52,7 @@
             <p class="terminal-line-bright">install checklist</p>
             <p class="terminal-line-bright">vault + AI provider wiring</p>
             <p class="terminal-line-bright">runtime + GUI launch flow</p>
-            <p class="terminal-line-dim">copyable commands and cleaner code blocks</p>
+            <p class="terminal-line-dim">commands, configuration, and startup steps</p>
           </div>
         </div>
       </div>

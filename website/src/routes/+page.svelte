@@ -20,8 +20,8 @@
 
   const principles = [
     {
-      title: 'Docs-first operator UX',
-      description: 'The site now reads like a technical product, not a neon landing page. Key flows are surfaced immediately.'
+      title: 'Agentic operator flow',
+      description: 'Typed actions, routines, and runtime controls are organized around the workflows operators actually run.'
     },
     {
       title: 'Filesystem-native wallet flow',
@@ -52,9 +52,9 @@
   ];
 
   const comparison = [
-    { feature: 'Website mood', current: 'clean grayscale docs surface', prior: 'turquoise / purple marketing theme' },
-    { feature: 'Primary call to action', current: 'read docs and install fast', prior: 'generic landing page buttons' },
-    { feature: 'Code presentation', current: 'terminal-first surfaces and copyable snippets', prior: 'mixed accent blocks' }
+    { feature: 'Actions', current: 'Typed modules for on-chain and runtime tasks', prior: 'Explicit schemas reduce invalid execution' },
+    { feature: 'Routines', current: 'Automated flows for repeated operator work', prior: 'Keeps execution consistent across runs' },
+    { feature: 'Storage', current: 'SQLite, JSONL sidecars, and protected filesystem paths', prior: 'Local state stays inspectable and durable' }
   ];
 </script>
 
@@ -84,11 +84,11 @@
       <div class="max-w-3xl">
         <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Operator runtime for Solana</p>
         <h1 class="mt-4 max-w-4xl text-6xl font-extrabold leading-[0.94] tracking-[-0.06em] text-balance md:text-8xl">
-          Dark, clean docs and a runtime that still feels like a terminal.
+          the solana native agentic assistant
         </h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-foreground-soft">
           TrenchClaw is a Bun-based Solana operator runtime with typed actions, filesystem-backed wallets, agent orchestration,
-          and a docs surface that should feel closer to serious tooling than crypto landing-page noise.
+          and local state built for actions, routines, and operator control.
         </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -154,9 +154,9 @@
     <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_minmax(0,1.1fr)]">
       <div>
         <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Quick links</p>
-        <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Start where the docs are actually useful.</h2>
+        <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Start with the core workflows.</h2>
         <p class="mt-4 max-w-xl text-base leading-8 text-foreground-soft">
-          The docs area is the main product surface now. The homepage points into the real workflows instead of wasting space on loud accent colors.
+          Install the runtime, connect providers and vaults, then launch the CLI and GUI with the documented first-run flow.
         </p>
       </div>
 
@@ -184,10 +184,10 @@
       <div class="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Principles</p>
-          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Less goofy. More operator-grade.</h2>
+          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Built for operator control.</h2>
         </div>
         <p class="max-w-xl text-sm leading-7 text-foreground-soft">
-          Every surface now leans grayscale, restrained, and technical. The terminal language stays because that is the product.
+          Typed actions, policy checks, and local state keep runtime behavior legible when the agent is allowed to act.
         </p>
       </div>
 
@@ -218,14 +218,14 @@
       </div>
 
       <div class="surface-card p-6">
-        <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Site reset</p>
+        <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Runtime capabilities</p>
         <div class="mt-5 overflow-hidden rounded-2xl border border-border-subtle">
           <table class="w-full text-left text-sm">
             <thead class="bg-white/[0.03]">
               <tr>
                 <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Area</th>
-                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Now</th>
-                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Before</th>
+                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">What it covers</th>
+                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Why it matters</th>
               </tr>
             </thead>
             <tbody>
@@ -248,7 +248,7 @@
       <div class="mb-8 flex items-end justify-between gap-6">
         <div>
           <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Operator dashboard</p>
-          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">The site and the product should match.</h2>
+          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Operator dashboard preview.</h2>
         </div>
       </div>
 
@@ -268,7 +268,7 @@
     <div class="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm font-semibold tracking-[-0.02em]">TrenchClaw</p>
-        <p class="mt-1 text-sm text-muted">Bun runtime, Solana operator tooling, and cleaner docs.</p>
+        <p class="mt-1 text-sm text-muted">Bun runtime, Solana operator tooling, and local-first state.</p>
       </div>
       <div class="flex gap-6 text-sm text-muted">
         <a href="/docs" class="transition-colors hover:text-foreground">Docs</a>
