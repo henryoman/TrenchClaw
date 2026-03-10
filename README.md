@@ -22,7 +22,15 @@
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
 
-*0.0.1 release Monday March 9*
+*0.0.1 release Wednesday March 11*
+
+# TrenchClaw
+
+TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected.
+
+Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
+
+Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 ## v0.0.1 Test Release Checklist
 
@@ -55,14 +63,6 @@ Please give us a star if you're interested in seeing this project get fully buil
 - [ ] Update and push docs to website for actual use by other humans.
 - [ ] Test that model is fully able to make wallets and do basic research
 - [ ] Upload release.
-
-# TrenchClaw
-
-TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected.
-
-Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
-
-Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 Quick links:
 - [Quickstart](https://trenchclaw.vercel.app/docs)
