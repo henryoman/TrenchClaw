@@ -264,6 +264,9 @@ const normalizeRuntimeSettings = (
         walMode: true,
         busyTimeoutMs: 5_000,
       },
+      queue: {
+        path: resolveRuntimeStatePath("db/queue/bunqueue.sqlite"),
+      },
       sessions: {
         enabled: true,
         directory: resolveRuntimeStatePath("db/sessions"),

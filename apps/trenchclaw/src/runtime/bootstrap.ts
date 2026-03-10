@@ -471,7 +471,7 @@ export interface RuntimeBootstrap {
     routineName: string;
     config?: Record<string, unknown>;
     totalCycles?: number;
-  }) => JobState;
+  }) => Promise<JobState>;
   describe: () => {
     profile: RuntimeSettings["profile"];
     registeredActions: string[];
@@ -626,6 +626,10 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       resolveRoutine: (routineName) => loadRoutinePlanner(routineName),
     },
     settings.runtime.scheduler.tickMs,
+    {
+      dataPath: settings.storage.queue.path,
+      maxConcurrentJobs: settings.runtime.scheduler.maxConcurrentJobs,
+    },
   );
 
   const sessionLogStore = settings.storage.sessions.enabled
@@ -664,12 +668,12 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   attachEventLogging(settings, logger, eventBus, sessionLogStore, memoryLogStore, summaryLogStore);
   scheduler.start();
 
-  const enqueueJob = (input: {
+  const enqueueJob = async (input: {
     botId: string;
     routineName: string;
     config?: Record<string, unknown>;
     totalCycles?: number;
-  }): JobState => {
+  }): Promise<JobState> => {
     const now = Date.now();
     const job: JobState = {
       id: crypto.randomUUID(),
@@ -684,6 +688,16 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       nextRunAt: now,
     };
     stateStore.saveJob(job);
+    try {
+      await scheduler.enqueue(job);
+    } catch (error) {
+      stateStore.updateJobStatus(job.id, "failed", {
+        lastError: error instanceof Error ? error.message : String(error),
+        lastRunAt: Date.now(),
+        nextRunAt: undefined,
+      });
+      throw error;
+    }
     const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
     const queuePosition = pendingJobs.findIndex((entry) => entry.id === job.id) + 1;
     eventBus.emit("queue:enqueue", {
@@ -699,7 +713,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
 
   // Optional boot hook for validating the runtime path immediately.
   if ((process.env.TRENCHCLAW_BOOTSTRAP_CREATE_WALLETS ?? "").trim() === "1") {
-    enqueueJob({
+    await enqueueJob({
       botId: "bootstrap",
       routineName: "createWallets",
       config: {},

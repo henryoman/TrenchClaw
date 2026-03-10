@@ -10,7 +10,7 @@ export const runDispatcherQueueTest = async (
   status: string;
   result: unknown;
 }> => {
-  const job = context.runtime.enqueueJob({
+  const job = await context.runtime.enqueueJob({
     botId: "gui-dispatch-test",
     routineName: "actionSequence",
     config: {

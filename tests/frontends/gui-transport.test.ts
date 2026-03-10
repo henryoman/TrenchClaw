@@ -36,7 +36,7 @@ const buildRuntime = (input?: {
     registry,
     session: null,
     stop: () => {},
-    enqueueJob: () =>
+    enqueueJob: async () =>
       ({
         id: "job-1",
         botId: "bot-1",
@@ -46,7 +46,7 @@ const buildRuntime = (input?: {
         cyclesCompleted: 0,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      }) as ReturnType<RuntimeBootstrap["enqueueJob"]>,
+      }) as Awaited<ReturnType<RuntimeBootstrap["enqueueJob"]>>,
     describe: () => ({
       profile: "dangerous",
       registeredActions: [],

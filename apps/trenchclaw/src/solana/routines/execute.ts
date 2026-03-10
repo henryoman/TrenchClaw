@@ -23,7 +23,7 @@ export const executeRoutine = async (rawInput: ExecuteRoutineInput) => {
   const runtime = await bootstrapRuntime();
 
   try {
-    const job = runtime.enqueueJob({
+    const job = await runtime.enqueueJob({
       botId: input.botId ?? `routine:${input.routineName}`,
       routineName: input.routineName,
       config: input.config,
@@ -44,10 +44,9 @@ const waitForJobCompletion = async (
   runtime: RuntimeBootstrap,
   jobId: string,
   timeoutMs: number,
-) => {
+): Promise<NonNullable<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>>> => {
   const timeoutAt = Date.now() + timeoutMs;
-
-  while (Date.now() < timeoutAt) {
+  const poll = async (): Promise<NonNullable<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>>> => {
     const job = runtime.stateStore.getJob(jobId);
     if (!job) {
       throw new Error(`Routine job "${jobId}" disappeared before completion`);
@@ -57,10 +56,15 @@ const waitForJobCompletion = async (
       return job;
     }
 
-    await Bun.sleep(100);
-  }
+    if (Date.now() >= timeoutAt) {
+      throw new Error(`Timed out waiting for routine job "${jobId}" after ${timeoutMs}ms`);
+    }
 
-  throw new Error(`Timed out waiting for routine job "${jobId}" after ${timeoutMs}ms`);
+    await Bun.sleep(100);
+    return poll();
+  };
+
+  return poll();
 };
 
 const start = async (): Promise<void> => {
@@ -92,7 +96,7 @@ const start = async (): Promise<void> => {
     routineName,
     botId: parsedArgs.values["bot-id"],
     config,
-    timeoutMs: parsedArgs.values["timeout-ms"] ? Number(parsedArgs.values["timeout-ms"]) : undefined,
+    timeoutMs: parsedArgs.values["timeout-ms"] ? Number(parsedArgs.values["timeout-ms"]) : 300_000,
   });
 
   console.log(JSON.stringify(result, null, 2));

@@ -11,10 +11,14 @@ SQLite schema sync + ORM mapping: `src/runtime/storage/sqlite-orm.ts`.
 
 Primary database: `storage.sqlite.path` (from runtime settings).
 
+Separate queue database: `storage.queue.path`.
+
+The runtime queue now uses embedded `bunqueue` with its own SQLite durability file so queued work does not share the main runtime SQLite database file.
+
 ### Core runtime tables
 
 - `jobs`
-: Scheduler state for bot jobs.
+: Runtime job metadata, history, and status snapshots.
   - Key: `id`
   - Indexed: `(status, next_run_at)`, `(bot_id, status)`, `(status, lease_expires_at)`
   - Queue metadata columns: `attempt_count`, `lease_owner`, `lease_expires_at`, `last_error`
@@ -104,7 +108,8 @@ All runtime log sinks are file-backed and write through a dedicated Bun worker q
 
 ## Data placement rules
 
-- Job/execution state: `jobs`, `action_receipts`
+- Queue durability and scheduling: embedded `bunqueue` at `storage.queue.path`
+- Job/execution metadata: `jobs`, `action_receipts`
 - Conversation history: `conversations`, `chat_messages`
 - Stable instance memory: `instance_profiles`
 - Granular instance memory: `instance_facts`

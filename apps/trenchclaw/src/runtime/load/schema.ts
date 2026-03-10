@@ -120,6 +120,9 @@ const storageSchema = z.object({
     walMode: z.boolean(),
     busyTimeoutMs: z.number().int().nonnegative(),
   }),
+  queue: z.object({
+    path: z.string().min(1),
+  }),
   sessions: z.object({
     enabled: z.boolean(),
     directory: z.string().min(1),
