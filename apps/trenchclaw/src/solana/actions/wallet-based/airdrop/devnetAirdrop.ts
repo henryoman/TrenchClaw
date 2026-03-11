@@ -1,7 +1,7 @@
 import { parseArgs } from "node:util";
 import { z } from "zod";
 
-import type { Action } from "../../../../../ai/runtime/types/action";
+import type { Action } from "../../../../ai/runtime/types/action";
 import { resolveWalletLibraryFilePath, walletGroupNameSchema } from "../create-wallets/wallet-storage";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
