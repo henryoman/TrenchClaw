@@ -10,17 +10,20 @@ import {
 } from "./protected-write-policy";
 import {
   DEFAULT_WALLET_LIBRARY_FILE_NAME,
-  ManagedWalletLibraryEntry,
-  ManagedWalletRef,
-  ManagedWalletTreeNode,
-  ManagedWalletTreeSnapshot,
   WALLET_KEYPAIRS_DIRECTORY_NAME,
   WALLET_LABEL_FILE_SUFFIX,
   WALLET_LIBRARY_PATH_ENV,
   managedWalletLibraryEntrySchema,
   managedWalletRefSchema,
+  walletLabelFileSchema,
   walletGroupNameSchema,
   walletNameSchema,
+} from "./wallet-types";
+import type {
+  ManagedWalletLibraryEntry,
+  ManagedWalletRef,
+  ManagedWalletTreeNode,
+  ManagedWalletTreeSnapshot,
 } from "./wallet-types";
 
 export interface WalletDeleteRequest {
@@ -90,6 +93,37 @@ const canonicalizeWalletRelativePath = (rawPath: string): string => {
 const resolveDefaultWalletLibraryFilePath = (): string =>
   path.join(resolveWalletKeypairRootPath(), DEFAULT_WALLET_LIBRARY_FILE_NAME);
 
+const toWalletDisplayName = (fileName: string): string => fileName.replace(/\.json$/iu, "");
+
+const readWalletLabelMetadata = async (keypairFilePath: string): Promise<{
+  walletId?: string;
+  walletName?: string;
+  address?: string;
+  displayName?: string;
+}> => {
+  const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);
+  const walletLabelFile = Bun.file(walletLabelFilePath);
+  if (!(await walletLabelFile.exists())) {
+    return {
+      displayName: toWalletDisplayName(path.basename(keypairFilePath)),
+    };
+  }
+
+  try {
+    const parsed = walletLabelFileSchema.parse(await walletLabelFile.json());
+    return {
+      walletId: parsed.walletId,
+      walletName: parsed.walletName,
+      address: parsed.address,
+      displayName: parsed.walletName || toWalletDisplayName(parsed.walletFileName),
+    };
+  } catch {
+    return {
+      displayName: toWalletDisplayName(path.basename(keypairFilePath)),
+    };
+  }
+};
+
 const buildManagedWalletTree = async (
   absoluteDirectoryPath: string,
   absoluteRootPath: string,
@@ -124,10 +158,15 @@ const buildManagedWalletTree = async (
         entry.name.toLowerCase().endsWith(".json") &&
         !isWalletLabelFileName(entry.name)
       ) {
+        const metadata = await readWalletLabelMetadata(absoluteEntryPath);
         return {
           name: entry.name,
           relativePath,
           kind: "file",
+          displayName: metadata.displayName ?? toWalletDisplayName(entry.name),
+          walletName: metadata.walletName,
+          walletId: metadata.walletId,
+          address: metadata.address,
         };
       }
 

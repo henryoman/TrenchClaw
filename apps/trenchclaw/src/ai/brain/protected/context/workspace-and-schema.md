@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-11T20:33:49.501Z
+Generated at: 2026-03-11T23:28:17.858Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -172,7 +172,8 @@ apps/trenchclaw/
 |   |   |   |   |-- file-system-wallet.md
 |   |   |   |   |-- helius-agents.md
 |   |   |   |   |-- KNOWLEDGE_MANIFEST.md
-|   |   |   |   `-- knowledge-tree.ts
+|   |   |   |   |-- knowledge-tree.ts
+|   |   |   |   `-- solana-cli.md
 |   |   |   |-- protected/
 |   |   |   |   |-- agent-modes/
 |   |   |   |   |   |-- operator.md
@@ -188,9 +189,6 @@ apps/trenchclaw/
 |   |   |   |   |   |   |       |-- practice002-0002.json
 |   |   |   |   |   |   |       `-- practice002-0002.label.json
 |   |   |   |   |   |   `-- wallet-library.jsonl
-|   |   |   |   |   |-- i-debug-wallets/
-|   |   |   |   |   |   `-- keypairs/
-|   |   |   |   |   |       `-- core_debug_group/
 |   |   |   |   |   `-- i-test-wallet-groups/
 |   |   |   |   |       `-- keypairs/
 |   |   |   |   |-- no-read/
@@ -377,12 +375,21 @@ apps/trenchclaw/
 |   |   |   |   |   |   |-- executeSwap.ts
 |   |   |   |   |   |   |-- index.ts
 |   |   |   |   |   |   `-- quoteSwap.ts
+|   |   |   |   |   |-- trigger/
+|   |   |   |   |   |   |-- cancelOrders.ts
+|   |   |   |   |   |   |-- getOrders.ts
+|   |   |   |   |   |   |-- index.ts
+|   |   |   |   |   |   |-- managedCancelOrders.ts
+|   |   |   |   |   |   |-- managedOrder.ts
+|   |   |   |   |   |   |-- order.ts
+|   |   |   |   |   |   `-- shared.ts
 |   |   |   |   |   |-- ultra/
 |   |   |   |   |   |   |-- confirmationTracker.ts
 |   |   |   |   |   |   |-- executeSwap.ts
 |   |   |   |   |   |   |-- index.ts
 |   |   |   |   |   |   |-- managedSwap.ts
 |   |   |   |   |   |   |-- quoteSwap.ts
+|   |   |   |   |   |   |-- scheduleManagedSwap.ts
 |   |   |   |   |   |   |-- shared.ts
 |   |   |   |   |   |   `-- swap.ts
 |   |   |   |   |   `-- index.ts
@@ -400,6 +407,7 @@ apps/trenchclaw/
 |   |   |-- lib/
 |   |   |   |-- adapters/
 |   |   |   |   |-- index.ts
+|   |   |   |   |-- jupiter-trigger.ts
 |   |   |   |   |-- jupiter-ultra.ts
 |   |   |   |   |-- jupiter.ts
 |   |   |   |   |-- rpc-pool.ts
@@ -460,17 +468,28 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | getDexscreenerTokensByChain | data-based |  | yes | yes | no | yes | no |
 | getDexscreenerTopTokenBoosts | data-based |  | yes | yes | no | yes | no |
 | getSwapHistory | data-based |  | yes | yes | no | yes | no |
+| getTriggerOrders | wallet-based | trigger | yes | yes | no | yes | no |
+| managedTriggerCancelOrders | wallet-based | trigger | yes | yes | yes | yes | no |
+| managedTriggerOrder | wallet-based | trigger | yes | yes | yes | yes | no |
+| managedUltraSwap | wallet-based | swap | yes | yes | yes | yes | no |
 | manageRuntimeJob | data-based |  | yes | yes | no | yes | no |
 | mutateInstanceMemory | data-based |  | yes | yes | no | yes | no |
 | pingRuntime | data-based | read-only | yes | yes | no | yes | no |
 | privacyAirdrop | wallet-based | transfer | yes | yes | yes | yes | no |
+| privacySwap | wallet-based | swap | yes | yes | yes | yes | no |
 | privacyTransfer | wallet-based | transfer | yes | yes | yes | yes | no |
 | queryInstanceMemory | data-based | read-only | yes | yes | no | yes | no |
 | queryRuntimeStore | data-based | read-only | yes | yes | no | yes | no |
 | renameWallets | wallet-based |  | yes | yes | no | yes | no |
+| scheduleManagedUltraSwap | wallet-based | swap | yes | yes | yes | yes | no |
 | searchDexscreenerPairs | data-based |  | yes | yes | no | yes | no |
 | sleep | data-based |  | yes | yes | no | yes | no |
 | transfer | wallet-based | transfer | yes | yes | yes | yes | no |
+| triggerCancelOrders | wallet-based | trigger | yes | yes | yes | yes | no |
+| triggerOrder | wallet-based | trigger | yes | yes | yes | yes | no |
+| ultraExecuteSwap | wallet-based | swap | yes | yes | yes | yes | no |
+| ultraQuoteSwap | wallet-based | swap | yes | yes | no | yes | no |
+| ultraSwap | wallet-based | swap | yes | yes | yes | yes | no |
 
 ## Runtime Chat Tool Catalog (Generated)
 | toolName | kind | enabledBySettings | requiresConfirmation |
@@ -490,17 +509,28 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | getDexscreenerTokensByChain | action | yes | no |
 | getDexscreenerTopTokenBoosts | action | yes | no |
 | getSwapHistory | action | yes | no |
+| getTriggerOrders | action | yes | no |
+| managedTriggerCancelOrders | action | yes | yes |
+| managedTriggerOrder | action | yes | yes |
+| managedUltraSwap | action | yes | yes |
 | manageRuntimeJob | action | yes | no |
 | mutateInstanceMemory | action | yes | no |
 | pingRuntime | action | yes | no |
 | privacyAirdrop | action | yes | yes |
+| privacySwap | action | yes | yes |
 | privacyTransfer | action | yes | yes |
 | queryInstanceMemory | action | yes | no |
 | queryRuntimeStore | action | yes | no |
 | renameWallets | action | yes | no |
+| scheduleManagedUltraSwap | action | yes | yes |
 | searchDexscreenerPairs | action | yes | no |
 | sleep | action | yes | no |
 | transfer | action | yes | yes |
+| triggerCancelOrders | action | yes | yes |
+| triggerOrder | action | yes | yes |
+| ultraExecuteSwap | action | yes | yes |
+| ultraQuoteSwap | action | yes | no |
+| ultraSwap | action | yes | yes |
 | workspaceBash | workspace-tool | yes | no |
 | workspaceReadFile | workspace-tool | yes | no |
 | workspaceWriteFile | workspace-tool | yes | no |
