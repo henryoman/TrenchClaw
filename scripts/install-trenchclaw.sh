@@ -8,6 +8,8 @@ set -eu
 # - TRENCHCLAW_ARTIFACT_NAME (default: trenchclaw-$TRENCHCLAW_VERSION-$platform.tar.gz)
 # - TRENCHCLAW_APP_HOME (default: $HOME/.local/share/trenchclaw)
 # - TRENCHCLAW_BIN_DIR (default: $HOME/.local/bin)
+# - TRENCHCLAW_INSTALL_REQUIRED_TOOLS (default: 1)
+# - TRENCHCLAW_UPDATE_EXISTING_TOOLS (default: 1)
 # - TRENCHCLAW_RELOAD_SHELL (default: 0; set to 1 to exec a login shell at end)
 
 TRENCHCLAW_VERSION="${TRENCHCLAW_VERSION:-latest}"
@@ -16,7 +18,11 @@ TRENCHCLAW_DOWNLOAD_BASE_URL="${TRENCHCLAW_DOWNLOAD_BASE_URL:-}"
 TRENCHCLAW_ARTIFACT_NAME="${TRENCHCLAW_ARTIFACT_NAME:-}"
 TRENCHCLAW_APP_HOME="${TRENCHCLAW_APP_HOME:-$HOME/.local/share/trenchclaw}"
 TRENCHCLAW_BIN_DIR="${TRENCHCLAW_BIN_DIR:-$HOME/.local/bin}"
+TRENCHCLAW_INSTALL_REQUIRED_TOOLS="${TRENCHCLAW_INSTALL_REQUIRED_TOOLS:-1}"
+TRENCHCLAW_UPDATE_EXISTING_TOOLS="${TRENCHCLAW_UPDATE_EXISTING_TOOLS:-1}"
 TRENCHCLAW_RELOAD_SHELL="${TRENCHCLAW_RELOAD_SHELL:-0}"
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 info() {
   printf '%s\n' "[trenchclaw-install] $1"
@@ -29,6 +35,10 @@ fail() {
 
 need_cmd() {
   command -v "$1" >/dev/null 2>&1
+}
+
+require_cmd() {
+  need_cmd "$1" || fail "$1 is required but not installed"
 }
 
 append_path_if_missing() {
@@ -78,6 +88,8 @@ detect_platform() {
 
 install_trenchclaw_bundle() {
   detect_platform
+  require_cmd curl
+  require_cmd tar
   mkdir -p "$TRENCHCLAW_APP_HOME" "$TRENCHCLAW_BIN_DIR"
   add_path_for_current_process "$TRENCHCLAW_BIN_DIR"
   ensure_path_in_shell_profiles "$TRENCHCLAW_BIN_DIR"
@@ -137,16 +149,29 @@ EOF
   info "TrenchClaw installed at $current_link"
 }
 
+install_required_tools() {
+  [ "$TRENCHCLAW_INSTALL_REQUIRED_TOOLS" = "1" ] || return 0
+
+  info "Installing required external tools..."
+  TRENCHCLAW_UPDATE_EXISTING_TOOLS="$TRENCHCLAW_UPDATE_EXISTING_TOOLS" \
+    sh "$SCRIPT_DIR/install-required-tools.sh"
+}
+
 print_summary() {
   info "Install complete."
   info "Verified:"
   info " - trenchclaw launcher: $(command -v trenchclaw)"
+  if command -v solana >/dev/null 2>&1; then
+    info " - solana cli: $(command -v solana)"
+  fi
+  info "TrenchClaw creates fresh writable runtime state locally on first launch."
   info "If your current shell still cannot find these commands, run:"
   info "  exec \$SHELL -l"
 }
 
 main() {
   install_trenchclaw_bundle
+  install_required_tools
   print_summary
 
   if [ "$TRENCHCLAW_RELOAD_SHELL" = "1" ]; then

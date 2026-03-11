@@ -1,7 +1,7 @@
-/* eslint-disable import/no-unassigned-import */
+/* oxlint-disable import/no-unassigned-import */
 import "./styles/base.css";
 import "./app.css";
-/* eslint-enable import/no-unassigned-import */
+/* oxlint-enable import/no-unassigned-import */
 import { mount } from "svelte";
 import App from "./App.svelte";
 

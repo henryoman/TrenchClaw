@@ -1,5 +1,4 @@
 import { createKeyPairFromPrivateKeyBytes, getAddressFromPublicKey } from "@solana/kit";
-import { appendFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
@@ -9,14 +8,19 @@ import {
   assertWithinBrainProtectedDirectory,
 } from "../../../lib/wallet/protected-write-policy";
 import {
-  DEFAULT_WALLET_GROUP,
+  appendManagedWalletLibraryEntries,
+  migrateLegacyWalletLibraryIfNeeded,
   resolveWalletGroupDirectoryPath,
   resolveWalletKeypairRootPath,
   resolveWalletLabelFilePath,
+} from "../../../lib/wallet/wallet-manager";
+import {
+  DEFAULT_WALLET_GROUP,
+  type ManagedWalletLibraryEntry,
   toWalletId,
-  resolveWalletLibraryFilePath,
   walletGroupNameSchema,
-} from "./wallet-storage";
+  type WalletLabelFile,
+} from "../../../lib/wallet/wallet-types";
 
 const MAX_WALLETS_PER_GROUP = 100;
 const DEFAULT_WALLET_NAME_PREFIX = "wallet_";
@@ -193,17 +197,6 @@ interface CreateWalletsOutput {
   walletGroup?: string;
 }
 
-interface WalletLabelFile {
-  version: 1;
-  walletId: string;
-  walletGroup: string;
-  walletName: string;
-  address: string;
-  walletFileName: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 const toDefaultWalletName = (index: number): string => `${DEFAULT_WALLET_NAME_PREFIX}${String(index).padStart(2, "0")}`;
 
 const normalizeLegacyWalletNames = (input: LegacyCreateWalletsInput): string[] => {
@@ -241,15 +234,6 @@ const normalizeCreateWalletsInput = (rawInput: unknown): CreateWalletsInput => {
   };
 };
 
-const directoryExists = async (directoryPath: string): Promise<boolean> => {
-  try {
-    const metadata = await stat(directoryPath);
-    return metadata.isDirectory();
-  } catch {
-    return false;
-  }
-};
-
 const createFilesystemWalletKeypair = async (): Promise<{
   address: string;
   publicKeyBytes: Uint8Array;
@@ -280,7 +264,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
       const input = normalizeCreateWalletsInput(rawInput);
       const wallets: CreatedWallet[] = [];
       const files: string[] = [];
-      const walletLibraryFilePath = resolveWalletLibraryFilePath();
+      const walletLibraryFilePath = await migrateLegacyWalletLibraryIfNeeded();
       const keypairRootPath = resolveWalletKeypairRootPath();
       const groupDirectories: CreateWalletsOutput["groupDirectories"] = [];
 
@@ -299,7 +283,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
       });
 
       await Bun.$`mkdir -p ${path.dirname(walletLibraryFilePath)}`.quiet();
-      const libraryAppendLines: string[] = [];
+      const libraryEntries: ManagedWalletLibraryEntry[] = [];
       for (const groupInput of input.groups) {
         const outputDirectory = resolveWalletGroupDirectoryPath(groupInput.walletGroup);
         assertWithinBrainProtectedDirectory(outputDirectory);
@@ -354,18 +338,16 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
           };
           await Bun.write(walletLabelFilePath, `${JSON.stringify(walletLabel, null, 2)}\n`);
 
-          libraryAppendLines.push(
-            JSON.stringify({
-              walletId,
-              walletGroup: groupInput.walletGroup,
-              walletName: wallet,
-              address: generated.address,
-              keypairFilePath,
-              walletLabelFilePath,
-              createdAt,
-              updatedAt: createdAt,
-            }),
-          );
+          libraryEntries.push({
+            walletId,
+            walletGroup: groupInput.walletGroup,
+            walletName: wallet,
+            address: generated.address,
+            keypairFilePath,
+            walletLabelFilePath,
+            createdAt,
+            updatedAt: createdAt,
+          });
 
           files.push(keypairFilePath);
           wallets.push({
@@ -380,9 +362,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
         }
       }
 
-      if (libraryAppendLines.length > 0) {
-        await appendFile(walletLibraryFilePath, `${libraryAppendLines.join("\n")}\n`, { encoding: "utf8" });
-      }
+      await appendManagedWalletLibraryEntries(walletLibraryFilePath, libraryEntries);
 
       return {
         ok: true,

@@ -2,7 +2,11 @@ import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
 import { assertProtectedWriteAllowed } from "../../../lib/wallet/protected-write-policy";
-import { resolveWalletGroupDirectoryPath, resolveWalletKeypairRootPath, walletGroupNameSchema } from "./wallet-storage";
+import {
+  resolveWalletGroupDirectoryPath,
+  resolveWalletKeypairRootPath,
+} from "../../../lib/wallet/wallet-manager";
+import { walletGroupNameSchema } from "../../../lib/wallet/wallet-types";
 
 const createWalletGroupDirectoryInputSchema = z.object({
   walletGroup: walletGroupNameSchema,

@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import type { RoutinePlanner } from "../../ai/runtime/types/scheduler";
 import { resolveBundledBrainPath } from "../../runtime/runtime-paths";
+import { createWalletsRoutine } from "./create-wallets";
 
 const retryPolicySchema = z.object({
   maxAttempts: z.number().int().positive(),
@@ -24,8 +25,6 @@ const actionSequenceRoutineConfigSchema = z.object({
     )
     .min(1),
 });
-
-const createWalletsRoutineConfigSchema = z.record(z.string(), z.unknown());
 
 export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
   const config = actionSequenceRoutineConfigSchema.parse(job.config);
@@ -57,19 +56,6 @@ export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
       retryPolicy: step.retryPolicy,
     };
   });
-};
-
-export const createWalletsRoutine: RoutinePlanner = async (_ctx, job) => {
-  const config = createWalletsRoutineConfigSchema.parse(job.config);
-
-  return [
-    {
-      key: "create-wallets",
-      actionName: "createWallets",
-      input: config,
-      idempotencyKey: `${job.id}:create-wallets`,
-    },
-  ];
 };
 
 const BUILTIN_ROUTINES: Record<string, RoutinePlanner> = {

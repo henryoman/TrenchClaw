@@ -355,7 +355,8 @@ export const privacySwapAction: Action<PrivacySwapInput, PrivacySwapOutput> = {
                   inputMint: inputCoin,
                   outputMint: input.outputCoin,
                   amountLamports: String(toLamports(input.amountSol)),
-                  slippageBps: input.slippageBps ?? 50,
+                  slippageStrategy: "ultra-managed",
+                  feeStrategy: "ultra-managed",
                   timings: {
                     orderMs: 0,
                     signingMs: 0,
@@ -382,7 +383,6 @@ export const privacySwapAction: Action<PrivacySwapInput, PrivacySwapOutput> = {
         amount: String(toLamports(input.amountSol)),
         amountUnit: "native",
         mode: input.mode,
-        slippageBps: input.slippageBps,
         taker: signerAddress,
       });
 

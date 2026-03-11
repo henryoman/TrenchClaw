@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -10,6 +10,7 @@ import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-instance.json");
 const INSTANCE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/u;
 const INSTANCE_FILE_PATTERN = /^i-\d+\.json$/u;
+const INSTANCE_DIRECTORY_PATTERN = /^i-\d+$/u;
 
 const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileView => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -39,6 +40,15 @@ const normalizeInstanceId = (localInstanceId: string): string => {
 const getInstanceProfileFilePath = (localInstanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, `${normalizeInstanceId(localInstanceId)}.json`);
 
+const getInstanceDirectoryPath = (localInstanceId: string): string =>
+  path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId));
+
+const hasStoredInstance = (localInstanceId: string): boolean =>
+  existsSync(getInstanceProfileFilePath(localInstanceId)) || existsSync(getInstanceDirectoryPath(localInstanceId));
+
+const toInstanceTimestamp = (value: number): string =>
+  new Date(value > 0 ? value : Date.now()).toISOString();
+
 const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | null => {
   try {
     const parsed = JSON.parse(raw) as unknown;
@@ -46,8 +56,7 @@ const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | nul
       return null;
     }
 
-    const profilePath = getInstanceProfileFilePath(parsed.localInstanceId);
-    if (!existsSync(profilePath)) {
+    if (!hasStoredInstance(parsed.localInstanceId)) {
       return null;
     }
 
@@ -62,51 +71,71 @@ const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | nul
 
 const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
   try {
-    const files = readdirSync(RUNTIME_INSTANCE_ROOT, { withFileTypes: true })
-      .filter((entry) => entry.isFile() && INSTANCE_FILE_PATTERN.test(entry.name))
-      .map((entry) => entry.name)
-      .toSorted((left, right) => left.localeCompare(right));
+    const instanceIds = new Set<string>();
+    for (const entry of readdirSync(RUNTIME_INSTANCE_ROOT, { withFileTypes: true })) {
+      if (entry.isFile() && INSTANCE_FILE_PATTERN.test(entry.name)) {
+        instanceIds.add(entry.name.replace(/\.json$/u, ""));
+        continue;
+      }
+      if (entry.isDirectory() && INSTANCE_DIRECTORY_PATTERN.test(entry.name)) {
+        instanceIds.add(entry.name);
+      }
+    }
 
-    if (files.length !== 1) {
+    const [localInstanceId] = [...instanceIds].toSorted((left, right) => left.localeCompare(right));
+    if (instanceIds.size !== 1 || !localInstanceId) {
       return null;
     }
 
-    const fileName = files[0];
-    if (!fileName) {
+    const fileName = `${localInstanceId}.json`;
+    const profilePath = path.join(RUNTIME_INSTANCE_ROOT, fileName);
+    if (existsSync(profilePath)) {
+      const content = readFileSync(profilePath, "utf8");
+      const parsed = JSON.parse(content) as {
+        instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
+        runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };
+      };
+
+      const name = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
+      const parsedInstanceId =
+        typeof parsed.instance?.localInstanceId === "string" ? normalizeInstanceId(parsed.instance.localInstanceId) : "";
+      const safetyProfile =
+        parsed.runtime?.safetyProfile === "safe"
+        || parsed.runtime?.safetyProfile === "dangerous"
+        || parsed.runtime?.safetyProfile === "veryDangerous"
+          ? parsed.runtime.safetyProfile
+          : "dangerous";
+      const createdAt =
+        typeof parsed.runtime?.createdAt === "string" ? parsed.runtime.createdAt : new Date(0).toISOString();
+      const updatedAt = typeof parsed.runtime?.updatedAt === "string" ? parsed.runtime.updatedAt : createdAt;
+
+      if (name && parsedInstanceId) {
+        return {
+          fileName,
+          localInstanceId: parsedInstanceId,
+          name,
+          safetyProfile,
+          userPinRequired: parsed.instance?.userPin !== null && parsed.instance?.userPin !== undefined,
+          createdAt,
+          updatedAt,
+        };
+      }
+    }
+
+    const directoryPath = getInstanceDirectoryPath(localInstanceId);
+    if (!existsSync(directoryPath)) {
       return null;
     }
 
-    const content = readFileSync(path.join(RUNTIME_INSTANCE_ROOT, fileName), "utf8");
-    const parsed = JSON.parse(content) as {
-      instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
-      runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };
-    };
-
-    const name = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
-    const localInstanceId =
-      typeof parsed.instance?.localInstanceId === "string" ? normalizeInstanceId(parsed.instance.localInstanceId) : "";
-    const safetyProfile =
-      parsed.runtime?.safetyProfile === "safe"
-      || parsed.runtime?.safetyProfile === "dangerous"
-      || parsed.runtime?.safetyProfile === "veryDangerous"
-        ? parsed.runtime.safetyProfile
-        : "dangerous";
-    const createdAt =
-      typeof parsed.runtime?.createdAt === "string" ? parsed.runtime.createdAt : new Date(0).toISOString();
-    const updatedAt = typeof parsed.runtime?.updatedAt === "string" ? parsed.runtime.updatedAt : createdAt;
-
-    if (!name || !localInstanceId) {
-      return null;
-    }
-
+    const directoryStats = statSync(directoryPath);
     return {
       fileName,
       localInstanceId,
-      name,
-      safetyProfile,
-      userPinRequired: parsed.instance?.userPin !== null && parsed.instance?.userPin !== undefined,
-      createdAt,
-      updatedAt,
+      name: localInstanceId,
+      safetyProfile: "dangerous",
+      userPinRequired: false,
+      createdAt: toInstanceTimestamp(directoryStats.birthtimeMs || directoryStats.ctimeMs || directoryStats.mtimeMs),
+      updatedAt: toInstanceTimestamp(directoryStats.mtimeMs || directoryStats.ctimeMs || directoryStats.birthtimeMs),
     };
   } catch {
     return null;

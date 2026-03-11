@@ -26,10 +26,11 @@ describe("renderRuntimeWalletPromptContext", () => {
   test("includes explicit wallet organization instructions for the model", async () => {
     const instanceId = `i-wallet-prompt-${crypto.randomUUID()}`;
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
     tempInstanceDirectories.push(instanceDirectory);
-    await mkdir(instanceDirectory, { recursive: true });
+    await mkdir(keypairsDirectory, { recursive: true });
     await writeFile(
-      path.join(instanceDirectory, "wallet-library.jsonl"),
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
       `${JSON.stringify({
         walletId: "core-wallets.maker-1",
         walletGroup: "core-wallets",

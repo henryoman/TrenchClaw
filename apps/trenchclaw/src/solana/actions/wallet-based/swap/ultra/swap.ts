@@ -27,7 +27,6 @@ import {
 
 const ultraSwapInputSchema = ultraQuoteInputSchema.and(
   z.object({
-    slippageBps: z.number().int().positive().max(10_000).optional(),
     executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
   }),
 );
@@ -40,7 +39,8 @@ export interface UltraSwapTelemetry {
   inputMint: string;
   outputMint: string;
   amountLamports: string;
-  slippageBps: number;
+  slippageStrategy: "ultra-managed";
+  feeStrategy: "ultra-managed";
   quoteInAmount?: string;
   quoteOutAmount?: string;
   outAmount?: string;
@@ -85,7 +85,6 @@ export const ultraSwapAction: Action<UltraSwapInput, UltraSwapOutput> = {
     try {
       const ultra = getUltraAdapter(ctx);
       const orderRequest = await buildOrderRequest(ctx, input);
-      orderRequest.slippageBps = input.slippageBps ?? 50;
       orderRequest.swapMode = orderRequest.mode ?? "ExactIn";
 
       const orderPhaseStart = performance.now();
@@ -241,7 +240,7 @@ function buildSwapTelemetry(params: {
   walletAddress?: string;
   order: { raw: unknown };
   execute?: { raw: unknown };
-  orderRequest: { inputMint: string; outputMint: string; amount: string | number | bigint; slippageBps?: number };
+  orderRequest: { inputMint: string; outputMint: string; amount: string | number | bigint };
   timings: UltraPhaseTimings;
   note?: string;
 }): UltraSwapTelemetry {
@@ -254,7 +253,8 @@ function buildSwapTelemetry(params: {
     inputMint: params.orderRequest.inputMint,
     outputMint: params.orderRequest.outputMint,
     amountLamports: String(params.orderRequest.amount),
-    slippageBps: params.orderRequest.slippageBps ?? 50,
+    slippageStrategy: "ultra-managed",
+    feeStrategy: "ultra-managed",
     quoteInAmount: extractInAmount(quotePayload),
     quoteOutAmount: extractOutAmount(quotePayload),
     outAmount: extractOutAmount(executePayload),

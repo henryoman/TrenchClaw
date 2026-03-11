@@ -1,6 +1,7 @@
 import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
 import { resolveBundledBrainPath, resolveRuntimeStatePath } from "../runtime-paths";
+import { loadResolvedUserSettings } from "../../ai/llm/user-settings-loader";
 
 export type RuntimeSettingsProfile = "safe" | "dangerous" | "veryDangerous";
 
@@ -88,12 +89,15 @@ const normalizeRuntimeSettings = (
 
   const network = isRecord(candidate.network) ? candidate.network : {};
   const trading = isRecord(candidate.trading) ? candidate.trading : {};
+  const tradingJupiter = isRecord(trading.jupiter) ? trading.jupiter : {};
   const wallet = isRecord(candidate.wallet) ? candidate.wallet : {};
   const agent = isRecord(candidate.agent) ? candidate.agent : {};
   const storage = isRecord(candidate.storage) ? candidate.storage : {};
   const sessionsStorage = isRecord(storage.sessions) ? storage.sessions : {};
   const rpc = isRecord(candidate.rpc) ? candidate.rpc : {};
   const rpcProviders = isRecord(rpc.providers) ? rpc.providers : {};
+  const tradingConfirmations = isRecord(trading.confirmations) ? trading.confirmations : {};
+  const tradingLimits = isRecord(trading.limits) ? trading.limits : {};
   const primaryRpcName = toStringValue(rpc.primaryRpc, "primary");
   const primaryRpcProvider = isRecord(rpcProviders[primaryRpcName]) ? rpcProviders[primaryRpcName] : null;
 
@@ -106,6 +110,11 @@ const normalizeRuntimeSettings = (
   const ultraEnabled =
     toStringValue(trading.preferredSwap, "").toLowerCase() === "ultra" ||
     toStringValue(trading.defaultSwapProfile, "").toLowerCase() === "ultra";
+  const triggerSettings = isRecord(tradingJupiter.trigger) ? tradingJupiter.trigger : {};
+  const triggerEnabled =
+    typeof triggerSettings.enabled === "boolean"
+      ? toBooleanValue(triggerSettings.enabled, ultraEnabled)
+      : ultraEnabled;
   const maxTradeSizeFromSizing = isRecord(trading.sizing) ? toNumberValue(trading.sizing.maxTradeSize, 0.5) : 0.5;
   const maxTradeSize = Math.max(0, maxTradeSizeFromSizing);
 
@@ -170,19 +179,19 @@ const normalizeRuntimeSettings = (
       programId: null,
       confirmations: {
         requireUserConfirmationForDangerousActions: toBooleanValue(
-          trading.requireUserConfirmationForDangerousActions,
+          tradingConfirmations.requireUserConfirmationForDangerousActions ?? trading.requireUserConfirmationForDangerousActions,
           profile !== "veryDangerous",
         ),
-        userConfirmationToken: toStringValue((trading as Record<string, unknown>).userConfirmationToken, "confirm"),
+        userConfirmationToken: toStringValue(tradingConfirmations.userConfirmationToken ?? trading.userConfirmationToken, "confirm"),
       },
       limits: {
         maxSwapNotionalSol: maxTradeSize,
         maxSingleTransferSol: maxTradeSize,
         maxPriorityFeeLamports: Math.max(
           0,
-          Math.trunc(toNumberValue((trading as Record<string, unknown>).maxPriorityFeeLamports, 500_000)),
+          Math.trunc(toNumberValue(tradingLimits.maxPriorityFeeLamports ?? trading.maxPriorityFeeLamports, 500_000)),
         ),
-        maxSlippageBps: Math.max(0, Math.trunc(toNumberValue((trading as Record<string, unknown>).maxSlippageBps, 300))),
+        maxSlippageBps: Math.max(0, Math.trunc(toNumberValue(tradingLimits.maxSlippageBps ?? trading.maxSlippageBps, 300))),
       },
       jupiter: {
         ultra: {
@@ -190,6 +199,12 @@ const normalizeRuntimeSettings = (
           allowQuotes: ultraEnabled,
           allowExecutions: ultraEnabled,
           allowCancellations: ultraEnabled,
+        },
+        trigger: {
+          enabled: triggerEnabled,
+          allowOrders: toBooleanValue(triggerSettings.allowOrders, triggerEnabled),
+          allowExecutions: toBooleanValue(triggerSettings.allowExecutions, triggerEnabled),
+          allowCancellations: toBooleanValue(triggerSettings.allowCancellations, triggerEnabled),
         },
         standard: {
           enabled: !ultraEnabled,
@@ -335,7 +350,9 @@ export const loadRuntimeSettings = async (
   const agentSettingsPath = process.env[SETTINGS_AGENT_FILE_ENV_KEY];
 
   const baseSettings = await readSettingsFile(baseSettingsPath);
-  const userSettings = await loadOptionalSettingsFile(userSettingsPath);
+  const resolvedDefaultUserSettingsPayload = await loadResolvedUserSettings();
+  const explicitUserSettings = await loadOptionalSettingsFile(userSettingsPath);
+  const userSettings = deepMerge(resolvedDefaultUserSettingsPayload.resolvedSettings, explicitUserSettings);
   const agentSettings = await loadOptionalSettingsFile(agentSettingsPath);
   const sanitizedAgentSettings = sanitizeAgentSettings(agentSettings, profile);
   const mergedSettings = deepMerge(deepMerge(baseSettings, sanitizedAgentSettings), userSettings);

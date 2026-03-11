@@ -1,7 +1,7 @@
 ---
-title: Solana Explained
-description: Practical overview of how Solana works, from accounts and transactions to fees, validators, and finality.
-order: 4
+title: Solana Basics for Operators
+description: Optional background reading for operators who want a fast mental model of the Solana concepts that affect TrenchClaw behavior.
+order: 10
 ---
 
 This guide explains the Solana concepts behind TrenchClaw behavior.

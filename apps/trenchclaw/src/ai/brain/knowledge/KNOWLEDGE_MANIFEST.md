@@ -1,6 +1,6 @@
 # Knowledge Manifest
 
-Generated at: 2026-03-11T19:54:16.435Z
+Generated at: 2026-03-11T20:39:47.293Z
 Root: src/ai/brain/knowledge
 
 Use this inventory to decide which files to read.
@@ -103,5 +103,6 @@ knowledge/
 |-- file-system-wallet.md
 |-- helius-agents.md
 |-- KNOWLEDGE_MANIFEST.md
-`-- knowledge-tree.ts
+|-- knowledge-tree.ts
+`-- solana-cli.md
 ```

@@ -1,28 +1,61 @@
-
-
-
 swapModes:
-  
-  swapType: ultra
-    slippagePresetBps: ultra
+  default:
+    swapType: ultra
+    swapAction: managedUltraSwap
+    quoteAction: ultraQuoteSwap
+    schedulingAction: scheduleManagedUltraSwap
+    executionMode: ultra-managed
+    notes:
+      - "For normal swaps, use Jupiter Ultra."
+      - "Do not send slippageBps for Ultra swaps. Ultra manages execution settings."
+      - "Do not send priority fees, gas caps, Jito tip fields, or manual gas settings for Ultra swaps."
+      - "Use ExactIn unless there is a specific reason to request ExactOut."
 
+simpleSwap:
+  requiredFields:
+    - walletGroup
+    - walletName
+    - inputCoin
+    - outputCoin
+    - amount
+  optionalFields:
+    - amountUnit
+    - mode
+    - executeTimeoutMs
+  forbiddenFields:
+    - slippageBps
+    - priorityFeeLamports
+    - jitoTipLamports
+    - maxGasAmount
+    - useJito
 
-quickBuyPresets:
-  preset1: ul
-  preset2:
-  preset3:
+futureSwap:
+  actionName: scheduleManagedUltraSwap
+  requiredFields:
+    - walletGroup
+    - walletName
+    - inputCoin
+    - outputCoin
+    - amount
+    - schedule.kind=once
+    - schedule.executeAtUnixMs
+  rule: "Queue one future actionSequence job instead of running the swap immediately."
 
-UserDefinedPresets:
-  swapType: ultra
-  slippagePresetBps: ultra
-  retries: int 
-  priorityFeeLevel:
-  sendWithSender: bool
-  maxGasAmount:
-  useJito: bool
-    jitoTipSettings:
-      tipAccount: string
-      tipAmount: int
-      tipAmountPerTransaction: int
-      maxTipAmountPerTransaction: int
+dca:
+  actionName: scheduleManagedUltraSwap
+  amountRule: "Split the total amount evenly across installments."
+  timeRule: "Space swaps evenly by intervalMs or by deriving intervalMs from startAtUnixMs and endAtUnixMs."
+  requiredFields:
+    - walletGroup
+    - walletName
+    - inputCoin
+    - outputCoin
+    - amount
+    - schedule.kind=dca
+    - schedule.installments
+  optionalFields:
+    - schedule.startAtUnixMs
+    - schedule.intervalMs
+    - schedule.endAtUnixMs
+  rule: "Prefer one queued routine with managedUltraSwap steps separated by sleep steps."
 

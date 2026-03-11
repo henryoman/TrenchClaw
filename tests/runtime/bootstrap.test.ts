@@ -152,6 +152,8 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
+  "TRENCHCLAW_VAULT_FILE",
+  "TRENCHCLAW_VAULT_TEMPLATE_FILE",
 ] as const;
 
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -160,6 +162,13 @@ const createdFiles: string[] = [];
 const writeYaml = async (content: string): Promise<string> => {
   const target = `/tmp/trenchclaw-bootstrap-test-${crypto.randomUUID()}.yaml`;
   await Bun.write(target, content);
+  createdFiles.push(target);
+  return target;
+};
+
+const writeJson = async (content: unknown): Promise<string> => {
+  const target = `/tmp/trenchclaw-bootstrap-test-${crypto.randomUUID()}.json`;
+  await Bun.write(target, JSON.stringify(content, null, 2));
   createdFiles.push(target);
   return target;
 };
@@ -184,6 +193,41 @@ afterEach(async () => {
 });
 
 describe("bootstrapRuntime", () => {
+  test("loads runtime RPC from resolved vault-backed instance settings", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
+configVersion: 1
+profile: dangerous
+`);
+    process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+      rpc: {
+        helius: {
+          "http-url": "https://vault-helius-rpc.example",
+          "ws-url": "wss://vault-helius-rpc.example",
+          "api-key": "vault-helius-key",
+        },
+      },
+      integrations: {
+        dexscreener: {
+          "api-key": "",
+        },
+        jupiter: {
+          "api-key": "vault-jupiter-key",
+        },
+      },
+      wallet: {
+        "ultra-signer": {
+          "private-key": "",
+          "private-key-encoding": "base64",
+        },
+      },
+    });
+
+    const settings = await loadRuntimeSettings("dangerous");
+    expect(settings.network.rpc.endpoints[0]?.url).toBe("https://vault-helius-rpc.example");
+    expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("wss://vault-helius-rpc.example");
+    expect(settings.trading.jupiter.ultra.enabled).toBe(true);
+  });
+
   test("keeps settings values literal and does not resolve env placeholders", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1

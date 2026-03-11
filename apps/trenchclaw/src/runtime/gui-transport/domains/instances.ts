@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   GuiCreateInstanceRequest,
@@ -32,9 +32,32 @@ interface InstanceDocument {
 }
 
 const INSTANCE_FILE_REGEX = /^i-(\d+)\.json$/u;
+const INSTANCE_DIRECTORY_REGEX = /^i-(\d+)$/u;
 const formatInstanceNumber = (value: number): string => String(value).padStart(2, "0");
 const formatInstanceId = (value: number): string => `i-${formatInstanceNumber(value)}`;
 const formatInstanceFileName = (value: number): string => `${formatInstanceId(value)}.json`;
+const getInstanceNumber = (value: string): number | null => {
+  const fileMatch = INSTANCE_FILE_REGEX.exec(value);
+  if (fileMatch?.[1]) {
+    return Number(fileMatch[1]);
+  }
+
+  const directoryMatch = INSTANCE_DIRECTORY_REGEX.exec(value);
+  if (directoryMatch?.[1]) {
+    return Number(directoryMatch[1]);
+  }
+
+  return null;
+};
+
+const compareInstanceIds = (left: string, right: string): number => {
+  const leftNumber = getInstanceNumber(left);
+  const rightNumber = getInstanceNumber(right);
+  if (leftNumber !== null && rightNumber !== null && leftNumber !== rightNumber) {
+    return leftNumber - rightNumber;
+  }
+  return left.localeCompare(right);
+};
 
 const toInstanceView = (fileName: string, document: InstanceDocument): GuiInstanceProfileView => ({
   fileName,
@@ -85,32 +108,106 @@ const parseInstanceDocument = (raw: string): InstanceDocument | null => {
   }
 };
 
+const createRecoveredInstanceDocument = (input: {
+  localInstanceId: string;
+  createdAt: string;
+  updatedAt: string;
+}): InstanceDocument => ({
+  instance: {
+    name: input.localInstanceId,
+    localInstanceId: input.localInstanceId,
+    userPin: null,
+  },
+  runtime: {
+    safetyProfile: "dangerous",
+    createdAt: input.createdAt,
+    updatedAt: input.updatedAt,
+  },
+});
+
+const resolveRecoveredInstanceDocument = async (directoryName: string): Promise<InstanceDocument> => {
+  const absolutePath = path.join(INSTANCE_DIRECTORY, directoryName);
+  try {
+    const directoryStats = await stat(absolutePath);
+    const createdAt = new Date(directoryStats.birthtimeMs || directoryStats.ctimeMs || directoryStats.mtimeMs).toISOString();
+    const updatedAt = new Date(directoryStats.mtimeMs || directoryStats.ctimeMs || directoryStats.birthtimeMs).toISOString();
+    return createRecoveredInstanceDocument({
+      localInstanceId: directoryName,
+      createdAt,
+      updatedAt,
+    });
+  } catch {
+    const nowIso = new Date().toISOString();
+    return createRecoveredInstanceDocument({
+      localInstanceId: directoryName,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    });
+  }
+};
+
 const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: InstanceDocument }>> => {
   assertInstanceSystemWritePath(INSTANCE_DIRECTORY, "initialize instance profile directory");
   await mkdir(INSTANCE_DIRECTORY, { recursive: true });
   const entries = await readdir(INSTANCE_DIRECTORY, { withFileTypes: true, encoding: "utf8" });
-  const files = entries
-    .filter((entry) => entry.isFile() && INSTANCE_FILE_REGEX.test(entry.name))
-    .map((entry) => entry.name)
-    .toSorted((a, b) => a.localeCompare(b));
+  const instanceEntries = new Map<string, { fileName: string | null; directoryName: string | null }>();
+
+  for (const entry of entries) {
+    if (entry.isFile() && INSTANCE_FILE_REGEX.test(entry.name)) {
+      const localInstanceId = entry.name.replace(/\.json$/u, "");
+      const existing = instanceEntries.get(localInstanceId) ?? { fileName: null, directoryName: null };
+      existing.fileName = entry.name;
+      instanceEntries.set(localInstanceId, existing);
+      continue;
+    }
+
+    if (entry.isDirectory() && INSTANCE_DIRECTORY_REGEX.test(entry.name)) {
+      const existing = instanceEntries.get(entry.name) ?? { fileName: null, directoryName: null };
+      existing.directoryName = entry.name;
+      instanceEntries.set(entry.name, existing);
+    }
+  }
+
+  const localInstanceIds = [...instanceEntries.keys()].toSorted(compareInstanceIds);
 
   const loaded = await Promise.all(
-    files.map(async (fileName) => {
-      const absolutePath = path.join(INSTANCE_DIRECTORY, fileName);
-      const content = await readFile(absolutePath, "utf8");
-      const document = parseInstanceDocument(content);
-      return document ? { fileName, document } : null;
+    localInstanceIds.map(async (localInstanceId) => {
+      const entry = instanceEntries.get(localInstanceId);
+      if (!entry) {
+        return null;
+      }
+
+      if (entry.fileName) {
+        try {
+          const absolutePath = path.join(INSTANCE_DIRECTORY, entry.fileName);
+          const content = await readFile(absolutePath, "utf8");
+          const document = parseInstanceDocument(content);
+          if (document) {
+            return { fileName: entry.fileName, document };
+          }
+        } catch {
+          // Fall back to directory recovery below when available.
+        }
+      }
+
+      if (entry.directoryName) {
+        return {
+          fileName: entry.fileName ?? `${entry.directoryName}.json`,
+          document: await resolveRecoveredInstanceDocument(entry.directoryName),
+        };
+      }
+
+      return null;
     }),
   );
 
   return loaded.filter((entry): entry is { fileName: string; document: InstanceDocument } => entry !== null);
 };
 
-const nextInstanceNumberFromFiles = (fileNames: string[]): number => {
-  const numbers = fileNames
-    .map((fileName) => INSTANCE_FILE_REGEX.exec(fileName)?.[1])
-    .filter((value): value is string => value !== undefined)
-    .map((value) => Number(value))
+const nextInstanceNumberFromFiles = (instanceIds: string[]): number => {
+  const numbers = instanceIds
+    .map((instanceId) => getInstanceNumber(instanceId))
+    .filter((value): value is number => value !== null)
     .filter((value) => Number.isInteger(value) && value > 0);
 
   if (numbers.length === 0) {

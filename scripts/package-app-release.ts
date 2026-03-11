@@ -146,10 +146,13 @@ Contents:
 - \`gui/\`: prebuilt GUI assets
 - \`core/\`: readonly runtime assets/config/templates
 
-Run:
+Fresh install flow:
 \`\`\`bash
-./trenchclaw
+curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-trenchclaw.sh | sh
+trenchclaw
 \`\`\`
+
+First launch creates a new local runtime state directory. This release does not include user vaults, keypairs, databases, or logs.
 
 Optional overrides:
 - \`TRENCHCLAW_RUNTIME_STATE_ROOT\`: choose where writable runtime data is stored

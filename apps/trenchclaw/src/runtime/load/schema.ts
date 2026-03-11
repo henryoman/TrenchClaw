@@ -66,6 +66,12 @@ const tradingSchema = z.object({
       allowExecutions: z.boolean(),
       allowCancellations: z.boolean(),
     }),
+    trigger: z.object({
+      enabled: z.boolean(),
+      allowOrders: z.boolean(),
+      allowExecutions: z.boolean(),
+      allowCancellations: z.boolean(),
+    }),
     standard: z.object({
       enabled: z.boolean(),
       allowQuotes: z.boolean(),

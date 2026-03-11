@@ -36,6 +36,23 @@
   let dirtyRowKeys = new Set<string>();
   const DEFAULT_BLOCKCHAIN_OPTION_ID = "solana-rpc-url";
   const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
+  const CORE_AI_OPTION_IDS = [
+    "openrouter-api-key",
+    "vercel-ai-gateway-api-key",
+    "openai-api-key",
+    "anthropic-api-key",
+    "google-ai-api-key",
+    "openai-compatible-api-key",
+  ];
+  const CORE_BLOCKCHAIN_OPTION_IDS = [
+    "solana-rpc-url",
+    "helius-http-url",
+    "helius-ws-url",
+    "helius-api-key",
+    "jupiter-api-key",
+    "ultra-signer-private-key",
+    "ultra-signer-private-key-encoding",
+  ];
 
   const nextRowKey = (): string => {
     rowCounter += 1;
@@ -88,14 +105,22 @@
       return (entry?.value ?? "").trim().length > 0;
     });
 
-    if (category === "blockchain") {
-      const rpcOption = categoryOptions.find((option) => option.id === DEFAULT_BLOCKCHAIN_OPTION_ID) ?? categoryOptions[0];
-      const seed = [rpcOption, ...withValues.filter((option) => option.id !== rpcOption.id)];
-      return seed.filter(Boolean).map((option) => createRowFromOptionId(option.id));
+    const coreOptionIds = category === "blockchain" ? CORE_BLOCKCHAIN_OPTION_IDS : CORE_AI_OPTION_IDS;
+    const coreOptions = coreOptionIds
+      .map((optionId) => categoryOptions.find((option) => option.id === optionId))
+      .filter((option): option is GuiSecretOptionView => Boolean(option));
+    const optionalSavedOptions = withValues.filter((option) => !coreOptionIds.includes(option.id));
+    const seed = [...coreOptions, ...optionalSavedOptions];
+
+    if (seed.length > 0) {
+      return seed.map((option) => createRowFromOptionId(option.id));
     }
 
-    const seed = withValues.length > 0 ? withValues : [categoryOptions[0]];
-    return seed.filter(Boolean).map((option) => createRowFromOptionId(option.id));
+    const fallbackOption =
+      category === "blockchain"
+        ? categoryOptions.find((option) => option.id === DEFAULT_BLOCKCHAIN_OPTION_ID) ?? categoryOptions[0]
+        : categoryOptions[0];
+    return fallbackOption ? [createRowFromOptionId(fallbackOption.id)] : [];
   };
 
   const createHydrationSignature = (): string =>

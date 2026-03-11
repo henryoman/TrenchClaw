@@ -2,7 +2,7 @@ import path from "node:path";
 import { isRecord, parseStructuredFile, resolvePathFromModule } from "./shared";
 import { ensureVaultFileExists } from "./vault-file";
 
-const DEFAULT_USER_SETTINGS_FILE = "../brain/user-blockchain-settings/settings.yaml";
+const DEFAULT_USER_SETTINGS_FILE = "../brain/instance-blockchain-settings/settings.yaml";
 const DEFAULT_VAULT_FILE = "../brain/protected/no-read/vault.json";
 const DEFAULT_VAULT_TEMPLATE_FILE = "../brain/protected/no-read/vault.template.json";
 

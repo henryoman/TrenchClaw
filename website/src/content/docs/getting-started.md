@@ -1,16 +1,33 @@
 ---
 title: Getting Started
-description: One-command macOS and Linux setup that installs the standalone TrenchClaw release with no Bun requirement.
+description: Install the current standalone release, launch the local runtime, and understand what the packaged app actually does on first run.
 order: 1
 ---
 
-Install the standalone TrenchClaw release on macOS or Linux with one command, then launch it.
+This guide documents the current packaged-release path as it exists in the repo today.
 
-## Quickstart (One Command Per OS)
+## What The Release Actually Is
+
+Current public builds are packaged as a standalone `trenchclaw` executable.
+
+- Bun is embedded in the packaged binary
+- the installer also installs or updates the required Solana CLI tools
+- the readonly app bundle is separate from your writable runtime state
+- first launch creates local state outside the release bundle
+
+## Supported Targets In The Current Packaging Script
+
+The default release packager currently builds these targets:
+
+- `darwin-arm64`
+- `linux-x64`
+- `linux-arm64`
+
+Do not assume every macOS or Linux architecture has a published artifact unless that release actually includes it.
+
+## Install
 
 ### macOS
-
-Run once in Terminal:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | bash
@@ -18,62 +35,112 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/maco
 
 ### Linux
 
-Run once in Terminal:
-
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash
 ```
 
-What each installer does:
+## What The Installer Does
 
-- installs or upgrades TrenchClaw
-- installs a standalone binary release for your current platform
-- prints the installed TrenchClaw version at the end
+- downloads a published GitHub Release artifact for the requested version and detected platform
+- installs or upgrades the `trenchclaw` launcher into `~/.local/bin`
+- installs or updates the Solana CLI into `~/.local/share/solana/install/active_release/bin`
+- appends those paths to common shell profiles when missing
+- keeps vaults, databases, logs, and instance state out of the packaged release directory
 
-### Pin a TrenchClaw version
+## Pin A Specific Release
 
-macOS:
+### macOS
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
 ```
 
-Linux:
+### Linux
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
 ```
 
-## Verify
+## Launch
 
-```bash
-trenchclaw --version
-```
-
-## Start TrenchClaw
+Start the app with:
 
 ```bash
 trenchclaw
 ```
 
-## Initial Configuration
+The packaged runner currently does all of this in one local process:
 
-On first launch, set:
+- resolves the packaged layout
+- creates the writable runtime-state layout if needed
+- starts the runtime API on localhost near `127.0.0.1:4020`
+- serves the local GUI on localhost near `127.0.0.1:4173`
+- prompts whether to open the browser automatically
 
-- RPC endpoint(s)
-- LLM provider key + model
-- Wallet/key workflows
+If those default ports are occupied, the runner walks upward to the next available local ports.
 
-No `.env` setup is required for this path.
+## First-Run State Location
+
+For packaged releases, the default writable state root is:
+
+- macOS: `~/Library/Application Support/TrenchClaw/state`
+- Linux: `~/.local/share/trenchclaw/state`
+
+That state root holds the runtime database, sessions, memory logs, vault file, and per-instance protected directories.
+
+## Initial Operator Setup
+
+On first run, expect to configure:
+
+- an instance profile
+- Solana RPC settings
+- AI provider credentials if you want chat/model features
+- wallet workflows for the active instance
+
+The packaged path is local-first. You do not need a project `.env` file just to launch the public release.
+
+## Verification Notes
+
+Use `trenchclaw` to launch the app.
+
+Current public docs intentionally do not recommend `trenchclaw --version` as the primary verification step, because the packaged runner is documented here as an app launcher rather than a dedicated version-reporting CLI.
+
+## Release Requirements
+
+The hosted installers depend on published GitHub Releases. A successful end-user install requires:
+
+- the release tag to exist
+- the expected tarball for the target platform to be attached
+- the bootstrap script URLs to point at the intended installer path
 
 ## Troubleshooting
 
 ### `trenchclaw: command not found`
 
-Add paths, then open a new shell:
+Reload your shell, or add both expected bin directories:
 
 ```bash
-export PATH="$HOME/.bun/bin:$HOME/.local/share/solana/install/active_release/bin:$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.local/bin:$PATH"
 ```
 
-Then rerun quickstart.
+Then open a fresh shell and retry.
+
+### Release download fails
+
+Check:
+
+- the GitHub Release exists
+- the target artifact for your platform exists
+- the tag matches `TRENCHCLAW_VERSION` if you pinned one
+
+### Solana CLI install fails
+
+The installer expects:
+
+- `curl`
+- `tar`
+- `sh`
+
+### The browser does not open automatically
+
+That does not prevent the runtime from starting. Watch the terminal output for the local GUI URL and open it manually.

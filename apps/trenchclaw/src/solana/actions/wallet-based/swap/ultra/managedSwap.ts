@@ -1,11 +1,8 @@
 import { z } from "zod";
 
 import type { Action } from "../../../../../ai/runtime/types/action";
-import { createUltraSignerAdapter } from "../../../../lib/adapters/ultra-signer";
-import {
-  resolveWalletLibraryFilePath,
-  walletGroupNameSchema,
-} from "../../create-wallets/wallet-storage";
+import { loadManagedWalletSigner } from "../../../../lib/wallet/wallet-signer";
+import { walletGroupNameSchema } from "../../../../lib/wallet/wallet-types";
 import { ultraQuoteInputSchema } from "./shared";
 import { ultraSwapAction, type UltraSwapOutput } from "./swap";
 
@@ -16,7 +13,6 @@ const managedUltraSwapInputSchema = ultraQuoteInputSchema.and(
     walletGroup: walletGroupNameSchema,
     walletName: walletNameSchema,
     swapType: z.literal("ultra").default("ultra"),
-    slippageBps: z.number().int().positive().max(10_000).optional(),
     executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
   }),
 );
@@ -29,7 +25,11 @@ export const managedUltraSwapAction: Action<ManagedUltraSwapInput, UltraSwapOutp
   subcategory: "swap",
   inputSchema: managedUltraSwapInputSchema,
   async execute(ctx, input) {
-    const signer = await loadManagedWalletSigner(input.walletGroup, input.walletName, ctx.rpcUrl);
+    const signer = await loadManagedWalletSigner({
+      walletGroup: input.walletGroup,
+      walletName: input.walletName,
+      rpcUrl: ctx.rpcUrl,
+    });
 
     if (input.taker && input.taker !== signer.address) {
       throw new Error(
@@ -49,7 +49,6 @@ export const managedUltraSwapAction: Action<ManagedUltraSwapInput, UltraSwapOutp
         amount: input.amount,
         amountUnit: input.amountUnit,
         mode: input.mode,
-        slippageBps: input.slippageBps,
         executeTimeoutMs: input.executeTimeoutMs,
         referralAccount: input.referralAccount,
         referralFee: input.referralFee,
@@ -61,47 +60,3 @@ export const managedUltraSwapAction: Action<ManagedUltraSwapInput, UltraSwapOutp
     return result;
   },
 };
-
-async function loadManagedWalletSigner(walletGroup: string, walletName: string, rpcUrl?: string) {
-  const walletLibraryFile = Bun.file(resolveWalletLibraryFilePath());
-  if (!(await walletLibraryFile.exists())) {
-    throw new Error("Managed wallet library file not found");
-  }
-
-  const walletLibraryText = await walletLibraryFile.text();
-  const walletEntry = walletLibraryText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line, index) => {
-      try {
-        return JSON.parse(line) as Record<string, unknown>;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Invalid managed wallet library JSON on line ${index + 1}: ${message}`, { cause: error });
-      }
-    })
-    .find((entry) => entry.walletGroup === walletGroup && entry.walletName === walletName);
-
-  const walletFilePath =
-    walletEntry && typeof walletEntry.keypairFilePath === "string" ? walletEntry.keypairFilePath : null;
-  if (!walletFilePath) {
-    throw new Error(`Managed wallet keypair file not found in wallet library for ${walletGroup}.${walletName}`);
-  }
-
-  const walletFile = Bun.file(walletFilePath);
-
-  if (!(await walletFile.exists())) {
-    throw new Error(`Managed wallet keypair file not found: ${walletFilePath}`);
-  }
-
-  const parsed = await walletFile.json();
-  if (!Array.isArray(parsed) || parsed.length === 0 || !parsed.every((entry) => Number.isInteger(entry))) {
-    throw new Error(`Managed wallet keypair file is invalid: ${walletFilePath}`);
-  }
-
-  return createUltraSignerAdapter({
-    privateKey: new Uint8Array(parsed as number[]),
-    rpcUrl,
-  });
-}
