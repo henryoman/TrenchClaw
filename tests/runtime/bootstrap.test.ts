@@ -3,16 +3,8 @@ import path from "node:path";
 
 import { createActionContext } from "../../apps/trenchclaw/src/ai";
 import { bootstrapRuntime } from "../../apps/trenchclaw/src/runtime/bootstrap";
+import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
 import { coreAppPath } from "../helpers/core-paths";
-
-const REQUIRED_ENV_DEFAULTS: Record<string, string> = {
-  RPC_URL: "https://rpc.example",
-  WS_URL: "wss://ws.example",
-  HELIUS_RPC_URL: "https://helius.example",
-  HELIUS_WS_URL: "wss://helius.example",
-  QUICKNODE_RPC_URL: "https://quicknode.example",
-  QUICKNODE_WS_URL: "wss://quicknode.example",
-};
 
 const BASE_SETTINGS_YAML = `
 configVersion: 1
@@ -34,8 +26,8 @@ network:
     strategy: failover
     endpoints:
       - name: primary
-        url: \${RPC_URL}
-        wsUrl: \${WS_URL}
+        url: https://rpc.example
+        wsUrl: wss://ws.example
         enabled: true
 
 wallet:
@@ -160,7 +152,6 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
-  ...Object.keys(REQUIRED_ENV_DEFAULTS),
 ] as const;
 
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -174,9 +165,6 @@ const writeYaml = async (content: string): Promise<string> => {
 };
 
 const applyDefaultEnv = async (): Promise<void> => {
-  for (const [key, value] of Object.entries(REQUIRED_ENV_DEFAULTS)) {
-    process.env[key] = value;
-  }
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(BASE_SETTINGS_YAML);
 };
 
@@ -196,6 +184,20 @@ afterEach(async () => {
 });
 
 describe("bootstrapRuntime", () => {
+  test("keeps settings values literal and does not resolve env placeholders", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
+configVersion: 1
+profile: dangerous
+network:
+  rpcUrl: \${RPC_URL}
+  wsUrl: \${WS_URL}
+`);
+
+    const settings = await loadRuntimeSettings("dangerous");
+    expect(settings.network.rpc.endpoints[0]?.url).toBe("${RPC_URL}");
+    expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("${WS_URL}");
+  });
+
   test("applies capability-only agent allowlist while preserving user authority for protected keys", async () => {
     await applyDefaultEnv();
     const userSettingsPath = await writeYaml(`

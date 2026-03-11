@@ -1,5 +1,5 @@
 <script lang="ts">
-  type SidebarTab = "chat" | "keys-secrets" | "wallets";
+  type SidebarTab = "chat" | "config" | "wallets" | "schedule";
   type SidebarProps = {
     runtimeStatus?: string;
     appVersion?: string;
@@ -41,10 +41,10 @@
     >
     <button
       type="button"
-      class="tab-button {activeTab === 'keys-secrets' ? 'active' : ''}"
+      class="tab-button {activeTab === 'config' ? 'active' : ''}"
       onclick={() => {
-        onTabChange("keys-secrets");
-      }}>Keys & Secrets</button
+        onTabChange("config");
+      }}>Config</button
     >
     <button
       type="button"
@@ -52,6 +52,13 @@
       onclick={() => {
         onTabChange("wallets");
       }}>Wallets</button
+    >
+    <button
+      type="button"
+      class="tab-button {activeTab === 'schedule' ? 'active' : ''}"
+      onclick={() => {
+        onTabChange("schedule");
+      }}>Schedule</button
     >
   </nav>
   <div class="status-stack">
@@ -62,7 +69,7 @@
 
 <style>
   .sidebar {
-    border: 1px solid var(--tc-color-gray);
+    border: 1px solid var(--tc-color-border);
     background: var(--tc-color-black-2);
     padding: var(--tc-space-2) 0;
     display: flex;

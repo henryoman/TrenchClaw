@@ -5,8 +5,14 @@ import {
   resolveRequestId,
   resolveSwapTransaction,
 } from "../ultra/parsing";
+import { parseStructuredFile, resolvePathFromModule } from "../../../ai/llm/shared";
+import { ensureVaultFileExists } from "../../../ai/llm/vault-file";
 
 const DEFAULT_JUPITER_ULTRA_BASE_URL = "https://api.jup.ag/ultra/v1";
+const DEFAULT_VAULT_FILE = "../../../ai/brain/protected/no-read/vault.json";
+const DEFAULT_VAULT_TEMPLATE_FILE = "../../../ai/brain/protected/no-read/vault.template.json";
+const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
+const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 
 export interface JupiterUltraAdapterConfig {
   apiKey: string;
@@ -78,6 +84,22 @@ const toQueryParams = (request: JupiterUltraOrderRequest): URLSearchParams => {
 
 const readErrorMessage = (status: number, payload: unknown): string =>
   formatUltraError("Jupiter Ultra request failed", status, payload);
+
+const getByPath = (root: unknown, segments: string[]): unknown => {
+  let current = root;
+  for (const segment of segments) {
+    if (current === null || typeof current !== "object" || Array.isArray(current)) {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return current;
+};
+
+const readVaultString = (root: unknown, refPath: string): string | undefined => {
+  const value = getByPath(root, refPath.split("/").filter(Boolean));
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+};
 
 export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => {
   const baseUrl = config.baseUrl ?? DEFAULT_JUPITER_ULTRA_BASE_URL;
@@ -171,12 +193,27 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
   };
 };
 
-export const getJupiterUltraApiKeyFromEnv = (): string | undefined => {
-  return Bun.env.JUPITER_ULTRA_API_KEY ?? Bun.env.JUPITER_API_KEY;
+export const getJupiterUltraApiKeyFromVault = async (): Promise<string | undefined> => {
+  const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
+  const vaultTemplatePath = resolvePathFromModule(
+    import.meta.url,
+    DEFAULT_VAULT_TEMPLATE_FILE,
+    process.env[VAULT_TEMPLATE_FILE_ENV],
+  );
+  await ensureVaultFileExists({
+    vaultPath,
+    templatePath: vaultTemplatePath,
+  });
+  const vaultData = await parseStructuredFile(vaultPath);
+  return readVaultString(vaultData, "integrations/jupiter/api-key");
 };
 
-export const createJupiterUltraAdapterFromEnv = () => {
-  const apiKey = getJupiterUltraApiKeyFromEnv();
+export const resolveJupiterUltraApiKey = async (): Promise<string | undefined> => {
+  return getJupiterUltraApiKeyFromVault();
+};
+
+export const createJupiterUltraAdapterFromConfig = async () => {
+  const apiKey = await resolveJupiterUltraApiKey();
 
   if (!apiKey) {
     return undefined;

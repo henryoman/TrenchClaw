@@ -336,6 +336,51 @@ describe("RuntimeChatService", () => {
     expect(capturedMessages[1]?.parts[0]).toEqual({ type: "text", text: "calling tool now" });
   });
 
+  test("requests reasoning parts in streamed UI messages", async () => {
+    const registry = new ActionRegistry();
+    let capturedSendReasoning: boolean | undefined;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: {
+          provider: "test",
+          model: "test-model",
+          defaultSystemPrompt: "test system prompt",
+          defaultMode: "test",
+          generate: async () => ({ text: "ok", finishReason: "stop" }),
+          stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
+        } as unknown as LlmClient,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStreamResponse: (options?: { sendReasoning?: boolean }) => {
+            capturedSendReasoning = options?.sendReasoning;
+            return new Response("ok");
+          },
+        })) as never,
+      },
+    );
+
+    await service.stream([
+      {
+        id: "user-reasoning-1",
+        role: "user",
+        parts: [{ type: "text", text: "show reasoning" }],
+      },
+    ]);
+
+    expect(capturedSendReasoning).toBe(true);
+  });
+
   test("creates and persists conversation/messages from streamed chat", async () => {
     const registry = new ActionRegistry();
     const stateStore = new InMemoryStateStore();
@@ -413,6 +458,79 @@ describe("RuntimeChatService", () => {
     expect(persisted[0]?.content).toContain("hello runtime");
     expect(persisted[1]?.id).toBe("assistant-1");
     expect(persisted[1]?.content).toContain("acknowledged");
+  });
+
+  test("persists assistant ui parts for conversation replay", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: {
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+          messages?: UIMessage[];
+        }) => {
+          return {
+            toUIMessageStreamResponse: (options?: {
+              originalMessages?: UIMessage[];
+              onFinish?: (event: {
+                messages: UIMessage[];
+                isContinuation: boolean;
+                isAborted: boolean;
+                responseMessage: UIMessage;
+                finishReason?: string;
+              }) => void;
+            }) => {
+              const assistantMessage: UIMessage = {
+                id: "assistant-structured-1",
+                role: "assistant",
+                parts: [
+                  { type: "reasoning", text: "Inspecting wallet state", state: "done" },
+                  { type: "text", text: "Wallet state inspected." },
+                ],
+              };
+              const original = options?.originalMessages ?? [];
+              options?.onFinish?.({
+                messages: [...original, assistantMessage],
+                isContinuation: false,
+                isAborted: false,
+                responseMessage: assistantMessage,
+                finishReason: "stop",
+              });
+              return new Response("ok");
+            },
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "user-structured-1",
+          role: "user",
+          parts: [{ type: "text", text: "inspect the wallet" }],
+        },
+      ],
+      { chatId: "chat-structured-1" },
+    );
+
+    const assistant = stateStore.listChatMessages("chat-structured-1", 10).find((message) => message.role === "assistant");
+    expect(assistant?.metadata?.uiParts).toEqual([
+      { type: "reasoning", text: "Inspecting wallet state", state: "done" },
+      { type: "text", text: "Wallet state inspected." },
+    ]);
   });
 
   test("persists chat history in SQLite across store reopen", async () => {

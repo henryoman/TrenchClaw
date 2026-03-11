@@ -164,11 +164,6 @@ const getNestedString = (value: unknown, path: string[]): string | null => {
 };
 
 const resolveHeliusApiKey = async (): Promise<string> => {
-  const envApiKey = process.env.HELIUS_API_KEY?.trim();
-  if (envApiKey) {
-    return envApiKey;
-  }
-
   await ensureVaultFileExists({
     vaultPath: HELIUS_VAULT_FILE_PATH,
     templatePath: HELIUS_VAULT_TEMPLATE_PATH,
@@ -181,7 +176,7 @@ const resolveHeliusApiKey = async (): Promise<string> => {
     return vaultApiKey;
   }
 
-  throw new Error("Missing Helius API key. Set HELIUS_API_KEY or populate rpc.helius.api-key in the vault.");
+  throw new Error("Missing Helius API key. Populate rpc.helius.api-key in the vault.");
 };
 
 const extractContinuationSignature = (message: string): string | null => {

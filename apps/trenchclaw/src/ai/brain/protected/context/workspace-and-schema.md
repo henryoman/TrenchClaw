@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-10T22:02:49.116Z
+Generated at: 2026-03-11T19:54:16.426Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -26,7 +26,13 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-03-07.md
 |   |   |   |   |   |-- 2026-03-08.md
 |   |   |   |   |   |-- 2026-03-09.md
+|   |   |   |   |   |-- 2026-03-10.md
+|   |   |   |   |   |-- 2026-03-11.md
 |   |   |   |   |   `-- MEMORY.md
+|   |   |   |   |-- queue/
+|   |   |   |   |   |-- bunqueue.sqlite
+|   |   |   |   |   |-- bunqueue.sqlite-shm
+|   |   |   |   |   `-- bunqueue.sqlite-wal
 |   |   |   |   |-- sessions/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 8cf7109f-a009-4e26-87c1-61a21f166932.jsonl
@@ -42,7 +48,9 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-03-05.log
 |   |   |   |   |   |-- 2026-03-07.log
 |   |   |   |   |   |-- 2026-03-08.log
-|   |   |   |   |   `-- 2026-03-09.log
+|   |   |   |   |   |-- 2026-03-09.log
+|   |   |   |   |   |-- 2026-03-10.log
+|   |   |   |   |   `-- 2026-03-11.log
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- .keep
 |   |   |   |   |   |-- 2026-03-02.log
@@ -51,7 +59,9 @@ apps/trenchclaw/
 |   |   |   |   |   |-- 2026-03-05.log
 |   |   |   |   |   |-- 2026-03-07.log
 |   |   |   |   |   |-- 2026-03-08.log
-|   |   |   |   |   `-- 2026-03-09.log
+|   |   |   |   |   |-- 2026-03-09.log
+|   |   |   |   |   |-- 2026-03-10.log
+|   |   |   |   |   `-- 2026-03-11.log
 |   |   |   |   |-- .gitignore
 |   |   |   |   |-- README.md
 |   |   |   |   |-- runtime.sqlite
@@ -170,6 +180,16 @@ apps/trenchclaw/
 |   |   |   |   |-- context/
 |   |   |   |   |   `-- workspace-and-schema.md
 |   |   |   |   |-- instance/
+|   |   |   |   |   |-- i-01/
+|   |   |   |   |   |   |-- keypairs/
+|   |   |   |   |   |   |   `-- practice-wallets/
+|   |   |   |   |   |   |       |-- practice001-0001.json
+|   |   |   |   |   |   |       |-- practice001-0001.label.json
+|   |   |   |   |   |   |       |-- practice002-0002.json
+|   |   |   |   |   |   |       `-- practice002-0002.label.json
+|   |   |   |   |   |   `-- wallet-library.jsonl
+|   |   |   |   |   |-- i-test-wallet-groups/
+|   |   |   |   |   |   `-- keypairs/
 |   |   |   |   |   `-- i-01.json
 |   |   |   |   |-- keypairs/
 |   |   |   |   |-- no-read/
@@ -191,6 +211,7 @@ apps/trenchclaw/
 |   |   |   |   |   `-- system.md
 |   |   |   |   `-- wallet-library.jsonl
 |   |   |   |-- workspace/
+|   |   |   |   |-- .tests/
 |   |   |   |   |-- configs/
 |   |   |   |   |-- notes/
 |   |   |   |   |-- output/
@@ -298,6 +319,7 @@ apps/trenchclaw/
 |   |   |-- instance-state.ts
 |   |   |-- runtime-paths.ts
 |   |   |-- start-runtime-server.ts
+|   |   |-- wallet-model-context.ts
 |   |   `-- workspace-bash.ts
 |   |-- solana/
 |   |   |-- actions/
@@ -320,8 +342,10 @@ apps/trenchclaw/
 |   |   |   |   |   |-- getTokenPrice.ts
 |   |   |   |   |   `-- shared.ts
 |   |   |   |   |-- runtime/
+|   |   |   |   |   |-- enqueueRuntimeJob.ts
 |   |   |   |   |   |-- index.ts
 |   |   |   |   |   |-- instance-memory-shared.ts
+|   |   |   |   |   |-- manageRuntimeJob.ts
 |   |   |   |   |   |-- mutateInstanceMemory.ts
 |   |   |   |   |   |-- pingRuntime.ts
 |   |   |   |   |   |-- queryInstanceMemory.ts
@@ -424,6 +448,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | createWalletGroupDirectory | wallet-based |  | yes | yes | no | yes | no |
 | createWallets | wallet-based |  | yes | yes | no | yes | no |
 | devnetAirdrop | wallet-based |  | yes | yes | no | yes | no |
+| enqueueRuntimeJob | data-based |  | yes | yes | no | yes | no |
 | getDexscreenerLatestAds | data-based |  | yes | yes | no | yes | no |
 | getDexscreenerLatestCommunityTakeovers | data-based |  | yes | yes | no | yes | no |
 | getDexscreenerLatestTokenBoosts | data-based |  | yes | yes | no | yes | no |
@@ -434,6 +459,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | getDexscreenerTokensByChain | data-based |  | yes | yes | no | yes | no |
 | getDexscreenerTopTokenBoosts | data-based |  | yes | yes | no | yes | no |
 | getSwapHistory | data-based |  | yes | yes | no | yes | no |
+| manageRuntimeJob | data-based |  | yes | yes | no | yes | no |
 | mutateInstanceMemory | data-based |  | yes | yes | no | yes | no |
 | pingRuntime | data-based | read-only | yes | yes | no | yes | no |
 | privacyAirdrop | wallet-based | transfer | yes | yes | yes | yes | no |
@@ -452,6 +478,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | createWalletGroupDirectory | action | yes | no |
 | createWallets | action | yes | no |
 | devnetAirdrop | action | yes | no |
+| enqueueRuntimeJob | action | yes | no |
 | getDexscreenerLatestAds | action | yes | no |
 | getDexscreenerLatestCommunityTakeovers | action | yes | no |
 | getDexscreenerLatestTokenBoosts | action | yes | no |
@@ -462,6 +489,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | getDexscreenerTokensByChain | action | yes | no |
 | getDexscreenerTopTokenBoosts | action | yes | no |
 | getSwapHistory | action | yes | no |
+| manageRuntimeJob | action | yes | no |
 | mutateInstanceMemory | action | yes | no |
 | pingRuntime | action | yes | no |
 | privacyAirdrop | action | yes | yes |
@@ -489,6 +517,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 | /api/gui/instances/sign-in |
 | /api/gui/llm/check |
 | /api/gui/queue |
+| /api/gui/schedule |
 | /api/gui/secrets |
 | /api/gui/tests/dispatcher |
 | /api/gui/vault |
@@ -503,7 +532,7 @@ Omitted generated/vendor directories: node_modules, .vite, .next, .turbo, .svelt
 ```text
 SQLite schema snapshot (11 tables)
 - schema_migrations: version:INTEGER[pk], applied_at:INTEGER[not_null]
-- jobs: id:TEXT[pk], bot_id:TEXT[not_null], routine_name:TEXT[not_null], status:TEXT[not_null], config_json:TEXT[not_null], next_run_at:INTEGER, last_run_at:INTEGER, cycles_completed:INTEGER[not_null], total_cycles:INTEGER, last_result_json:TEXT, attempt_count:INTEGER, lease_owner:TEXT, lease_expires_at:INTEGER, last_error:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
+- jobs: id:TEXT[pk], serial_number:INTEGER, bot_id:TEXT[not_null], routine_name:TEXT[not_null], status:TEXT[not_null], config_json:TEXT[not_null], next_run_at:INTEGER, last_run_at:INTEGER, cycles_completed:INTEGER[not_null], total_cycles:INTEGER, last_result_json:TEXT, attempt_count:INTEGER, lease_owner:TEXT, lease_expires_at:INTEGER, last_error:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - action_receipts: idempotency_key:TEXT[pk], payload_json:TEXT[not_null], timestamp:INTEGER[not_null]
 - conversations: id:TEXT[pk], session_id:TEXT, title:TEXT, summary:TEXT, created_at:INTEGER[not_null], updated_at:INTEGER[not_null]
 - chat_messages: id:TEXT[pk], conversation_id:TEXT[not_null,fk->conversations.id], role:TEXT[not_null], content:TEXT[not_null], metadata_json:TEXT, created_at:INTEGER[not_null]
@@ -583,6 +612,7 @@ CREATE TABLE "instance_profiles" (
 
 CREATE TABLE "jobs" (
   "id" TEXT PRIMARY KEY,
+  "serial_number" INTEGER CHECK (serial_number IS NULL OR serial_number > 0),
   "bot_id" TEXT NOT NULL,
   "routine_name" TEXT NOT NULL,
   "status" TEXT NOT NULL CHECK (status IN ('pending', 'running', 'paused', 'stopped', 'failed')),
@@ -663,6 +693,8 @@ CREATE INDEX "idx_instance_profiles_updated_at" ON "instance_profiles"("updated_
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
 
 CREATE INDEX "idx_jobs_lease_expires_at" ON "jobs"("status", "lease_expires_at");
+
+CREATE UNIQUE INDEX "idx_jobs_serial_number" ON "jobs"("serial_number");
 
 CREATE INDEX "idx_jobs_status_next_run_at" ON "jobs"("status", "next_run_at");
 
@@ -759,7 +791,7 @@ CREATE TABLE "jobs" (
   "last_error" TEXT,
   "created_at" INTEGER NOT NULL,
   "updated_at" INTEGER NOT NULL
-);
+, "serial_number" INTEGER CHECK (serial_number IS NULL OR serial_number > 0));
 
 CREATE TABLE "market_instruments" (
   "id" INTEGER PRIMARY KEY,
@@ -824,6 +856,8 @@ CREATE INDEX "idx_instance_profiles_updated_at" ON "instance_profiles"("updated_
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
 
 CREATE INDEX "idx_jobs_lease_expires_at" ON "jobs"("status", "lease_expires_at");
+
+CREATE UNIQUE INDEX "idx_jobs_serial_number" ON "jobs"("serial_number");
 
 CREATE INDEX "idx_jobs_status_next_run_at" ON "jobs"("status", "next_run_at");
 

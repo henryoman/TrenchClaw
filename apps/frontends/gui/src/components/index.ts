@@ -7,6 +7,7 @@ export { default as ChatPanel } from "./workspace/ChatPanel.svelte";
 export { default as QueuePanel } from "./workspace/QueuePanel.svelte";
 export { default as SchedulePanel } from "./workspace/SchedulePanel.svelte";
 export { default as SecretsPanel } from "./workspace/SecretsPanel.svelte";
+export { default as SolPriceStrip } from "./workspace/SolPriceStrip.svelte";
 export { default as SummaryPanel } from "./workspace/SummaryPanel.svelte";
 export { default as VaultPanel } from "./workspace/VaultPanel.svelte";
 export { default as WalletsPanel } from "./workspace/WalletsPanel.svelte";

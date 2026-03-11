@@ -30,6 +30,7 @@ export interface ActionResult<TData = unknown> {
 export interface ActionContext {
   wallet?: unknown;
   rpc?: unknown;
+  rpcUrl?: string;
   jupiter?: unknown;
   tokenAccounts?: unknown;
   balances?: Record<string, bigint>;
@@ -183,6 +184,7 @@ export interface GuiConversationMessageView {
   id: string;
   role: "system" | "user" | "assistant" | "tool";
   content: string;
+  parts?: Array<Record<string, unknown>>;
   createdAt: number;
 }
 

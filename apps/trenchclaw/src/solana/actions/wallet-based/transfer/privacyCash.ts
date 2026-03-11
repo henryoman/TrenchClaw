@@ -152,8 +152,9 @@ const loadPrivacyCashConstructor = async (): Promise<PrivacyCashConstructor> => 
 
 const runPrivacyTransfers = async (
   input: PrivacyTransferInput,
+  fallbackRpcUrl?: string,
 ): Promise<{ output: PrivacyTransferOutput; txSignatures: string[] }> => {
-  const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
+  const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl ?? fallbackRpcUrl);
   const forceDeposit = input.forceDeposit ?? false;
   const skipDeposit = input.skipDeposit ?? false;
   const planOnly = input.planOnly ?? false;
@@ -256,7 +257,7 @@ export const privacyTransferAction: Action<PrivacyTransferInput, PrivacyTransfer
     const idempotencyKey = crypto.randomUUID();
 
     try {
-      const { output, txSignatures } = await runPrivacyTransfers(input);
+      const { output, txSignatures } = await runPrivacyTransfers(input, _ctx.rpcUrl);
       const txSignature = txSignatures.length > 0 ? txSignatures[txSignatures.length - 1] : undefined;
 
       return {
@@ -335,7 +336,7 @@ export const privacySwapAction: Action<PrivacySwapInput, PrivacySwapOutput> = {
         recipients: [{ address: signerAddress, amountSol: input.amountSol }],
       };
 
-      const { output: transferOutput } = await runPrivacyTransfers(transferInput);
+      const { output: transferOutput } = await runPrivacyTransfers(transferInput, ctx.rpcUrl);
       if (input.planOnly) {
         const result: ActionResult<PrivacySwapOutput> = {
           ok: true,

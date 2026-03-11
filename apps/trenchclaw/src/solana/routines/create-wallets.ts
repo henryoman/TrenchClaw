@@ -52,32 +52,22 @@ export const createWalletsRoutine: RoutinePlanner = async (_ctx, job) => {
     ];
   }
 
-  const steps: ActionStep[] = config.walletGroups.map((walletGroup, index) => {
-    const walletNames = walletGroup.wallets?.map((wallet) => wallet.name);
-    const count = walletNames?.length ?? walletGroup.count ?? 1;
-
-    return {
-      key: `create-wallets:${walletGroup.name}:${index + 1}`,
+  const steps: ActionStep[] = [
+    {
+      key: "create-wallets:batch",
       actionName: "createWallets",
       input: {
-        count,
-        ...(walletNames ? { walletNames } : {}),
-        storage: {
-          walletGroup: walletGroup.name,
-          createGroupIfMissing: config.storage?.createGroupIfMissing ?? true,
-        },
-        output: {
-          ...config.output,
-          ...(walletGroup.filePrefix ? { filePrefix: walletGroup.filePrefix } : {}),
-          ...(walletGroup.startIndex ? { startIndex: walletGroup.startIndex } : {}),
-          ...(walletGroup.includeIndexInFileName !== undefined
-            ? { includeIndexInFileName: walletGroup.includeIndexInFileName }
-            : {}),
-        },
+        groups: config.walletGroups.map((walletGroup) => {
+          const walletNames = walletGroup.wallets?.map((wallet) => wallet.name);
+          return {
+            walletGroup: walletGroup.name,
+            ...(walletNames ? { walletNames } : { count: walletGroup.count ?? 1 }),
+          };
+        }),
       },
-      idempotencyKey: `${job.id}:create-wallets:${walletGroup.name}`,
-    };
-  });
+      idempotencyKey: `${job.id}:create-wallets:batch`,
+    },
+  ];
 
   const renamesByGroup = new Map<string, Array<{ fromWalletName: string; toWalletName: string }>>();
   for (const rename of config.renames ?? []) {
@@ -94,8 +84,16 @@ export const createWalletsRoutine: RoutinePlanner = async (_ctx, job) => {
       key: `rename-wallets:${walletGroup}`,
       actionName: "renameWallets",
       input: {
-        walletGroup,
-        renames,
+        edits: renames.map((rename) => ({
+          current: {
+            walletGroup,
+            walletName: rename.fromWalletName,
+          },
+          next: {
+            walletGroup,
+            walletName: rename.toWalletName,
+          },
+        })),
       },
       idempotencyKey: `${job.id}:rename-wallets:${walletGroup}`,
     });

@@ -18,9 +18,9 @@ import {
   type LlmGenerateInput,
   type LlmGenerateResult,
 } from "../ai";
-import { createJupiterUltraAdapterFromEnv } from "../solana/lib/adapters/jupiter-ultra";
-import { createTokenAccountAdapterFromEnv } from "../solana/lib/adapters/token-account";
-import { createUltraSignerAdapterFromEnv } from "../solana/lib/adapters/ultra-signer";
+import { createJupiterUltraAdapterFromConfig } from "../solana/lib/adapters/jupiter-ultra";
+import { createTokenAccountAdapter } from "../solana/lib/adapters/token-account";
+import { createUltraSignerAdapterFromVault } from "../solana/lib/adapters/ultra-signer";
 import { loadRoutinePlanner } from "../solana/routines/load";
 import {
   workspaceToolsEnabledByRuntimeSettings,
@@ -502,15 +502,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
   const logger = createRuntimeLogger(settings);
-  if (!trimOrUndefined(process.env.RPC_URL)) {
-    const fallbackRpcUrl = getPrimaryRpcUrlFromSettings(settings);
-    if (fallbackRpcUrl) {
-      process.env.RPC_URL = fallbackRpcUrl;
-      logger.info("network:rpc_url_defaulted", {
-        source: "settings.network.rpc.endpoints",
-      });
-    }
-  }
+  const runtimeRpcUrl = getPrimaryRpcUrlFromSettings(settings);
   setLogIoWriteObserver((event) => {
     const details: Record<string, unknown> = {
       operation: event.operation,
@@ -614,9 +606,9 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     registry.register(action);
   }
 
-  const jupiterUltra = createJupiterUltraAdapterFromEnv();
-  const tokenAccounts = createTokenAccountAdapterFromEnv();
-  const ultraSigner = await createUltraSignerAdapterFromEnv();
+  const jupiterUltra = await createJupiterUltraAdapterFromConfig();
+  const tokenAccounts = createTokenAccountAdapter({ rpcUrl: runtimeRpcUrl });
+  const ultraSigner = await createUltraSignerAdapterFromVault({ rpcUrl: runtimeRpcUrl });
   let scheduler: Scheduler;
 
   const emitQueuedJob = (job: JobState): void => {
@@ -746,6 +738,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
         createActionContext({
           actor: "agent",
           eventBus,
+          rpcUrl: runtimeRpcUrl,
           jobMeta: {
             jobId: job.id,
             botId: job.botId,
@@ -825,6 +818,10 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       registry,
       eventBus,
       stateStore,
+      rpcUrl: runtimeRpcUrl,
+      jupiterUltra,
+      tokenAccounts,
+      ultraSigner,
       enqueueJob,
       manageJob,
       llm,

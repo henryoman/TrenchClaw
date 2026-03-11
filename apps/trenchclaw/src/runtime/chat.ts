@@ -44,6 +44,13 @@ interface RuntimeChatServiceDeps {
   registry: ActionRegistry;
   eventBus: RuntimeEventBus;
   stateStore: StateStore;
+  rpcUrl?: string;
+  jupiterUltra?: unknown;
+  tokenAccounts?: unknown;
+  ultraSigner?: {
+    address?: string;
+    signBase64Transaction: (base64Transaction: string) => Promise<string>;
+  };
   enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<import("../ai").JobState>;
   manageJob?: (input: RuntimeJobControlRequest) => Promise<import("../ai").JobState>;
   llm: LlmClient | null;
@@ -77,7 +84,7 @@ const resolveStreamingModel = async (): Promise<LanguageModel> => {
     return gateway(gatewayConfig.model);
   }
 
-  throw new Error("No model provider configured. Set vault llm api keys or TRENCHCLAW_* provider env vars.");
+  throw new Error("No model provider configured. Populate the vault LLM provider keys.");
 };
 
 const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> => {
@@ -233,6 +240,10 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
           createActionContext({
             actor: "agent",
             eventBus: deps.eventBus,
+            rpcUrl: deps.rpcUrl,
+            jupiterUltra: deps.jupiterUltra,
+            tokenAccounts: deps.tokenAccounts,
+            ultraSigner: deps.ultraSigner,
             stateStore: deps.stateStore,
             enqueueJob: deps.enqueueJob,
             manageJob: deps.manageJob,
@@ -404,6 +415,7 @@ export const createRuntimeChatService = (
       const response = result.toUIMessageStreamResponse({
         headers: withChatHeaders(input?.headers, chatId),
         originalMessages: normalizedMessages,
+        sendReasoning: true,
         onError: (error) => toRuntimeChatErrorMessage(error),
         onFinish: ({ messages: finalMessages }) => {
           const updatedAt = Date.now();
@@ -430,8 +442,13 @@ export const createRuntimeChatService = (
               content,
               metadata:
                 message.metadata && typeof message.metadata === "object"
-                  ? (message.metadata as Record<string, unknown>)
-                  : undefined,
+                  ? {
+                      ...(message.metadata as Record<string, unknown>),
+                      uiParts: message.parts,
+                    }
+                  : {
+                      uiParts: message.parts,
+                    },
               createdAt: updatedAt + index,
             });
           }

@@ -51,6 +51,9 @@ export const getConversationMessages = (
     id: message.id,
     role: message.role,
     content: message.content,
+    parts: Array.isArray(message.metadata?.uiParts)
+      ? (message.metadata.uiParts as Array<Record<string, unknown>>)
+      : undefined,
     createdAt: message.createdAt,
   }));
 

@@ -10,7 +10,6 @@ const SETTINGS_FILE_BY_PROFILE: Record<RuntimeSettingsProfile, string> = {
   veryDangerous: "../../ai/brain/protected/system/safety-modes/veryDangerous.yaml",
 };
 
-const ENV_TOKEN_REGEX = /\$\{([A-Z0-9_]+)\}/g;
 const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
 const SETTINGS_BASE_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_BASE_FILE";
 const SETTINGS_USER_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_USER_FILE";
@@ -45,23 +44,6 @@ const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
   }
 
   return merged;
-};
-
-const resolveEnvTokens = (value: unknown): unknown => {
-  if (typeof value === "string") {
-    return value.replace(ENV_TOKEN_REGEX, (_token, variableName: string) => process.env[variableName] ?? "");
-  }
-
-  if (Array.isArray(value)) {
-    return value.map((item) => resolveEnvTokens(item));
-  }
-
-  if (value && typeof value === "object") {
-    const entries = Object.entries(value as Record<string, unknown>);
-    return Object.fromEntries(entries.map(([key, nestedValue]) => [key, resolveEnvTokens(nestedValue)]));
-  }
-
-  return value;
 };
 
 const parseYaml = (source: string, filePath: string): unknown => {
@@ -287,8 +269,21 @@ const normalizeRuntimeSettings = (
       cli: { enabled: true },
       webGui: {
         enabled: true,
-        host: toStringValue(process.env.TRENCHCLAW_WEB_GUI_HOST, "127.0.0.1"),
-        port: Math.max(1, Math.trunc(toNumberValue(process.env.TRENCHCLAW_WEB_GUI_PORT ? Number(process.env.TRENCHCLAW_WEB_GUI_PORT) : undefined, 4173))),
+        host: toStringValue(
+          candidate.ui && isRecord(candidate.ui) && isRecord(candidate.ui.webGui) ? candidate.ui.webGui.host : undefined,
+          "127.0.0.1",
+        ),
+        port: Math.max(
+          1,
+          Math.trunc(
+            toNumberValue(
+              candidate.ui && isRecord(candidate.ui) && isRecord(candidate.ui.webGui)
+                ? candidate.ui.webGui.port
+                : undefined,
+              4173,
+            ),
+          ),
+        ),
       },
       tui: {
         enabled: false,
@@ -349,8 +344,7 @@ export const loadRuntimeSettings = async (
     userSettings,
     mergedSettings,
   });
-  const withResolvedEnv = resolveEnvTokens(protectedMergedSettings);
-  const normalizedSettings = normalizeRuntimeSettings(withResolvedEnv, profile);
+  const normalizedSettings = normalizeRuntimeSettings(protectedMergedSettings, profile);
   const validated = runtimeSettingsSchema.parse(normalizedSettings);
   const usingBundledBaseProfile = !process.env[SETTINGS_BASE_FILE_ENV_KEY];
 

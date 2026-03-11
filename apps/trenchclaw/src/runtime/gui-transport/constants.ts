@@ -78,9 +78,9 @@ export const SECRET_OPTIONS: GuiSecretOptionView[] = [
   {
     id: "jupiter-api-key",
     category: "blockchain",
-    label: "Jupiter API Key",
+    label: "Jupiter Ultra API Key",
     vaultPath: "integrations/jupiter/api-key",
-    placeholder: "Enter Jupiter API key",
+    placeholder: "Enter Jupiter Ultra API key",
     supportsPublicRpc: false,
   },
   {

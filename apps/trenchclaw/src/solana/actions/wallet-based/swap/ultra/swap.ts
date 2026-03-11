@@ -130,7 +130,7 @@ export const ultraSwapAction: Action<UltraSwapInput, UltraSwapOutput> = {
           registerTransactionForConfirmation({
             signature,
             requestId,
-            rpcUrl: process.env.RPC_URL,
+            rpcUrl: ctx.rpcUrl,
             metadata: {
               idempotencyKey,
             },
@@ -175,7 +175,7 @@ export const ultraSwapAction: Action<UltraSwapInput, UltraSwapOutput> = {
             registerTransactionForConfirmation({
               signature,
               requestId,
-              rpcUrl: process.env.RPC_URL,
+              rpcUrl: ctx.rpcUrl,
               metadata: {
                 idempotencyKey,
                 note: "execute-timeout",

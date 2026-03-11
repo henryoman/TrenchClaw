@@ -55,6 +55,7 @@ export interface TransferOutput {
 }
 
 interface TransferContext extends ActionContext {
+  rpcUrl?: string;
   ultraSigner?: {
     address?: string;
     signBase64Transaction: (base64Transaction: string) => Promise<string>;
@@ -195,7 +196,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
         );
       }
 
-      const rpcUrl = resolveRequiredRpcUrl();
+      const rpcUrl = resolveRequiredRpcUrl((ctx as TransferContext).rpcUrl);
       const rpc = createSolanaRpc(rpcUrl);
       const latestBlockhash = await rpc.getLatestBlockhash().send();
       const instructions: Instruction[] = [];

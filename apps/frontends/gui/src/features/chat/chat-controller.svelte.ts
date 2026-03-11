@@ -29,6 +29,23 @@ const hasTerminalAssistantText = (messages: UIMessage[]): boolean => {
   );
 };
 
+const isUiMessagePart = (value: unknown): value is UIMessage["parts"][number] =>
+  typeof value === "object" && value !== null && "type" in value && typeof value.type === "string";
+
+const toUiMessageParts = (message: GuiConversationMessageView): UIMessage["parts"] => {
+  const persistedParts = Array.isArray(message.parts) ? message.parts.filter(isUiMessagePart) : [];
+  if (persistedParts.length > 0) {
+    return persistedParts;
+  }
+
+  return [
+    {
+      type: "text",
+      text: message.content,
+    },
+  ];
+};
+
 export const createChatController = () => {
   let manuallySending = $state(false);
   let submitInFlight = false;
@@ -71,12 +88,7 @@ export const createChatController = () => {
         .map((message) => ({
           id: message.id,
           role: message.role,
-          parts: [
-            {
-              type: "text" as const,
-              text: message.content,
-            },
-          ],
+          parts: toUiMessageParts(message),
         })),
     );
 
@@ -89,22 +101,20 @@ export const createChatController = () => {
         continue;
       }
 
-      const textFromParts = message.parts
-        .map((part) => {
-          if (part.type === "text") {
-            return part.text ?? "";
-          }
+      const meaningfulParts = message.parts.filter((part) => {
+        if (part.type === "step-start") {
+          return false;
+        }
+        if (part.type === "text" || part.type === "reasoning") {
+          return typeof part.text === "string" && part.text.trim().length > 0;
+        }
+        if ("errorText" in part && typeof part.errorText === "string") {
+          return part.errorText.trim().length > 0;
+        }
+        return true;
+      });
 
-          if ("errorText" in part && typeof part.errorText === "string") {
-            return `Something went wrong: ${part.errorText}`;
-          }
-
-          return "";
-        })
-        .join("\n")
-        .trim();
-
-      if (!textFromParts) {
+      if (meaningfulParts.length === 0) {
         continue;
       }
 
@@ -112,7 +122,7 @@ export const createChatController = () => {
       normalized.push({
         id,
         role,
-        parts: [{ type: "text", text: textFromParts }],
+        parts: meaningfulParts,
       });
     }
 

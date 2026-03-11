@@ -90,6 +90,3 @@ export const createTokenAccountAdapter = (
     },
   };
 };
-
-export const createTokenAccountAdapterFromEnv = (): TokenAccountAdapter =>
-  createTokenAccountAdapter({ rpcUrl: process.env.RPC_URL ?? undefined });
