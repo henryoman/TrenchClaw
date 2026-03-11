@@ -3,6 +3,7 @@ import type {
   GuiInstanceProfileView,
   GuiPublicRpcOptionView,
   GuiQueueJobView,
+  GuiScheduleJobView,
   GuiSecretEntryView,
   GuiSecretOptionView,
   GuiWalletNodeView,
@@ -19,7 +20,7 @@ import {
   type RuntimeSafetyProfile,
   STARTUP_GUARD_TIMEOUT_MS,
 } from "../../config/app-config";
-import type { GuiActivityResponse, GuiBootstrapResponse, GuiQueueResponse } from "@trenchclaw/types";
+import type { GuiActivityResponse, GuiBootstrapResponse, GuiQueueResponse, GuiScheduleResponse } from "@trenchclaw/types";
 import { runtimeApi, toRuntimeUrl } from "../../runtime-api";
 import {
   applyCreateInstanceSuccess,
@@ -44,6 +45,7 @@ interface RuntimeUiState {
   signInInstanceId: string;
   signInPin: string;
   queueJobs: GuiQueueJobView[];
+  scheduleJobs: GuiScheduleJobView[];
   activityEntries: GuiActivityEntry[];
   vaultFilePath: string;
   vaultTemplatePath: string;
@@ -99,6 +101,7 @@ export const createRuntimeController = () => {
     signInInstanceId: "",
     signInPin: "",
     queueJobs: [],
+    scheduleJobs: [],
     activityEntries: [],
     vaultFilePath: "",
     vaultTemplatePath: "",
@@ -135,14 +138,16 @@ export const createRuntimeController = () => {
   };
 
   const loadAppData = async (): Promise<void> => {
-    const [bootstrap, queue, activity] = await Promise.all([
+    const [bootstrap, queue, schedule, activity] = await Promise.all([
       runtimeApi.bootstrap(),
       runtimeApi.queue(),
+      runtimeApi.schedule(),
       runtimeApi.activity(RUNTIME_ACTIVITY_LIMIT),
     ]);
 
     state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
     state.queueJobs = queue.jobs;
+    state.scheduleJobs = schedule.jobs;
     state.activityEntries = activity.entries;
     if (bootstrap.activeInstance) {
       state.activeInstance = bootstrap.activeInstance;
@@ -158,6 +163,7 @@ export const createRuntimeController = () => {
     } catch {
       state.runtimeStatus = RUNTIME_STATUS_OFFLINE;
       state.queueJobs = [];
+      state.scheduleJobs = [];
       state.activityEntries = [];
     }
   };
@@ -194,6 +200,15 @@ export const createRuntimeController = () => {
       try {
         const payload = JSON.parse((event as MessageEvent<string>).data) as GuiQueueResponse;
         state.queueJobs = payload.jobs;
+      } catch {
+        // Ignore malformed stream events.
+      }
+    });
+
+    source.addEventListener("schedule", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent<string>).data) as GuiScheduleResponse;
+        state.scheduleJobs = payload.jobs;
       } catch {
         // Ignore malformed stream events.
       }

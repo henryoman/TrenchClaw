@@ -1,6 +1,8 @@
 import type {
   GuiActivityResponse,
   GuiBootstrapResponse,
+  GuiScheduleJobView,
+  GuiScheduleResponse,
   GuiQueueJobView,
   GuiQueueResponse,
 } from "@trenchclaw/types";
@@ -12,6 +14,7 @@ import type { RuntimeGuiDomainContext } from "../contracts";
 
 export const mapJobToView = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): GuiQueueJobView => ({
   id: job.id,
+  serialNumber: job.serialNumber ?? null,
   botId: job.botId,
   routineName: job.routineName,
   status: job.status,
@@ -19,6 +22,44 @@ export const mapJobToView = (job: ReturnType<RuntimeGuiDomainContext["runtime"][
   updatedAt: job.updatedAt,
   nextRunAt: typeof job.nextRunAt === "number" ? job.nextRunAt : null,
   cyclesCompleted: job.cyclesCompleted,
+});
+
+const toIntervalMs = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): number | null => {
+  const raw = job.config.intervalMs;
+  const parsed = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
+};
+
+const isRecurringJob = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean => {
+  const intervalMs = toIntervalMs(job);
+  if (intervalMs !== null) {
+    return true;
+  }
+  if (job.totalCycles === undefined) {
+    return true;
+  }
+  return job.totalCycles > 1;
+};
+
+const isScheduledJob = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean =>
+  ACTIVE_JOB_STATUSES.has(job.status)
+  && (job.status === "paused" || typeof job.nextRunAt === "number" || isRecurringJob(job));
+
+const mapJobToScheduleView = (
+  job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+): GuiScheduleJobView => ({
+  id: job.id,
+  serialNumber: job.serialNumber ?? null,
+  botId: job.botId,
+  routineName: job.routineName,
+  status: job.status,
+  createdAt: job.createdAt,
+  updatedAt: job.updatedAt,
+  nextRunAt: typeof job.nextRunAt === "number" ? job.nextRunAt : null,
+  intervalMs: toIntervalMs(job),
+  cyclesCompleted: job.cyclesCompleted,
+  totalCycles: job.totalCycles ?? null,
+  recurring: isRecurringJob(job),
 });
 
 const compareQueueJobsChronologically = (
@@ -62,6 +103,15 @@ export const getQueue = (context: RuntimeGuiDomainContext): GuiQueueResponse => 
   return { jobs };
 };
 
+export const getSchedule = (context: RuntimeGuiDomainContext): GuiScheduleResponse => {
+  const jobs = context.runtime.stateStore
+    .listJobs()
+    .filter((job) => isScheduledJob(job))
+    .toSorted(compareQueueJobsChronologically)
+    .map(mapJobToScheduleView);
+  return { jobs };
+};
+
 export const getActivity = (context: RuntimeGuiDomainContext, limit = 100): GuiActivityResponse => {
   const normalizedLimit = Math.max(1, Math.trunc(limit));
   return {
@@ -99,7 +149,7 @@ export const streamRuntimeEvents = (context: RuntimeGuiDomainContext, signal?: A
         controller.close();
       };
 
-      const pushEvent = (event: "bootstrap" | "queue" | "activity", payload: unknown): void => {
+      const pushEvent = (event: "bootstrap" | "queue" | "schedule" | "activity", payload: unknown): void => {
         if (closed) {
           return;
         }
@@ -111,6 +161,7 @@ export const streamRuntimeEvents = (context: RuntimeGuiDomainContext, signal?: A
         const bootstrap = await getBootstrap(context);
         pushEvent("bootstrap", bootstrap);
         pushEvent("queue", getQueue(context));
+        pushEvent("schedule", getSchedule(context));
         pushEvent("activity", getActivity(context));
       };
 
@@ -126,6 +177,7 @@ export const streamRuntimeEvents = (context: RuntimeGuiDomainContext, signal?: A
         unsubscribers.push(
           context.runtime.eventBus.on(eventType, () => {
             pushEvent("queue", getQueue(context));
+            pushEvent("schedule", getSchedule(context));
             pushEvent("activity", getActivity(context));
           }),
         );

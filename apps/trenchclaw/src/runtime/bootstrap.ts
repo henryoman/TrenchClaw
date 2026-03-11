@@ -474,13 +474,17 @@ export interface RuntimeBootstrap {
   registry: ActionRegistry;
   chat: RuntimeChatService;
   session: ActiveSessionInfo | null;
-  stop: () => void;
+  stop: () => Promise<void>;
   enqueueJob: (input: {
     botId: string;
     routineName: string;
     config?: Record<string, unknown>;
     totalCycles?: number;
     executeAtUnixMs?: number;
+  }) => Promise<JobState>;
+  manageJob: (input: {
+    jobId: string;
+    operation: "pause" | "cancel" | "resume";
   }) => Promise<JobState>;
   describe: () => {
     profile: RuntimeSettings["profile"];
@@ -615,6 +619,20 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const ultraSigner = await createUltraSignerAdapterFromEnv();
   let scheduler: Scheduler;
 
+  const emitQueuedJob = (job: JobState): void => {
+    const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
+    const queuePosition = pendingJobs.findIndex((entry) => entry.id === job.id) + 1;
+    eventBus.emit("queue:enqueue", {
+      jobId: job.id,
+      serialNumber: job.serialNumber,
+      botId: job.botId,
+      routineName: job.routineName,
+      queueSize: pendingJobs.length,
+      queuePosition: queuePosition > 0 ? queuePosition : pendingJobs.length,
+      nextRunAt: job.nextRunAt,
+    });
+  };
+
   const enqueueJob = async (input: {
     botId: string;
     routineName: string;
@@ -626,6 +644,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     const executeAtUnixMs = normalizeExecuteAtUnixMs(input.executeAtUnixMs, now);
     const job: JobState = {
       id: crypto.randomUUID(),
+      serialNumber: stateStore.reserveJobSerialNumber(),
       botId: input.botId,
       routineName: input.routineName,
       status: "pending",
@@ -647,17 +666,75 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       });
       throw error;
     }
-    const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
-    const queuePosition = pendingJobs.findIndex((entry) => entry.id === job.id) + 1;
-    eventBus.emit("queue:enqueue", {
-      jobId: job.id,
-      botId: job.botId,
-      routineName: job.routineName,
-      queueSize: pendingJobs.length,
-      queuePosition: queuePosition > 0 ? queuePosition : pendingJobs.length,
-      nextRunAt: job.nextRunAt,
-    });
+    emitQueuedJob(job);
     return job;
+  };
+
+  const manageJob = async (input: {
+    jobId: string;
+    operation: "pause" | "cancel" | "resume";
+  }): Promise<JobState> => {
+    const job = stateStore.getJob(input.jobId);
+    if (!job) {
+      throw new Error(`Job "${input.jobId}" was not found`);
+    }
+
+    if (input.operation === "pause") {
+      if (job.status !== "pending") {
+        throw new Error(`Job "${input.jobId}" cannot be paused from status "${job.status}"`);
+      }
+      stateStore.updateJobStatus(job.id, "paused", {
+        nextRunAt: job.nextRunAt,
+      });
+      eventBus.emit("bot:pause", {
+        botId: job.botId,
+        reason: "queue:pause",
+      });
+    } else if (input.operation === "resume") {
+      if (job.status !== "paused") {
+        throw new Error(`Job "${input.jobId}" cannot be resumed from status "${job.status}"`);
+      }
+      const nextRunAt = normalizeExecuteAtUnixMs(job.nextRunAt, Date.now());
+      stateStore.updateJobStatus(job.id, "pending", {
+        nextRunAt,
+        lastError: undefined,
+      });
+      const resumedJob = stateStore.getJob(job.id);
+      if (!resumedJob) {
+        throw new Error(`Job "${job.id}" disappeared after resume`);
+      }
+      try {
+        await scheduler.enqueue(resumedJob);
+      } catch (error) {
+        stateStore.updateJobStatus(job.id, "failed", {
+          lastError: error instanceof Error ? error.message : String(error),
+          lastRunAt: Date.now(),
+          nextRunAt: undefined,
+        });
+        throw error;
+      }
+      emitQueuedJob(resumedJob);
+    } else {
+      if (job.status === "running") {
+        throw new Error(`Job "${input.jobId}" is already running and cannot be cancelled safely`);
+      }
+      if (job.status === "stopped" || job.status === "failed") {
+        throw new Error(`Job "${input.jobId}" cannot be cancelled from status "${job.status}"`);
+      }
+      stateStore.updateJobStatus(job.id, "stopped", {
+        nextRunAt: undefined,
+      });
+      eventBus.emit("bot:stop", {
+        botId: job.botId,
+        reason: "queue:cancel",
+      });
+    }
+
+    const updatedJob = stateStore.getJob(job.id);
+    if (!updatedJob) {
+      throw new Error(`Job "${job.id}" disappeared after ${input.operation}`);
+    }
+    return updatedJob;
   };
 
   scheduler = new Scheduler(
@@ -679,6 +756,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
           ultraSigner,
           stateStore,
           enqueueJob,
+          manageJob,
         }),
       resolveRoutine: (routineName) => loadRoutinePlanner(routineName),
     },
@@ -748,14 +826,15 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       eventBus,
       stateStore,
       enqueueJob,
+      manageJob,
       llm,
       logger,
       capabilitySnapshot,
       workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings(settings),
     }),
     session,
-    stop: () => {
-      scheduler.stop();
+    stop: async () => {
+      await scheduler.stop();
       const pendingJobsAtStop = stateStore.listJobs({ status: "pending" }).length;
       const closableStateStore = stateStore as StateStore & { close?: () => void };
       if (sessionLogStore) {
@@ -793,6 +872,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       setLogIoWriteObserver(null);
     },
     enqueueJob,
+    manageJob,
     describe: () => ({
       profile: settings.profile,
       registeredActions: registry.list().map((action) => action.name),

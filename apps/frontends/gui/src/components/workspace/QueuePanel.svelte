@@ -28,7 +28,7 @@
           <td colspan="5">No jobs queued.</td>
         </tr>
       {:else}
-        {#each jobs as job (job.id)}
+        {#each jobs as job (job.serialNumber ?? job.id)}
           <tr>
             <td>{job.status}</td>
             <td>{job.botId}</td>

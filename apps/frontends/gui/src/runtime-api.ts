@@ -1,6 +1,7 @@
 import type {
   GuiActivityResponse,
   GuiBootstrapResponse,
+  GuiScheduleResponse,
   GuiConversationMessagesResponse,
   GuiConversationsResponse,
   GuiCreateInstanceRequest,
@@ -68,6 +69,7 @@ const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promi
 export const runtimeApi = {
   bootstrap: (): Promise<GuiBootstrapResponse> => fetchJson<GuiBootstrapResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/bootstrap`)),
   queue: (): Promise<GuiQueueResponse> => fetchJson<GuiQueueResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/queue`)),
+  schedule: (): Promise<GuiScheduleResponse> => fetchJson<GuiScheduleResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/schedule`)),
   activity: (limit = 100): Promise<GuiActivityResponse> =>
     fetchJson<GuiActivityResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/activity?limit=${Math.max(1, Math.trunc(limit))}`)),
   conversations: (limit = 100): Promise<GuiConversationsResponse> =>

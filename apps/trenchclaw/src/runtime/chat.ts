@@ -28,7 +28,7 @@ import {
 import { renderRuntimeWalletPromptContext } from "./wallet-model-context";
 import type { RuntimeCapabilitySnapshot } from "./capabilities";
 import type { RuntimeLogger } from "./logging";
-import type { RuntimeJobEnqueueRequest } from "../ai/runtime/types/context";
+import type { RuntimeJobControlRequest, RuntimeJobEnqueueRequest } from "../ai/runtime/types/context";
 
 export interface RuntimeChatService {
   listToolNames: () => string[];
@@ -45,6 +45,7 @@ interface RuntimeChatServiceDeps {
   eventBus: RuntimeEventBus;
   stateStore: StateStore;
   enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<import("../ai").JobState>;
+  manageJob?: (input: RuntimeJobControlRequest) => Promise<import("../ai").JobState>;
   llm: LlmClient | null;
   logger?: RuntimeLogger;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
@@ -234,6 +235,7 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
             eventBus: deps.eventBus,
             stateStore: deps.stateStore,
             enqueueJob: deps.enqueueJob,
+            manageJob: deps.manageJob,
           }),
           {
             actionName: action.name,

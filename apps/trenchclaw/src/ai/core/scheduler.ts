@@ -32,6 +32,11 @@ interface QueueJobPayload {
   enqueuedAt: number;
 }
 
+interface QueueDequeueSnapshot {
+  queueSize: number;
+  queuePosition: number;
+}
+
 const DEFAULT_QUEUE_NAME = "trenchclaw-runtime-jobs";
 const BUNQUEUE_DATA_PATH_ENV = "DATA_PATH";
 
@@ -68,13 +73,12 @@ export class Scheduler {
     );
   }
 
-  stop(): void {
+  async stop(): Promise<void> {
     if (!this.started) {
       return;
     }
     this.started = false;
-    closeBunqueueResource(this.worker);
-    closeBunqueueResource(this.queue);
+    await Promise.all([closeBunqueueResource(this.worker), closeBunqueueResource(this.queue)]);
     this.worker = null;
     this.queue = null;
   }
@@ -111,45 +115,42 @@ export class Scheduler {
   }
 
   private async processQueuedJob(payload: QueueJobPayload): Promise<DispatchResult | { skipped: true; reason: string }> {
-    const job = this.deps.stateStore.getJob(payload.jobId);
+    const pendingSnapshot = this.deps.stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
+    const queuePosition = pendingSnapshot.findIndex((entry) => entry.id === payload.jobId) + 1;
+    const job = this.deps.stateStore.tryStartJob({
+      id: payload.jobId,
+      expectedCycle: payload.expectedCycle,
+      leaseOwner: "local-runtime",
+      leaseExpiresAt: Date.now() + 5 * 60 * 1000,
+    });
     if (!job) {
+      const latest = this.deps.stateStore.getJob(payload.jobId);
+      const expectedCycle = latest ? latest.cyclesCompleted + 1 : payload.expectedCycle;
       return {
         skipped: true,
-        reason: `job "${payload.jobId}" no longer exists`,
+        reason: latest
+          ? `job "${payload.jobId}" could not be claimed (status=${latest.status}, expectedCycle=${expectedCycle}, received=${payload.expectedCycle})`
+          : `job "${payload.jobId}" no longer exists`,
       };
     }
 
-    if (job.status !== "pending") {
-      return {
-        skipped: true,
-        reason: `job "${payload.jobId}" is ${job.status}`,
-      };
-    }
-
-    const expectedCycle = job.cyclesCompleted + 1;
-    if (payload.expectedCycle !== expectedCycle) {
-      return {
-        skipped: true,
-        reason: `job "${payload.jobId}" expected cycle ${expectedCycle}, received ${payload.expectedCycle}`,
-      };
-    }
-
-    return this.runJob(job, payload);
+    return this.runJob(job, payload, {
+      queueSize: pendingSnapshot.length,
+      queuePosition: queuePosition > 0 ? queuePosition : 1,
+    });
   }
 
-  private async runJob(job: JobState, payload: QueueJobPayload): Promise<DispatchResult> {
+  private async runJob(job: JobState, payload: QueueJobPayload, dequeueSnapshot: QueueDequeueSnapshot): Promise<DispatchResult> {
     const runStartedAt = Date.now();
-    const pendingBeforeDequeue = this.deps.stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
-    const queuePosition = pendingBeforeDequeue.findIndex((entry) => entry.id === job.id) + 1;
     this.deps.eventBus.emit("queue:dequeue", {
       jobId: job.id,
+      serialNumber: job.serialNumber,
       botId: job.botId,
       routineName: job.routineName,
-      queueSize: pendingBeforeDequeue.length,
-      queuePosition: queuePosition > 0 ? queuePosition : 1,
+      queueSize: dequeueSnapshot.queueSize,
+      queuePosition: dequeueSnapshot.queuePosition,
       waitMs: Math.max(0, runStartedAt - payload.enqueuedAt),
     });
-    this.deps.stateStore.updateJobStatus(job.id, "running");
     this.deps.eventBus.emit("bot:start", {
       botId: job.botId,
       routineName: job.routineName,
@@ -192,6 +193,7 @@ export class Scheduler {
 
       this.deps.eventBus.emit("queue:complete", {
         jobId: job.id,
+        serialNumber: job.serialNumber,
         botId: job.botId,
         routineName: job.routineName,
         status: finalStatus,
@@ -216,6 +218,7 @@ export class Scheduler {
       });
       this.deps.eventBus.emit("queue:complete", {
         jobId: job.id,
+        serialNumber: job.serialNumber,
         botId: job.botId,
         routineName: job.routineName,
         status: "failed",
@@ -240,15 +243,15 @@ function configureEmbeddedBunqueueDataPath(dataPath: string | undefined): void {
 function resolveQueueDataPath(dataPath: string | undefined): string {
   const normalized = dataPath?.trim();
   if (!normalized) {
-    return path.resolve(process.cwd(), "src/ai/brain/db/queue/bunqueue.sqlite");
+    return path.resolve(process.cwd(), "data/queue/bunqueue.sqlite");
   }
   return path.isAbsolute(normalized) ? normalized : path.resolve(process.cwd(), normalized);
 }
 
-function closeBunqueueResource(resource: unknown): void {
+async function closeBunqueueResource(resource: unknown): Promise<void> {
   const closable = resource as { close?: () => Promise<unknown> | unknown } | null;
   if (closable?.close) {
-    void closable.close();
+    await closable.close();
   }
 }
 

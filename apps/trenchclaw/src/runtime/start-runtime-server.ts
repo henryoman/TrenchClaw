@@ -5,7 +5,7 @@ export interface RuntimeServerInfo {
   host: string;
   port: number;
   url: string;
-  stop: () => void;
+  stop: () => Promise<void>;
 }
 
 interface RuntimeBootSummary {
@@ -100,7 +100,7 @@ export const startRuntimeServer = (runtime: RuntimeBootstrap): RuntimeServerInfo
     host: hostname,
     port: activePort,
     url: `http://${hostname}:${activePort}`,
-    stop: () => {
+    stop: async () => {
       server.stop(true);
     },
   };
@@ -108,9 +108,10 @@ export const startRuntimeServer = (runtime: RuntimeBootstrap): RuntimeServerInfo
 
 export const installRuntimeShutdownHooks = (runtime: RuntimeBootstrap): void => {
   const shutdown = (signal: string) => {
-    runtime.stop();
-    console.log(`[runtime] stopped after ${signal}`);
-    process.exit(0);
+    void runtime.stop().finally(() => {
+      console.log(`[runtime] stopped after ${signal}`);
+      process.exit(0);
+    });
   };
 
   process.on("SIGINT", () => shutdown("SIGINT"));

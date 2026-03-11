@@ -88,6 +88,7 @@ const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
     rowSchema: sqliteTables.jobs,
     columns: [
       { name: "id", type: "TEXT", primaryKey: true },
+      { name: "serial_number", type: "INTEGER", check: "serial_number IS NULL OR serial_number > 0" },
       { name: "bot_id", type: "TEXT", notNull: true },
       { name: "routine_name", type: "TEXT", notNull: true },
       {
@@ -110,6 +111,7 @@ const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
       { name: "updated_at", type: "INTEGER", notNull: true },
     ],
     indexes: [
+      { name: "idx_jobs_serial_number", columns: ["serial_number"], unique: true },
       { name: "idx_jobs_status_next_run_at", columns: ["status", "next_run_at"] },
       { name: "idx_jobs_bot_id_status", columns: ["bot_id", "status"] },
       { name: "idx_jobs_lease_expires_at", columns: ["status", "lease_expires_at"] },

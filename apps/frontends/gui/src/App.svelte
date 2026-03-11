@@ -10,6 +10,7 @@
     LoadingSplash,
     LoginSplash,
     QueuePanel,
+    SchedulePanel,
     SecretsPanel,
     SummaryPanel,
     WalletsPanel,
@@ -159,6 +160,7 @@
       />
     {/if}
     <section class="right-column">
+      <SchedulePanel jobs={runtime.state.scheduleJobs} />
       <QueuePanel jobs={runtime.state.queueJobs} />
       <SummaryPanel entries={runtime.state.activityEntries} {formatTime} />
     </section>
@@ -183,7 +185,7 @@
   .right-column {
     min-height: 0;
     display: grid;
-    grid-template-rows: var(--tc-right-column-rows);
+    grid-template-rows: 1.1fr 1fr 1fr;
     gap: var(--tc-space-2);
   }
 

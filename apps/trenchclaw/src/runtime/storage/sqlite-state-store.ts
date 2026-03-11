@@ -99,6 +99,7 @@ export class SqliteStateStore implements StateStore {
   private readonly db: Database;
   private readonly config: SqliteStateStoreConfig;
   private readonly schemaSyncReport: SqliteSchemaSyncReport;
+  private nextJobSerialNumber: number;
 
   constructor(config: SqliteStateStoreConfig) {
     this.config = sqliteStateStoreConfigSchema.parse(config);
@@ -109,6 +110,7 @@ export class SqliteStateStore implements StateStore {
 
     this.configureConnection();
     this.schemaSyncReport = syncSqliteSchema(this.db);
+    this.nextJobSerialNumber = this.readNextJobSerialNumber();
   }
 
   recoverInterruptedJobs(now = Date.now()): number {
@@ -130,13 +132,17 @@ export class SqliteStateStore implements StateStore {
   }
 
   saveJob(job: JobState): void {
-    const parsedJob = jobStateSchema.parse(job);
+    const parsedJob = jobStateSchema.parse({
+      ...job,
+      serialNumber: job.serialNumber ?? this.reserveJobSerialNumber(),
+    });
     const statement = this.db.query(`
       INSERT INTO jobs (
-        id, bot_id, routine_name, status, config_json, next_run_at, last_run_at, cycles_completed,
+        id, serial_number, bot_id, routine_name, status, config_json, next_run_at, last_run_at, cycles_completed,
         total_cycles, last_result_json, attempt_count, lease_owner, lease_expires_at, last_error, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(id) DO UPDATE SET
+        serial_number = excluded.serial_number,
         bot_id = excluded.bot_id,
         routine_name = excluded.routine_name,
         status = excluded.status,
@@ -155,6 +161,7 @@ export class SqliteStateStore implements StateStore {
 
     statement.run(
       parsedJob.id,
+      parsedJob.serialNumber ?? null,
       parsedJob.botId,
       parsedJob.routineName,
       parsedJob.status,
@@ -191,6 +198,25 @@ export class SqliteStateStore implements StateStore {
     return this.mapJobRow(row);
   }
 
+  getJobBySerialNumber(serialNumber: number): JobState | null {
+    const row = this.db
+      .query(
+        `
+        SELECT *
+        FROM jobs
+        WHERE serial_number = ?
+        LIMIT 1
+      `,
+      )
+      .get(Math.max(1, Math.trunc(serialNumber))) as Record<string, unknown> | null;
+
+    if (!row) {
+      return null;
+    }
+
+    return this.mapJobRow(row);
+  }
+
   listJobs(filter?: { status?: JobStatus; botId?: string }): JobState[] {
     const clauses: string[] = [];
     const values: string[] = [];
@@ -219,6 +245,12 @@ export class SqliteStateStore implements StateStore {
     return rows.map((row) => this.mapJobRow(row));
   }
 
+  reserveJobSerialNumber(): number {
+    const serialNumber = this.nextJobSerialNumber;
+    this.nextJobSerialNumber += 1;
+    return serialNumber;
+  }
+
   updateJobStatus(id: string, status: JobStatus, meta: Partial<JobState> = {}): void {
     const current = this.getJob(id);
     if (!current) {
@@ -238,6 +270,44 @@ export class SqliteStateStore implements StateStore {
       updatedAt: Date.now(),
     };
     this.saveJob(next);
+  }
+
+  tryStartJob(input: {
+    id: string;
+    expectedCycle: number;
+    leaseOwner?: string;
+    leaseExpiresAt?: number;
+  }): JobState | null {
+    const now = Date.now();
+    const info = this.db
+      .query(
+        `
+        UPDATE jobs
+        SET
+          status = 'running',
+          attempt_count = COALESCE(attempt_count, 0) + 1,
+          lease_owner = ?,
+          lease_expires_at = ?,
+          last_error = NULL,
+          updated_at = ?
+        WHERE id = ?
+          AND status = 'pending'
+          AND cycles_completed = ?
+      `,
+      )
+      .run(
+        input.leaseOwner ?? "local-runtime",
+        input.leaseExpiresAt ?? null,
+        now,
+        input.id,
+        Math.max(0, Math.trunc(input.expectedCycle - 1)),
+      );
+
+    if (Number(info.changes ?? 0) === 0) {
+      return null;
+    }
+
+    return this.getJob(input.id);
   }
 
   searchRuntimeText(input: {
@@ -1193,6 +1263,7 @@ export class SqliteStateStore implements StateStore {
 
     return jobStateSchema.parse({
       id: parsedRow.id,
+      serialNumber: parsedRow.serial_number ?? undefined,
       botId: parsedRow.bot_id,
       routineName: parsedRow.routine_name,
       status: parsedRow.status,
@@ -1216,6 +1287,18 @@ export class SqliteStateStore implements StateStore {
       createdAt: parsedRow.created_at,
       updatedAt: parsedRow.updated_at,
     });
+  }
+
+  private readNextJobSerialNumber(): number {
+    const row = this.db
+      .query(
+        `
+        SELECT COALESCE(MAX(serial_number), 0) AS max_serial_number
+        FROM jobs
+      `,
+      )
+      .get() as { max_serial_number?: number | null } | null;
+    return Math.max(1, Math.trunc(Number(row?.max_serial_number ?? 0) + 1));
   }
 
   private configureConnection(): void {

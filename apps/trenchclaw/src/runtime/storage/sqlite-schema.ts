@@ -14,6 +14,7 @@ export const sqliteSchemaMigrationRowSchema = z.object({
 
 export const sqliteJobRowSchema = z.object({
   id: nonEmpty,
+  serial_number: nonNegativeInt.nullable(),
   bot_id: nonEmpty,
   routine_name: nonEmpty,
   status: sqliteJobStatusSchema,

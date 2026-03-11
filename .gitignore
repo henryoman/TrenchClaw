@@ -28,7 +28,13 @@ lib/client/generated/
 
 # Runtime data (Bun SQLite)
 data/
-apps/frontends/cli/src/ai/brain/db/
+apps/trenchclaw/src/ai/brain/db/
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
 
 repomix-output.xml
 

@@ -108,6 +108,7 @@ export type GuiQueueJobStatus = "pending" | "running" | "paused" | "stopped" | "
 
 export interface GuiQueueJobView {
   id: string;
+  serialNumber: number | null;
   botId: string;
   routineName: string;
   status: GuiQueueJobStatus;
@@ -115,6 +116,21 @@ export interface GuiQueueJobView {
   updatedAt: number;
   nextRunAt: number | null;
   cyclesCompleted: number;
+}
+
+export interface GuiScheduleJobView {
+  id: string;
+  serialNumber: number | null;
+  botId: string;
+  routineName: string;
+  status: GuiQueueJobStatus;
+  createdAt: number;
+  updatedAt: number;
+  nextRunAt: number | null;
+  intervalMs: number | null;
+  cyclesCompleted: number;
+  totalCycles: number | null;
+  recurring: boolean;
 }
 
 export interface GuiBootstrapResponse {
@@ -135,6 +151,10 @@ export interface GuiBootstrapResponse {
 
 export interface GuiQueueResponse {
   jobs: GuiQueueJobView[];
+}
+
+export interface GuiScheduleResponse {
+  jobs: GuiScheduleJobView[];
 }
 
 export interface GuiActivityEntry {

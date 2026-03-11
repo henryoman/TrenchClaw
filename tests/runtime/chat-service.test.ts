@@ -144,9 +144,13 @@ describe("RuntimeChatService", () => {
       actionName: string;
       input: unknown;
       hasEnqueueJob: boolean;
+      hasManageJob: boolean;
     }> = [];
     let capturedSystemPrompt = "";
     const enqueueJob = async () => {
+      throw new Error("not used in this test");
+    };
+    const manageJob = async () => {
       throw new Error("not used in this test");
     };
     const service = createRuntimeChatService(
@@ -158,6 +162,7 @@ describe("RuntimeChatService", () => {
               actionName: step.actionName,
               input: step.input,
               hasEnqueueJob: typeof _ctx.enqueueJob === "function",
+              hasManageJob: typeof _ctx.manageJob === "function",
             });
             return {
               results: [makeActionResult({ ok: true, data: { echoed: step.input } })],
@@ -169,6 +174,7 @@ describe("RuntimeChatService", () => {
         eventBus: new InMemoryRuntimeEventBus(),
         stateStore: new InMemoryStateStore(),
         enqueueJob,
+        manageJob,
         llm: {
           provider: "test",
           model: "test-model",
@@ -210,6 +216,7 @@ describe("RuntimeChatService", () => {
       actionName: "echo",
       input: { value: 42 },
       hasEnqueueJob: true,
+      hasManageJob: true,
     });
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });

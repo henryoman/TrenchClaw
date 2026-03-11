@@ -48,6 +48,7 @@ export type RuntimeEventMap = {
   };
   "queue:enqueue": {
     jobId: string;
+    serialNumber?: number;
     botId: string;
     routineName: string;
     queueSize: number;
@@ -56,6 +57,7 @@ export type RuntimeEventMap = {
   };
   "queue:dequeue": {
     jobId: string;
+    serialNumber?: number;
     botId: string;
     routineName: string;
     queueSize: number;
@@ -64,6 +66,7 @@ export type RuntimeEventMap = {
   };
   "queue:complete": {
     jobId: string;
+    serialNumber?: number;
     botId: string;
     routineName: string;
     status: "pending" | "failed" | "stopped";

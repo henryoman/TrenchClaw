@@ -4,6 +4,7 @@ export type JobStatus = "pending" | "running" | "paused" | "stopped" | "failed";
 
 export interface JobState {
   id: string;
+  serialNumber?: number;
   botId: string;
   routineName: string;
   status: JobStatus;
@@ -105,8 +106,16 @@ export interface RuntimeKnowledgeSurface {
 export interface StateStore {
   saveJob(job: JobState): void;
   getJob(id: string): JobState | null;
+  getJobBySerialNumber(serialNumber: number): JobState | null;
   listJobs(filter?: { status?: JobStatus; botId?: string }): JobState[];
   updateJobStatus(id: string, status: JobStatus, meta?: Partial<JobState>): void;
+  reserveJobSerialNumber(): number;
+  tryStartJob(input: {
+    id: string;
+    expectedCycle: number;
+    leaseOwner?: string;
+    leaseExpiresAt?: number;
+  }): JobState | null;
   saveReceipt(receipt: ActionResult): void;
   getReceipt(idempotencyKey: string): ActionResult | null;
   getRecentReceipts(limit: number): ActionResult[];

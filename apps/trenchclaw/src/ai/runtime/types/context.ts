@@ -12,6 +12,13 @@ export interface RuntimeJobEnqueueRequest {
   executeAtUnixMs?: number;
 }
 
+export type RuntimeJobControlOperation = "pause" | "cancel" | "resume";
+
+export interface RuntimeJobControlRequest {
+  jobId: string;
+  operation: RuntimeJobControlOperation;
+}
+
 export interface JobMeta {
   jobId?: string;
   botId?: string;
@@ -35,6 +42,7 @@ export interface ActionContext {
   eventBus?: RuntimeEventBus;
   stateStore?: StateStore;
   enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<JobState>;
+  manageJob?: (input: RuntimeJobControlRequest) => Promise<JobState>;
 }
 
 export interface CreateActionContextConfig extends ActionContext {}

@@ -31,14 +31,15 @@ const buildRuntime = (input?: {
     },
     eventBus: new InMemoryRuntimeEventBus(),
     stateStore,
-    scheduler: { start: () => {}, stop: () => {} } as RuntimeBootstrap["scheduler"],
+    scheduler: { start: () => {}, stop: async () => {} } as RuntimeBootstrap["scheduler"],
     dispatcher: {} as RuntimeBootstrap["dispatcher"],
     registry,
     session: null,
-    stop: () => {},
+    stop: async () => {},
     enqueueJob: async () =>
       ({
         id: "job-1",
+        serialNumber: 1,
         botId: "bot-1",
         routineName: "noop",
         status: "pending",
@@ -47,6 +48,18 @@ const buildRuntime = (input?: {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }) as Awaited<ReturnType<RuntimeBootstrap["enqueueJob"]>>,
+    manageJob: async () =>
+      ({
+        id: "job-1",
+        serialNumber: 1,
+        botId: "bot-1",
+        routineName: "noop",
+        status: "paused",
+        config: {},
+        cyclesCompleted: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      }) as Awaited<ReturnType<RuntimeBootstrap["manageJob"]>>,
     describe: () => ({
       profile: "dangerous",
       registeredActions: [],
@@ -211,6 +224,7 @@ describe("Runtime v1 API", () => {
       if (
         payloadText.includes("event: bootstrap")
         && payloadText.includes("event: queue")
+        && payloadText.includes("event: schedule")
         && payloadText.includes("event: activity")
       ) {
         break;
@@ -219,6 +233,7 @@ describe("Runtime v1 API", () => {
 
     expect(payloadText).toContain("event: bootstrap");
     expect(payloadText).toContain("event: queue");
+    expect(payloadText).toContain("event: schedule");
     expect(payloadText).toContain("event: activity");
 
     abortController.abort();
@@ -241,6 +256,39 @@ describe("Runtime v1 API", () => {
       }),
     );
     expect(response.status).toBe(200);
+  });
+
+  test("GET /api/gui/schedule returns upcoming recurring jobs", async () => {
+    const runtime = buildRuntime();
+    const now = Date.now();
+    runtime.stateStore.saveJob({
+      id: "job-schedule-1",
+      serialNumber: 7,
+      botId: "bot-schedule-1",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {
+        intervalMs: 60_000,
+      },
+      cyclesCompleted: 0,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: now + 60_000,
+    });
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+
+    const response = await handler(new Request("http://localhost/api/gui/schedule", { method: "GET" }));
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      jobs: Array<{ id: string; serialNumber: number | null; recurring: boolean; intervalMs: number | null }>;
+    };
+    expect(payload.jobs).toHaveLength(1);
+    expect(payload.jobs[0]?.id).toBe("job-schedule-1");
+    expect(payload.jobs[0]?.serialNumber).toBe(7);
+    expect(payload.jobs[0]?.recurring).toBe(true);
+    expect(payload.jobs[0]?.intervalMs).toBe(60_000);
   });
 
   test("GET /api/gui/llm/check reports active key metadata", async () => {

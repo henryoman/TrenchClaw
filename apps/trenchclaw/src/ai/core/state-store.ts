@@ -19,13 +19,24 @@ export class InMemoryStateStore implements IStateStore {
   private readonly chatMessages = new Map<string, ChatMessageState[]>();
   private readonly instanceProfiles = new Map<string, InstanceProfileState>();
   private readonly instanceFacts = new Map<string, InstanceFactState>();
+  private nextJobSerialNumber = 1;
 
   saveJob(job: JobState): void {
-    this.jobs.set(job.id, { ...job });
+    const serialNumber = job.serialNumber ?? this.reserveJobSerialNumber();
+    this.jobs.set(job.id, { ...job, serialNumber });
   }
 
   getJob(id: string): JobState | null {
     return this.jobs.get(id) ?? null;
+  }
+
+  getJobBySerialNumber(serialNumber: number): JobState | null {
+    for (const job of this.jobs.values()) {
+      if (job.serialNumber === serialNumber) {
+        return { ...job };
+      }
+    }
+    return null;
   }
 
   listJobs(filter?: { status?: JobStatus; botId?: string }): JobState[] {
@@ -39,6 +50,12 @@ export class InMemoryStateStore implements IStateStore {
     return values;
   }
 
+  reserveJobSerialNumber(): number {
+    const serialNumber = this.nextJobSerialNumber;
+    this.nextJobSerialNumber += 1;
+    return serialNumber;
+  }
+
   updateJobStatus(id: string, status: JobStatus, meta: Partial<JobState> = {}): void {
     const current = this.jobs.get(id);
     if (!current) {
@@ -50,6 +67,36 @@ export class InMemoryStateStore implements IStateStore {
       status,
       updatedAt: Date.now(),
     });
+  }
+
+  tryStartJob(input: {
+    id: string;
+    expectedCycle: number;
+    leaseOwner?: string;
+    leaseExpiresAt?: number;
+  }): JobState | null {
+    const current = this.jobs.get(input.id);
+    if (!current) {
+      return null;
+    }
+    if (current.status !== "pending") {
+      return null;
+    }
+    if (current.cyclesCompleted + 1 !== input.expectedCycle) {
+      return null;
+    }
+
+    const next: JobState = {
+      ...current,
+      status: "running",
+      attemptCount: Math.max(0, Math.trunc((current.attemptCount ?? 0) + 1)),
+      leaseOwner: input.leaseOwner ?? "local-runtime",
+      leaseExpiresAt: input.leaseExpiresAt,
+      lastError: undefined,
+      updatedAt: Date.now(),
+    };
+    this.jobs.set(input.id, next);
+    return { ...next };
   }
 
   saveReceipt(receipt: ActionResult): void {

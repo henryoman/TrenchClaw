@@ -14,6 +14,7 @@ import {
 import { getSwapHistoryAction } from "../../solana/actions/data-fetch/api/swapHistory";
 import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/mutateInstanceMemory";
 import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
+import { manageRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/manageRuntimeJob";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
 import { queryRuntimeStoreAction } from "../../solana/actions/data-fetch/runtime/queryRuntimeStore";
@@ -136,6 +137,20 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
           },
         ],
       },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: manageRuntimeJobAction,
+    description: "Pause or cancel a queued runtime job by job id.",
+    purpose: "Let the model safely stop scheduled or waiting jobs before they execute.",
+    tags: ["runtime", "queue", "scheduling", "write"],
+    exampleInput: {
+      jobSerial: 42,
+      operation: "resume",
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,

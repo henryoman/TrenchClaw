@@ -13,7 +13,7 @@ import {
 import { streamChat, getConversationMessages, getConversations } from "./domains/chat";
 import { createInstance, listInstances, signInInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
-import { getActivity, getBootstrap, getQueue, streamRuntimeEvents } from "./domains/runtime-panels";
+import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
 import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
@@ -244,6 +244,10 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
     if (request.method === "GET" && url.pathname === "/api/gui/queue") {
       return Response.json(getQueue(context), { headers: CORS_HEADERS });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/schedule") {
+      return Response.json(getSchedule(context), { headers: CORS_HEADERS });
     }
 
     if (request.method === "GET" && url.pathname === "/api/gui/activity") {

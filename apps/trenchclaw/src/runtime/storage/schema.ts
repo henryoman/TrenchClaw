@@ -34,6 +34,7 @@ export const actionResultSchema: z.ZodType<ActionResult> = z.object({
 
 export const jobStateSchema: z.ZodType<JobState> = z.object({
   id: nonEmpty,
+  serialNumber: z.number().int().positive().optional(),
   botId: nonEmpty,
   routineName: nonEmpty,
   status: runtimeJobStatusSchema,

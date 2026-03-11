@@ -36,7 +36,7 @@ export const executeRoutine = async (rawInput: ExecuteRoutineInput) => {
       lastResult: finalJob.lastResult ?? null,
     };
   } finally {
-    runtime.stop();
+    await runtime.stop();
   }
 };
 
