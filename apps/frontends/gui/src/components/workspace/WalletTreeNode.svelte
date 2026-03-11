@@ -39,6 +39,14 @@
     expanded = !expanded;
   };
 
+  const onRowKeydown = (event: KeyboardEvent) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+    event.preventDefault();
+    toggleExpanded();
+  };
+
   const copyAddress = async () => {
     if (!node.address) {
       setCopyFeedback("No address");
@@ -59,12 +67,14 @@
 
 <li class="wallet-node">
   {#if isFile}
-    <button
-      type="button"
+    <div
       class:file-row-expanded={expanded}
       class="wallet-row wallet-row-button"
       style={`--tc-wallet-indent: ${indentPx}px`}
       on:click={toggleExpanded}
+      on:keydown={onRowKeydown}
+      role="button"
+      tabindex="0"
       aria-expanded={expanded}
     >
       <span class="icon" aria-hidden="true">🔑</span>
@@ -96,7 +106,7 @@
           Backup
         </a>
       </span>
-    </button>
+    </div>
     {#if expanded}
       <div class="wallet-details" style={`--tc-wallet-indent: ${indentPx}px`}>
         {#if node.address}

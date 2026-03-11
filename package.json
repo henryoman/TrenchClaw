@@ -62,6 +62,7 @@
     "deps:bootstrap": "sh ./apps/runner/scripts/bootstrap-deps.sh",
     "knowledge:skills:add": "bun run scripts/install-knowledge-skills.ts",
     "deps:root-install": "bun install && bun run deps:dupes",
+    "update-all": "bun run scripts/update-all.ts",
     "systemd:install": "bun run --cwd apps/trenchclaw systemd:install",
     "ci": "bun run lint && bun run typecheck && bun run test && bun run build",
     "check:all": "bun run lint && bun run typecheck && bun run test && bun run build:all && bun run app:build && bun run deps:dupes",

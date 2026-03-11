@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-11T23:28:17.858Z
+Generated at: 2026-03-11T23:45:49.074Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -73,6 +73,7 @@ apps/trenchclaw/
 |   |   |   |   `-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db-wal
 |   |   |   |-- instance-blockchain-settings/
 |   |   |   |   |-- alerts.yaml
+|   |   |   |   |-- current-swap-config.json
 |   |   |   |   |-- settings.yaml
 |   |   |   |   `-- swaps.yaml
 |   |   |   |-- knowledge/
@@ -181,16 +182,14 @@ apps/trenchclaw/
 |   |   |   |   |-- context/
 |   |   |   |   |   `-- workspace-and-schema.md
 |   |   |   |   |-- instance/
-|   |   |   |   |   |-- i-01/
-|   |   |   |   |   |   |-- keypairs/
-|   |   |   |   |   |   |   `-- practice-wallets/
-|   |   |   |   |   |   |       |-- practice001-0001.json
-|   |   |   |   |   |   |       |-- practice001-0001.label.json
-|   |   |   |   |   |   |       |-- practice002-0002.json
-|   |   |   |   |   |   |       `-- practice002-0002.label.json
-|   |   |   |   |   |   `-- wallet-library.jsonl
-|   |   |   |   |   `-- i-test-wallet-groups/
-|   |   |   |   |       `-- keypairs/
+|   |   |   |   |   `-- i-01/
+|   |   |   |   |       |-- keypairs/
+|   |   |   |   |       |   `-- practice-wallets/
+|   |   |   |   |       |       |-- practice001-0001.json
+|   |   |   |   |       |       |-- practice001-0001.label.json
+|   |   |   |   |       |       |-- practice002-0002.json
+|   |   |   |   |       |       `-- practice002-0002.label.json
+|   |   |   |   |       `-- wallet-library.jsonl
 |   |   |   |   |-- no-read/
 |   |   |   |   |   |-- .gitkeep
 |   |   |   |   |   |-- ai.json
@@ -363,8 +362,7 @@ apps/trenchclaw/
 |   |   |   |   |   |-- createWalletGroupDirectory.ts
 |   |   |   |   |   |-- createWallets.ts
 |   |   |   |   |   |-- index.ts
-|   |   |   |   |   |-- renameWallets.ts
-|   |   |   |   |   `-- wallet-storage.ts
+|   |   |   |   |   `-- renameWallets.ts
 |   |   |   |   |-- read-only/
 |   |   |   |   |   |-- checkBalance.ts
 |   |   |   |   |   |-- checkSolBalance.ts
