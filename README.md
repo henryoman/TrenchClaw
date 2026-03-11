@@ -218,16 +218,16 @@ In this repo's environment (AI SDK orchestration + schema-first tools + Solana e
 
 Systems languages still fit extremely well behind strict boundaries (signing, parsing, deterministic execution, high-throughput services). They are usually not the fastest path for the orchestrator that must remain tightly coupled to AI SDK tool contracts and streaming UI behavior.
 
-### The correct synthesis
+### The practical synthesis
 
-The strongest architecture is usually:
+The strongest default architecture for this stack is:
 
-> **TypeScript orchestrator (agent brain) + systems-language executors (muscle)**
+> **TypeScript orchestrator (agent brain) + optional systems-language executors (muscle, only when justified)**
 
 - **TS owns:** tool schemas and validation, orchestration loop and routing, streaming events and UI integration, persistence format/versioning of traces, provider adapters (AI SDK).
-- **Rust/Zig/Go own:** cryptography-heavy or latency-critical primitives (signing, parsing), sandboxed tool executables, deterministic compute kernels, RPC services behind strict schemas.
+- **Rust/Zig/Go (optional) own:** cryptography-heavy or latency-critical primitives (signing, parsing), sandboxed tool executables, deterministic compute kernels, RPC services behind strict schemas.
 
-This preserves agentic flow (fast iteration, schema-first tooling, Vercel AI SDK integration) while still using systems languages where they actually dominate. Writing the agent orchestrator in a systems language usually means recreating a TS-shaped ecosystem from scratch — more engineering spent on plumbing, less on agent behavior and safety.
+This preserves agentic flow (fast iteration, schema-first tooling, Vercel AI SDK integration) while using systems languages only where they actually dominate. If no component is bottlenecked by throughput, latency, or native constraints, an all-TypeScript implementation is usually the simpler and better default.
 
 ### Why Solana Kit is an advantage in this architecture
 
