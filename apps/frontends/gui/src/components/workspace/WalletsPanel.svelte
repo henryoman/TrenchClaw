@@ -16,6 +16,9 @@
     <div>
       <h2>Wallets</h2>
       <p class="path">{rootRelativePath || "src/ai/brain/protected/keypairs"}</p>
+      {#if rootExists && walletFileCount > 0}
+        <p class="hint">Click a wallet to view its address or copy it.</p>
+      {/if}
     </div>
     <button type="button" class="reload-button" on:click={onReload} disabled={busy}>
       {busy ? "Loading..." : "Reload"}
@@ -73,6 +76,13 @@
     font-size: 0.68rem;
     text-transform: none;
     word-break: break-all;
+  }
+
+  .hint {
+    margin: 0.45rem 0 0;
+    color: var(--tc-color-gray-2);
+    font-size: 0.68rem;
+    text-transform: none;
   }
 
   .reload-button {

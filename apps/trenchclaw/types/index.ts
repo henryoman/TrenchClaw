@@ -321,6 +321,10 @@ export interface GuiWalletNodeView {
   name: string;
   relativePath: string;
   kind: "directory" | "file";
+  displayName?: string;
+  walletName?: string;
+  walletId?: string;
+  address?: string;
   children?: GuiWalletNodeView[];
 }
 

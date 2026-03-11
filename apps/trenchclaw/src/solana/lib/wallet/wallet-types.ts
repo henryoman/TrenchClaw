@@ -69,6 +69,10 @@ export interface ManagedWalletTreeNode {
   name: string;
   relativePath: string;
   kind: "directory" | "file";
+  displayName?: string;
+  walletName?: string;
+  walletId?: string;
+  address?: string;
   children?: ManagedWalletTreeNode[];
 }
 
