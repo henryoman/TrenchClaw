@@ -43,11 +43,20 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("Filesystem Policy");
     expect(payload.systemPrompt).toContain("Resolved User Settings");
     expect(payload.systemPrompt).toContain("Live Callable Capability Appendix");
+    expect(payload.systemPrompt).toContain("Runtime Chat Tool Catalog");
+    expect(payload.systemPrompt).toContain("Exact Callable Tool Names");
+    expect(payload.systemPrompt).toContain("workspaceBash");
+    expect(payload.systemPrompt).toContain("queryRuntimeStore");
+    expect(payload.systemPrompt).toContain("queryInstanceMemory");
+    expect(payload.systemPrompt).toContain("Use `workspaceBash` first for discovery and search, then use `workspaceReadFile`");
+    expect(payload.systemPrompt).toContain("Knowledge Manifest");
+    expect(payload.systemPrompt).toContain("src/ai/brain/knowledge/deep-knowledge/*.md");
     expect(payload.systemPrompt).toContain("Workspace Map (apps/trenchclaw/)");
     expect(payload.systemPrompt).toContain("# WORKSPACE ROOT: apps/trenchclaw/");
     expect(payload.systemPrompt).toContain("Available Knowledge Manifest");
     expect(payload.systemPrompt).toContain("ai/");
     expect(payload.systemPrompt).toContain("User Settings (Resolved)");
+    expect(payload.systemPrompt).not.toContain("\"actionName\": \"checkSolBalance\"");
     expect(
       payload.systemPrompt.includes("\"primaryRpc\": \"helius\"") ||
         payload.systemPrompt.includes("User settings could not be loaded:"),

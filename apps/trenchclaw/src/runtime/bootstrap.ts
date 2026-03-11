@@ -204,6 +204,15 @@ const comparePendingJobs = (a: JobState, b: JobState): number => {
   return a.id.localeCompare(b.id);
 };
 
+const normalizeExecuteAtUnixMs = (value: number | undefined, now: number): number => {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return now;
+  }
+
+  const normalized = Math.max(0, Math.trunc(value));
+  return normalized > now ? normalized : now;
+};
+
 const isTradeActionName = (actionName: string): boolean => TRADE_ACTIONS.has(actionName);
 
 const isDataActionName = (actionName: string): boolean =>
@@ -471,6 +480,7 @@ export interface RuntimeBootstrap {
     routineName: string;
     config?: Record<string, unknown>;
     totalCycles?: number;
+    executeAtUnixMs?: number;
   }) => Promise<JobState>;
   describe: () => {
     profile: RuntimeSettings["profile"];
@@ -603,8 +613,54 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const jupiterUltra = createJupiterUltraAdapterFromEnv();
   const tokenAccounts = createTokenAccountAdapterFromEnv();
   const ultraSigner = await createUltraSignerAdapterFromEnv();
+  let scheduler: Scheduler;
 
-  const scheduler = new Scheduler(
+  const enqueueJob = async (input: {
+    botId: string;
+    routineName: string;
+    config?: Record<string, unknown>;
+    totalCycles?: number;
+    executeAtUnixMs?: number;
+  }): Promise<JobState> => {
+    const now = Date.now();
+    const executeAtUnixMs = normalizeExecuteAtUnixMs(input.executeAtUnixMs, now);
+    const job: JobState = {
+      id: crypto.randomUUID(),
+      botId: input.botId,
+      routineName: input.routineName,
+      status: "pending",
+      config: input.config ?? {},
+      cyclesCompleted: 0,
+      totalCycles: input.totalCycles,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: executeAtUnixMs,
+    };
+    stateStore.saveJob(job);
+    try {
+      await scheduler.enqueue(job);
+    } catch (error) {
+      stateStore.updateJobStatus(job.id, "failed", {
+        lastError: error instanceof Error ? error.message : String(error),
+        lastRunAt: Date.now(),
+        nextRunAt: undefined,
+      });
+      throw error;
+    }
+    const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
+    const queuePosition = pendingJobs.findIndex((entry) => entry.id === job.id) + 1;
+    eventBus.emit("queue:enqueue", {
+      jobId: job.id,
+      botId: job.botId,
+      routineName: job.routineName,
+      queueSize: pendingJobs.length,
+      queuePosition: queuePosition > 0 ? queuePosition : pendingJobs.length,
+      nextRunAt: job.nextRunAt,
+    });
+    return job;
+  };
+
+  scheduler = new Scheduler(
     {
       stateStore,
       dispatcher,
@@ -622,6 +678,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
           tokenAccounts,
           ultraSigner,
           stateStore,
+          enqueueJob,
         }),
       resolveRoutine: (routineName) => loadRoutinePlanner(routineName),
     },
@@ -668,49 +725,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   attachEventLogging(settings, logger, eventBus, sessionLogStore, memoryLogStore, summaryLogStore);
   scheduler.start();
 
-  const enqueueJob = async (input: {
-    botId: string;
-    routineName: string;
-    config?: Record<string, unknown>;
-    totalCycles?: number;
-  }): Promise<JobState> => {
-    const now = Date.now();
-    const job: JobState = {
-      id: crypto.randomUUID(),
-      botId: input.botId,
-      routineName: input.routineName,
-      status: "pending",
-      config: input.config ?? {},
-      cyclesCompleted: 0,
-      totalCycles: input.totalCycles,
-      createdAt: now,
-      updatedAt: now,
-      nextRunAt: now,
-    };
-    stateStore.saveJob(job);
-    try {
-      await scheduler.enqueue(job);
-    } catch (error) {
-      stateStore.updateJobStatus(job.id, "failed", {
-        lastError: error instanceof Error ? error.message : String(error),
-        lastRunAt: Date.now(),
-        nextRunAt: undefined,
-      });
-      throw error;
-    }
-    const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
-    const queuePosition = pendingJobs.findIndex((entry) => entry.id === job.id) + 1;
-    eventBus.emit("queue:enqueue", {
-      jobId: job.id,
-      botId: job.botId,
-      routineName: job.routineName,
-      queueSize: pendingJobs.length,
-      queuePosition: queuePosition > 0 ? queuePosition : pendingJobs.length,
-      nextRunAt: job.nextRunAt,
-    });
-    return job;
-  };
-
   // Optional boot hook for validating the runtime path immediately.
   if ((process.env.TRENCHCLAW_BOOTSTRAP_CREATE_WALLETS ?? "").trim() === "1") {
     await enqueueJob({
@@ -733,6 +747,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       registry,
       eventBus,
       stateStore,
+      enqueueJob,
       llm,
       logger,
       capabilitySnapshot,

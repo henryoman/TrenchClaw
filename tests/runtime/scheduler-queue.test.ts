@@ -59,6 +59,7 @@ describe("Scheduler queue dispatch", () => {
       },
       1,
     );
+    scheduler.start();
 
     const now = Date.now();
     const job: JobState = {
@@ -86,13 +87,19 @@ describe("Scheduler queue dispatch", () => {
     stateStore.saveJob(job);
 
     await scheduler.tick(now);
-    await Bun.sleep(30);
 
-    const updatedJob = stateStore.getJob(job.id);
+    let updatedJob = stateStore.getJob(job.id);
+    const waitDeadline = Date.now() + 1_000;
+    while ((!updatedJob?.lastResult || updatedJob.lastResult.ok !== true) && Date.now() < waitDeadline) {
+      await Bun.sleep(20);
+      updatedJob = stateStore.getJob(job.id);
+    }
+
     expect(updatedJob).not.toBeNull();
     expect(updatedJob?.lastResult?.ok).toBe(true);
     expect(updatedJob?.lastResult?.data).toEqual({
       echoed: "dispatcher-through-queue",
     });
+    scheduler.stop();
   });
 });

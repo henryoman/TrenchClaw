@@ -14,11 +14,11 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_READ_FILE_TOOL_NAME,
-    description: "Read local files from the allowed workspace roots.",
-    purpose: "Inspect code, config, and generated artifacts inside the workspace contract.",
-    tags: ["workspace", "filesystem", "read"],
+    description: "Open a specific workspace file such as source code, markdown docs, JSON, configs, or generated artifacts.",
+    purpose: "Read exact file contents after you already know the path, especially for docs and source inspection.",
+    tags: ["workspace", "filesystem", "read", "docs"],
     exampleInput: {
-      path: "src/ai/brain/protected/system/system.md",
+      path: "src/ai/brain/knowledge/KNOWLEDGE_MANIFEST.md",
     },
     enabledBySettings: workspaceToolsEnabledByRuntimeSettings,
     chatExposed: true,
@@ -26,9 +26,9 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_WRITE_FILE_TOOL_NAME,
-    description: "Write or update files inside the allowed workspace roots.",
-    purpose: "Make controlled edits without using ad hoc shell mutations.",
-    tags: ["workspace", "filesystem", "write"],
+    description: "Create or replace a workspace file inside the allowed writable roots.",
+    purpose: "Make controlled file edits instead of using shell redirection or other mutating bash commands.",
+    tags: ["workspace", "filesystem", "write", "edit"],
     exampleInput: {
       path: "notes/runtime.md",
       content: "# runtime notes",
@@ -39,11 +39,11 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_BASH_TOOL_NAME,
-    description: "Run shell commands inside the workspace sandbox.",
-    purpose: "Inspect project state or run safe local commands within the workspace contract.",
-    tags: ["workspace", "shell"],
+    description: "Run sandboxed workspace shell commands for discovery, search, and safe local execution.",
+    purpose: "Use `ls`, `rg`, `bun test`, `bun run`, and similar commands to discover files, inspect docs, or run local read-only workflows.",
+    tags: ["workspace", "shell", "search", "cli"],
     exampleInput: {
-      command: "bun test tests/ai/prompt-loader.test.ts",
+      command: "rg \"workspaceBash|workspaceReadFile|workspaceWriteFile\" src tests",
     },
     enabledBySettings: workspaceToolsEnabledByRuntimeSettings,
     chatExposed: true,

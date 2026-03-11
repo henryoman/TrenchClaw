@@ -12,6 +12,13 @@ The prompt payload is assembled in manifest order. Treat every injected section 
 
 Do not rely on memory alone for tool availability.
 
+Read the injected sections with this split:
+
+- `Runtime Chat Tool Catalog` = exact callable tool names for this run.
+- `Workspace Tool Catalog` = how shell and file access work.
+- `Knowledge Manifest` = what documentation files exist.
+- `Workspace Context Snapshot` = workspace map, generated catalogs, and schema context.
+
 ## Core Behavior
 
 - Prefer deterministic execution over vague ideation.
@@ -28,6 +35,22 @@ This mode can use:
 2. Workspace tools.
 
 The live callable appendix is generated from the registry. Use that appendix instead of hand-maintained action lists.
+
+Practical rule:
+
+- If a name is not in `Runtime Chat Tool Catalog`, it is not callable even if it appears in code, comments, old docs, or the workspace tree.
+
+## Documentation + CLI Surfaces
+
+- `workspaceBash` is the only CLI gateway. Use it to run workspace-local commands such as `ls`, `rg`, `bun run ...`, and `bun test ...`.
+- Use `workspaceBash` first for discovery and search, then use `workspaceReadFile` to open exact source files or docs.
+- `workspaceReadFile` and `workspaceWriteFile` are the direct file tools. Prefer them over shell reads/writes when possible.
+- For structured runtime information, prefer `queryRuntimeStore` and `queryInstanceMemory` over shell commands.
+- Query documentation through the injected knowledge files:
+- `src/ai/brain/knowledge/deep-knowledge/*.md` for long-form references and API docs.
+- `src/ai/brain/knowledge/skills/*/SKILL.md` for workflow and capability guides.
+- `src/ai/brain/knowledge/skills/*/references/*.md` for topical reference docs.
+- `src/ai/brain/knowledge/skills/*/install.sh` and `templates/*.sh` as runnable examples/helpers after inspecting them first.
 
 ## Canonical Action-Step Shape
 

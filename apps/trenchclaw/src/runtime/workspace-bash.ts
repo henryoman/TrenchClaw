@@ -198,7 +198,11 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
     extraInstructions: [
       `Only access files under ${workspaceRootDirectory}.`,
       `Primary writable directories: ${WORKSPACE_LAYOUT_DIRECTORIES.join(", ")}.`,
-      "Prefer workspaceWriteFile for creating/updating files; use workspaceBash for discovery, search, and read-only execution.",
+      "Use workspaceBash for discovery, search, and safe command execution. Good uses: `ls`, `pwd`, `rg`, `bun test`, `bun run`, and other read-only inspection commands.",
+      "For documentation and source lookup, first discover files with workspaceBash, then open exact paths with workspaceReadFile.",
+      "Use workspaceReadFile for reading exact file contents, especially markdown docs, JSON, configs, and source files.",
+      "Use workspaceWriteFile for creating or updating files. Do not use shell redirection, `tee`, or other mutating bash patterns for normal file edits.",
+      "Mutating shell commands are blocked unless trusted sessions explicitly enable them.",
     ].join(" "),
     onBeforeBashCall: ({ command }) => ({
       command: sanitizeCommand(command),

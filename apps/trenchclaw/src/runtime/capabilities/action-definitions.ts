@@ -13,6 +13,7 @@ import {
 } from "../../solana/actions/data-fetch/api/dexscreener-actions";
 import { getSwapHistoryAction } from "../../solana/actions/data-fetch/api/swapHistory";
 import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/mutateInstanceMemory";
+import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
 import { queryRuntimeStoreAction } from "../../solana/actions/data-fetch/runtime/queryRuntimeStore";
@@ -112,6 +113,32 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     },
     includeInCatalog: () => true,
     enabledBySettings: ({ settings }) => settings.wallet.dangerously.allowUpdatingWallets,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: enqueueRuntimeJobAction,
+    description: "Queue a runtime routine for immediate execution or a future Unix-millisecond time.",
+    purpose: "Let the model submit durable immediate and scheduled jobs into the runtime queue.",
+    tags: ["runtime", "queue", "scheduling", "write"],
+    exampleInput: {
+      botId: "ops-scheduler",
+      routineName: "actionSequence",
+      executeAtUnixMs: 1_767_000_000_000,
+      config: {
+        steps: [
+          {
+            key: "ping",
+            actionName: "pingRuntime",
+            input: {
+              message: "scheduled run",
+            },
+          },
+        ],
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
     chatExposed: true,
   },
   {

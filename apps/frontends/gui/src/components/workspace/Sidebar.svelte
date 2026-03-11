@@ -62,7 +62,7 @@
 
 <style>
   .sidebar {
-    border: 1px solid var(--tc-color-lime);
+    border: 1px solid var(--tc-color-gray);
     background: var(--tc-color-black-2);
     padding: var(--tc-space-2) 0;
     display: flex;

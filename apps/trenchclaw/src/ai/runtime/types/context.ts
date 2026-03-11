@@ -1,8 +1,16 @@
 import type { RuntimeEventBus } from "./events";
 import type { Policy } from "./policy";
-import type { StateStore } from "./state";
+import type { JobState, StateStore } from "./state";
 
 export type RuntimeActor = "user" | "agent" | "system";
+
+export interface RuntimeJobEnqueueRequest {
+  botId: string;
+  routineName: string;
+  config?: Record<string, unknown>;
+  totalCycles?: number;
+  executeAtUnixMs?: number;
+}
 
 export interface JobMeta {
   jobId?: string;
@@ -26,6 +34,7 @@ export interface ActionContext {
   jobMeta?: JobMeta;
   eventBus?: RuntimeEventBus;
   stateStore?: StateStore;
+  enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<JobState>;
 }
 
 export interface CreateActionContextConfig extends ActionContext {}

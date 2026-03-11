@@ -11,6 +11,7 @@ import {
 } from "ai";
 import { z } from "zod";
 import { createActionContext } from "../ai/runtime/types/context";
+import { buildRuntimeChatToolNameCatalog } from "../ai/tools";
 import type {
   ActionDispatcher,
   ActionRegistry,
@@ -24,8 +25,10 @@ import { resolveGatewayConfig, resolveLlmProviderConfig } from "../ai/llm/config
 import {
   createWorkspaceBashTools,
 } from "./workspace-bash";
+import { renderRuntimeWalletPromptContext } from "./wallet-model-context";
 import type { RuntimeCapabilitySnapshot } from "./capabilities";
 import type { RuntimeLogger } from "./logging";
+import type { RuntimeJobEnqueueRequest } from "../ai/runtime/types/context";
 
 export interface RuntimeChatService {
   listToolNames: () => string[];
@@ -41,6 +44,7 @@ interface RuntimeChatServiceDeps {
   registry: ActionRegistry;
   eventBus: RuntimeEventBus;
   stateStore: StateStore;
+  enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<import("../ai").JobState>;
   llm: LlmClient | null;
   logger?: RuntimeLogger;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
@@ -75,8 +79,11 @@ const resolveStreamingModel = async (): Promise<LanguageModel> => {
   throw new Error("No model provider configured. Set vault llm api keys or TRENCHCLAW_* provider env vars.");
 };
 
-const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> =>
-  deps.llm?.defaultSystemPrompt ?? "You are TrenchClaw's runtime assistant.";
+const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> => {
+  const basePrompt = deps.llm?.defaultSystemPrompt ?? "You are TrenchClaw's runtime assistant.";
+  const walletContext = await renderRuntimeWalletPromptContext();
+  return `${basePrompt.trim()}\n\n${walletContext}`.trim();
+};
 
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
@@ -226,6 +233,7 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
             actor: "agent",
             eventBus: deps.eventBus,
             stateStore: deps.stateStore,
+            enqueueJob: deps.enqueueJob,
           }),
           {
             actionName: action.name,
@@ -300,10 +308,13 @@ export const createRuntimeChatService = (
   const listToolNames = (): string[] =>
     deps.capabilitySnapshot
       ? deps.capabilitySnapshot.chatTools.map((toolEntry) => toolEntry.name)
-      : deps.registry
-          .list()
-          .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
-          .map((entry) => entry.name);
+      : buildRuntimeChatToolNameCatalog({
+          actionNames: deps.registry
+            .list()
+            .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
+            .map((entry) => entry.name),
+          workspaceToolsEnabled,
+        });
 
   const generateText = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
     if (!deps.llm) {

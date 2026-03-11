@@ -19,8 +19,8 @@
   --tc-color-gray-3: var(--tc-color-gray-light);
   --tc-color-red: #ff5f5f;
 
-  --tc-border: 1px solid var(--tc-color-turquoise);
-  --tc-border-muted: 1px solid var(--tc-color-gray-dark);
+  --tc-border: 1px solid var(--tc-color-gray);
+  --tc-border-muted: 1px solid var(--tc-color-gray);
 
   --tc-space-1: 4px;
   --tc-space-2: 8px;

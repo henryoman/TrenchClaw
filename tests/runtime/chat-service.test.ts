@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { UIMessage } from "ai";
@@ -9,6 +10,11 @@ import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/run
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import { createRuntimeChatService } from "../../apps/trenchclaw/src/runtime/chat";
 import { SqliteStateStore } from "../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
+import {
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
+} from "../../apps/trenchclaw/src/runtime/workspace-bash";
 
 const makeActionResult = (input: {
   ok: boolean;
@@ -27,14 +33,25 @@ const makeActionResult = (input: {
 
 const sqliteDbPaths: string[] = [];
 const RUNTIME_DB_DIRECTORY = fileURLToPath(new URL("../../apps/trenchclaw/src/ai/brain/db", import.meta.url));
+const RUNTIME_INSTANCE_DIRECTORY = fileURLToPath(new URL("../../apps/trenchclaw/src/ai/brain/protected/instance", import.meta.url));
 const createTestDbPath = (): string =>
   path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-chat-runtime-${crypto.randomUUID()}.db`);
+const tempInstanceDirectories: string[] = [];
+const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
 
 afterEach(() => {
   for (const dbPath of sqliteDbPaths.splice(0)) {
     void Bun.file(dbPath).delete().catch(() => {});
     void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
     void Bun.file(`${dbPath}-shm`).delete().catch(() => {});
+  }
+  for (const directoryPath of tempInstanceDirectories.splice(0)) {
+    void rm(directoryPath, { recursive: true, force: true }).catch(() => {});
+  }
+  if (previousActiveInstanceId === undefined) {
+    delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+  } else {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
   }
 });
 
@@ -85,6 +102,34 @@ describe("RuntimeChatService", () => {
     expect(service.listToolNames()).toEqual(["withSchema"]);
   });
 
+  test("lists workspace tools when enabled without a capability snapshot", () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "withSchema",
+      category: "data-based",
+      inputSchema: z.object({ value: z.number() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+
+    const service = createRuntimeChatService({
+      dispatcher: {
+        dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+      } as unknown as ActionDispatcher,
+      registry,
+      eventBus: new InMemoryRuntimeEventBus(),
+      stateStore: new InMemoryStateStore(),
+      llm: null,
+      workspaceToolsEnabled: true,
+    });
+
+    expect(service.listToolNames()).toEqual([
+      "withSchema",
+      WORKSPACE_BASH_TOOL_NAME,
+      WORKSPACE_READ_FILE_TOOL_NAME,
+      WORKSPACE_WRITE_FILE_TOOL_NAME,
+    ].toSorted((left, right) => left.localeCompare(right)));
+  });
+
   test("dispatches tool calls through the backend dispatcher during streaming", async () => {
     const registry = new ActionRegistry();
     registry.register({
@@ -94,13 +139,26 @@ describe("RuntimeChatService", () => {
       execute: async () => makeActionResult({ ok: true }),
     });
 
-    const dispatchCalls: Array<{ actor: string | undefined; actionName: string; input: unknown }> = [];
+    const dispatchCalls: Array<{
+      actor: string | undefined;
+      actionName: string;
+      input: unknown;
+      hasEnqueueJob: boolean;
+    }> = [];
     let capturedSystemPrompt = "";
+    const enqueueJob = async () => {
+      throw new Error("not used in this test");
+    };
     const service = createRuntimeChatService(
       {
         dispatcher: {
           dispatchStep: async (_ctx: ActionContext, step: ActionStep) => {
-            dispatchCalls.push({ actor: _ctx.actor, actionName: step.actionName, input: step.input });
+            dispatchCalls.push({
+              actor: _ctx.actor,
+              actionName: step.actionName,
+              input: step.input,
+              hasEnqueueJob: typeof _ctx.enqueueJob === "function",
+            });
             return {
               results: [makeActionResult({ ok: true, data: { echoed: step.input } })],
               policyHits: [],
@@ -110,6 +168,7 @@ describe("RuntimeChatService", () => {
         registry,
         eventBus: new InMemoryRuntimeEventBus(),
         stateStore: new InMemoryStateStore(),
+        enqueueJob,
         llm: {
           provider: "test",
           model: "test-model",
@@ -146,10 +205,75 @@ describe("RuntimeChatService", () => {
     const payload = (await response.json()) as { ok: boolean; data: { echoed: { value: number } } };
 
     expect(dispatchCalls).toHaveLength(1);
-    expect(dispatchCalls[0]).toEqual({ actor: "agent", actionName: "echo", input: { value: 42 } });
+    expect(dispatchCalls[0]).toEqual({
+      actor: "agent",
+      actionName: "echo",
+      input: { value: 42 },
+      hasEnqueueJob: true,
+    });
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });
-    expect(capturedSystemPrompt).toBe("test system prompt");
+    expect(capturedSystemPrompt).toContain("test system prompt");
+    expect(capturedSystemPrompt).toContain("## Wallet Runtime Variables");
+  });
+
+  test("appends auto-loaded wallet variables to the system prompt", async () => {
+    const registry = new ActionRegistry();
+    const instanceId = `i-chat-wallet-${crypto.randomUUID()}`;
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(instanceDirectory, { recursive: true });
+    await writeFile(
+      path.join(instanceDirectory, "wallet-library.jsonl"),
+      `${JSON.stringify({
+        walletId: "practice-wallets.practice001",
+        walletGroup: "practice-wallets",
+        walletName: "practice001",
+        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+        keypairFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/practice001-0001.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/practice001-0001.label.json"),
+      })}\n`,
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let capturedSystemPrompt = "";
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: {
+          provider: "test",
+          model: "test-model",
+          defaultSystemPrompt: "test system prompt",
+          defaultMode: "test",
+          generate: async () => ({ text: "ok", finishReason: "stop" }),
+          stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
+        } as unknown as LlmClient,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: { system?: string }) => {
+          capturedSystemPrompt = args.system ?? "";
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([]);
+
+    expect(capturedSystemPrompt).toContain("## Wallet Runtime Variables");
+    expect(capturedSystemPrompt).toContain(`- ACTIVE_INSTANCE_ID=${instanceId}`);
+    expect(capturedSystemPrompt).toContain("WALLET__PRACTICE_WALLETS__PRACTICE001__ADDRESS=DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
+    expect(capturedSystemPrompt).toContain("\"walletId\": \"practice-wallets.practice001\"");
   });
 
   test("preserves assistant role/history when preparing streaming messages", async () => {

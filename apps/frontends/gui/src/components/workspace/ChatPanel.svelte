@@ -89,6 +89,41 @@
   const getToolName = (part: MessagePart): string =>
     part.type.startsWith("tool-") ? part.type.slice(5) : part.type;
 
+  const truncateText = (value: string, maxLength: number): string => {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    return `${value.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+  };
+
+  const summarizeErrorText = (value: string): string => {
+    const text = normalizeDisplayText(value);
+    if (!text) {
+      return "Unknown error";
+    }
+
+    const unavailableToolMatch = text.match(/unavailable tool '([^']+)'/i);
+    if (unavailableToolMatch) {
+      return `Unavailable tool: ${unavailableToolMatch[1]}`;
+    }
+
+    const missingFileMatch = text.match(/ENOENT: no such file or directory, open '([^']+)'/i);
+    if (missingFileMatch) {
+      const pathParts = missingFileMatch[1].split("/");
+      return `Missing file: ${pathParts[pathParts.length - 1]}`;
+    }
+
+    const rpcErrorMatch = text.match(/\bRPC error\b[:.]?\s*(.*)$/i);
+    if (rpcErrorMatch) {
+      return truncateText(`RPC error${rpcErrorMatch[1] ? `: ${rpcErrorMatch[1]}` : ""}`, 96);
+    }
+
+    const firstLine = text.split("\n")[0]?.trim() ?? text;
+    const firstSentence = firstLine.split(/(?<=[.!?])\s+/)[0]?.trim() ?? firstLine;
+    return truncateText(firstSentence.replace(/\s+/g, " "), 96);
+  };
+
   const getAssistantMessageSegments = (message: UIMessage): AssistantMessageSegments => {
     const visibleTextParts: string[] = [];
     const activityTextParts: string[] = [];
@@ -308,7 +343,7 @@
                 {/each}
 
                 {#each segments.errorTexts as errorText, errorIndex (`${message.id}:error:${errorIndex}`)}
-                  <p class="error-text">Something went wrong: {errorText}</p>
+                  <p class="error-text" title={errorText}>Error: {summarizeErrorText(errorText)}</p>
                 {/each}
               </div>
             </details>
@@ -334,7 +369,8 @@
               {#if part.type === "text"}
                 <p>{normalizeDisplayText(part.text ?? "")}</p>
               {:else if "errorText" in part && typeof part.errorText === "string"}
-                <p class="error-text">Something went wrong: {normalizeDisplayText(part.errorText)}</p>
+                {@const normalizedErrorText = normalizeDisplayText(part.errorText)}
+                <p class="error-text" title={normalizedErrorText}>Error: {summarizeErrorText(normalizedErrorText)}</p>
               {/if}
             {/each}
           </div>
@@ -529,9 +565,9 @@
   }
 
   .bubble.user {
-    color: var(--tc-color-black);
-    background: var(--tc-color-turquoise);
-    border-color: var(--tc-color-turquoise);
+    color: var(--tc-color-lime);
+    background: var(--tc-color-gray-2);
+    border-color: var(--tc-color-gray-2);
     font-weight: 100;
   }
 
