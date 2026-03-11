@@ -43,7 +43,7 @@
 <style>
   .wallets-panel {
     border: var(--tc-border);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     min-height: 0;
     display: flex;
     flex-direction: column;

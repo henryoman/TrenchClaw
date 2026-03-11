@@ -9,7 +9,7 @@ body {
   margin: 0;
   height: 100%;
   color: var(--tc-color-gray-3);
-  background: var(--tc-color-black);
+  background: var(--tc-color-black-2);
   font-family: var(--tc-font-ui);
   overflow-x: hidden;
 }

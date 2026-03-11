@@ -10,7 +10,7 @@
   .retro-input {
     width: 100%;
     border: var(--tc-border-muted);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     color: var(--tc-color-gray-3);
     padding: var(--tc-control-padding-y) var(--tc-control-padding-x);
     font-size: var(--tc-control-font-size);

@@ -9,7 +9,7 @@
 <style>
   .retro-card {
     border: var(--tc-border);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     padding: var(--tc-space-5);
   }
 

@@ -189,7 +189,7 @@
 
   .chat-init-error {
     border: var(--tc-border);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     color: var(--tc-color-red);
     padding: var(--tc-space-4);
     text-transform: uppercase;

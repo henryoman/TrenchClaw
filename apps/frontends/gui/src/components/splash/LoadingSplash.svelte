@@ -21,7 +21,7 @@
 
   .loading-card {
     border: var(--tc-border);
-    background: var(--tc-color-black-2);
+    background: var(--tc-color-black-light);
     color: var(--tc-color-turquoise);
     padding: var(--tc-space-4);
     text-transform: uppercase;

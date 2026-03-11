@@ -15,7 +15,7 @@
   .retro-modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.94);
+    background: var(--tc-color-black-2);
     display: grid;
     place-items: center;
     padding: var(--tc-space-4);
@@ -25,7 +25,7 @@
   .retro-modal {
     width: min(480px, 100%);
     border: var(--tc-border);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     padding: var(--tc-space-4);
     display: grid;
     gap: var(--tc-space-3);

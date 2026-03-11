@@ -73,17 +73,19 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
   }
 
   addActivity(source: GuiActivityEntry["source"], summary: string): void {
-    this.activity.unshift({
+    this.activity.push({
       id: createMessageId(),
       source,
       summary,
       timestamp: Date.now(),
     });
-    this.activity.splice(MAX_ACTIVITY_ITEMS);
+    if (this.activity.length > MAX_ACTIVITY_ITEMS) {
+      this.activity.splice(0, this.activity.length - MAX_ACTIVITY_ITEMS);
+    }
   }
 
   getActivityEntries(limit: number): GuiActivityEntry[] {
-    return this.activity.slice(0, limit);
+    return this.activity.slice(-limit);
   }
 
   private toConversationTitle(timestamp: number): string {

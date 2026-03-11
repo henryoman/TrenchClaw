@@ -21,6 +21,28 @@ export const mapJobToView = (job: ReturnType<RuntimeGuiDomainContext["runtime"][
   cyclesCompleted: job.cyclesCompleted,
 });
 
+const compareQueueJobsChronologically = (
+  a: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+  b: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+): number => {
+  const effectiveTimeA = typeof a.nextRunAt === "number" ? a.nextRunAt : a.createdAt;
+  const effectiveTimeB = typeof b.nextRunAt === "number" ? b.nextRunAt : b.createdAt;
+
+  if (effectiveTimeA !== effectiveTimeB) {
+    return effectiveTimeA - effectiveTimeB;
+  }
+
+  if (a.createdAt !== b.createdAt) {
+    return a.createdAt - b.createdAt;
+  }
+
+  if (a.updatedAt !== b.updatedAt) {
+    return a.updatedAt - b.updatedAt;
+  }
+
+  return a.id.localeCompare(b.id);
+};
+
 export const getBootstrap = async (context: RuntimeGuiDomainContext): Promise<GuiBootstrapResponse> => {
   const llmConfig = await resolveLlmProviderConfig();
   return {
@@ -34,9 +56,9 @@ export const getBootstrap = async (context: RuntimeGuiDomainContext): Promise<Gu
 export const getQueue = (context: RuntimeGuiDomainContext): GuiQueueResponse => {
   const jobs = context.runtime.stateStore
     .listJobs()
-    .toSorted((a, b) => b.updatedAt - a.updatedAt)
-    .map(mapJobToView)
-    .filter((job) => GUI_QUEUE_INCLUDE_HISTORY || ACTIVE_JOB_STATUSES.has(job.status));
+    .filter((job) => GUI_QUEUE_INCLUDE_HISTORY || ACTIVE_JOB_STATUSES.has(job.status))
+    .toSorted(compareQueueJobsChronologically)
+    .map(mapJobToView);
   return { jobs };
 };
 

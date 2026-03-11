@@ -16,22 +16,10 @@
     onTabChange,
   }: SidebarProps = $props();
 
-  const getSidebarStatus = (status: string): string => {
-    const runtimeMatch = /^runtime:\s*([^|]+?)(?:\s*\|.*)?$/i.exec(status.trim());
-    if (runtimeMatch) {
-      return runtimeMatch[1].trim();
-    }
-
-    return status;
-  };
-
   const getSidebarLiveStatus = (status: string): string => {
     const normalized = status.trim().toLowerCase();
     if (normalized.includes("offline")) {
-      return "Offline";
-    }
-    if (normalized.includes("checking")) {
-      return "Checking connection";
+      return "Not connected";
     }
 
     return "Connected";
@@ -67,15 +55,15 @@
     >
   </nav>
   <div class="status-stack">
-    <p class="status">{getSidebarStatus(runtimeStatus)}</p>
-    <p class="status live-status">{getSidebarLiveStatus(runtimeStatus)}</p>
+    <p class="status">Mode: {getSidebarLiveStatus(runtimeStatus)}</p>
+    <p class="brand">TRENCHCLAW</p>
   </div>
 </aside>
 
 <style>
   .sidebar {
-    border: var(--tc-border);
-    background: var(--tc-color-black);
+    border: 1px solid var(--tc-color-lime);
+    background: var(--tc-color-black-2);
     padding: var(--tc-space-2) 0;
     display: flex;
     flex-direction: column;
@@ -115,7 +103,7 @@
   }
 
   .tab-button.active {
-    color: var(--tc-color-turquoise);
+    color: var(--tc-color-lime);
   }
 
   .instance {
@@ -156,8 +144,12 @@
     line-height: 1.35;
   }
 
-  .live-status {
-    color: var(--tc-color-gray-2);
+  .brand {
+    margin: 0;
+    color: var(--tc-color-gray-3);
+    font-size: var(--tc-sidebar-title-size);
+    font-weight: 700;
+    text-transform: uppercase;
   }
 
   @media (max-width: var(--tc-layout-breakpoint)) {

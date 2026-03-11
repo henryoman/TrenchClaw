@@ -3,18 +3,24 @@
   --tc-font-display: "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
 
   --tc-color-black: #000000;
-  --tc-color-black-2: #050505;
-  --tc-color-purple: #111111;
-  --tc-color-purple-2: #0a0a0a;
-  --tc-color-turquoise: #00e5a8;
-  --tc-color-turquoise-dim: #00956f;
-  --tc-color-gray-1: #8e8e8e;
-  --tc-color-gray-2: #5f5f5f;
-  --tc-color-gray-3: #e3e3e3;
+  --tc-color-black-light: #121212;
+  --tc-color-black-2: var(--tc-color-black-light);
+  --tc-color-purple: #620096;
+
+  --tc-color-turquoise: var(--tc-color-lime);
+  --tc-color-lime: #D0F580;
+  --tc-color-cream: #FEFFE3;
+  --tc-color-turquoise-dim: var(--tc-color-lime);
+  --tc-color-gray: #8e8e8e;
+  --tc-color-gray-dark: #5f5f5f;
+  --tc-color-gray-light: #C0C0C0;
+  --tc-color-gray-1: var(--tc-color-gray);
+  --tc-color-gray-2: var(--tc-color-gray-dark);
+  --tc-color-gray-3: var(--tc-color-gray-light);
   --tc-color-red: #ff5f5f;
 
   --tc-border: 1px solid var(--tc-color-turquoise);
-  --tc-border-muted: 1px solid var(--tc-color-gray-2);
+  --tc-border-muted: 1px solid var(--tc-color-gray-dark);
 
   --tc-space-1: 4px;
   --tc-space-2: 8px;
@@ -62,7 +68,7 @@
   --tc-status-letter-spacing: var(--tc-track-normal);
 
   --tc-row-box-padding: var(--tc-space-2);
-  --tc-row-box-bg: var(--tc-color-black-2);
+  --tc-row-box-bg: var(--tc-color-black-light);
   --tc-row-box-border: var(--tc-border-muted);
 
   --tc-sidebar-width: 128px;

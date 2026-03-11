@@ -42,7 +42,7 @@
 <style>
   .vault-panel {
     border: var(--tc-border);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -127,8 +127,8 @@
     flex: 1;
     min-height: 280px;
     border: var(--tc-border-muted);
-    background: #061317;
-    color: #9ff6e3;
+    background: var(--tc-color-black-light);
+    color: var(--tc-color-turquoise);
     padding: var(--tc-space-3);
     resize: vertical;
     font-family: "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -150,8 +150,8 @@
   }
 
   .message.ok {
-    color: var(--tc-color-green);
-    border-color: var(--tc-color-green);
+    color: var(--tc-color-lime);
+    border-color: var(--tc-color-lime);
   }
 
   @media (max-width: 980px) {

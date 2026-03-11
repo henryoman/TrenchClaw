@@ -379,7 +379,7 @@
 <style>
   .chat-root {
     border: var(--tc-border);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -432,7 +432,7 @@
     z-index: 10;
     width: min(280px, 100%);
     border: var(--tc-border);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
   }
 
   .conversation-modal-header {
@@ -537,7 +537,7 @@
 
   .bubble.assistant {
     color: var(--tc-color-gray-3);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     font-weight: 100;
   }
 
@@ -554,7 +554,7 @@
     width: min(90%, 32rem);
     border: var(--tc-border-muted);
     color: var(--tc-color-gray-2);
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--tc-color-black-light);
     font-size: 0.78rem;
   }
 
@@ -590,7 +590,7 @@
 
   .bubble.system {
     color: var(--tc-color-red);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
   }
 
   .bubble p {
@@ -706,7 +706,7 @@
     min-height: calc(1.4em + (var(--tc-control-padding-y) * 2));
     max-height: calc((1.4em * 5) + (var(--tc-control-padding-y) * 2) + 2px);
     border: var(--tc-border-muted);
-    background: var(--tc-color-black);
+    background: var(--tc-color-black-2);
     color: var(--tc-color-gray-3);
     padding: var(--tc-control-padding-y) var(--tc-control-padding-x);
     font-family: inherit;

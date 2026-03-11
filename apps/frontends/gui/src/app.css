@@ -8,7 +8,7 @@
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: var(--tc-color-black);
+  background: var(--tc-color-black-2);
   color: var(--tc-color-red);
   font-family: var(--tc-font-ui);
   padding: var(--tc-space-4);
