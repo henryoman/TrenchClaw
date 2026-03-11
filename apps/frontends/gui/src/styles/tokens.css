@@ -3,7 +3,7 @@
   --tc-font-display: "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", "Menlo", monospace;
 
   --tc-color-black: #000000;
-  --tc-color-black-light: #121212;
+  --tc-color-black-light: #0C0C0C;
   --tc-color-black-2: var(--tc-color-black-light);
   --tc-color-purple: #620096;
 
@@ -18,9 +18,10 @@
   --tc-color-gray-2: var(--tc-color-gray-dark);
   --tc-color-gray-3: var(--tc-color-gray-light);
   --tc-color-red: #ff5f5f;
+  --tc-color-border: var(--tc-color-gray-dark);
 
-  --tc-border: 1px solid var(--tc-color-gray);
-  --tc-border-muted: 1px solid var(--tc-color-gray);
+  --tc-border: 1px solid var(--tc-color-border);
+  --tc-border-muted: 1px solid var(--tc-color-border);
 
   --tc-space-1: 4px;
   --tc-space-2: 8px;

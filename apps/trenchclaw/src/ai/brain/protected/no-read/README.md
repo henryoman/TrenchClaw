@@ -1,4 +1,4 @@
-## Vault Secrets
+# Vault Secrets
 
 `vault.json` is intentionally untracked and local-only. The runtime auto-creates it from `vault.template.json` if missing.
 
@@ -16,6 +16,8 @@ Used references in `src/ai/brain/user-blockchain-settings/settings.yaml` and run
 - `vault://llm/gateway/api-key`
 - `vault://integrations/dexscreener/api-key`
 - `vault://integrations/jupiter/api-key`
+- `vault://wallet/ultra-signer/private-key`
+- `vault://wallet/ultra-signer/private-key-encoding`
 
 Recommended Helius endpoint values (gateway-first):
 

@@ -4,7 +4,7 @@
 // This is the only module that creates Connection objects.
 // Everything else in the system gets an RPC reference through ActionContext.
 //
-// Endpoints are configured via env vars (HELIUS_API_KEY, QUICKNODE_API_KEY, RPC_URL).
+// Endpoints are configured via runtime settings and centralized vault data.
 // Each endpoint gets a health score based on recent performance.
 //
 // Capabilities:

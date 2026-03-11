@@ -59,5 +59,11 @@
     "jupiter": {
       "api-key": ""
     }
+  },
+  "wallet": {
+    "ultra-signer": {
+      "private-key": "",
+      "private-key-encoding": "base64"
+    }
   }
 }

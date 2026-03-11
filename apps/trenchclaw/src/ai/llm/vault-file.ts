@@ -63,6 +63,12 @@ export const DEFAULT_VAULT_JSON = {
       "api-key": "",
     },
   },
+  wallet: {
+    "ultra-signer": {
+      "private-key": "",
+      "private-key-encoding": "base64",
+    },
+  },
 } as const;
 
 export const ensureVaultFileExists = async (input: {

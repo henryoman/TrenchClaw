@@ -9,30 +9,77 @@ import {
 } from "../../../lib/wallet/protected-write-policy";
 import { resolveWalletLabelFilePath, resolveWalletLibraryFilePath, toWalletId, walletGroupNameSchema } from "./wallet-storage";
 
-const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
+const walletNameSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-zA-Z0-9_-]+$/)
+  .describe("Wallet name label. Use letters, numbers, underscores, or hyphens only.");
 
-const renameWalletsInputSchema = z.object({
-  walletGroup: walletGroupNameSchema,
-  updateKeypairFiles: z.boolean().default(true),
-  renames: z
-    .array(
-      z.object({
-        fromWalletName: walletNameSchema,
-        toWalletName: walletNameSchema,
-      }),
-    )
-    .min(1),
-});
+const walletReferenceSchema = z
+  .object({
+    walletGroup: walletGroupNameSchema.describe("Current wallet group label stored in the protected wallet library."),
+    walletName: walletNameSchema.describe("Current wallet name label stored in the protected wallet library."),
+  })
+  .strict()
+  .describe("Explicitly identifies one wallet by its current organization labels.");
+
+const walletOrganizationTargetSchema = z
+  .object({
+    walletGroup: walletGroupNameSchema.describe("New wallet group label to store for this wallet."),
+    walletName: walletNameSchema.describe("New wallet name label to store for this wallet."),
+  })
+  .strict()
+  .describe("Desired organization labels for the same wallet.");
+
+const walletEditSchema = z
+  .object({
+    current: walletReferenceSchema.describe("The wallet's current group/name labels."),
+    next: walletOrganizationTargetSchema.describe("The wallet's new group/name labels."),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      value.current.walletGroup !== value.next.walletGroup || value.current.walletName !== value.next.walletName,
+    {
+      message: "current and next labels must differ.",
+      path: ["next"],
+    },
+  )
+  .describe("One explicit wallet organization edit from current labels to new labels.");
+
+const renameWalletsInputSchema = z
+  .object({
+    edits: z
+      .array(walletEditSchema)
+      .min(1)
+      .describe("Batch of wallet organization edits. Each item must include explicit current and next labels."),
+    updateLabelFiles: z
+      .boolean()
+      .default(true)
+      .describe("Keep true to sync protected *.label.json sidecar files. This never changes secret key bytes."),
+  })
+  .strict()
+  .describe(
+    "Update wallet organization labels only. Use explicit current and next walletGroup/walletName pairs. This tool cannot create, delete, export, or sign with wallets.",
+  );
 
 type RenameWalletsInput = z.output<typeof renameWalletsInputSchema>;
 
 interface RenameWalletsOutput {
-  walletGroup: string;
   walletLibraryFilePath: string;
-  renamed: Array<{
-    fromWalletName: string;
-    toWalletName: string;
+  updated: Array<{
+    current: {
+      walletId: string;
+      walletGroup: string;
+      walletName: string;
+    };
+    next: {
+      walletId: string;
+      walletGroup: string;
+      walletName: string;
+    };
     keypairFilePath?: string;
+    walletLabelFilePath?: string;
     address?: string;
   }>;
 }
@@ -92,52 +139,59 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         if (typeof walletId !== "string" || walletId.length === 0) {
           throw new Error(`Wallet library line ${index + 1} is missing string field "walletId"`);
         }
-
-        if (entry.walletGroup !== input.walletGroup) {
-          return;
-        }
         if (entryIndexByWalletId.has(walletId)) {
           throw new Error(`Duplicate walletId in library: ${walletId}`);
         }
         entryIndexByWalletId.set(walletId, index);
       });
 
-      const renamed: RenameWalletsOutput["renamed"] = [];
-
-      const applyRenameAtIndex = async (index: number): Promise<void> => {
-        const rename = input.renames[index];
-        if (!rename) {
-          return;
-        }
-        if (rename.fromWalletName === rename.toWalletName) {
-          await applyRenameAtIndex(index + 1);
-          return;
-        }
-
-        const fromWalletId = toWalletId(input.walletGroup, rename.fromWalletName);
-        const toWalletIdValue = toWalletId(input.walletGroup, rename.toWalletName);
-        const sourceIndex = entryIndexByWalletId.get(fromWalletId);
+      const editPlans = input.edits.map((edit, index) => {
+        const currentWalletId = toWalletId(edit.current.walletGroup, edit.current.walletName);
+        const nextWalletId = toWalletId(edit.next.walletGroup, edit.next.walletName);
+        const sourceIndex = entryIndexByWalletId.get(currentWalletId);
         if (sourceIndex === undefined) {
-          throw new Error(`Cannot rename missing wallet "${fromWalletId}"`);
+          throw new Error(`Cannot update missing wallet "${currentWalletId}"`);
         }
+        return {
+          index,
+          currentWalletId,
+          nextWalletId,
+          sourceIndex,
+          current: edit.current,
+          next: edit.next,
+        };
+      });
 
-        const existingTargetIndex = entryIndexByWalletId.get(toWalletIdValue);
-        if (existingTargetIndex !== undefined && existingTargetIndex !== sourceIndex) {
-          throw new Error(`Cannot rename "${fromWalletId}" to "${toWalletIdValue}": target already exists`);
+      const seenCurrentWalletIds = new Set<string>();
+      const seenNextWalletIds = new Set<string>();
+      for (const plan of editPlans) {
+        if (seenCurrentWalletIds.has(plan.currentWalletId)) {
+          throw new Error(`Duplicate current wallet reference in edits: "${plan.currentWalletId}"`);
         }
+        seenCurrentWalletIds.add(plan.currentWalletId);
 
-        const entry = entries[sourceIndex] ?? {};
+        if (seenNextWalletIds.has(plan.nextWalletId)) {
+          throw new Error(`Duplicate target wallet labels in edits: "${plan.nextWalletId}"`);
+        }
+        seenNextWalletIds.add(plan.nextWalletId);
+      }
+
+      for (const plan of editPlans) {
+        const existingTargetIndex = entryIndexByWalletId.get(plan.nextWalletId);
+        if (existingTargetIndex !== undefined && !seenCurrentWalletIds.has(plan.nextWalletId)) {
+          throw new Error(`Cannot update "${plan.currentWalletId}" to "${plan.nextWalletId}": target already exists`);
+        }
+      }
+
+      const updated: RenameWalletsOutput["updated"] = [];
+      for (const plan of editPlans) {
+        const entry = entries[plan.sourceIndex] ?? {};
         const next = { ...entry };
 
-        next.walletId = toWalletIdValue;
-        next.walletGroup = input.walletGroup;
-        next.walletName = rename.toWalletName;
+        next.walletId = plan.nextWalletId;
+        next.walletGroup = plan.next.walletGroup;
+        next.walletName = plan.next.walletName;
         next.updatedAt = new Date().toISOString();
-
-        entries[sourceIndex] = next;
-
-        entryIndexByWalletId.delete(fromWalletId);
-        entryIndexByWalletId.set(toWalletIdValue, sourceIndex);
 
         const keypairFilePath = typeof next.keypairFilePath === "string" ? next.keypairFilePath : undefined;
         const walletLabelFilePath = typeof next.walletLabelFilePath === "string"
@@ -147,7 +201,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
           next.walletLabelFilePath = walletLabelFilePath;
         }
 
-        if (input.updateKeypairFiles && walletLabelFilePath) {
+        if (input.updateLabelFiles && walletLabelFilePath) {
           const absoluteWalletLabelFilePath = resolveAbsolutePath(walletLabelFilePath);
           assertWithinBrainProtectedDirectory(absoluteWalletLabelFilePath);
           await assertProtectedWriteAllowed({
@@ -168,9 +222,9 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
             return { ...(walletLabelJson as Record<string, unknown>) };
           })();
           nextWalletLabel.version = 1;
-          nextWalletLabel.walletId = toWalletIdValue;
-          nextWalletLabel.walletGroup = input.walletGroup;
-          nextWalletLabel.walletName = rename.toWalletName;
+          nextWalletLabel.walletId = plan.nextWalletId;
+          nextWalletLabel.walletGroup = plan.next.walletGroup;
+          nextWalletLabel.walletName = plan.next.walletName;
           nextWalletLabel.address = typeof next.address === "string" ? next.address : nextWalletLabel.address;
           if (keypairFilePath) {
             nextWalletLabel.walletFileName = path.basename(keypairFilePath);
@@ -182,16 +236,26 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
           await Bun.write(absoluteWalletLabelFilePath, `${JSON.stringify(nextWalletLabel, null, 2)}\n`);
         }
 
-        renamed.push({
-          fromWalletName: rename.fromWalletName,
-          toWalletName: rename.toWalletName,
+        entries[plan.sourceIndex] = next;
+        entryIndexByWalletId.delete(plan.currentWalletId);
+        entryIndexByWalletId.set(plan.nextWalletId, plan.sourceIndex);
+
+        updated.push({
+          current: {
+            walletId: plan.currentWalletId,
+            walletGroup: plan.current.walletGroup,
+            walletName: plan.current.walletName,
+          },
+          next: {
+            walletId: plan.nextWalletId,
+            walletGroup: plan.next.walletGroup,
+            walletName: plan.next.walletName,
+          },
           keypairFilePath,
+          walletLabelFilePath,
           address: typeof next.address === "string" ? next.address : undefined,
         });
-        await applyRenameAtIndex(index + 1);
-      };
-
-      await applyRenameAtIndex(0);
+      }
 
       const nextLibrary = entries.map((entry) => JSON.stringify(entry)).join("\n");
       await assertProtectedWriteAllowed({
@@ -205,9 +269,8 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         ok: true,
         retryable: false,
         data: {
-          walletGroup: input.walletGroup,
           walletLibraryFilePath,
-          renamed,
+          updated,
         },
         durationMs: Date.now() - startedAt,
         timestamp: Date.now(),

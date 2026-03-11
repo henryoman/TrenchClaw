@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import { createWalletsRoutine } from "../../../apps/trenchclaw/src/solana/routines/create-wallets";
 
 describe("createWalletsRoutine", () => {
-  test("builds flat wallet-group creation steps and rename step", async () => {
+  test("builds one batch wallet creation step and rename step", async () => {
     const steps = await createWalletsRoutine({} as never, {
       id: "job-1",
       botId: "bot-1",
@@ -38,36 +38,38 @@ describe("createWalletsRoutine", () => {
       updatedAt: Date.now(),
     });
 
-    expect(steps).toHaveLength(3);
+    expect(steps).toHaveLength(2);
 
     expect(steps[0]?.actionName).toBe("createWallets");
     const firstInput = steps[0]?.input as {
-      count?: number;
-      walletNames?: string[];
-      storage?: { walletGroup?: string };
+      groups?: Array<{
+        walletGroup: string;
+        count?: number;
+        walletNames?: string[];
+      }>;
     };
-    expect(firstInput.count).toBe(1);
-    expect(firstInput.walletNames).toEqual(["maker"]);
-    expect(firstInput.storage?.walletGroup).toBe("core-wallets");
+    expect(firstInput.groups).toEqual([
+      {
+        walletGroup: "core-wallets",
+        walletNames: ["maker"],
+      },
+      {
+        walletGroup: "snipers",
+        count: 2,
+      },
+    ]);
 
-    expect(steps[1]?.actionName).toBe("createWallets");
+    expect(steps[1]?.actionName).toBe("renameWallets");
     const secondInput = steps[1]?.input as {
-      count?: number;
-      storage?: { walletGroup?: string };
-      output?: { filePrefix?: string; startIndex?: number };
+      edits?: Array<{
+        current: { walletGroup: string; walletName: string };
+        next: { walletGroup: string; walletName: string };
+      }>;
     };
-    expect(secondInput.count).toBe(2);
-    expect(secondInput.storage?.walletGroup).toBe("snipers");
-    expect(secondInput.output?.filePrefix).toBe("s");
-    expect(secondInput.output?.startIndex).toBe(5);
-
-    expect(steps[2]?.actionName).toBe("renameWallets");
-    const thirdInput = steps[2]?.input as {
-      walletGroup?: string;
-      renames?: Array<{ fromWalletName: string; toWalletName: string }>;
-    };
-    expect(thirdInput.walletGroup).toBe("core-wallets");
-    expect(thirdInput.renames?.[0]).toEqual({ fromWalletName: "maker", toWalletName: "makerMain" });
+    expect(secondInput.edits?.[0]).toEqual({
+      current: { walletGroup: "core-wallets", walletName: "maker" },
+      next: { walletGroup: "core-wallets", walletName: "makerMain" },
+    });
   });
 
   test("preserves legacy single-step behavior when groups are omitted", async () => {

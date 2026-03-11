@@ -65,11 +65,11 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: createWalletGroupDirectoryAction,
-    description: "Create a protected wallet group directory inside the runtime wallet library.",
-    purpose: "Prepare a named wallet container before creating or organizing wallets.",
+    description: "Create one flat wallet group directory under the protected keypairs root.",
+    purpose: "Prepare a single-level wallet container before creating wallets.",
     tags: ["wallets", "filesystem", "setup"],
     exampleInput: {
-      walletGroup: "ops/market-makers",
+      walletGroup: "ops-market-makers",
     },
     includeInCatalog: () => true,
     enabledBySettings: ({ settings }) => settings.wallet.dangerously.allowCreatingWallets,
@@ -78,20 +78,20 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: createWalletsAction,
-    description: "Create one or more filesystem wallets inside a single wallet group directory.",
-    purpose: "Provision fresh wallets with one sidecar label file per wallet.",
+    description: "Create wallets in one or more flat wallet groups using a single JSON batch payload.",
+    purpose: "Provision fresh wallets quickly with deterministic names like wallet_00 when names are omitted.",
     tags: ["wallets", "setup", "keys"],
     exampleInput: {
-      count: 2,
-      storage: {
-        walletGroup: "ops-market-makers",
-        createGroupIfMissing: true,
-      },
-      output: {
-        filePrefix: "mm",
-        startIndex: 1,
-        includeIndexInFileName: true,
-      },
+      groups: [
+        {
+          walletGroup: "ops-market-makers",
+          count: 2,
+        },
+        {
+          walletGroup: "snipers",
+          walletNames: ["maker_alpha", "maker_beta"],
+        },
+      ],
     },
     includeInCatalog: () => true,
     enabledBySettings: ({ settings }) => settings.wallet.dangerously.allowCreatingWallets,
@@ -100,15 +100,20 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: renameWalletsAction,
-    description: "Rename wallet entries and optionally keep keypair files aligned with the new names.",
-    purpose: "Clean up or reorganize existing managed wallet inventories.",
+    description: "Update wallet organization labels by passing explicit current and next group/name pairs.",
+    purpose: "Organize existing managed wallets without deleting them or touching secret key material.",
     tags: ["wallets", "maintenance"],
     exampleInput: {
-      walletGroup: "ops-market-makers",
-      renames: [
+      edits: [
         {
-          fromWalletName: "mm001",
-          toWalletName: "mm-hot-001",
+          current: {
+            walletGroup: "ops-market-makers",
+            walletName: "mm001",
+          },
+          next: {
+            walletGroup: "ops-archive",
+            walletName: "mm-hot-001",
+          },
         },
       ],
     },

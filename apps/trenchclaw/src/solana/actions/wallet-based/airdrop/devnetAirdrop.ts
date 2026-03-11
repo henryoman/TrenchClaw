@@ -329,7 +329,7 @@ const printHelp = (): void => {
       "  --wallet-group <group>   Airdrop to managed wallets in this wallet group",
       "  --wallet-name <name>     Limit to one or more wallet names inside the group",
       "  --amount-sol <amount>    SOL amount per target wallet (default: 2)",
-      "  --rpc-url <url>          Devnet RPC URL (default: DEVNET_RPC_URL env or public devnet RPC)",
+      "  --rpc-url <url>          Devnet RPC URL (default: public devnet RPC)",
       "  --timeout-ms <ms>        Confirmation timeout per airdrop (default: 45000)",
       "  --commitment <level>     processed | confirmed | finalized (default: confirmed)",
       "  --help                   Show this help text",
@@ -378,7 +378,7 @@ export const main = async (): Promise<void> => {
 
 export const executeDevnetAirdrop = async (rawInput: DevnetAirdropInput): Promise<DevnetAirdropOutput> => {
   const input = devnetAirdropInputSchema.parse(rawInput);
-  const rpcUrl = input.rpcUrl ?? process.env.DEVNET_RPC_URL ?? DEVNET_RPC_URL;
+  const rpcUrl = input.rpcUrl ?? DEVNET_RPC_URL;
   const amountSol = parseSolAmount(input.amountSol);
   const lamports = resolveLamports(String(amountSol));
   const targets = await resolveTargets({

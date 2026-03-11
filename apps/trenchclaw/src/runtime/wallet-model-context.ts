@@ -135,6 +135,63 @@ These wallet variables are loaded from the active instance wallet library at req
     `- WALLET_INVALID_LIBRARY_LINES=${invalidLineCount}`,
   ];
 
+  lines.push(
+    "",
+    "### Allowed Wallet Organization Writes",
+    "- Use `createWallets` to create new wallets.",
+    "- Use `renameWallets` to update wallet organization labels only.",
+    "- `renameWallets` requires explicit `current` and `next` values for each wallet edit.",
+    "- Never use direct file tools to edit `wallet-library.jsonl` or `*.label.json` wallet files.",
+    "- There is no wallet delete tool in chat.",
+    "- Wallet groups must be flat single-level names only.",
+    "- Each wallet group can create at most 100 wallets per call.",
+    "",
+    "#### createWallets JSON Shape",
+    "```json",
+    JSON.stringify(
+      {
+        groups: [
+          {
+            walletGroup: "core-wallets",
+            count: 3,
+          },
+          {
+            walletGroup: "snipers",
+            walletNames: ["wallet_alpha", "wallet_beta"],
+          },
+        ],
+      },
+      null,
+      2,
+    ),
+    "```",
+    "If `walletNames` is omitted for a group, names default to `wallet_00`, `wallet_01`, `wallet_02`, and so on.",
+    "",
+    "#### renameWallets JSON Shape",
+    "```json",
+    JSON.stringify(
+      {
+        edits: [
+          {
+            current: {
+              walletGroup: "old-group",
+              walletName: "old-name",
+            },
+            next: {
+              walletGroup: "new-group",
+              walletName: "new-name",
+            },
+          },
+        ],
+        updateLabelFiles: true,
+      },
+      null,
+      2,
+    ),
+    "```",
+    "This updates protected wallet metadata only. It does not delete wallets and does not change secret key bytes.",
+  );
+
   if (entries.length === 0) {
     lines.push("- WALLET_LIBRARY_STATUS=empty");
     return lines.join("\n");

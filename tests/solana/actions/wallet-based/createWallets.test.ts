@@ -28,6 +28,52 @@ afterEach(async () => {
 });
 
 describe("createWalletsAction", () => {
+  test("creates multiple flat groups in one batch and defaults wallet names to wallet_00 style", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const coreGroup = `core-wallets-${crypto.randomUUID()}`;
+    const snipersGroup = `snipers-${crypto.randomUUID()}`;
+    const walletLibraryFile = path.join("src/ai/brain/protected", `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
+    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
+    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
+
+    const result = await createWalletsAction.execute({} as never, {
+      groups: [
+        {
+          walletGroup: coreGroup,
+          count: 3,
+        },
+        {
+          walletGroup: snipersGroup,
+          walletNames: ["sniper_alpha", "sniper_beta"],
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    const data = result.data;
+    expect(data?.wallets).toHaveLength(5);
+    expect(data?.groupDirectories).toHaveLength(2);
+    expect(data?.walletGroup).toBeUndefined();
+    expect(data?.outputDirectory).toBeUndefined();
+
+    const walletNames = data?.wallets.map((wallet) => `${wallet.walletGroup}.${wallet.walletName}`) ?? [];
+    expect(walletNames).toEqual([
+      `${coreGroup}.wallet_00`,
+      `${coreGroup}.wallet_01`,
+      `${coreGroup}.wallet_02`,
+      `${snipersGroup}.sniper_alpha`,
+      `${snipersGroup}.sniper_beta`,
+    ]);
+    expect(data?.files.every((filePath) => filePath.includes("/keypairs/"))).toBe(true);
+    expect(data?.files.some((filePath) => filePath.endsWith("/wallet_00.json"))).toBe(true);
+    expect(data?.files.some((filePath) => filePath.endsWith("/sniper_alpha.json"))).toBe(true);
+  });
+
   test("creates wallets inside the selected wallet group directory and appends library metadata", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
@@ -84,6 +130,7 @@ describe("createWalletsAction", () => {
     const keypairJson = await Bun.file(data.files[0] ?? "").json();
     expect(Array.isArray(keypairJson)).toBe(true);
     expect(keypairJson).toHaveLength(64);
+    expect(path.basename(data.files[0] ?? "")).toBe("wallet001.json");
 
     const walletLabelJson = await Bun.file(libraryEntry.walletLabelFilePath).json();
     expect(walletLabelJson.walletId).toBe(`${walletGroup}.wallet001`);
@@ -114,6 +161,25 @@ describe("createWalletsAction", () => {
     }
 
     expect(result.error).toContain("Invalid");
+  });
+
+  test("rejects groups that exceed the 100 wallet limit", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const result = await createWalletsAction.execute({} as never, {
+      groups: [
+        {
+          walletGroup: "too-many-wallets",
+          count: 101,
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error).toContain("100");
   });
 
   test("uses existing wallet group directory when createGroupIfMissing is false", async () => {

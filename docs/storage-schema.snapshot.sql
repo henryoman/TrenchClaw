@@ -64,6 +64,7 @@ CREATE TABLE "instance_profiles" (
 
 CREATE TABLE "jobs" (
   "id" TEXT PRIMARY KEY,
+  "serial_number" INTEGER CHECK (serial_number IS NULL OR serial_number > 0),
   "bot_id" TEXT NOT NULL,
   "routine_name" TEXT NOT NULL,
   "status" TEXT NOT NULL CHECK (status IN ('pending', 'running', 'paused', 'stopped', 'failed')),
@@ -144,6 +145,8 @@ CREATE INDEX "idx_instance_profiles_updated_at" ON "instance_profiles"("updated_
 CREATE INDEX "idx_jobs_bot_id_status" ON "jobs"("bot_id", "status");
 
 CREATE INDEX "idx_jobs_lease_expires_at" ON "jobs"("status", "lease_expires_at");
+
+CREATE UNIQUE INDEX "idx_jobs_serial_number" ON "jobs"("serial_number");
 
 CREATE INDEX "idx_jobs_status_next_run_at" ON "jobs"("status", "next_run_at");
 

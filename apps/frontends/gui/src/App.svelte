@@ -12,6 +12,7 @@
     QueuePanel,
     SchedulePanel,
     SecretsPanel,
+    SolPriceStrip,
     SummaryPanel,
     WalletsPanel,
     WorkspaceShell,
@@ -25,7 +26,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
-  let activeTab: "chat" | "keys-secrets" | "wallets" = $state("chat");
+  let activeTab: "chat" | "config" | "wallets" | "schedule" = $state("chat");
   const appVersionLabel = APP_BUILD_COMMIT === "local" ? APP_BUILD_VERSION : `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
 
   const ensureChatController = async (): Promise<void> => {
@@ -124,7 +125,7 @@
           <p>{chatInitError || "Loading chat..."}</p>
         </section>
       {/if}
-    {:else if activeTab === "keys-secrets"}
+    {:else if activeTab === "config"}
       <SecretsPanel
         options={runtime.state.secretsOptions}
         entries={runtime.state.secretEntries}
@@ -146,7 +147,7 @@
           void runtime.clearSecret(optionId);
         }}
       />
-    {:else}
+    {:else if activeTab === "wallets"}
       <WalletsPanel
         rootRelativePath={runtime.state.walletsRootRelativePath}
         rootExists={runtime.state.walletsRootExists}
@@ -158,9 +159,11 @@
           void runtime.loadWallets();
         }}
       />
+    {:else}
+      <SchedulePanel jobs={runtime.state.scheduleJobs} />
     {/if}
     <section class="right-column">
-      <SchedulePanel jobs={runtime.state.scheduleJobs} />
+      <SolPriceStrip />
       <QueuePanel jobs={runtime.state.queueJobs} />
       <SummaryPanel entries={runtime.state.activityEntries} {formatTime} />
     </section>
@@ -185,7 +188,7 @@
   .right-column {
     min-height: 0;
     display: grid;
-    grid-template-rows: 1.1fr 1fr 1fr;
+    grid-template-rows: minmax(0, 10%) minmax(0, 45%) minmax(0, 45%);
     gap: var(--tc-space-2);
   }
 
@@ -200,6 +203,12 @@
 
   .chat-init-error p {
     margin: 0;
+  }
+
+  @media (max-width: var(--tc-layout-breakpoint)) {
+    .right-column {
+      grid-template-rows: auto minmax(280px, 1fr) minmax(280px, 1fr);
+    }
   }
 
 </style>

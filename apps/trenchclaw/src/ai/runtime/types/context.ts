@@ -29,6 +29,7 @@ export interface ActionContext {
   actor?: RuntimeActor;
   wallet?: unknown;
   rpc?: unknown;
+  rpcUrl?: string;
   jupiter?: unknown;
   jupiterUltra?: unknown;
   tokenAccounts?: unknown;

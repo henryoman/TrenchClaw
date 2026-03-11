@@ -9,7 +9,7 @@
 </script>
 
 <li class="wallet-node">
-  <div class="wallet-row" style={`padding-left: ${indentPx}px`}>
+  <div class="wallet-row" style={`--tc-wallet-indent: ${indentPx}px`}>
     <span class="icon" aria-hidden="true">{node.kind === "directory" ? "📁" : "🔑"}</span>
     <span class="name">{node.name}</span>
     {#if node.kind === "file"}
@@ -50,8 +50,11 @@
     align-items: center;
     gap: var(--tc-space-2);
     border-bottom: var(--tc-border-muted);
+    padding-left: calc(var(--tc-panel-content-padding) + var(--tc-wallet-indent, 0px));
+    padding-right: var(--tc-panel-content-padding);
     padding-top: 0.3rem;
     padding-bottom: 0.3rem;
+    box-sizing: border-box;
   }
 
   .icon {
