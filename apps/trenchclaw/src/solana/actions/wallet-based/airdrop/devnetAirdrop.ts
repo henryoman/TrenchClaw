@@ -160,7 +160,7 @@ const readWalletLibrary = async () => {
       parsed = JSON.parse(line);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Invalid wallet library JSON on line ${index + 1}: ${message}`);
+      throw new Error(`Invalid wallet library JSON on line ${index + 1}: ${message}`, { cause: error });
     }
 
     return walletLibraryEntrySchema.parse(parsed);
@@ -243,8 +243,11 @@ const waitForSignatureConfirmation = async (input: {
   commitment: CommitmentLevel;
 }): Promise<void> => {
   const timeoutAt = Date.now() + input.timeoutMs;
+  const pollUntilConfirmed = async (): Promise<void> => {
+    if (Date.now() >= timeoutAt) {
+      throw new Error(`Timed out waiting for airdrop confirmation for signature ${input.signature}`);
+    }
 
-  while (Date.now() < timeoutAt) {
     const statusResponse = await rpcRequest<{
       value: Array<
         | {
@@ -265,9 +268,10 @@ const waitForSignatureConfirmation = async (input: {
     }
 
     await Bun.sleep(500);
-  }
+    await pollUntilConfirmed();
+  };
 
-  throw new Error(`Timed out waiting for airdrop confirmation for signature ${input.signature}`);
+  await pollUntilConfirmed();
 };
 
 const isCommitmentSatisfied = (
@@ -383,9 +387,8 @@ export const executeDevnetAirdrop = async (rawInput: DevnetAirdropInput): Promis
     walletNames: input.walletNames,
   });
 
-  const results: DevnetAirdropTargetResult[] = [];
-
-  for (const target of targets) {
+  const results = await targets.reduce<Promise<DevnetAirdropTargetResult[]>>(async (previousResults, target) => {
+    const accumulated = await previousResults;
     const signature = await requestAirdrop({
       rpcUrl,
       address: target.address,
@@ -394,13 +397,17 @@ export const executeDevnetAirdrop = async (rawInput: DevnetAirdropInput): Promis
       commitment: input.commitment,
     });
     const balanceSol = await getSolBalance(rpcUrl, target.address);
-    results.push({
-      address: target.address,
-      label: target.label,
-      signature,
-      balanceSol,
-    });
-  }
+
+    return [
+      ...accumulated,
+      {
+        address: target.address,
+        label: target.label,
+        signature,
+        balanceSol,
+      },
+    ];
+  }, Promise.resolve([]));
 
   return {
     rpcUrl,

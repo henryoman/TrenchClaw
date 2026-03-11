@@ -115,6 +115,7 @@ describe("enqueueRuntimeJobAction", () => {
       {
         botId: "bot-missing",
         routineName: "actionSequence",
+        config: {},
       },
     );
 

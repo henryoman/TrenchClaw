@@ -256,7 +256,7 @@
   });
 
   $effect(() => {
-    input;
+    void input;
     resizeComposer();
   });
 

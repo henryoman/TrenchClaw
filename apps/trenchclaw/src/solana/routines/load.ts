@@ -125,7 +125,7 @@ const mergeWorkspaceRoutineConfig = (
   jobConfig: Record<string, unknown>,
 ): Record<string, unknown> => {
   const mergedConfig: Record<string, unknown> = {
-    ...(definition.config ?? {}),
+    ...definition.config,
     ...jobConfig,
   };
 

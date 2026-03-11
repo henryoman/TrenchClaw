@@ -101,7 +101,7 @@ const readWalletLibrary = async () => {
       parsed = JSON.parse(line);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Invalid wallet library JSON on line ${index + 1}: ${message}`);
+      throw new Error(`Invalid wallet library JSON on line ${index + 1}: ${message}`, { cause: error });
     }
 
     return walletLibraryEntrySchema.parse(parsed);
@@ -184,8 +184,11 @@ const waitForSignatureConfirmation = async (input: {
   commitment: CommitmentLevel;
 }): Promise<void> => {
   const timeoutAt = Date.now() + input.timeoutMs;
+  const pollUntilConfirmed = async (): Promise<void> => {
+    if (Date.now() >= timeoutAt) {
+      throw new Error(`Timed out waiting for airdrop confirmation for signature ${input.signature}`);
+    }
 
-  while (Date.now() < timeoutAt) {
     const statusResponse = await rpcRequest<{
       value: Array<
         | {
@@ -206,9 +209,10 @@ const waitForSignatureConfirmation = async (input: {
     }
 
     await Bun.sleep(500);
-  }
+    await pollUntilConfirmed();
+  };
 
-  throw new Error(`Timed out waiting for airdrop confirmation for signature ${input.signature}`);
+  await pollUntilConfirmed();
 };
 
 const isCommitmentSatisfied = (
@@ -319,7 +323,8 @@ const main = async (): Promise<void> => {
   console.log(`Targets: ${targets.length}`);
   console.log(`Amount per wallet: ${amountSol} SOL`);
 
-  for (const target of targets) {
+  await targets.reduce<Promise<void>>(async (previous, target) => {
+    await previous;
     console.log(`Airdropping ${amountSol} SOL to ${target.label} (${target.address})`);
     const signature = await requestAirdrop({
       rpcUrl,
@@ -330,7 +335,7 @@ const main = async (): Promise<void> => {
     });
     const balanceSol = await getSolBalance(rpcUrl, target.address);
     console.log(`Confirmed ${signature} | balance: ${balanceSol.toFixed(6)} SOL`);
-  }
+  }, Promise.resolve());
 };
 
 if (import.meta.main) {
