@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-11T19:54:16.426Z
+Generated at: 2026-03-11T20:33:49.501Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -188,10 +188,11 @@ apps/trenchclaw/
 |   |   |   |   |   |   |       |-- practice002-0002.json
 |   |   |   |   |   |   |       `-- practice002-0002.label.json
 |   |   |   |   |   |   `-- wallet-library.jsonl
-|   |   |   |   |   |-- i-test-wallet-groups/
+|   |   |   |   |   |-- i-debug-wallets/
 |   |   |   |   |   |   `-- keypairs/
-|   |   |   |   |   `-- i-01.json
-|   |   |   |   |-- keypairs/
+|   |   |   |   |   |       `-- core_debug_group/
+|   |   |   |   |   `-- i-test-wallet-groups/
+|   |   |   |   |       `-- keypairs/
 |   |   |   |   |-- no-read/
 |   |   |   |   |   |-- .gitkeep
 |   |   |   |   |   |-- ai.json

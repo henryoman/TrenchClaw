@@ -1,15 +1,15 @@
-import { DEFAULT_WALLET_LIBRARY_FILE_NAME, resolveWalletLibraryFilePath } from "../solana/actions/wallet-based/create-wallets/wallet-storage";
+import {
+  readManagedWalletLibraryEntries,
+  resolveReadableWalletLibraryFilePath,
+} from "../solana/lib/wallet/wallet-manager";
+import {
+  DEFAULT_WALLET_LIBRARY_FILE_NAME,
+  type ManagedWalletLibraryEntry,
+} from "../solana/lib/wallet/wallet-types";
 import { resolveCurrentActiveInstanceIdSync } from "./instance-state";
 import { toRuntimeContractRelativePath } from "./runtime-paths";
 
-interface WalletPromptEntry {
-  walletId: string;
-  walletGroup: string;
-  walletName: string;
-  address: string;
-  keypairFilePath?: string;
-  walletLabelFilePath?: string;
-}
+type WalletPromptEntry = ManagedWalletLibraryEntry;
 
 interface RenderRuntimeWalletPromptContextInput {
   activeInstanceId?: string | null;
@@ -18,9 +18,6 @@ interface RenderRuntimeWalletPromptContextInput {
 }
 
 const DEFAULT_MAX_PROMPT_WALLETS = 32;
-
-const asNonEmptyString = (value: unknown): string | null =>
-  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
 
 const toVariableSegment = (value: string): string => {
   const normalized = value
@@ -42,51 +39,6 @@ const toContractPath = (targetPath: string | undefined): string | null => {
   return toRuntimeContractRelativePath(targetPath);
 };
 
-export const parseWalletPromptEntries = (rawText: string): {
-  entries: WalletPromptEntry[];
-  invalidLineCount: number;
-} => {
-  const latestEntryByWalletId = new Map<string, WalletPromptEntry>();
-  let invalidLineCount = 0;
-
-  for (const line of rawText.split("\n")) {
-    const normalized = line.trim();
-    if (!normalized) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(normalized) as Record<string, unknown>;
-      const walletId = asNonEmptyString(parsed.walletId);
-      const walletGroup = asNonEmptyString(parsed.walletGroup);
-      const walletName = asNonEmptyString(parsed.walletName);
-      const address = asNonEmptyString(parsed.address);
-      if (!walletId || !walletGroup || !walletName || !address) {
-        invalidLineCount += 1;
-        continue;
-      }
-
-      latestEntryByWalletId.set(walletId, {
-        walletId,
-        walletGroup,
-        walletName,
-        address,
-        keypairFilePath: asNonEmptyString(parsed.keypairFilePath) ?? undefined,
-        walletLabelFilePath: asNonEmptyString(parsed.walletLabelFilePath) ?? undefined,
-      });
-    } catch {
-      invalidLineCount += 1;
-    }
-  }
-
-  return {
-    entries: [...latestEntryByWalletId.values()].toSorted((left, right) =>
-      `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`),
-    ),
-    invalidLineCount,
-  };
-};
-
 export const renderRuntimeWalletPromptContext = async (
   input: RenderRuntimeWalletPromptContextInput = {},
 ): Promise<string> => {
@@ -96,7 +48,7 @@ export const renderRuntimeWalletPromptContext = async (
 No active wallet instance is selected, so no wallet variables are loaded for this turn.`;
   }
 
-  const walletLibraryFilePath = input.walletLibraryFilePath ?? resolveWalletLibraryFilePath();
+  const walletLibraryFilePath = input.walletLibraryFilePath ?? await resolveReadableWalletLibraryFilePath();
   const walletLibraryContractPath = toRuntimeContractRelativePath(walletLibraryFilePath);
   const walletLibraryFile = Bun.file(walletLibraryFilePath);
   if (!(await walletLibraryFile.exists())) {
@@ -109,10 +61,12 @@ These wallet variables are loaded from the active instance wallet library at req
 - WALLET_LIBRARY_EXPECTED_FILE_NAME=${DEFAULT_WALLET_LIBRARY_FILE_NAME}`;
   }
 
-  const { entries, invalidLineCount } = parseWalletPromptEntries(await walletLibraryFile.text());
+  const { entries, invalidLineCount } = await readManagedWalletLibraryEntries({ filePath: walletLibraryFilePath });
   const maxWallets = Math.max(1, Math.trunc(input.maxWallets ?? DEFAULT_MAX_PROMPT_WALLETS));
-  const visibleEntries = entries.slice(0, maxWallets);
-  const groups = [...new Set(entries.map((entry) => entry.walletGroup))];
+  const orderedEntries = [...entries].toSorted((left, right) =>
+    `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`));
+  const visibleEntries = orderedEntries.slice(0, maxWallets);
+  const groups = [...new Set(orderedEntries.map((entry) => entry.walletGroup))];
 
   const walletJson = visibleEntries.map((entry) => ({
     alias: toWalletAlias(entry),
@@ -192,13 +146,13 @@ These wallet variables are loaded from the active instance wallet library at req
     "This updates protected wallet metadata only. It does not delete wallets and does not change secret key bytes.",
   );
 
-  if (entries.length === 0) {
+  if (orderedEntries.length === 0) {
     lines.push("- WALLET_LIBRARY_STATUS=empty");
     return lines.join("\n");
   }
 
-  if (entries.length > visibleEntries.length) {
-    lines.push(`- WALLET_PROMPT_TRUNCATED=yes (${visibleEntries.length}/${entries.length} wallets shown)`);
+  if (orderedEntries.length > visibleEntries.length) {
+    lines.push(`- WALLET_PROMPT_TRUNCATED=yes (${visibleEntries.length}/${orderedEntries.length} wallets shown)`);
   }
 
   lines.push("", "### Wallet Alias Variables");
@@ -227,7 +181,7 @@ These wallet variables are loaded from the active instance wallet library at req
       {
         activeInstanceId,
         walletLibraryFile: walletLibraryContractPath,
-        walletCount: entries.length,
+        walletCount: orderedEntries.length,
         walletGroups: groups,
         wallets: walletJson,
       },

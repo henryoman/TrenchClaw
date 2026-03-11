@@ -46,6 +46,7 @@ interface RuntimeChatServiceDeps {
   stateStore: StateStore;
   rpcUrl?: string;
   jupiterUltra?: unknown;
+  jupiterTrigger?: unknown;
   tokenAccounts?: unknown;
   ultraSigner?: {
     address?: string;
@@ -242,6 +243,7 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
             eventBus: deps.eventBus,
             rpcUrl: deps.rpcUrl,
             jupiterUltra: deps.jupiterUltra,
+            jupiterTrigger: deps.jupiterTrigger,
             tokenAccounts: deps.tokenAccounts,
             ultraSigner: deps.ultraSigner,
             stateStore: deps.stateStore,

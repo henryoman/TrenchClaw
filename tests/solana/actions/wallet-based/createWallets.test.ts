@@ -28,6 +28,34 @@ afterEach(async () => {
 });
 
 describe("createWalletsAction", () => {
+  test("stores the wallet library under the instance keypairs root by default", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    delete process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
+    const walletGroup = `default-wallets-${crypto.randomUUID()}`;
+    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
+
+    const result = await createWalletsAction.execute({} as never, {
+      count: 1,
+      walletName: "wallet001",
+      storage: {
+        walletGroup,
+        createGroupIfMissing: true,
+      },
+      output: {
+        filePrefix: "wallet",
+        startIndex: 1,
+        includeIndexInFileName: true,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data?.walletLibraryFilePath).toContain(`/instance/${TEST_INSTANCE_ID}/keypairs/wallet-library.jsonl`);
+  });
+
   test("creates multiple flat groups in one batch and defaults wallet names to wallet_00 style", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const coreGroup = `core-wallets-${crypto.randomUUID()}`;

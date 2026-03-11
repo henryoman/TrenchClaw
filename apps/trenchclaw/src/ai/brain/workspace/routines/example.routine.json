@@ -43,7 +43,6 @@
         "amount": "0.12",
         "amountUnit": "ui",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -67,7 +66,6 @@
         "outputCoin": "USDC",
         "amount": "20%",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -92,7 +90,6 @@
         "amount": "0.08",
         "amountUnit": "ui",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -116,7 +113,6 @@
         "outputCoin": "SOL",
         "amount": "50%",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -141,7 +137,6 @@
         "amount": "25",
         "amountUnit": "ui",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -165,7 +160,6 @@
         "outputCoin": "JUP",
         "amount": "15%",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -189,7 +183,6 @@
         "outputCoin": "USDC",
         "amount": "10%",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -214,7 +207,6 @@
         "amount": "0.05",
         "amountUnit": "ui",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },
@@ -238,7 +230,6 @@
         "outputCoin": "SOL",
         "amount": "100%",
         "mode": "ExactIn",
-        "slippageBps": 50,
         "executeTimeoutMs": 10000
       }
     },

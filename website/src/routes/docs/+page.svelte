@@ -6,7 +6,7 @@
 
 <svelte:head>
   <title>TrenchClaw Docs</title>
-  <meta name="description" content="TrenchClaw documentation for installation, setup, and first-run workflows." />
+  <meta name="description" content="Operator-focused TrenchClaw documentation covering install, instances, vault setup, wallets, runtime behavior, routines, and current limitations." />
 </svelte:head>
 
 <div class="docs-shell min-h-screen">
@@ -35,9 +35,9 @@
     <section>
       <div class="docs-index-hero">
         <p class="docs-kicker">Documentation</p>
-        <h1 class="docs-index-title">Documentation</h1>
+        <h1 class="docs-index-title">Operator docs</h1>
         <p class="docs-index-description">
-          Installation, runtime setup, wallet, vault, and web app guides.
+          Install, launch, instance setup, vault and RPC wiring, wallet workflows, queueing, runtime behavior, and current limitations.
         </p>
 
         <div class="terminal-window relative mt-8">
@@ -49,10 +49,10 @@
           </div>
           <div class="terminal-body space-y-2 px-5 py-5">
             <p class="terminal-line-dim">$ open /docs/getting-started</p>
-            <p class="terminal-line-bright">install checklist</p>
-            <p class="terminal-line-bright">vault + AI provider wiring</p>
-            <p class="terminal-line-bright">runtime and web app launch steps</p>
-            <p class="terminal-line-dim">commands, configuration, and startup</p>
+            <p class="terminal-line-bright">install + launch</p>
+            <p class="terminal-line-bright">instances + safety profiles</p>
+            <p class="terminal-line-bright">vault, RPC, wallets, and routines</p>
+            <p class="terminal-line-dim">current behavior, sharp edges, and operator workflow</p>
           </div>
         </div>
       </div>

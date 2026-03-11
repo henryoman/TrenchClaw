@@ -41,7 +41,6 @@ const quotePairSchema = z.object({
   outputCoin: z.string().min(1),
   taker: z.string().min(1).optional(),
   mode: z.enum(["ExactIn", "ExactOut"]).optional(),
-  slippageBps: z.number().int().positive().max(10_000).optional(),
   referralAccount: z.string().min(1).optional(),
   referralFee: z.number().int().nonnegative().max(10_000).optional(),
   coinAliases: z.record(z.string(), z.string()).optional(),
@@ -258,7 +257,6 @@ export const buildOrderRequest = async (
     taker: taker ?? "",
     mode: input.mode,
     swapMode: input.mode,
-    slippageBps: input.slippageBps ?? 50,
     referralAccount: input.referralAccount,
     referralFee: input.referralFee,
   };

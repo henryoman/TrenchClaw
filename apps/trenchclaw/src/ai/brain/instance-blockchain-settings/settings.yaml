@@ -9,10 +9,11 @@ rpc:
       apiKeyRef: vault://rpc/helius/api-key
 
 trading:
-  swapSettings: swap.yaml
+  swapSettings: swaps.yaml
   preferredSwap: ultra
   defaultSwapProfile: ultra
-  slippagePresetBps: ultra
+  slippagePresetBps: ultra-managed
+  futureSwapAction: scheduleManagedUltraSwap
   sizing:
     maxTradeSize: 1 #sol
     maxTradesPerHour: 10

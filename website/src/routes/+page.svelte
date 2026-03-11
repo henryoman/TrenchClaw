@@ -13,9 +13,9 @@
   ];
 
   const quickLinks = [
-    { label: 'Getting Started', href: '/docs/getting-started', description: 'Install, configure, and launch the runtime.' },
-    { label: 'AI + Vault Setup', href: '/docs/ai-and-vault-setup', description: 'Hook up keys, providers, and secure local state.' },
-    { label: 'Runtime + Frontends', href: '/docs/runtime-and-frontends', description: 'Understand the CLI, web UI, and operator flow.' }
+    { label: 'Getting Started', href: '/docs/getting-started', description: 'Install the standalone release, understand supported targets, and launch the local runtime.' },
+    { label: 'Instances + Safety Profiles', href: '/docs/instances-and-safety-profiles', description: 'Create local instances, sign in, and understand current safety-profile behavior.' },
+    { label: 'AI, RPC, and Vault Setup', href: '/docs/ai-and-vault-setup', description: 'Configure the local vault, RPC path, and AI provider secrets the shipped GUI exposes.' }
   ];
 
   const principles = [
@@ -34,12 +34,12 @@
   ];
 
   const terminalLines = [
-    { tone: 'dim', text: '$ trenchclaw start' },
+    { tone: 'dim', text: '$ trenchclaw' },
     { tone: 'dim', text: 'booting runtime...' },
     { tone: 'bright', text: 'openrouter model resolved' },
     { tone: 'bright', text: 'wallet library loaded from protected instance path' },
     { tone: 'bright', text: 'scheduler online' },
-    { tone: 'dim', text: 'web gui: http://127.0.0.1:4020' },
+    { tone: 'dim', text: 'web gui: http://127.0.0.1:4173' },
     { tone: 'dim', text: 'docs: /docs/getting-started' },
     { tone: 'bright', text: 'ready for actions and routines' }
   ];
@@ -91,6 +91,10 @@
           TrenchClaw is a Bun-based Solana operator runtime with validated actions, filesystem-backed wallets, AI orchestration,
           and local state built for actions, routines, and operator control.
         </p>
+        <p class="mt-4 max-w-2xl text-sm leading-7 text-foreground-soft">
+          The hosted install scripts fetch a published GitHub Release for your platform, install the `trenchclaw` launcher,
+          and provision the required Solana CLI toolchain before first launch.
+        </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
           <a href="/docs" class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5">
@@ -112,7 +116,7 @@
           </div>
           <div class="surface-card p-5">
             <div class="text-2xl font-bold tracking-[-0.04em]">CLI first</div>
-            <div class="mt-1 text-sm text-muted">Use the same workflows in the web app and CLI</div>
+            <div class="mt-1 text-sm text-muted">Some workflows remain chat- and runtime-driven rather than full GUI parity</div>
           </div>
         </div>
       </div>
@@ -146,6 +150,9 @@
               <code class="block overflow-x-auto font-mono text-xs leading-6 text-foreground-soft">{target.command}</code>
             </div>
           {/each}
+          <p class="text-xs leading-6 text-muted">
+            Requires published GitHub Release artifacts for the selected version.
+          </p>
         </div>
       </div>
     </div>

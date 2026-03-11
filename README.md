@@ -20,10 +20,6 @@
   <a href="https://bun.sh/docs/api/sqlite"><img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" /></a>
 </p>
 
-Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
-
-*0.0.1 release Wednesday March 11*
-
 # TrenchClaw
 
 TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected.
@@ -31,6 +27,8 @@ TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It'
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+
+Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
 
 ## v0.0.1 Feature Checklist
 
@@ -384,36 +382,32 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
 
-## Download Dependencies
+## Install
 
-Use the runner bootstrap script to install or upgrade both dependencies to latest stable:
+End users should install TrenchClaw with the release installer, not the dev bootstrap scripts:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-trenchclaw.sh | sh
+trenchclaw
+```
+
+What the installer does:
+- Downloads the correct standalone release for the current platform
+- Installs the `trenchclaw` launcher onto PATH
+- Installs or updates mandatory external CLIs
+- Leaves runtime state, vaults, keypairs, logs, and databases out of the release bundle
+
+Current mandatory external CLI installed by the release installer:
+- Solana CLI tools via the Anza stable installer
+
+Relevant installer scripts:
+- [scripts/install-trenchclaw.sh](/Volumes/T9/cursor/TrenchClaw/scripts/install-trenchclaw.sh)
+- [scripts/install-required-tools.sh](/Volumes/T9/cursor/TrenchClaw/scripts/install-required-tools.sh)
+
+Developer bootstrap remains separate if you are working from source:
 
 ```bash
 sh ./apps/runner/scripts/bootstrap-deps.sh
-```
-
-Manual equivalents (if you need them):
-
-```bash
-# Bun (macOS/Linux)
-curl -fsSL https://bun.sh/install | bash
-
-# Solana CLI via Anza installer (macOS/Linux, stable channel)
-sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
-```
-
-Verify everything is installed:
-
-```bash
-bun --version
-solana --version
-```
-
-Update commands:
-
-```bash
-bun upgrade
-agave-install update
 ```
 
 ## Unified App Runner (Local)
@@ -433,6 +427,12 @@ What `bun run start` does:
 - Serves GUI from static `apps/frontends/gui/dist`
 - Proxies `/api/*` from GUI server to runtime server
 - Prompts `launch GUI now?` and opens browser after Enter (type `skip` to keep runtime CLI-only)
+
+Standalone release boot flow is different:
+- Installer downloads the release and installs mandatory external CLIs first
+- User runs `trenchclaw`
+- Runner creates a fresh local runtime state directory on first launch
+- Runner starts runtime + GUI locally
 
 Local development still uses Vite:
 

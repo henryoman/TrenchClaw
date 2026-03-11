@@ -1,4 +1,27 @@
+import { appendFile, copyFile, mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import path from "node:path";
+
 import type { RuntimeActor } from "../../../ai/runtime/types/context";
+import { resolveCurrentActiveInstanceIdSync, resolveInstanceDirectoryPath } from "../../../runtime/instance-state";
+import { toRuntimeContractRelativePath } from "../../../runtime/runtime-paths";
+import {
+  assertWithinBrainProtectedDirectory,
+  resolveAbsolutePath,
+} from "./protected-write-policy";
+import {
+  DEFAULT_WALLET_LIBRARY_FILE_NAME,
+  ManagedWalletLibraryEntry,
+  ManagedWalletRef,
+  ManagedWalletTreeNode,
+  ManagedWalletTreeSnapshot,
+  WALLET_KEYPAIRS_DIRECTORY_NAME,
+  WALLET_LABEL_FILE_SUFFIX,
+  WALLET_LIBRARY_PATH_ENV,
+  managedWalletLibraryEntrySchema,
+  managedWalletRefSchema,
+  walletGroupNameSchema,
+  walletNameSchema,
+} from "./wallet-types";
 
 export interface WalletDeleteRequest {
   walletId: string;
@@ -36,4 +59,330 @@ export const assertWalletDeletionAllowed = (request: WalletDeleteRequest): void 
       `Wallet deletion requires explicit user approval (walletId="${request.walletId}")`,
     );
   }
+};
+
+const resolveConfiguredWalletLibraryPath = (): string | null => {
+  const configuredPath = process.env[WALLET_LIBRARY_PATH_ENV]?.trim();
+  return configuredPath && configuredPath.length > 0 ? configuredPath : null;
+};
+
+const toPosixPath = (value: string): string => value.split(path.sep).join("/");
+
+const ensureWithinWalletRoot = (absoluteRootPath: string, absoluteTargetPath: string): void => {
+  if (
+    absoluteTargetPath !== absoluteRootPath &&
+    !absoluteTargetPath.startsWith(`${absoluteRootPath}${path.sep}`)
+  ) {
+    throw new Error(`Wallet path escapes keypair root: ${absoluteTargetPath}`);
+  }
+};
+
+const canonicalizeWalletRelativePath = (rawPath: string): string => {
+  const normalized = rawPath.replace(/\\/g, "/").trim();
+  const withoutLeadingSlash = normalized.replace(/^\/+/u, "");
+  const canonical = path.posix.normalize(withoutLeadingSlash);
+  if (!canonical || canonical === "." || canonical.includes("..")) {
+    throw new Error("Invalid wallet path.");
+  }
+  return canonical;
+};
+
+const resolveDefaultWalletLibraryFilePath = (): string =>
+  path.join(resolveWalletKeypairRootPath(), DEFAULT_WALLET_LIBRARY_FILE_NAME);
+
+const buildManagedWalletTree = async (
+  absoluteDirectoryPath: string,
+  absoluteRootPath: string,
+): Promise<ManagedWalletTreeNode[]> => {
+  const entries = (await readdir(absoluteDirectoryPath, { withFileTypes: true })).toSorted((a, b) => {
+    if (a.isDirectory() && !b.isDirectory()) {
+      return -1;
+    }
+    if (!a.isDirectory() && b.isDirectory()) {
+      return 1;
+    }
+    return a.name.localeCompare(b.name);
+  });
+
+  const nodes = await Promise.all(
+    entries.map(async (entry): Promise<ManagedWalletTreeNode | null> => {
+      const absoluteEntryPath = path.join(absoluteDirectoryPath, entry.name);
+      ensureWithinWalletRoot(absoluteRootPath, absoluteEntryPath);
+      const relativePath = toPosixPath(path.relative(absoluteRootPath, absoluteEntryPath));
+
+      if (entry.isDirectory()) {
+        return {
+          name: entry.name,
+          relativePath,
+          kind: "directory",
+          children: await buildManagedWalletTree(absoluteEntryPath, absoluteRootPath),
+        };
+      }
+
+      if (
+        entry.isFile() &&
+        entry.name.toLowerCase().endsWith(".json") &&
+        !isWalletLabelFileName(entry.name)
+      ) {
+        return {
+          name: entry.name,
+          relativePath,
+          kind: "file",
+        };
+      }
+
+      return null;
+    }),
+  );
+
+  return nodes.filter((node): node is ManagedWalletTreeNode => node !== null);
+};
+
+const countManagedWalletFiles = (nodes: ManagedWalletTreeNode[]): number =>
+  nodes.reduce((count, node) => {
+    if (node.kind === "file") {
+      return count + 1;
+    }
+    return count + countManagedWalletFiles(node.children ?? []);
+  }, 0);
+
+export const resolveActiveWalletInstanceId = (): string => {
+  const instanceId = resolveCurrentActiveInstanceIdSync();
+  if (!instanceId) {
+    throw new Error("No active instance selected. Sign in before accessing wallets.");
+  }
+  return instanceId;
+};
+
+export const resolveWalletInstanceRootPath = (): string => {
+  const absoluteRoot = resolveInstanceDirectoryPath(resolveActiveWalletInstanceId());
+  assertWithinBrainProtectedDirectory(absoluteRoot);
+  return absoluteRoot;
+};
+
+export const resolveWalletKeypairRootPath = (): string => {
+  const absoluteRoot = resolveAbsolutePath(path.join(resolveWalletInstanceRootPath(), WALLET_KEYPAIRS_DIRECTORY_NAME));
+  assertWithinBrainProtectedDirectory(absoluteRoot);
+  return absoluteRoot;
+};
+
+export const resolveWalletKeypairRootRelativePath = (): string =>
+  toRuntimeContractRelativePath(resolveWalletKeypairRootPath());
+
+export const resolveWalletGroupDirectoryPath = (walletGroup: string): string => {
+  const safeGroup = walletGroupNameSchema.parse(walletGroup);
+  const absoluteRoot = resolveWalletKeypairRootPath();
+  const groupDirectoryPath = path.resolve(absoluteRoot, safeGroup);
+  if (groupDirectoryPath !== absoluteRoot && !groupDirectoryPath.startsWith(`${absoluteRoot}${path.sep}`)) {
+    throw new Error(`Wallet group path escapes keypair root: ${groupDirectoryPath}`);
+  }
+  assertWithinBrainProtectedDirectory(groupDirectoryPath);
+  return groupDirectoryPath;
+};
+
+export const resolveLegacyWalletLibraryFilePath = (): string =>
+  path.join(resolveWalletInstanceRootPath(), DEFAULT_WALLET_LIBRARY_FILE_NAME);
+
+export const resolveWalletLibraryFilePath = (): string => {
+  const absolutePath = resolveAbsolutePath(resolveConfiguredWalletLibraryPath() ?? resolveDefaultWalletLibraryFilePath());
+  assertWithinBrainProtectedDirectory(absolutePath);
+  return absolutePath;
+};
+
+export const resolveReadableWalletLibraryFilePath = async (): Promise<string> => {
+  const configuredPath = resolveConfiguredWalletLibraryPath();
+  const preferredPath = resolveWalletLibraryFilePath();
+  if (configuredPath) {
+    return preferredPath;
+  }
+
+  if (await Bun.file(preferredPath).exists()) {
+    return preferredPath;
+  }
+
+  const legacyPath = resolveLegacyWalletLibraryFilePath();
+  if (await Bun.file(legacyPath).exists()) {
+    return legacyPath;
+  }
+
+  return preferredPath;
+};
+
+export const migrateLegacyWalletLibraryIfNeeded = async (): Promise<string> => {
+  const preferredPath = resolveWalletLibraryFilePath();
+  if (resolveConfiguredWalletLibraryPath()) {
+    return preferredPath;
+  }
+
+  const legacyPath = resolveLegacyWalletLibraryFilePath();
+  if (legacyPath === preferredPath) {
+    return preferredPath;
+  }
+
+  if (await Bun.file(preferredPath).exists() || !(await Bun.file(legacyPath).exists())) {
+    return preferredPath;
+  }
+
+  await mkdir(path.dirname(preferredPath), { recursive: true });
+  try {
+    await rename(legacyPath, preferredPath);
+  } catch {
+    await copyFile(legacyPath, preferredPath);
+    await unlink(legacyPath).catch(() => {});
+  }
+
+  return preferredPath;
+};
+
+export const isWalletLabelFileName = (fileName: string): boolean =>
+  fileName.toLowerCase().endsWith(WALLET_LABEL_FILE_SUFFIX);
+
+export const resolveWalletLabelFilePath = (keypairFilePath: string): string => {
+  const absoluteKeypairFilePath = resolveAbsolutePath(keypairFilePath);
+  const extension = path.extname(absoluteKeypairFilePath);
+  const walletLabelFilePath = extension.length > 0
+    ? absoluteKeypairFilePath.slice(0, -extension.length) + WALLET_LABEL_FILE_SUFFIX
+    : `${absoluteKeypairFilePath}${WALLET_LABEL_FILE_SUFFIX}`;
+  assertWithinBrainProtectedDirectory(walletLabelFilePath);
+  return walletLabelFilePath;
+};
+
+export const readManagedWalletLibraryEntries = async (input?: {
+  filePath?: string;
+  allowMissing?: boolean;
+}): Promise<{
+  filePath: string;
+  entries: ManagedWalletLibraryEntry[];
+  invalidLineCount: number;
+}> => {
+  const filePath = input?.filePath ?? await resolveReadableWalletLibraryFilePath();
+  const file = Bun.file(filePath);
+  if (!(await file.exists())) {
+    if (input?.allowMissing) {
+      return {
+        filePath,
+        entries: [],
+        invalidLineCount: 0,
+      };
+    }
+    throw new Error(`Wallet library not found: ${filePath}`);
+  }
+
+  const entries: ManagedWalletLibraryEntry[] = [];
+  let invalidLineCount = 0;
+  for (const line of (await file.text()).split(/\r?\n/)) {
+    const normalized = line.trim();
+    if (!normalized) {
+      continue;
+    }
+
+    try {
+      entries.push(managedWalletLibraryEntrySchema.parse(JSON.parse(normalized)));
+    } catch {
+      invalidLineCount += 1;
+    }
+  }
+
+  return {
+    filePath,
+    entries,
+    invalidLineCount,
+  };
+};
+
+export const findManagedWalletEntry = async (input: ManagedWalletRef): Promise<ManagedWalletLibraryEntry> => {
+  const ref = managedWalletRefSchema.parse(input);
+  const { entries } = await readManagedWalletLibraryEntries();
+  const entry = entries.find((candidate) =>
+    candidate.walletGroup === ref.walletGroup && candidate.walletName === ref.walletName);
+
+  if (!entry) {
+    throw new Error(`Managed wallet not found: ${ref.walletGroup}.${ref.walletName}`);
+  }
+
+  return entry;
+};
+
+export const appendManagedWalletLibraryEntries = async (
+  filePath: string,
+  entries: ManagedWalletLibraryEntry[],
+): Promise<void> => {
+  if (entries.length === 0) {
+    return;
+  }
+
+  entries.forEach((entry) => managedWalletLibraryEntrySchema.parse(entry));
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await appendFile(filePath, `${entries.map((entry) => JSON.stringify(entry)).join("\n")}\n`, { encoding: "utf8" });
+};
+
+export const rewriteManagedWalletLibraryEntries = async (
+  filePath: string,
+  entries: ManagedWalletLibraryEntry[],
+): Promise<void> => {
+  entries.forEach((entry) => managedWalletLibraryEntrySchema.parse(entry));
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const content = entries.length > 0 ? `${entries.map((entry) => JSON.stringify(entry)).join("\n")}\n` : "";
+  await writeFile(filePath, content, "utf8");
+};
+
+export const listManagedWalletsByGroup = async (input: {
+  walletGroup: string;
+  walletNames?: string[];
+}): Promise<ManagedWalletLibraryEntry[]> => {
+  const walletGroup = walletGroupNameSchema.parse(input.walletGroup);
+  const requestedNames = input.walletNames ? new Set(input.walletNames.map((name) => walletNameSchema.parse(name))) : null;
+  const { entries } = await readManagedWalletLibraryEntries();
+  return entries.filter((entry) => {
+    if (entry.walletGroup !== walletGroup) {
+      return false;
+    }
+    if (requestedNames && !requestedNames.has(entry.walletName)) {
+      return false;
+    }
+    return true;
+  });
+};
+
+export const listManagedWalletTree = async (): Promise<ManagedWalletTreeSnapshot> => {
+  const absoluteRootPath = resolveWalletKeypairRootPath();
+  const rootRelativePath = resolveWalletKeypairRootRelativePath();
+  const rootStats = await stat(absoluteRootPath).catch(() => null);
+  if (!rootStats || !rootStats.isDirectory()) {
+    return {
+      rootRelativePath,
+      rootExists: false,
+      nodes: [],
+      walletFileCount: 0,
+    };
+  }
+
+  const nodes = await buildManagedWalletTree(absoluteRootPath, absoluteRootPath);
+  return {
+    rootRelativePath,
+    rootExists: true,
+    nodes,
+    walletFileCount: countManagedWalletFiles(nodes),
+  };
+};
+
+export const readManagedWalletBackupFile = async (relativePathInput: string): Promise<{ fileName: string; content: string }> => {
+  const absoluteRootPath = resolveWalletKeypairRootPath();
+  const relativePath = canonicalizeWalletRelativePath(relativePathInput);
+  const absoluteFilePath = path.resolve(absoluteRootPath, relativePath);
+  ensureWithinWalletRoot(absoluteRootPath, absoluteFilePath);
+
+  if (!absoluteFilePath.toLowerCase().endsWith(".json")) {
+    throw new Error("Only JSON wallet files can be downloaded.");
+  }
+
+  const fileStats = await stat(absoluteFilePath).catch(() => null);
+  if (!fileStats || !fileStats.isFile()) {
+    throw new Error("Wallet file not found.");
+  }
+
+  return {
+    fileName: path.basename(absoluteFilePath),
+    content: await Bun.file(absoluteFilePath).text(),
+  };
 };

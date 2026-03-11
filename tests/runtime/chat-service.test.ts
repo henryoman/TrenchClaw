@@ -228,10 +228,11 @@ describe("RuntimeChatService", () => {
     const registry = new ActionRegistry();
     const instanceId = `i-chat-wallet-${crypto.randomUUID()}`;
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
     tempInstanceDirectories.push(instanceDirectory);
-    await mkdir(instanceDirectory, { recursive: true });
+    await mkdir(keypairsDirectory, { recursive: true });
     await writeFile(
-      path.join(instanceDirectory, "wallet-library.jsonl"),
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
       `${JSON.stringify({
         walletId: "practice-wallets.practice001",
         walletGroup: "practice-wallets",

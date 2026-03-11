@@ -2,20 +2,13 @@ import { parseArgs } from "node:util";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import { resolveWalletLibraryFilePath, walletGroupNameSchema } from "../create-wallets/wallet-storage";
+import { listManagedWalletsByGroup } from "../../../lib/wallet/wallet-manager";
+import { base58AddressSchema, walletGroupNameSchema, walletNameSchema } from "../../../lib/wallet/wallet-types";
 
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_COMMITMENT = "confirmed";
-
-const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
-const base58AddressSchema = z.string().trim().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/);
-const walletLibraryEntrySchema = z.object({
-  walletGroup: walletGroupNameSchema,
-  walletName: walletNameSchema,
-  address: base58AddressSchema,
-});
 
 type CommitmentLevel = "processed" | "confirmed" | "finalized";
 
@@ -142,52 +135,19 @@ const parseSolAmount = (amountSol: number | string): number => {
   return value;
 };
 
-const readWalletLibrary = async () => {
-  const walletLibraryFilePath = resolveWalletLibraryFilePath();
-  const file = Bun.file(walletLibraryFilePath);
-  if (!(await file.exists())) {
-    throw new Error(`Wallet library not found: ${walletLibraryFilePath}`);
-  }
-
-  const lines = (await file.text())
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  return lines.map((line, index) => {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(line);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      throw new Error(`Invalid wallet library JSON on line ${index + 1}: ${message}`, { cause: error });
-    }
-
-    return walletLibraryEntrySchema.parse(parsed);
-  });
-};
-
 const resolveTargetsFromWalletLibrary = async (input: {
   walletGroup: string;
   walletNames?: string[];
 }): Promise<TargetWallet[]> => {
-  const entries = await readWalletLibrary();
-  const requestedNames = input.walletNames ? new Set(input.walletNames) : null;
-
-  const matches = entries.filter((entry) => {
-    if (entry.walletGroup !== input.walletGroup) {
-      return false;
-    }
-    if (requestedNames && !requestedNames.has(entry.walletName)) {
-      return false;
-    }
-    return true;
+  const matches = await listManagedWalletsByGroup({
+    walletGroup: input.walletGroup,
+    walletNames: input.walletNames,
   });
 
   if (matches.length === 0) {
     const requestedLabel =
-      requestedNames && requestedNames.size > 0
-        ? `${input.walletGroup}:${[...requestedNames].join(",")}`
+      input.walletNames && input.walletNames.length > 0
+        ? `${input.walletGroup}:${input.walletNames.join(",")}`
         : input.walletGroup;
     throw new Error(`No wallets found for "${requestedLabel}" in wallet library`);
   }
