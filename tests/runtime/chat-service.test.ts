@@ -227,7 +227,7 @@ describe("RuntimeChatService", () => {
 
   test("appends auto-loaded wallet variables to the system prompt", async () => {
     const registry = new ActionRegistry();
-    const instanceId = `i-chat-wallet-${crypto.randomUUID()}`;
+    const instanceId = "97";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
     const keypairsDirectory = path.join(instanceDirectory, "keypairs");
     tempInstanceDirectories.push(instanceDirectory);
@@ -239,8 +239,8 @@ describe("RuntimeChatService", () => {
         walletGroup: "practice-wallets",
         walletName: "practice001",
         address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-        keypairFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/practice001-0001.json"),
-        walletLabelFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/practice001-0001.label.json"),
+        keypairFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/wallet_000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/wallet_000.label.json"),
       })}\n`,
       "utf8",
     );

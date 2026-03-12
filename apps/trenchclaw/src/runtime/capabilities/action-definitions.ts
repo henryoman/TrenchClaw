@@ -97,7 +97,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: createWalletsAction,
     description: "Create wallets in one or more flat wallet groups using a single JSON batch payload.",
-    purpose: "Provision fresh wallets quickly with deterministic names like wallet_00 when names are omitted.",
+    purpose: "Provision fresh wallets quickly with simple sequential wallet files when names are omitted.",
     tags: ["wallets", "setup", "keys"],
     exampleInput: {
       groups: [
@@ -107,7 +107,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
         },
         {
           walletGroup: "snipers",
-          walletNames: ["maker_alpha", "maker_beta"],
+          walletNames: ["one", "two"],
         },
       ],
     },
@@ -118,7 +118,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: renameWalletsAction,
-    description: "Update wallet organization labels by passing explicit current and next group/name pairs.",
+    description: "Update wallet organization labels for existing wallets without renaming wallet files.",
     purpose: "Organize existing managed wallets without deleting them or touching secret key material.",
     tags: ["wallets", "maintenance"],
     exampleInput: {
@@ -126,11 +126,11 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
         {
           current: {
             walletGroup: "ops-market-makers",
-            walletName: "mm001",
+            walletName: "one",
           },
           next: {
             walletGroup: "ops-archive",
-            walletName: "mm-hot-001",
+            walletName: "main",
           },
         },
       ],
@@ -340,7 +340,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     exampleInput: {
       request: {
         type: "getBundle",
-        instanceId: "instance-1",
+        instanceId: "01",
       },
     },
     includeInCatalog: () => true,
@@ -356,7 +356,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     exampleInput: {
       request: {
         type: "upsertFact",
-        instanceId: "instance-1",
+        instanceId: "01",
         factKey: "preferences/risk-tolerance",
         factValue: "medium",
       },

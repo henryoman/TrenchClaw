@@ -8,7 +8,7 @@ import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-const TEST_INSTANCE_ID = "i-test-wallet-groups";
+const TEST_INSTANCE_ID = "92";
 
 afterEach(async () => {
   if (previousActiveInstanceId === undefined) {

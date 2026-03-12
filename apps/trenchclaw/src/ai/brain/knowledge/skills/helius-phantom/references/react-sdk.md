@@ -116,7 +116,7 @@ function WalletInfo() {
 
   return (
     <div>
-      <p>Wallet ID: {walletId}</p>
+      <p>Wallet: {walletId}</p>
       {addresses?.map((addr, i) => (
         <p key={i}>{addr.addressType}: {addr.address}</p>
       ))}

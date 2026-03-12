@@ -1,13 +1,10 @@
 {
   "createWallets": {
     "routineName": "createWallets",
-    "command": "createWallets [count=<number>] [walletName=<wallet>] [walletNames='[\"wallet001\",\"wallet002\"]'] [storage.walletGroup=<group>] [storage.createGroupIfMissing=true|false] [walletGroups='[{\"name\":\"core-wallets\",\"wallets\":[{\"name\":\"maker\"}]},{\"name\":\"snipers\",\"count\":2,\"startIndex\":5,\"filePrefix\":\"s\"}]'] [renames='[{\"walletGroup\":\"core-wallets\",\"fromWalletName\":\"maker\",\"toWalletName\":\"makerMain\"}]'] [output.filePrefix=<prefix>] [output.startIndex=<number>] [output.includeIndexInFileName=true|false]",
+    "command": "createWallets [count=<number>] [walletName=<wallet>] [walletNames='[\"one\",\"two\"]'] [storage.walletGroup=<group>] [storage.createGroupIfMissing=true|false] [walletGroups='[{\"name\":\"core-wallets\",\"wallets\":[{\"name\":\"one\"}]},{\"name\":\"snipers\",\"count\":2}]'] [renames='[{\"walletGroup\":\"core-wallets\",\"fromWalletName\":\"one\",\"toWalletName\":\"main\"}]']",
     "defaults": {
       "count": 1,
-      "storage.walletGroup": "core-wallets",
-      "output.filePrefix": "wallet",
-      "output.startIndex": 1,
-      "output.includeIndexInFileName": true
+      "storage.walletGroup": "core-wallets"
     }
   },
   "actionSequence": {
@@ -22,11 +19,6 @@
             "storage": {
               "walletGroup": "core-wallets",
               "createGroupIfMissing": true
-            },
-            "output": {
-              "filePrefix": "wallet",
-              "startIndex": 1,
-              "includeIndexInFileName": true
             }
           }
         }

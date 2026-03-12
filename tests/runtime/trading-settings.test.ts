@@ -101,7 +101,7 @@ describe("trading settings layering", () => {
   test("merges active-instance trading.json into resolved and runtime settings", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
-    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = `i-${crypto.randomUUID()}`;
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "95";
 
     const instanceDirectory = path.join(
       runtimeStatePath("instances"),
@@ -148,7 +148,7 @@ describe("trading settings layering", () => {
   });
 
   test("writes canonical instance trading settings under protected instance state", async () => {
-    const instanceId = `i-${crypto.randomUUID()}`;
+    const instanceId = "96";
     const instanceDirectory = path.join(runtimeStatePath("instances"), instanceId);
     createdDirectories.add(instanceDirectory);
 

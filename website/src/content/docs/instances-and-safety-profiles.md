@@ -7,7 +7,7 @@ order: 2
 ## What An Instance Stores
 
 - name
-- local id such as `i-01`
+- two-digit instance id such as `01`
 - optional PIN
 - safety profile
 

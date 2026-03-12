@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { readFile, writeFile } from "node:fs/promises";
+import { appendFile, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +17,7 @@ interface CliArgs {
   strategy: VersioningStrategy;
   currentVersion: string | null;
   apply: boolean;
+  githubOutputPath: string | null;
 }
 
 interface PackageJsonWithVersion extends Record<string, unknown> {
@@ -24,18 +25,19 @@ interface PackageJsonWithVersion extends Record<string, unknown> {
 }
 
 const parseArgs = (argv: string[]): CliArgs => {
-  let strategy: VersioningStrategy = "auto";
+  let strategy: VersioningStrategy = "beta";
   let currentVersion: string | null = null;
   let apply = false;
+  let githubOutputPath: string | null = null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--strategy") {
       const value = argv[index + 1];
-      if (!value || (value !== "auto" && value !== "patch" && value !== "beta")) {
-        throw new Error('Invalid --strategy value. Expected "auto", "patch", or "beta".');
+      if (!value || value !== "beta") {
+        throw new Error('Invalid --strategy value. Expected "beta".');
       }
-      strategy = value;
+      strategy = "beta";
       index += 1;
       continue;
     }
@@ -52,9 +54,18 @@ const parseArgs = (argv: string[]): CliArgs => {
       apply = true;
       continue;
     }
+    if (arg === "--github-output") {
+      const value = argv[index + 1];
+      if (!value) {
+        throw new Error("Missing value for --github-output");
+      }
+      githubOutputPath = value;
+      index += 1;
+      continue;
+    }
   }
 
-  return { strategy, currentVersion, apply };
+  return { strategy, currentVersion, apply, githubOutputPath };
 };
 
 const readRootVersion = async (): Promise<string> => {
@@ -91,13 +102,22 @@ const main = async (): Promise<void> => {
   }
 
   const payload = {
-    strategy: args.strategy,
+    strategy: "beta",
     apply: args.apply,
     currentVersion,
     nextVersion,
     currentTag: toVersionTag(currentVersion.replace(/^v/, "")),
     nextTag: toVersionTag(nextVersion),
+    prerelease: nextVersion.includes("-beta."),
   };
+
+  if (args.githubOutputPath) {
+    await appendFile(
+      args.githubOutputPath,
+      `current_version=${payload.currentVersion}\nnext_version=${payload.nextVersion}\ncurrent_tag=${payload.currentTag}\nnext_tag=${payload.nextTag}\nprerelease=${payload.prerelease}\n`,
+      "utf8",
+    );
+  }
 
   console.log(JSON.stringify(payload, null, 2));
 };

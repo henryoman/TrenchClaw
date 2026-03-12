@@ -13,7 +13,7 @@ describe("instance memory actions", () => {
     const profileResult = await mutateInstanceMemoryAction.execute(ctx, {
       request: {
         type: "updateProfile",
-        instanceId: "instance-1",
+        instanceId: "01",
         patch: {
           displayName: "Scalper One",
           tradingStyle: "scalper",
@@ -28,7 +28,7 @@ describe("instance memory actions", () => {
     const factResult = await mutateInstanceMemoryAction.execute(ctx, {
       request: {
         type: "upsertFact",
-        instanceId: "instance-1",
+        instanceId: "01",
         key: "facts.trading.timeframe",
         value: "intraday",
         confidence: 0.95,
@@ -38,7 +38,7 @@ describe("instance memory actions", () => {
 
     expect(factResult.ok).toBe(true);
     const storedFact = stateStore.getInstanceFact({
-      instanceId: "instance-1",
+      instanceId: "01",
       factKey: "facts/trading/timeframe",
     });
     expect(storedFact?.factValue).toBe("intraday");
@@ -46,7 +46,7 @@ describe("instance memory actions", () => {
     const bundleResult = await queryInstanceMemoryAction.execute(ctx, {
       request: {
         type: "getBundle",
-        instanceId: "instance-1",
+        instanceId: "01",
         includeExpired: false,
         limit: 20,
       },
@@ -67,7 +67,7 @@ describe("instance memory actions", () => {
       };
     };
     expect(payload.requestType).toBe("getBundle");
-    expect(payload.instanceId).toBe("instance-1");
+    expect(payload.instanceId).toBe("01");
     expect(payload.result.profile?.displayName).toBe("Scalper One");
     expect(payload.result.profile?.tradingStyle).toBe("scalper");
     expect(payload.result.facts[0]?.factKey).toBe("facts/trading/timeframe");
@@ -76,7 +76,7 @@ describe("instance memory actions", () => {
 
   test("uses active instance id fallback for profile reads and writes", async () => {
     const previous = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "instance-env";
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "11";
 
     try {
       const stateStore = new InMemoryStateStore();
@@ -108,7 +108,7 @@ describe("instance memory actions", () => {
         } | null;
       };
       expect(payload.requestType).toBe("getProfile");
-      expect(payload.instanceId).toBe("instance-env");
+      expect(payload.instanceId).toBe("11");
       expect(payload.result?.summary).toBe("Trades fast and likes momentum names");
     } finally {
       if (previous === undefined) {

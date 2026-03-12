@@ -1,4 +1,5 @@
 import { createKeyPairFromPrivateKeyBytes, getAddressFromPublicKey } from "@solana/kit";
+import { readdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
@@ -46,7 +47,7 @@ const walletGroupBatchSchema = z
       .min(1)
       .max(MAX_WALLETS_PER_GROUP)
       .optional()
-      .describe("Optional explicit wallet names. If omitted, names default to wallet_00, wallet_01, wallet_02, ..."),
+      .describe("Optional explicit wallet names. If omitted, names default to wallet_000, wallet_001, wallet_002, ..."),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -119,17 +120,6 @@ const legacyCreateWalletsInputSchema = z.object({
       walletGroup: DEFAULT_WALLET_GROUP,
       createGroupIfMissing: true,
     }),
-  output: z
-    .object({
-      filePrefix: z.string().min(1).default("wallet"),
-      startIndex: z.number().int().positive().default(1),
-      includeIndexInFileName: z.boolean().default(true),
-    })
-    .default({
-      filePrefix: "wallet",
-      startIndex: 1,
-      includeIndexInFileName: true,
-    }),
 })
   .strict()
   .superRefine((value, ctx) => {
@@ -193,7 +183,7 @@ interface CreateWalletsOutput {
   walletGroup?: string;
 }
 
-const toDefaultWalletName = (index: number): string => `${DEFAULT_WALLET_NAME_PREFIX}${String(index).padStart(2, "0")}`;
+const toDefaultWalletName = (index: number): string => `${DEFAULT_WALLET_NAME_PREFIX}${String(index).padStart(3, "0")}`;
 
 const normalizeLegacyWalletNames = (input: LegacyCreateWalletsInput): string[] => {
   if (input.walletNames) {
@@ -248,6 +238,35 @@ const createFilesystemWalletKeypair = async (): Promise<{
   };
 };
 
+const resolveNextWalletFilePath = async (outputDirectory: string): Promise<string> => {
+  const entries = await readdir(outputDirectory, { withFileTypes: true }).catch(() => []);
+  const usedNumericIndexes = new Set<number>();
+  let existingWalletFileCount = 0;
+
+  for (const entry of entries) {
+    if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".json") || entry.name.toLowerCase().endsWith(".label.json")) {
+      continue;
+    }
+    existingWalletFileCount += 1;
+    const numericMatch = /^wallet_(\d{3})\.json$/u.exec(entry.name);
+    if (numericMatch?.[1]) {
+      usedNumericIndexes.add(Number(numericMatch[1]));
+    }
+  }
+
+  if (existingWalletFileCount >= MAX_WALLETS_PER_GROUP) {
+    throw new Error(`Wallet group directory already contains the maximum of ${MAX_WALLETS_PER_GROUP} wallet files`);
+  }
+
+  for (let index = 0; index < MAX_WALLETS_PER_GROUP; index += 1) {
+    if (!usedNumericIndexes.has(index)) {
+      return path.join(outputDirectory, `wallet_${String(index).padStart(3, "0")}.json`);
+    }
+  }
+
+  throw new Error(`No wallet file slots remain in ${outputDirectory}`);
+};
+
 export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput> = {
   name: "createWallets",
   category: "wallet-based",
@@ -298,7 +317,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
 
         for (const wallet of walletNames) {
           const walletId = toWalletId(groupInput.walletGroup, wallet);
-          const keypairFilePath = path.join(outputDirectory, `${wallet}.json`);
+          const keypairFilePath = await resolveNextWalletFilePath(outputDirectory);
           const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);
 
           if (await Bun.file(keypairFilePath).exists()) {

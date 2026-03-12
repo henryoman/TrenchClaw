@@ -294,11 +294,6 @@ wallet:
               walletGroup: "core-wallets",
               createGroupIfMissing: true,
             },
-            output: {
-              filePrefix: "blocked",
-              startIndex: 1,
-              includeIndexInFileName: true,
-            },
           },
         },
       );

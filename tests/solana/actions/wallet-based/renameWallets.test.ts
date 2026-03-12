@@ -9,7 +9,7 @@ import { runtimeStatePath } from "../../../helpers/core-paths";
 const createdPaths = new Set<string>();
 const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-const TEST_INSTANCE_ID = "i-test-rename-wallets";
+const TEST_INSTANCE_ID = "93";
 
 afterEach(async () => {
   if (previousWalletLibraryPath === undefined) {
@@ -39,15 +39,10 @@ describe("renameWalletsAction", () => {
 
     const createResult = await createWalletsAction.execute({} as never, {
       count: 1,
-      walletName: "wallet001",
+      walletName: "one",
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-      },
-      output: {
-        filePrefix: "wallet",
-        startIndex: 1,
-        includeIndexInFileName: true,
       },
     });
 
@@ -70,11 +65,11 @@ describe("renameWalletsAction", () => {
         {
           current: {
             walletGroup,
-            walletName: "wallet001",
+            walletName: "one",
           },
           next: {
             walletGroup: renamedWalletGroup,
-            walletName: "wallet-main",
+            walletName: "main",
           },
         },
       ],
@@ -99,9 +94,9 @@ describe("renameWalletsAction", () => {
 
     expect(libraryLines).toHaveLength(1);
     const updatedEntry = JSON.parse(libraryLines[0] ?? "{}");
-    expect(updatedEntry.walletId).toBe(`${renamedWalletGroup}.wallet-main`);
+    expect(updatedEntry.walletId).toBe(`${renamedWalletGroup}.main`);
     expect(updatedEntry.walletGroup).toBe(renamedWalletGroup);
-    expect(updatedEntry.walletName).toBe("wallet-main");
+    expect(updatedEntry.walletName).toBe("main");
 
     const keypairJson = JSON.parse(originalKeypairText);
     expect(Array.isArray(keypairJson)).toBe(true);
@@ -110,9 +105,9 @@ describe("renameWalletsAction", () => {
 
     expect(typeof updatedEntry.walletLabelFilePath).toBe("string");
     const walletLabelJson = await Bun.file(updatedEntry.walletLabelFilePath).json();
-    expect(walletLabelJson.walletId).toBe(`${renamedWalletGroup}.wallet-main`);
+    expect(walletLabelJson.walletId).toBe(`${renamedWalletGroup}.main`);
     expect(walletLabelJson.walletGroup).toBe(renamedWalletGroup);
-    expect(walletLabelJson.walletName).toBe("wallet-main");
+    expect(walletLabelJson.walletName).toBe("main");
   });
 
   test("rejects rename when target wallet name already exists", async () => {
@@ -129,11 +124,6 @@ describe("renameWalletsAction", () => {
         walletGroup,
         createGroupIfMissing: true,
       },
-      output: {
-        filePrefix: "wallet",
-        startIndex: 1,
-        includeIndexInFileName: true,
-      },
     });
 
     await createWalletsAction.execute({} as never, {
@@ -142,11 +132,6 @@ describe("renameWalletsAction", () => {
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-      },
-      output: {
-        filePrefix: "wallet",
-        startIndex: 1,
-        includeIndexInFileName: true,
       },
     });
 

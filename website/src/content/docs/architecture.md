@@ -159,7 +159,7 @@ This is where RPC preferences and vault references are loaded for the current us
 
 The active instance can also contribute runtime trading preferences through:
 
-- `.runtime-state/instances/<instanceId>/settings/trading.json`
+- `.runtime-state/instances/01/settings/trading.json`
 
 That file is the canonical per-instance trading override path used by the runtime loader.
 

@@ -20,7 +20,7 @@ describe("actionSequenceRoutine", () => {
               input: {
                 request: {
                   type: "getBundle",
-                  instanceId: "instance-1",
+                  instanceId: "01",
                 },
               },
             },

@@ -14,24 +14,17 @@ describe("createWalletsRoutine", () => {
           walletGroup: "core-wallets",
           createGroupIfMissing: true,
         },
-        output: {
-          filePrefix: "wallet",
-          startIndex: 1,
-          includeIndexInFileName: true,
-        },
         walletGroups: [
           {
             name: "core-wallets",
-            wallets: [{ name: "maker" }],
+            wallets: [{ name: "one" }],
           },
           {
             name: "snipers",
             count: 2,
-            startIndex: 5,
-            filePrefix: "s",
           },
         ],
-        renames: [{ walletGroup: "core-wallets", fromWalletName: "maker", toWalletName: "makerMain" }],
+        renames: [{ walletGroup: "core-wallets", fromWalletName: "one", toWalletName: "main" }],
       },
       cyclesCompleted: 0,
       createdAt: Date.now(),
@@ -51,7 +44,7 @@ describe("createWalletsRoutine", () => {
     expect(firstInput.groups).toEqual([
       {
         walletGroup: "core-wallets",
-        walletNames: ["maker"],
+        walletNames: ["one"],
       },
       {
         walletGroup: "snipers",
@@ -67,8 +60,8 @@ describe("createWalletsRoutine", () => {
       }>;
     };
     expect(secondInput.edits?.[0]).toEqual({
-      current: { walletGroup: "core-wallets", walletName: "maker" },
-      next: { walletGroup: "core-wallets", walletName: "makerMain" },
+      current: { walletGroup: "core-wallets", walletName: "one" },
+      next: { walletGroup: "core-wallets", walletName: "main" },
     });
   });
 

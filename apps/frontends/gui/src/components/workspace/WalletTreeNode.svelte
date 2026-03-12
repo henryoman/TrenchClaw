@@ -115,12 +115,6 @@
             <code class="detail-value">{node.address}</code>
           </div>
         {/if}
-        {#if node.walletId}
-          <div class="detail-block">
-            <span class="detail-label">Wallet ID</span>
-            <code class="detail-value">{node.walletId}</code>
-          </div>
-        {/if}
       </div>
     {/if}
   {:else}

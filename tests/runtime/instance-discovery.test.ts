@@ -69,7 +69,7 @@ afterEach(async () => {
 describe("instance discovery", () => {
   test("lists directory-only instances and skips their ids when creating a new instance", async () => {
     const runtimeRoot = await createRuntimeRoot();
-    await createDirectoryOnlyInstance(runtimeRoot, "i-01");
+    await createDirectoryOnlyInstance(runtimeRoot, "01");
 
     const result = await runScriptJson<{
       listed: { instances: Array<{ localInstanceId: string; name: string }> };
@@ -91,20 +91,20 @@ describe("instance discovery", () => {
           waitForJobResult: async () => null,
         };
         const listed = await listInstances();
-        const created = await createInstance(context, { name: "Recovered sibling" });
+        const created = await createInstance(context, { name: "two" });
         process.stdout.write(JSON.stringify({ listed, created }));
       `,
     });
 
     expect(result.listed.instances).toHaveLength(1);
-    expect(result.listed.instances[0]?.localInstanceId).toBe("i-01");
-    expect(result.listed.instances[0]?.name).toBe("i-01");
-    expect(result.created.instance.localInstanceId).toBe("i-02");
+    expect(result.listed.instances[0]?.localInstanceId).toBe("01");
+    expect(result.listed.instances[0]?.name).toBe("01");
+    expect(result.created.instance.localInstanceId).toBe("02");
   });
 
   test("signs into a directory-only instance", async () => {
     const runtimeRoot = await createRuntimeRoot();
-    await createDirectoryOnlyInstance(runtimeRoot, "i-01");
+    await createDirectoryOnlyInstance(runtimeRoot, "01");
 
     const result = await runScriptJson<{
       signedIn: { instance: { localInstanceId: string; name: string } };
@@ -128,25 +128,25 @@ describe("instance discovery", () => {
           getActivityEntries: () => [],
           waitForJobResult: async () => null,
         };
-        const signedIn = await signInInstance(context, { localInstanceId: "i-01" });
+        const signedIn = await signInInstance(context, { localInstanceId: "01" });
         process.stdout.write(JSON.stringify({ signedIn, activeInstanceId }));
       `,
     });
 
-    expect(result.signedIn.instance.localInstanceId).toBe("i-01");
-    expect(result.signedIn.instance.name).toBe("i-01");
-    expect(result.activeInstanceId).toBe("i-01");
+    expect(result.signedIn.instance.localInstanceId).toBe("01");
+    expect(result.signedIn.instance.name).toBe("01");
+    expect(result.activeInstanceId).toBe("01");
   });
 
   test("restores a persisted active instance when only the directory exists", async () => {
     const runtimeRoot = await createRuntimeRoot();
-    await createDirectoryOnlyInstance(runtimeRoot, "i-01");
+    await createDirectoryOnlyInstance(runtimeRoot, "01");
     await writeFile(
       path.join(runtimeRoot, "instances/active-instance.json"),
       `${JSON.stringify({
         fileName: "instance.json",
-        localInstanceId: "i-01",
-        name: "Recovered Alpha",
+        localInstanceId: "01",
+        name: "one",
         safetyProfile: "dangerous",
         userPinRequired: false,
         createdAt: "2026-03-11T00:00:00.000Z",
@@ -168,14 +168,14 @@ describe("instance discovery", () => {
     });
 
     expect(restored).not.toBeNull();
-    expect(restored?.localInstanceId).toBe("i-01");
-    expect(restored?.name).toBe("Recovered Alpha");
+    expect(restored?.localInstanceId).toBe("01");
+    expect(restored?.name).toBe("one");
     expect(restored?.fileName).toBe("instance.json");
   });
 
   test("auto-restores a single directory-only instance without active-instance metadata", async () => {
     const runtimeRoot = await createRuntimeRoot();
-    await createDirectoryOnlyInstance(runtimeRoot, "i-01");
+    await createDirectoryOnlyInstance(runtimeRoot, "01");
 
     const restored = await runScriptJson<{
       fileName: string;
@@ -191,8 +191,8 @@ describe("instance discovery", () => {
     });
 
     expect(restored).not.toBeNull();
-    expect(restored?.localInstanceId).toBe("i-01");
-    expect(restored?.name).toBe("i-01");
+    expect(restored?.localInstanceId).toBe("01");
+    expect(restored?.name).toBe("01");
     expect(restored?.userPinRequired).toBe(false);
   });
 });
