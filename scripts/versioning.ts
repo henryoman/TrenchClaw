@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-export type VersioningStrategy = "auto" | "patch" | "beta";
+export type VersioningStrategy = "beta";
 
 export interface ParsedVersion {
   major: number;
@@ -48,44 +48,21 @@ export const formatVersion = (parsed: ParsedVersion): string => {
 
 export const incrementVersion = (
   current: string,
-  strategy: VersioningStrategy = "auto",
+  strategy: VersioningStrategy = "beta",
 ): string => {
   const parsed = parseVersion(current);
-
-  if (strategy === "auto") {
-    return incrementVersion(current, parsed.beta === null ? "patch" : "beta");
+  if (strategy !== "beta") {
+    throw new Error(`Unsupported version strategy "${strategy}"`);
   }
 
-  if (strategy === "patch") {
-    if (parsed.beta !== null) {
-      return formatVersion({
-        major: parsed.major,
-        minor: parsed.minor,
-        patch: parsed.patch,
-        beta: null,
-      });
-    }
-    return formatVersion({
-      major: parsed.major,
-      minor: parsed.minor,
-      patch: parsed.patch + 1,
-      beta: null,
-    });
-  }
-
-  if (parsed.beta !== null) {
-    return formatVersion({
-      major: parsed.major,
-      minor: parsed.minor,
-      patch: parsed.patch,
-      beta: parsed.beta + 1,
-    });
+  if (parsed.major !== 0 || parsed.minor !== 0 || parsed.patch !== 0 || parsed.beta === null) {
+    throw new Error(`Current version "${current}" must stay on the 0.0.0-beta.N track for now.`);
   }
 
   return formatVersion({
-    major: parsed.major,
-    minor: parsed.minor,
-    patch: parsed.patch + 1,
-    beta: 1,
+    major: 0,
+    minor: 0,
+    patch: 0,
+    beta: parsed.beta + 1,
   });
 };

@@ -19,7 +19,7 @@ describe("write-scope policy", () => {
   });
 
   test("allows instance system writes under protected instance root", () => {
-    const allowedPath = runtimeStatePath("instances/i-01/instance.json");
+    const allowedPath = runtimeStatePath("instances/01/instance.json");
     expect(() => assertInstanceSystemWritePath(allowedPath, "write instance profile")).not.toThrow();
   });
 });

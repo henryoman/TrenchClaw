@@ -63,7 +63,7 @@ When you produce a machine-readable action plan, use this exact step structure:
   "input": {
     "request": {
       "type": "getBundle",
-      "instanceId": "instance-1"
+      "instanceId": "01"
     }
   },
   "dependsOn": null,

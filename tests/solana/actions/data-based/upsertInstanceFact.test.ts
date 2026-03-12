@@ -10,7 +10,7 @@ describe("upsertInstanceFactAction", () => {
     const result = await upsertInstanceFactAction.execute(
       createActionContext({ actor: "agent", stateStore }),
       {
-        instanceId: "i-01",
+        instanceId: "01",
         factKey: "preferred-dex",
         factValue: { name: "jupiter" },
         confidence: 0.9,
@@ -20,7 +20,7 @@ describe("upsertInstanceFactAction", () => {
 
     expect(result.ok).toBe(true);
     const fact = stateStore.getInstanceFact({
-      instanceId: "i-01",
+      instanceId: "01",
       factKey: "preferred-dex",
     });
     expect(fact).not.toBeNull();
@@ -30,7 +30,7 @@ describe("upsertInstanceFactAction", () => {
 
   test("uses active instance id from env when input instanceId is omitted", async () => {
     const previous = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "i-11";
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "11";
     try {
       const stateStore = new InMemoryStateStore();
       const result = await upsertInstanceFactAction.execute(
@@ -45,7 +45,7 @@ describe("upsertInstanceFactAction", () => {
 
       expect(result.ok).toBe(true);
       const fact = stateStore.getInstanceFact({
-        instanceId: "i-11",
+        instanceId: "11",
         factKey: "risk-profile",
       });
       expect(fact?.factValue).toBe("aggressive");

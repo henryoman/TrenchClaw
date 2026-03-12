@@ -8,9 +8,12 @@ import { assertInstanceSystemWritePath } from "./security/write-scope";
 import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 
 const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-instance.json");
-const INSTANCE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/u;
-const INSTANCE_FILE_PATTERN = /^i-\d+\.json$/u;
-const INSTANCE_DIRECTORY_PATTERN = /^i-\d+$/u;
+const INSTANCE_ID_PATTERN = /^\d{2}$/u;
+const LEGACY_INSTANCE_ID_PATTERN = /^i-(\d{2})$/u;
+const INSTANCE_FILE_PATTERN = /^\d{2}\.json$/u;
+const LEGACY_INSTANCE_FILE_PATTERN = /^i-(\d{2})\.json$/u;
+const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
+const LEGACY_INSTANCE_DIRECTORY_PATTERN = /^i-(\d{2})$/u;
 const INSTANCE_PROFILE_FILE_NAME = "instance.json";
 
 const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileView => {
@@ -32,17 +35,23 @@ const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileVie
 
 const normalizeInstanceId = (localInstanceId: string): string => {
   const normalized = localInstanceId.trim();
+  const legacyMatch = LEGACY_INSTANCE_ID_PATTERN.exec(normalized);
+  if (legacyMatch?.[1]) {
+    return legacyMatch[1];
+  }
   if (!normalized || !INSTANCE_ID_PATTERN.test(normalized)) {
     throw new Error(`Invalid instance id: ${localInstanceId}`);
   }
   return normalized;
 };
 
+const toLegacyInstanceId = (localInstanceId: string): string => `i-${normalizeInstanceId(localInstanceId)}`;
+
 const getInstanceProfileFilePath = (localInstanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId), INSTANCE_PROFILE_FILE_NAME);
 
 const getLegacyInstanceProfileFilePath = (localInstanceId: string): string =>
-  path.join(RUNTIME_INSTANCE_ROOT, `${normalizeInstanceId(localInstanceId)}.json`);
+  path.join(RUNTIME_INSTANCE_ROOT, `${toLegacyInstanceId(localInstanceId)}.json`);
 
 const getInstanceDirectoryPath = (localInstanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId));
@@ -83,8 +92,18 @@ const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
         instanceIds.add(entry.name.replace(/\.json$/u, ""));
         continue;
       }
+      const legacyFileMatch = LEGACY_INSTANCE_FILE_PATTERN.exec(entry.name);
+      if (entry.isFile() && legacyFileMatch?.[1]) {
+        instanceIds.add(legacyFileMatch[1]);
+        continue;
+      }
       if (entry.isDirectory() && INSTANCE_DIRECTORY_PATTERN.test(entry.name)) {
         instanceIds.add(entry.name);
+        continue;
+      }
+      const legacyDirectoryMatch = LEGACY_INSTANCE_DIRECTORY_PATTERN.exec(entry.name);
+      if (entry.isDirectory() && legacyDirectoryMatch?.[1]) {
+        instanceIds.add(legacyDirectoryMatch[1]);
       }
     }
 

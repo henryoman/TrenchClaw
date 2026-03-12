@@ -31,20 +31,32 @@ interface InstanceDocument {
   };
 }
 
-const INSTANCE_FILE_REGEX = /^i-(\d+)\.json$/u;
-const INSTANCE_DIRECTORY_REGEX = /^i-(\d+)$/u;
+const INSTANCE_FILE_REGEX = /^(\d{2})\.json$/u;
+const LEGACY_INSTANCE_FILE_REGEX = /^i-(\d{2})\.json$/u;
+const INSTANCE_DIRECTORY_REGEX = /^(\d{2})$/u;
+const LEGACY_INSTANCE_DIRECTORY_REGEX = /^i-(\d{2})$/u;
 const INSTANCE_PROFILE_FILE_NAME = "instance.json";
 const formatInstanceNumber = (value: number): string => String(value).padStart(2, "0");
-const formatInstanceId = (value: number): string => `i-${formatInstanceNumber(value)}`;
+const formatInstanceId = (value: number): string => formatInstanceNumber(value);
 const getInstanceNumber = (value: string): number | null => {
   const fileMatch = INSTANCE_FILE_REGEX.exec(value);
   if (fileMatch?.[1]) {
     return Number(fileMatch[1]);
   }
 
+  const legacyFileMatch = LEGACY_INSTANCE_FILE_REGEX.exec(value);
+  if (legacyFileMatch?.[1]) {
+    return Number(legacyFileMatch[1]);
+  }
+
   const directoryMatch = INSTANCE_DIRECTORY_REGEX.exec(value);
   if (directoryMatch?.[1]) {
     return Number(directoryMatch[1]);
+  }
+
+  const legacyDirectoryMatch = LEGACY_INSTANCE_DIRECTORY_REGEX.exec(value);
+  if (legacyDirectoryMatch?.[1]) {
+    return Number(legacyDirectoryMatch[1]);
   }
 
   return null;
@@ -59,11 +71,23 @@ const compareInstanceIds = (left: string, right: string): number => {
   return left.localeCompare(right);
 };
 
+const normalizeInstanceId = (value: string): string => {
+  const trimmed = value.trim();
+  const legacyMatch = /^i-(\d{2})$/u.exec(trimmed);
+  if (legacyMatch?.[1]) {
+    return legacyMatch[1];
+  }
+  if (!/^\d{2}$/u.test(trimmed)) {
+    throw new Error(`Invalid instance id: ${value}`);
+  }
+  return trimmed;
+};
+
 const getInstanceProfilePath = (localInstanceId: string): string =>
   path.join(INSTANCE_DIRECTORY, localInstanceId, INSTANCE_PROFILE_FILE_NAME);
 
 const getLegacyInstanceProfilePath = (localInstanceId: string): string =>
-  path.join(INSTANCE_DIRECTORY, `${localInstanceId}.json`);
+  path.join(INSTANCE_DIRECTORY, `i-${normalizeInstanceId(localInstanceId)}.json`);
 
 const toInstanceView = (fileName: string, document: InstanceDocument): GuiInstanceProfileView => ({
   fileName,
@@ -82,7 +106,9 @@ const parseInstanceDocument = (raw: string): InstanceDocument | null => {
       return null;
     }
     const instanceName = typeof parsed.instance.name === "string" ? parsed.instance.name.trim() : "";
-    const localInstanceId = typeof parsed.instance.localInstanceId === "string" ? parsed.instance.localInstanceId.trim() : "";
+    const localInstanceId = typeof parsed.instance.localInstanceId === "string"
+      ? normalizeInstanceId(parsed.instance.localInstanceId)
+      : "";
     const userPin = parsed.instance.userPin === null || typeof parsed.instance.userPin === "string" ? parsed.instance.userPin : null;
     const safetyProfile =
       parsed.runtime.safetyProfile === "safe" ||
@@ -120,8 +146,8 @@ const createRecoveredInstanceDocument = (input: {
   updatedAt: string;
 }): InstanceDocument => ({
   instance: {
-    name: input.localInstanceId,
-    localInstanceId: input.localInstanceId,
+    name: normalizeInstanceId(input.localInstanceId),
+    localInstanceId: normalizeInstanceId(input.localInstanceId),
     userPin: null,
   },
   runtime: {
@@ -167,10 +193,28 @@ const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: 
       continue;
     }
 
+    const legacyFileMatch = LEGACY_INSTANCE_FILE_REGEX.exec(entry.name);
+    if (entry.isFile() && legacyFileMatch?.[1]) {
+      const localInstanceId = legacyFileMatch[1];
+      const existing = instanceEntries.get(localInstanceId) ?? { fileName: null, directoryName: null };
+      existing.fileName = entry.name;
+      instanceEntries.set(localInstanceId, existing);
+      continue;
+    }
+
     if (entry.isDirectory() && INSTANCE_DIRECTORY_REGEX.test(entry.name)) {
       const existing = instanceEntries.get(entry.name) ?? { fileName: null, directoryName: null };
       existing.directoryName = entry.name;
       instanceEntries.set(entry.name, existing);
+      continue;
+    }
+
+    const legacyDirectoryMatch = LEGACY_INSTANCE_DIRECTORY_REGEX.exec(entry.name);
+    if (entry.isDirectory() && legacyDirectoryMatch?.[1]) {
+      const localInstanceId = legacyDirectoryMatch[1];
+      const existing = instanceEntries.get(localInstanceId) ?? { fileName: null, directoryName: null };
+      existing.directoryName = entry.name;
+      instanceEntries.set(localInstanceId, existing);
     }
   }
 

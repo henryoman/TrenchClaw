@@ -8,9 +8,9 @@ import {
 } from "../../apps/frontends/gui/src/features/runtime/runtime-controller.logic";
 
 const makeInstance = (overrides: Partial<GuiInstanceProfileView> = {}): GuiInstanceProfileView => ({
-  fileName: "i-01.json",
-  localInstanceId: "i-01",
-  name: "Alpha Desk",
+  fileName: "instance.json",
+  localInstanceId: "01",
+  name: "one",
   safetyProfile: "dangerous",
   userPinRequired: false,
   createdAt: "2026-03-02T00:00:00.000Z",
@@ -29,21 +29,21 @@ describe("runtime controller onboarding logic", () => {
 
   test("create instance request includes name, safety profile, and optional pin then routes to app", () => {
     const request = buildCreateInstanceRequest({
-      name: "  Alpha Desk  ",
+      name: "  one  ",
       safetyProfile: "veryDangerous",
       pin: "  1234  ",
     });
 
     expect(request).toEqual({
-      name: "Alpha Desk",
+      name: "one",
       safetyProfile: "veryDangerous",
       userPin: "1234",
     });
 
-    const next = applyCreateInstanceSuccess([], makeInstance({ localInstanceId: "i-42" }));
+    const next = applyCreateInstanceSuccess([], makeInstance({ localInstanceId: "42" }));
     expect(next.phase).toBe("app");
-    expect(next.activeInstance.localInstanceId).toBe("i-42");
-    expect(next.signInInstanceId).toBe("i-42");
+    expect(next.activeInstance.localInstanceId).toBe("42");
+    expect(next.signInInstanceId).toBe("42");
     expect(next.signInPin).toBe("");
     expect(next.showCreateModal).toBe(false);
   });

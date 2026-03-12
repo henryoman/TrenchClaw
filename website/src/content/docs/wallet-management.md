@@ -27,7 +27,7 @@ The GUI does not currently provide a full wallet create or rename flow.
 `createWallets` supports:
 
 - explicit wallet names
-- a count that produces default names such as `wallet_00`
+- a count that produces simple default names such as `wallet_000`
 
 ## Backup Download
 

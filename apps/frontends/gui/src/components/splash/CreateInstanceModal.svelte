@@ -17,7 +17,7 @@
 
 <RetroModal title="Create instance">
   <RetroField label="Instance name">
-    <RetroInput bind:value={name} placeholder="e.g. Alpha Desk" />
+    <RetroInput bind:value={name} placeholder="e.g. one" />
   </RetroField>
   <RetroField label="Access level">
     <RetroSelect bind:value={safetyProfile}>

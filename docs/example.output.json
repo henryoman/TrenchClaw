@@ -47,16 +47,9 @@
           "actionName": "createWallets",
           "input": {
             "count": 5,
-            "includePrivateKey": true,
-            "privateKeyEncoding": "base64",
             "storage": {
               "walletGroup": "core-wallets",
-              "createGroupIfMissing": true,
-              "keypairGenerator": "bun"
-            },
-            "output": {
-              "filePrefix": "wallet",
-              "includeIndexInFileName": true
+              "createGroupIfMissing": true
             }
           },
           "idempotencyKey": "step-create-wallets-5"

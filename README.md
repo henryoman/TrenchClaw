@@ -97,7 +97,9 @@ The public install flow does not install Bun, Solana CLI, Homebrew formulas, npm
 GitHub Actions `.github/workflows/release.yml` is the release path:
 
 - manual `workflow_dispatch`
-- inputs: `version`, `prerelease`
+- no inputs
+- workflow advances `0.0.0-beta.N` to `0.0.0-beta.(N+1)`, commits it, creates the tag, and publishes the release
+- reject existing tags before build/publish starts
 - validate: lint, typecheck, test
 - build readonly assets
 - compile the `apps/runner` binary for `darwin-arm64`, `linux-x64`, and `linux-arm64`

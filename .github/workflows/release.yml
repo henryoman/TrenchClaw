@@ -2,23 +2,21 @@ name: Release
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Release version/tag (example: v0.0.2)"
-        required: true
-        type: string
-      prerelease:
-        description: "Mark as prerelease"
-        required: true
-        default: false
-        type: boolean
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
 jobs:
-  validate:
+  prepare_release:
     runs-on: ubuntu-latest
+    outputs:
+      release_tag: ${{ steps.next_version.outputs.next_tag }}
+      prerelease: ${{ steps.next_version.outputs.prerelease }}
+      package_version: ${{ steps.next_version.outputs.next_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,9 +31,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Validate release version
+      - name: Resolve next version
+        id: next_version
         run: |
-          bun run release:validate -- --version "${{ inputs.version }}" --prerelease "${{ inputs.prerelease }}"
+          bun run version:next -- --github-output "$GITHUB_OUTPUT"
+
+      - name: Validate release tag
+        run: |
+          bun run release:validate -- --version "${{ steps.next_version.outputs.next_tag }}" --prerelease "${{ steps.next_version.outputs.prerelease }}"
 
       - name: Validate workspace
         run: |
@@ -43,8 +46,22 @@ jobs:
           bun run typecheck
           bun run test
 
+      - name: Apply release version
+        run: |
+          TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore(release): ${{ steps.next_version.outputs.next_tag }}"
+          git tag "${{ steps.next_version.outputs.next_tag }}"
+          git push origin "HEAD:${{ github.ref_name }}"
+          git push origin "${{ steps.next_version.outputs.next_tag }}"
+
   build_release:
-    needs: validate
+    needs: prepare_release
     strategy:
       fail-fast: false
       matrix:
@@ -63,6 +80,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          ref: ${{ needs.prepare_release.outputs.release_tag }}
           fetch-depth: 0
 
       - name: Setup Bun
@@ -81,23 +99,24 @@ jobs:
 
       - name: Package standalone artifact
         run: |
-          bun run release:package -- --version "${{ inputs.version }}" --output-root "dist/release" --target "${{ matrix.compileTarget }}"
+          bun run release:package -- --version "${{ needs.prepare_release.outputs.release_tag }}" --output-root "dist/release" --target "${{ matrix.compileTarget }}"
 
       - name: Smoke test packaged artifact
         run: |
-          bun run release:smoke -- --artifact-path "dist/release/trenchclaw-${{ inputs.version }}-${{ matrix.platformTarget }}.tar.gz"
+          bun run release:smoke -- --artifact-path "dist/release/trenchclaw-${{ needs.prepare_release.outputs.release_tag }}-${{ matrix.platformTarget }}.tar.gz"
 
       - name: Upload packaged artifact
         uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.platformTarget }}
           path: |
-            dist/release/trenchclaw-${{ inputs.version }}-${{ matrix.platformTarget }}.tar.gz
-            dist/release/trenchclaw-${{ inputs.version }}-${{ matrix.platformTarget }}.tar.gz.sha256
-            dist/release/trenchclaw-${{ inputs.version }}-${{ matrix.platformTarget }}.release-metadata.json
+            dist/release/trenchclaw-${{ needs.prepare_release.outputs.release_tag }}-${{ matrix.platformTarget }}.tar.gz
+            dist/release/trenchclaw-${{ needs.prepare_release.outputs.release_tag }}-${{ matrix.platformTarget }}.tar.gz.sha256
+            dist/release/trenchclaw-${{ needs.prepare_release.outputs.release_tag }}-${{ matrix.platformTarget }}.release-metadata.json
 
   publish:
     needs:
+      - prepare_release
       - build_release
     runs-on: ubuntu-latest
     steps:
@@ -111,10 +130,10 @@ jobs:
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ inputs.version }}
-          name: ${{ inputs.version }}
+          tag_name: ${{ needs.prepare_release.outputs.release_tag }}
+          name: ${{ needs.prepare_release.outputs.release_tag }}
           generate_release_notes: true
-          prerelease: ${{ inputs.prerelease }}
+          prerelease: ${{ needs.prepare_release.outputs.prerelease }}
           files: |
             dist/release/*.tar.gz
             dist/release/*.sha256

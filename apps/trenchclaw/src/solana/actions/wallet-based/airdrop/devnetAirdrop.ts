@@ -283,7 +283,7 @@ const printHelp = (): void => {
       "Usage:",
       "  bun run devnet:airdrop -- <address> [more-addresses...]",
       "  bun run devnet:airdrop -- --wallet-group core-wallets",
-      "  bun run devnet:airdrop -- --wallet-group core-wallets --wallet-name wallet001 --wallet-name wallet002",
+      "  bun run devnet:airdrop -- --wallet-group core-wallets --wallet-name one --wallet-name two",
       "",
       "Options:",
       "  --wallet-group <group>   Airdrop to managed wallets in this wallet group",

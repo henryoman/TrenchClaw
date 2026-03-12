@@ -26,7 +26,7 @@ Use this map to navigate from intent -> decision -> execution:
 - `src/ai/config/agent-modes/`: specialized mode prompts that tune behavior by mission.
 - `.runtime-state/user/ai.json`: runtime model/provider settings for the app.
 - `.runtime-state/user/settings.json`: personal cross-instance runtime defaults.
-- `.runtime-state/instances/<id>/`: instance-owned wallets, trading settings, and local instance state.
+- `.runtime-state/instances/01/`: instance-owned wallets, trading settings, and local instance state.
 
 ### 3) Runtime AI core
 - `src/ai/core/action-registry.ts`: in-memory action registration.

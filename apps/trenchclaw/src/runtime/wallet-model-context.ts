@@ -119,7 +119,7 @@ These wallet variables are loaded from the active instance wallet library at req
       2,
     ),
     "```",
-    "If `walletNames` is omitted for a group, names default to `wallet_00`, `wallet_01`, `wallet_02`, and so on.",
+    "If `walletNames` is omitted for a group, names default to `wallet_000`, `wallet_001`, `wallet_002`, and so on.",
     "",
     "#### renameWallets JSON Shape",
     "```json",

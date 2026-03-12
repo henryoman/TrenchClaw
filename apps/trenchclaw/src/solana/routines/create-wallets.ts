@@ -8,9 +8,6 @@ const walletGroupConfigSchema = z.object({
   name: z.string().min(1),
   wallets: z.array(z.object({ name: walletNameSchema })).optional(),
   count: z.number().int().positive().optional(),
-  startIndex: z.number().int().positive().optional(),
-  filePrefix: z.string().min(1).optional(),
-  includeIndexInFileName: z.boolean().optional(),
 });
 
 const renameConfigSchema = z.object({
@@ -26,13 +23,6 @@ const createWalletsRoutineConfigSchema = z.object({
     .object({
       walletGroup: z.string().min(1).optional(),
       createGroupIfMissing: z.boolean().optional(),
-    })
-    .optional(),
-  output: z
-    .object({
-      filePrefix: z.string().min(1).optional(),
-      startIndex: z.number().int().positive().optional(),
-      includeIndexInFileName: z.boolean().optional(),
     })
     .optional(),
 })

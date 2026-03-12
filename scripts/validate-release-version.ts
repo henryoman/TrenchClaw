@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { readFile } from "node:fs/promises";
+import { appendFile, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,13 +10,21 @@ const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const ROOT_PACKAGE_JSON_PATH = path.join(REPO_ROOT, "package.json");
 
 interface CliArgs {
-  version: string;
+  version: string | null;
+  prerelease: boolean | null;
+  githubOutputPath: string | null;
+}
+
+interface ReleaseValidationResult {
+  packageVersion: string;
+  tag: string;
   prerelease: boolean;
 }
 
 const parseArgs = (argv: string[]): CliArgs => {
-  let version = "";
-  let prereleaseValue = "";
+  let version: string | null = null;
+  let prerelease: boolean | null = null;
+  let githubOutputPath: string | null = null;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -34,25 +42,28 @@ const parseArgs = (argv: string[]): CliArgs => {
       if (!value) {
         throw new Error("Missing value for --prerelease");
       }
-      prereleaseValue = value.trim().toLowerCase();
+      const normalized = value.trim().toLowerCase();
+      if (normalized !== "true" && normalized !== "false") {
+        throw new Error('Invalid --prerelease value. Expected "true" or "false".');
+      }
+      prerelease = normalized === "true";
+      index += 1;
+      continue;
+    }
+    if (arg === "--github-output") {
+      const value = argv[index + 1];
+      if (!value) {
+        throw new Error("Missing value for --github-output");
+      }
+      githubOutputPath = value;
       index += 1;
     }
   }
 
-  if (!version) {
-    throw new Error("Missing required --version");
-  }
-  if (prereleaseValue !== "true" && prereleaseValue !== "false") {
-    throw new Error('Missing or invalid --prerelease value. Expected "true" or "false".');
-  }
-
-  return {
-    version,
-    prerelease: prereleaseValue === "true",
-  };
+  return { version, prerelease, githubOutputPath };
 };
 
-const runCapture = async (command: string[]): Promise<{ code: number; stdout: string; stderr: string }> => {
+const runCapture = async (command: string[]): Promise<{ code: number; stdout: string }> => {
   const proc = Bun.spawn(command, {
     cwd: REPO_ROOT,
     stdout: "pipe",
@@ -60,15 +71,13 @@ const runCapture = async (command: string[]): Promise<{ code: number; stdout: st
     stdin: "ignore",
     env: process.env,
   });
-  const [code, stdout, stderr] = await Promise.all([
+  const [code, stdout] = await Promise.all([
     proc.exited,
     new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
   ]);
   return {
     code: code ?? 1,
     stdout: stdout.trim(),
-    stderr: stderr.trim(),
   };
 };
 
@@ -91,39 +100,45 @@ const tagExists = async (tagName: string): Promise<boolean> => {
   return remote.code === 0 && remote.stdout.length > 0;
 };
 
-const main = async (): Promise<void> => {
-  const args = parseArgs(process.argv.slice(2));
+const validateRelease = async (args: CliArgs): Promise<ReleaseValidationResult> => {
   const packageVersion = await readRootVersion();
   parseVersion(packageVersion);
-  parseVersion(args.version);
 
-  const expectedTag = `v${packageVersion.replace(/^v/, "")}`;
-  if (args.version !== expectedTag) {
-    throw new Error(`Release input ${args.version} does not match package.json version ${expectedTag}`);
+  const tag = args.version ?? `v${packageVersion.replace(/^v/, "")}`;
+  parseVersion(tag);
+  const prerelease = tag.includes("-beta.");
+
+  if (args.prerelease !== null && args.prerelease !== prerelease) {
+    throw new Error(`Prerelease flag mismatch: release tag ${tag} requires prerelease=${prerelease}`);
   }
 
-  const packageIsPrerelease = packageVersion.includes("-beta.");
-  if (packageIsPrerelease !== args.prerelease) {
-    throw new Error(
-      `Prerelease flag mismatch: package.json version ${packageVersion} requires prerelease=${packageIsPrerelease}`,
+  const parsedTag = parseVersion(tag);
+  if (parsedTag.major !== 0 || parsedTag.minor !== 0 || parsedTag.patch !== 0 || parsedTag.beta === null) {
+    throw new Error(`Release tag ${tag} must stay on the 0.0.0-beta.N track for now.`);
+  }
+
+  if (await tagExists(tag)) {
+    throw new Error(`Git tag already exists: ${tag}`);
+  }
+
+  return {
+    packageVersion,
+    tag,
+    prerelease,
+  };
+};
+
+const main = async (): Promise<void> => {
+  const args = parseArgs(process.argv.slice(2));
+  const result = await validateRelease(args);
+  if (args.githubOutputPath) {
+    await appendFile(
+      args.githubOutputPath,
+      `release_tag=${result.tag}\nprerelease=${result.prerelease}\npackage_version=${result.packageVersion}\n`,
+      "utf8",
     );
   }
-
-  if (await tagExists(args.version)) {
-    throw new Error(`Git tag already exists: ${args.version}`);
-  }
-
-  console.log(
-    JSON.stringify(
-      {
-        packageVersion,
-        tag: expectedTag,
-        prerelease: args.prerelease,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(JSON.stringify(result, null, 2));
 };
 
 await main();

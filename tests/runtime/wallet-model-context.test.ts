@@ -22,7 +22,7 @@ afterEach(async () => {
 
 describe("renderRuntimeWalletPromptContext", () => {
   test("includes explicit wallet organization instructions for the model", async () => {
-    const instanceId = `i-wallet-prompt-${crypto.randomUUID()}`;
+    const instanceId = "94";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
     const keypairsDirectory = path.join(instanceDirectory, "keypairs");
     tempInstanceDirectories.push(instanceDirectory);
@@ -34,20 +34,24 @@ describe("renderRuntimeWalletPromptContext", () => {
         walletGroup: "core-wallets",
         walletName: "maker-1",
         address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/maker-1-0001.json"),
-        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/maker-1-0001.label.json"),
+        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
       })}\n`,
       "utf8",
     );
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+    const walletLibraryFilePath = path.join(keypairsDirectory, "wallet-library.jsonl");
 
-    const prompt = await renderRuntimeWalletPromptContext();
+    const prompt = await renderRuntimeWalletPromptContext({
+      activeInstanceId: instanceId,
+      walletLibraryFilePath,
+    });
 
     expect(prompt).toContain("### Allowed Wallet Organization Writes");
     expect(prompt).toContain("Use `createWallets` to create new wallets.");
     expect(prompt).toContain('"groups": [');
     expect(prompt).toContain('"walletGroup": "core-wallets"');
-    expect(prompt).toContain("wallet_00");
+    expect(prompt).toContain("wallet_000");
     expect(prompt).toContain("Each wallet group can create at most 100 wallets per call.");
     expect(prompt).toContain("Use `renameWallets` to update wallet organization labels only.");
     expect(prompt).toContain('"current": {');

@@ -8,7 +8,7 @@ import { runtimeStatePath } from "../../../helpers/core-paths";
 const createdPaths = new Set<string>();
 const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-const TEST_INSTANCE_ID = "i-test-wallets";
+const TEST_INSTANCE_ID = "91";
 
 afterEach(async () => {
   if (previousWalletLibraryPath === undefined) {
@@ -36,15 +36,10 @@ describe("createWalletsAction", () => {
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
-      walletName: "wallet001",
+      walletName: "one",
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-      },
-      output: {
-        filePrefix: "wallet",
-        startIndex: 1,
-        includeIndexInFileName: true,
       },
     });
 
@@ -56,7 +51,7 @@ describe("createWalletsAction", () => {
     expect(result.data?.walletLibraryFilePath).toContain(path.join("instances", TEST_INSTANCE_ID, "keypairs", "wallet-library.jsonl"));
   });
 
-  test("creates multiple flat groups in one batch and defaults wallet names to wallet_00 style", async () => {
+  test("creates multiple flat groups in one batch and defaults wallet names to wallet_000 style", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const coreGroup = `core-wallets-${crypto.randomUUID()}`;
     const snipersGroup = `snipers-${crypto.randomUUID()}`;
@@ -90,15 +85,15 @@ describe("createWalletsAction", () => {
 
     const walletNames = data?.wallets.map((wallet) => `${wallet.walletGroup}.${wallet.walletName}`) ?? [];
     expect(walletNames).toEqual([
-      `${coreGroup}.wallet_00`,
-      `${coreGroup}.wallet_01`,
-      `${coreGroup}.wallet_02`,
+      `${coreGroup}.wallet_000`,
+      `${coreGroup}.wallet_001`,
+      `${coreGroup}.wallet_002`,
       `${snipersGroup}.sniper_alpha`,
       `${snipersGroup}.sniper_beta`,
     ]);
     expect(data?.files.every((filePath) => filePath.includes("/keypairs/"))).toBe(true);
-    expect(data?.files.some((filePath) => filePath.endsWith("/wallet_00.json"))).toBe(true);
-    expect(data?.files.some((filePath) => filePath.endsWith("/sniper_alpha.json"))).toBe(true);
+    expect(data?.files.some((filePath) => filePath.endsWith("/wallet_000.json"))).toBe(true);
+    expect(data?.files.some((filePath) => filePath.endsWith("/wallet_001.json"))).toBe(true);
   });
 
   test("creates wallets inside the selected wallet group directory and appends library metadata", async () => {
@@ -110,15 +105,10 @@ describe("createWalletsAction", () => {
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
-      walletName: "wallet001",
+      walletName: "one",
       storage: {
         walletGroup,
         createGroupIfMissing: true,
-      },
-      output: {
-        filePrefix: "wallet",
-        startIndex: 1,
-        includeIndexInFileName: true,
       },
     });
 
@@ -134,9 +124,9 @@ describe("createWalletsAction", () => {
     }
 
     expect(data.wallets).toHaveLength(1);
-    expect(data.wallets[0]?.walletId).toBe(`${walletGroup}.wallet001`);
+    expect(data.wallets[0]?.walletId).toBe(`${walletGroup}.one`);
     expect(data.wallets[0]?.walletGroup).toBe(walletGroup);
-    expect(data.wallets[0]?.walletName).toBe("wallet001");
+    expect(data.wallets[0]?.walletName).toBe("one");
     expect(data.walletGroup).toBe(walletGroup);
     expect(data.outputDirectory).toContain(path.join("instances", TEST_INSTANCE_ID, "keypairs", walletGroup));
 
@@ -147,8 +137,8 @@ describe("createWalletsAction", () => {
     expect(libraryLines).toHaveLength(1);
 
     const libraryEntry = JSON.parse(libraryLines[0] ?? "{}");
-    expect(libraryEntry.walletId).toBe(`${walletGroup}.wallet001`);
-    expect(libraryEntry.walletName).toBe("wallet001");
+    expect(libraryEntry.walletId).toBe(`${walletGroup}.one`);
+    expect(libraryEntry.walletName).toBe("one");
     expect(typeof libraryEntry.keypairFilePath).toBe("string");
     expect(typeof libraryEntry.walletLabelFilePath).toBe("string");
     expect(libraryEntry.walletGroup).toBe(walletGroup);
@@ -156,12 +146,12 @@ describe("createWalletsAction", () => {
     const keypairJson = await Bun.file(data.files[0] ?? "").json();
     expect(Array.isArray(keypairJson)).toBe(true);
     expect(keypairJson).toHaveLength(64);
-    expect(path.basename(data.files[0] ?? "")).toBe("wallet001.json");
+    expect(path.basename(data.files[0] ?? "")).toBe("wallet_000.json");
 
     const walletLabelJson = await Bun.file(libraryEntry.walletLabelFilePath).json();
-    expect(walletLabelJson.walletId).toBe(`${walletGroup}.wallet001`);
+    expect(walletLabelJson.walletId).toBe(`${walletGroup}.one`);
     expect(walletLabelJson.walletGroup).toBe(walletGroup);
-    expect(walletLabelJson.walletName).toBe("wallet001");
+    expect(walletLabelJson.walletName).toBe("one");
     expect(walletLabelJson.walletFileName).toBe(path.basename(data.files[0] ?? ""));
     expect(walletLabelJson.address).toBe(libraryEntry.address);
   });
@@ -173,11 +163,6 @@ describe("createWalletsAction", () => {
       storage: {
         walletGroup: "../uploaded-wallets",
         createGroupIfMissing: true,
-      },
-      output: {
-        filePrefix: "wallet",
-        startIndex: 1,
-        includeIndexInFileName: true,
       },
     });
 
@@ -222,11 +207,6 @@ describe("createWalletsAction", () => {
       storage: {
         walletGroup,
         createGroupIfMissing: false,
-      },
-      output: {
-        filePrefix: "wallet",
-        startIndex: 1,
-        includeIndexInFileName: true,
       },
     });
 
