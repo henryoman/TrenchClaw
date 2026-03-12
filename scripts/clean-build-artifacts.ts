@@ -9,6 +9,9 @@ const BUILD_ARTIFACT_DIRECTORIES = [
   "apps/runner/dist",
   "apps/trenchclaw/dist",
   "dist/app",
+  "dist/release",
+  "dist/release-local",
+  "dist/release-matrix-test",
   "website/.svelte-kit",
   "website/build",
 ];

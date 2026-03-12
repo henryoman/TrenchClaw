@@ -10,6 +10,7 @@ import type {
   RuntimeEventBus,
   StateStore,
 } from "../runtime/types";
+import { RUNTIME_DB_ROOT } from "../../runtime/runtime-paths";
 import type { ActionDispatcher } from "./dispatcher";
 
 export interface SchedulerDeps {
@@ -243,7 +244,7 @@ function configureEmbeddedBunqueueDataPath(dataPath: string | undefined): void {
 function resolveQueueDataPath(dataPath: string | undefined): string {
   const normalized = dataPath?.trim();
   if (!normalized) {
-    return path.resolve(process.cwd(), "data/queue/bunqueue.sqlite");
+    return path.join(RUNTIME_DB_ROOT, "queue", "bunqueue.sqlite");
   }
   return path.isAbsolute(normalized) ? normalized : path.resolve(process.cwd(), normalized);
 }

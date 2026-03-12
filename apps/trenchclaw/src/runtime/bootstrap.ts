@@ -50,11 +50,13 @@ import {
   type ActiveSessionInfo,
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
-import { CORE_APP_ROOT } from "./runtime-paths";
+import { CORE_APP_ROOT, RUNTIME_GENERATED_ROOT } from "./runtime-paths";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "managedUltraSwap", "privacySwap"]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
+const GENERATED_WORKSPACE_CONTEXT_PATH = path.join(RUNTIME_GENERATED_ROOT, "workspace-context.md");
+const GENERATED_KNOWLEDGE_MANIFEST_PATH = path.join(RUNTIME_GENERATED_ROOT, "knowledge-manifest.md");
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
@@ -99,14 +101,19 @@ const runBootstrapTask = async (
   }
 };
 
+const generatedArtifactExists = async (filePath: string): Promise<boolean> => await Bun.file(filePath).exists();
+
 const runBootContextRefresh = async (logger: RuntimeLogger): Promise<void> => {
-  if (!envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_CONTEXT", false)) {
-    return;
+  const refreshContext = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_CONTEXT", false);
+  const refreshKnowledge = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE", true);
+  const missingWorkspaceContext = !(await generatedArtifactExists(GENERATED_WORKSPACE_CONTEXT_PATH));
+  const missingKnowledgeManifest = !(await generatedArtifactExists(GENERATED_KNOWLEDGE_MANIFEST_PATH));
+
+  if (refreshContext || missingWorkspaceContext) {
+    await runBootstrapTask(logger, "refresh-workspace-context", refreshWorkspaceContext);
   }
 
-  await runBootstrapTask(logger, "refresh-workspace-context", refreshWorkspaceContext);
-
-  if (envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE", true)) {
+  if (refreshKnowledge || missingKnowledgeManifest) {
     await runBootstrapTask(logger, "refresh-knowledge-manifest", refreshKnowledgeManifest);
   }
 };
