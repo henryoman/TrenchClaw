@@ -16,7 +16,8 @@
         "^build"
       ],
       "outputs": [
-        "dist/**"
+        "dist/**",
+        "build/**"
       ]
     },
     "typecheck": {

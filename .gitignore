@@ -17,11 +17,7 @@ config/.env.*
 # App runtime state
 apps/trenchclaw/.runtime-state/
 
-# Generated clients from IDL codegen
-lib/client/generated/
-
 # Runtime data (Bun SQLite)
-data/
 *.db
 *.db-shm
 *.db-wal
