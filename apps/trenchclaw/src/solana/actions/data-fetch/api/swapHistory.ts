@@ -3,13 +3,10 @@ import { z } from "zod";
 import { createHelius } from "helius-sdk";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import { ensureVaultFileExists, parseVaultJsonText } from "../../../../ai/llm/vault-file";
-import { RUNTIME_NO_READ_ROOT, resolveCoreRelativePath } from "../../../../runtime/runtime-paths";
+import { loadVaultLayers, readVaultString } from "../../../../ai/llm/vault-file";
 
 const HELIUS_SWAP_HISTORY_LIMIT = 20;
 const HELIUS_CONTINUATION_RETRY_LIMIT = 10;
-const HELIUS_VAULT_FILE_PATH = `${RUNTIME_NO_READ_ROOT}/vault.json`;
-const HELIUS_VAULT_TEMPLATE_PATH = resolveCoreRelativePath("src/ai/config/vault.template.json");
 const HELIUS_CONTINUATION_SIGNATURE_REGEX = /before(?:-signature|Signature)\s*(?:parameter)?\s*(?:set to)?\s*([1-9A-HJ-NP-Za-km-z]{32,})/i;
 
 const base58AddressSchema = z.string().trim().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/);
@@ -149,31 +146,11 @@ const pacificDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeZoneName: "short",
 });
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
-
-const getNestedString = (value: unknown, path: string[]): string | null => {
-  let current = value;
-  for (const key of path) {
-    if (!isRecord(current)) {
-      return null;
-    }
-    current = current[key];
-  }
-  return typeof current === "string" && current.trim().length > 0 ? current.trim() : null;
-};
-
 const resolveHeliusApiKey = async (): Promise<string> => {
-  await ensureVaultFileExists({
-    vaultPath: HELIUS_VAULT_FILE_PATH,
-    templatePath: HELIUS_VAULT_TEMPLATE_PATH,
-  });
-
-  const content = await readFile(HELIUS_VAULT_FILE_PATH, "utf8");
-  const vault = parseVaultJsonText(content);
-  const vaultApiKey = getNestedString(vault, ["rpc", "helius", "api-key"]);
-  if (vaultApiKey) {
-    return vaultApiKey;
+  const { mergedVaultData } = await loadVaultLayers();
+  const apiKey = readVaultString(mergedVaultData, "rpc/helius/api-key");
+  if (apiKey) {
+    return apiKey;
   }
 
   throw new Error("Missing Helius API key. Populate rpc.helius.api-key in the vault.");

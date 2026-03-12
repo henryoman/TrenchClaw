@@ -1,19 +1,14 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isRecord, parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
-import { ensureVaultFileExists } from "./vault-file";
+import { isRecord, parseStructuredFile, resolvePreferredPathFromModule } from "./shared";
+import { loadVaultLayers } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
 const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/runtime/settings.json";
 const LEGACY_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/user/settings.json";
-const DEFAULT_VAULT_FILE = "../../../.runtime-state/runtime/vault.json";
-const LEGACY_VAULT_FILE = "../../../.runtime-state/user/vault.json";
-const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 
 const RUNTIME_SETTINGS_FILE_ENV = "TRENCHCLAW_RUNTIME_SETTINGS_FILE";
 const LEGACY_USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
-const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
-const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 
 const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
   if (!isRecord(baseValue) || !isRecord(overlayValue)) {
@@ -130,7 +125,8 @@ const resolveValue = async (
 
 export interface ResolvedUserSettingsPayload {
   userSettingsPath: string;
-  vaultPath: string;
+  runtimeVaultPath: string;
+  instanceVaultPath: string | null;
   rawSettings: unknown;
   resolvedSettings: unknown;
   warnings: string[];
@@ -157,28 +153,13 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     envValues: [process.env[RUNTIME_SETTINGS_FILE_ENV], process.env[LEGACY_USER_SETTINGS_FILE_ENV]],
     legacyRelativePaths: [LEGACY_COMPATIBILITY_SETTINGS_FILE],
   });
-  const vaultPath = await resolvePreferredPathFromModule({
-    moduleUrl: import.meta.url,
-    preferredRelativePath: DEFAULT_VAULT_FILE,
-    envValues: [process.env[VAULT_FILE_ENV]],
-    legacyRelativePaths: [LEGACY_VAULT_FILE],
-  });
-  const vaultTemplatePath = resolvePathFromModule(
-    import.meta.url,
-    DEFAULT_VAULT_TEMPLATE_FILE,
-    process.env[VAULT_TEMPLATE_FILE_ENV],
-  );
 
   await ensureStructuredSettingsFileExists(compatibilitySettingsPath);
-  await ensureVaultFileExists({
-    vaultPath,
-    templatePath: vaultTemplatePath,
-  });
+  const vaultLayers = await loadVaultLayers();
 
   const rawCompatibilitySettings = await parseStructuredFile(compatibilitySettingsPath);
-  const vaultData = await parseStructuredFile(vaultPath);
   const context: ResolveContext = {
-    vaultData,
+    vaultData: vaultLayers.mergedVaultData,
     warnings: [],
     fileCache: new Map<string, unknown>(),
   };
@@ -200,7 +181,8 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
 
   return {
     userSettingsPath: compatibilitySettingsPath,
-    vaultPath,
+    runtimeVaultPath: vaultLayers.runtimeVaultPath,
+    instanceVaultPath: vaultLayers.instanceVaultPath,
     rawSettings,
     resolvedSettings,
     warnings: context.warnings,
@@ -223,7 +205,8 @@ Source:
 - compatibility settings: ${payload.compatibilitySettingsPath}
 - instance trading settings: ${payload.instanceTradingSettingsPath ?? "none"}
 - active instance: ${payload.activeInstanceId ?? "none"}
-- vault: ${payload.vaultPath}
+- runtime vault: ${payload.runtimeVaultPath}
+- instance vault: ${payload.instanceVaultPath ?? "none"}
 ${warningLines}\`\`\`json
 ${JSON.stringify(payload.resolvedSettings, null, 2)}
 \`\`\``;

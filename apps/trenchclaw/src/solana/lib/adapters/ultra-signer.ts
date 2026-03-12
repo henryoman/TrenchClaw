@@ -10,20 +10,14 @@ import {
   type Transaction,
   type TransactionWithBlockhashLifetime,
 } from "@solana/transactions";
-import { parseStructuredFile, resolvePathFromModule } from "../../../ai/llm/shared";
-import { ensureVaultFileExists } from "../../../ai/llm/vault-file";
+import { loadVaultLayers, readVaultString } from "../../../ai/llm/vault-file";
 import { resolveRequiredRpcUrl } from "../rpc/urls";
-import { RUNTIME_OWNED_ROOT, resolveCoreRelativePath } from "../../../runtime/runtime-paths";
+import type { LoadedVaultLayers } from "../../../ai/llm/vault-file";
 
 export interface UltraSignerAdapter {
   address: string;
   signBase64Transaction(base64Transaction: string): Promise<string>;
 }
-
-const DEFAULT_VAULT_FILE = `${RUNTIME_OWNED_ROOT}/vault.json`;
-const DEFAULT_VAULT_TEMPLATE_FILE = resolveCoreRelativePath("src/ai/config/vault.template.json");
-const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
-const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 
 export const createUltraSignerAdapter = async (config: {
   privateKey: Uint8Array;
@@ -46,43 +40,31 @@ export const createUltraSignerAdapter = async (config: {
   };
 };
 
-const getByPath = (root: unknown, segments: string[]): unknown => {
-  let current = root;
-  for (const segment of segments) {
-    if (current === null || typeof current !== "object" || Array.isArray(current)) {
-      return undefined;
-    }
-    current = (current as Record<string, unknown>)[segment];
+const resolveUltraSignerConfigFromVault = (vaultLayers: LoadedVaultLayers): {
+  rawKey: string;
+  encoding: string;
+} | null => {
+  const rawKey = readVaultString(vaultLayers.mergedVaultData, "wallet/ultra-signer/private-key");
+  if (!rawKey) {
+    return null;
   }
-  return current;
-};
 
-const readVaultString = (root: unknown, refPath: string): string | undefined => {
-  const value = getByPath(root, refPath.split("/").filter(Boolean));
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+  return {
+    rawKey,
+    encoding: readVaultString(vaultLayers.mergedVaultData, "wallet/ultra-signer/private-key-encoding") ?? "base64",
+  };
 };
 
 export const createUltraSignerAdapterFromVault = async (input: {
   rpcUrl?: string;
 } = {}): Promise<UltraSignerAdapter | undefined> => {
-  const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
-  const vaultTemplatePath = resolvePathFromModule(
-    import.meta.url,
-    DEFAULT_VAULT_TEMPLATE_FILE,
-    process.env[VAULT_TEMPLATE_FILE_ENV],
-  );
-  await ensureVaultFileExists({
-    vaultPath,
-    templatePath: vaultTemplatePath,
-  });
-  const vaultData = await parseStructuredFile(vaultPath);
-  const rawKey = readVaultString(vaultData, "wallet/ultra-signer/private-key");
-  if (!rawKey) {
+  const vaultLayers = await loadVaultLayers();
+  const signerConfig = resolveUltraSignerConfigFromVault(vaultLayers);
+  if (!signerConfig) {
     return undefined;
   }
 
-  const encoding = readVaultString(vaultData, "wallet/ultra-signer/private-key-encoding") ?? "base64";
-  const privateKey = parsePrivateKey(rawKey, encoding.toLowerCase());
+  const privateKey = parsePrivateKey(signerConfig.rawKey, signerConfig.encoding.toLowerCase());
 
   return createUltraSignerAdapter({
     privateKey,
