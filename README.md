@@ -426,7 +426,7 @@ bun run start
 
 What `bun run start` does:
 - Starts the dedicated runner (`apps/runner`) which then starts the core runtime process (`apps/trenchclaw runtime:start`)
-- Runs startup context refresh + knowledge manifest refresh (override with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=0` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=0`)
+- Rebuilds missing `.runtime-state/generated/` artifacts on startup, and you can force a full refresh with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1`
 - Starts runtime API on localhost
 - Serves GUI from static `apps/frontends/gui/dist`
 - Proxies `/api/*` from GUI server to runtime server
