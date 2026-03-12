@@ -24,6 +24,6 @@
 // Used by:
 //   - Routines (get quote before deciding whether to execute).
 //   - Policy engine (check price impact and slippage before allowing trade).
-//   - TUI (show quote preview to operator).
+//   - TUI (show quote preview to the user).
 //
 // Calls Jupiter adapter's quote() method. Resolves decimals via token-account adapter.

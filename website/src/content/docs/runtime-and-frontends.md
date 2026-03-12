@@ -68,7 +68,7 @@ The active instance affects:
 - wallet roots
 - conversations
 - memory and profile facts
-- operator-facing state in the protected instance directory
+- user-facing state in the protected instance directory
 
 ## Typical Flow
 

@@ -1,4 +1,5 @@
 import type {
+  GuiUpdateAiSettingsRequest,
   GuiCreateInstanceRequest,
   GuiDeleteSecretRequest,
   GuiSignInInstanceRequest,
@@ -211,6 +212,61 @@ export const parseUpdateVaultRequest = async (request: Request): Promise<GuiUpda
     }
     return {
       content: payload.content,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateAiSettingsRequest = async (request: Request): Promise<GuiUpdateAiSettingsRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.settings)) {
+      return null;
+    }
+
+    const {
+      provider,
+      model,
+      baseURL,
+      defaultMode,
+      temperature,
+      maxOutputTokens,
+    } = payload.settings;
+
+    if (
+      provider !== "openai"
+      && provider !== "openrouter"
+      && provider !== "openai-compatible"
+    ) {
+      return null;
+    }
+
+    if (
+      typeof model !== "string"
+      || typeof baseURL !== "string"
+      || typeof defaultMode !== "string"
+    ) {
+      return null;
+    }
+
+    if (temperature !== null && typeof temperature !== "number") {
+      return null;
+    }
+
+    if (maxOutputTokens !== null && typeof maxOutputTokens !== "number") {
+      return null;
+    }
+
+    return {
+      settings: {
+        provider,
+        model,
+        baseURL,
+        defaultMode,
+        temperature,
+        maxOutputTokens,
+      },
     };
   } catch {
     return null;

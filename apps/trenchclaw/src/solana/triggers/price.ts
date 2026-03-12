@@ -20,7 +20,7 @@
 // Used by:
 //   - Sniper exit strategies (take-profit / stop-loss).
 //   - Conditional DCA (only buy when price is below a level).
-//   - Alert-based manual trading (notify operator via TUI).
+//   - Alert-based manual trading (notify user via TUI).
 //
 // Design notes:
 //   - Polling is simple and reliable. WebSocket price feeds can be added later

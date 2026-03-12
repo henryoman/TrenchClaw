@@ -1,4 +1,7 @@
 import type {
+  GuiAiSettingsResponse,
+  GuiUpdateAiSettingsRequest,
+  GuiUpdateAiSettingsResponse,
   GuiActivityResponse,
   GuiBootstrapResponse,
   GuiScheduleResponse,
@@ -92,6 +95,13 @@ export const runtimeApi = {
   signInInstance: (input: GuiSignInInstanceRequest): Promise<GuiSignInInstanceResponse> =>
     fetchJson<GuiSignInInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances/sign-in`), {
       method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  aiSettings: (): Promise<GuiAiSettingsResponse> => fetchJson<GuiAiSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/ai-settings`)),
+  updateAiSettings: (input: GuiUpdateAiSettingsRequest): Promise<GuiUpdateAiSettingsResponse> =>
+    fetchJson<GuiUpdateAiSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/ai-settings`), {
+      method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),

@@ -1,10 +1,7 @@
 import { z } from "zod";
+import { loadAiSettings, LLM_PROVIDERS, type LlmProvider } from "./ai-settings-file";
 import { parseStructuredFile, resolvePathFromModule } from "./shared";
 import { ensureVaultFileExists } from "./vault-file";
-
-export const LLM_PROVIDERS = ["openai", "openrouter", "openai-compatible"] as const;
-
-export type LlmProvider = (typeof LLM_PROVIDERS)[number];
 
 export interface LlmProviderConfig {
   provider: LlmProvider;
@@ -64,6 +61,7 @@ export const resolveLlmProviderConfigFromEnv = (): LlmProviderConfig | null => {
 };
 
 export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderConfig | null> => {
+  const aiSettingsPayload = await loadAiSettings();
   const vaultData = await readVaultData();
   const tryProvider = (provider: LlmProvider): LlmProviderConfig | null => {
     if (provider === "openai") {
@@ -74,8 +72,8 @@ export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderCo
       return {
         provider,
         apiKey,
-        model: readVaultString(vaultData, "llm/openai/model") ?? defaultModelByProvider.openai,
-        baseURL: readVaultString(vaultData, "llm/openai/base-url"),
+        model: aiSettingsPayload.settings.model || defaultModelByProvider.openai,
+        baseURL: aiSettingsPayload.settings.baseURL || undefined,
       };
     }
 
@@ -87,13 +85,13 @@ export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderCo
       return {
         provider,
         apiKey,
-        model: readVaultString(vaultData, "llm/openrouter/model") ?? defaultModelByProvider.openrouter,
-        baseURL: readVaultString(vaultData, "llm/openrouter/base-url") ?? "https://openrouter.ai/api/v1",
+        model: aiSettingsPayload.settings.model || defaultModelByProvider.openrouter,
+        baseURL: aiSettingsPayload.settings.baseURL || "https://openrouter.ai/api/v1",
       };
     }
 
     const apiKey = readVaultString(vaultData, "llm/openai-compatible/api-key");
-    const baseURL = readVaultString(vaultData, "llm/openai-compatible/base-url");
+    const baseURL = aiSettingsPayload.settings.baseURL;
     if (!apiKey || !baseURL) {
       return null;
     }
@@ -101,34 +99,11 @@ export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderCo
       provider,
       apiKey,
       baseURL: z.string().url().parse(baseURL),
-      model: readVaultString(vaultData, "llm/openai-compatible/model") ?? defaultModelByProvider["openai-compatible"],
+      model: aiSettingsPayload.settings.model || defaultModelByProvider["openai-compatible"],
     };
   };
 
-  const vaultProviderRaw = readVaultString(vaultData, "llm/provider");
-  const preferredProviders: LlmProvider[] = [];
-
-  if (vaultProviderRaw) {
-    const resolved = resolveProvider(vaultProviderRaw);
-    if (!preferredProviders.includes(resolved)) {
-      preferredProviders.push(resolved);
-    }
-  }
-
-  for (const fallbackProvider of LLM_PROVIDERS) {
-    if (!preferredProviders.includes(fallbackProvider)) {
-      preferredProviders.push(fallbackProvider);
-    }
-  }
-
-  for (const provider of preferredProviders) {
-    const config = tryProvider(provider);
-    if (config) {
-      return config;
-    }
-  }
-
-  return null;
+  return tryProvider(resolveProvider(aiSettingsPayload.settings.provider));
 };
 
 export const resolveLlmProviderConfig = async (): Promise<LlmProviderConfig | null> => {

@@ -26,7 +26,7 @@ Exposed Ultra actions:
 - `managedUltraSwap`
 - `privacySwap`
 
-Standard or RPC swap files in the repo are not the current public operator path.
+Standard or RPC swap files in the repo are not the current public swap path.
 
 ## Transfers
 

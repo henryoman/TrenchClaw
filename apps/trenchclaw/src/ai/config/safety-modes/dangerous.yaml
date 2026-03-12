@@ -1,11 +1,10 @@
 configVersion: 1
-profile: veryDangerous
+profile: dangerous
 
 network:
   allowedClusters:
     - mainnet-beta
     - devnet
-    - testnet
 
 wallet:
   defaults:
@@ -16,7 +15,7 @@ wallet:
     allowPrivateKeyAccess: true
     allowWalletSigning: true
     allowCreatingWallets: true
-    allowDeletingWallets: true
+    allowDeletingWallets: false
     allowExportingWallets: true
     allowImportingWallets: true
     allowListingWallets: true
@@ -26,7 +25,14 @@ wallet:
 trading:
   enabled: true
   liveWalletUse: true
-  requireUserConfirmationForDangerousActions: false
+  requireUserConfirmationForDangerousActions: true
+  preferences:
+    defaultSwapProvider: ultra
+    defaultSwapMode: ExactIn
+    defaultAmountUnit: ui
+    scheduleActionName: scheduleManagedUltraSwap
+    quickBuyPresets: []
+    customPresets: []
 
 agent:
   enabled: true
@@ -37,13 +43,12 @@ agent:
     allowHardwareAccess: true
     allowDirectKeypairAccess: true
   internetAccess:
-    trustedSitesOnly: false
-    allowFullAccess: true
+    trustedSitesOnly: true
+    allowFullAccess: false
     trustedSites: []
     blockedSites: []
     allowedProtocols:
       - https
-      - http
     blockedProtocols: []
     allowedPorts:
       - 443

@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import type { Action } from "../ai/runtime/types/action";
 import {
   ActionDispatcher,
   ActionRegistry,
@@ -28,8 +29,7 @@ import {
   getRuntimeActionCatalog,
   getRuntimeActionsRequiringUserConfirmation,
   isRuntimeActionEnabledBySettings,
-  type RuntimeAction,
-} from "../ai/tools";
+} from "./capabilities";
 import { getRuntimeCapabilitySnapshot, type RuntimeCapabilitySnapshot } from "./capabilities";
 import {
   loadRuntimeSettings,
@@ -111,8 +111,8 @@ const runBootContextRefresh = async (logger: RuntimeLogger): Promise<void> => {
   }
 };
 
-const toSupportedActionMap = (actions: RuntimeAction[]): Map<string, RuntimeAction> => {
-  const map = new Map<string, RuntimeAction>();
+const toSupportedActionMap = (actions: Action<any, any>[]): Map<string, Action<any, any>> => {
+  const map = new Map<string, Action<any, any>>();
   for (const action of actions) {
     map.set(action.name, action);
   }
@@ -287,7 +287,7 @@ const instrumentLlmClient = (
   };
 };
 
-export const buildActionCatalog = (settings: RuntimeSettings): RuntimeAction[] => {
+export const buildActionCatalog = (settings: RuntimeSettings): Action<any, any>[] => {
   return getRuntimeActionCatalog(settings);
 };
 
@@ -831,7 +831,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       llm,
       logger,
       capabilitySnapshot,
-      workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings(settings),
+      workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings({ settings }),
     }),
     session,
     stop: async () => {

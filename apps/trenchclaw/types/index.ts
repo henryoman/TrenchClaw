@@ -242,6 +242,34 @@ export interface GuiUpdateVaultResponse {
   savedAt: string;
 }
 
+export type GuiAiProvider = "openai" | "openrouter" | "openai-compatible";
+
+export interface GuiAiSettingsView {
+  provider: GuiAiProvider;
+  model: string;
+  baseURL: string;
+  defaultMode: string;
+  temperature: number | null;
+  maxOutputTokens: number | null;
+}
+
+export interface GuiAiSettingsResponse {
+  filePath: string;
+  templatePath: string;
+  initializedFromTemplate: boolean;
+  settings: GuiAiSettingsView;
+}
+
+export interface GuiUpdateAiSettingsRequest {
+  settings: GuiAiSettingsView;
+}
+
+export interface GuiUpdateAiSettingsResponse {
+  filePath: string;
+  savedAt: string;
+  settings: GuiAiSettingsView;
+}
+
 export type GuiSecretCategory = "ai" | "blockchain";
 
 export interface GuiSecretOptionView {

@@ -1,14 +1,30 @@
 import path from "node:path";
 import { isRecord, parseStructuredFile, resolvePathFromModule } from "./shared";
 import { ensureVaultFileExists } from "./vault-file";
+import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
-const DEFAULT_USER_SETTINGS_FILE = "../brain/instance-blockchain-settings/settings.yaml";
+const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../brain/instance-settings/settings.json";
 const DEFAULT_VAULT_FILE = "../brain/protected/no-read/vault.json";
 const DEFAULT_VAULT_TEMPLATE_FILE = "../brain/protected/no-read/vault.template.json";
 
 const USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
+
+const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
+  if (!isRecord(baseValue) || !isRecord(overlayValue)) {
+    return overlayValue;
+  }
+
+  const merged: Record<string, unknown> = { ...baseValue };
+  for (const [key, value] of Object.entries(overlayValue)) {
+    const currentValue = merged[key];
+    merged[key] =
+      isRecord(currentValue) && isRecord(value) ? deepMerge(currentValue, value) : value;
+  }
+
+  return merged;
+};
 
 const getByPath = (root: unknown, segments: string[]): unknown => {
   let current = root;
@@ -114,12 +130,15 @@ export interface ResolvedUserSettingsPayload {
   rawSettings: unknown;
   resolvedSettings: unknown;
   warnings: string[];
+  compatibilitySettingsPath: string;
+  instanceTradingSettingsPath: string | null;
+  activeInstanceId: string | null;
 }
 
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
-  const userSettingsPath = resolvePathFromModule(
+  const compatibilitySettingsPath = resolvePathFromModule(
     import.meta.url,
-    DEFAULT_USER_SETTINGS_FILE,
+    DEFAULT_COMPATIBILITY_SETTINGS_FILE,
     process.env[USER_SETTINGS_FILE_ENV],
   );
   const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
@@ -134,7 +153,7 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     templatePath: vaultTemplatePath,
   });
 
-  const rawSettings = await parseStructuredFile(userSettingsPath);
+  const rawCompatibilitySettings = await parseStructuredFile(compatibilitySettingsPath);
   const vaultData = await parseStructuredFile(vaultPath);
   const context: ResolveContext = {
     vaultData,
@@ -142,14 +161,30 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     fileCache: new Map<string, unknown>(),
   };
 
-  const resolvedSettings = await resolveValue(rawSettings, path.dirname(userSettingsPath), context);
+  const resolvedCompatibilitySettings = await resolveValue(
+    rawCompatibilitySettings,
+    path.dirname(compatibilitySettingsPath),
+    context,
+  );
+  const instanceTradingSettings = await loadInstanceTradingSettings();
+  const rawSettings = {
+    compatibility: rawCompatibilitySettings,
+    instanceTrading: instanceTradingSettings.rawSettings,
+  };
+  const resolvedSettings = deepMerge(
+    resolvedCompatibilitySettings,
+    instanceTradingSettings.resolvedSettings,
+  );
 
   return {
-    userSettingsPath,
+    userSettingsPath: compatibilitySettingsPath,
     vaultPath,
     rawSettings,
     resolvedSettings,
     warnings: context.warnings,
+    compatibilitySettingsPath,
+    instanceTradingSettingsPath: instanceTradingSettings.settingsPath,
+    activeInstanceId: instanceTradingSettings.instanceId,
   };
 };
 
@@ -163,7 +198,9 @@ export const renderResolvedUserSettingsSection = async (): Promise<string> => {
 
     return `## User Settings (Resolved)
 Source:
-- settings: ${payload.userSettingsPath}
+- compatibility settings: ${payload.compatibilitySettingsPath}
+- instance trading settings: ${payload.instanceTradingSettingsPath ?? "none"}
+- active instance: ${payload.activeInstanceId ?? "none"}
 - vault: ${payload.vaultPath}
 ${warningLines}\`\`\`json
 ${JSON.stringify(payload.resolvedSettings, null, 2)}

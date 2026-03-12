@@ -6,21 +6,21 @@ import {
   type PromptGeneratedSectionConfig,
   type PromptPayloadManifest,
 } from "./prompt-manifest";
-import { resolvePathFromModule } from "./shared";
+import { parseStructuredFile, resolvePathFromModule } from "./shared";
 import { renderWorkspaceMapSection } from "./workspace-map";
 import { renderResolvedUserSettingsSection } from "./user-settings-loader";
-import { getRuntimeCapabilitySnapshot, renderOperatorCapabilityAppendix } from "../../runtime/capabilities";
+import { getRuntimeCapabilitySnapshot, renderPrimaryCapabilityAppendix } from "../../runtime/capabilities";
 import { loadRuntimeSettings } from "../../runtime/load";
 import { buildFilesystemPolicyPrompt } from "../../runtime/security/filesystem-manifest";
 
-const DEFAULT_PROMPT_MANIFEST_FILE = "../brain/protected/system/payload-manifest.yaml";
+const DEFAULT_PROMPT_MANIFEST_FILE = "../config/payload-manifest.json";
 const DEFAULT_KNOWLEDGE_DIR = "../brain/knowledge/";
 const DEFAULT_KNOWLEDGE_MANIFEST_FILE = "../brain/knowledge/KNOWLEDGE_MANIFEST.md";
 const DEFAULT_WORKSPACE_DIR = "../../../";
 
 const FALLBACK_SYSTEM_PROMPT = [
-  "You are TrenchClaw, a safety-first Solana runtime operator.",
-  "Prioritize policy compliance, capital protection, and clear operator communication.",
+  "You are TrenchClaw, a safety-first Solana runtime assistant.",
+  "Prioritize policy compliance, capital protection, and clear user communication.",
 ].join(" ");
 
 const PROMPT_MANIFEST_PATH_ENV = "TRENCHCLAW_PROMPT_MANIFEST_FILE";
@@ -122,19 +122,21 @@ const loadPromptManifest = async (): Promise<{
     return { manifest: cachedManifest, manifestPath };
   }
 
-  const file = Bun.file(manifestPath);
-  if (!(await file.exists())) {
-    cachedManifest = null;
+  try {
+    const parsed = parsePromptManifest(await parseStructuredFile(manifestPath), manifestPath);
+    cachedManifest = parsed;
     cachedManifestPath = manifestPath;
     cachedPromptByMode.clear();
-    return { manifest: null, manifestPath };
+    return { manifest: parsed, manifestPath };
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("File does not exist")) {
+      cachedManifest = null;
+      cachedManifestPath = manifestPath;
+      cachedPromptByMode.clear();
+      return { manifest: null, manifestPath };
+    }
+    throw error;
   }
-
-  const parsed = parsePromptManifest((await file.text()).trim(), manifestPath);
-  cachedManifest = parsed;
-  cachedManifestPath = manifestPath;
-  cachedPromptByMode.clear();
-  return { manifest: parsed, manifestPath };
 };
 
 const resolvePromptFilePath = (manifestPath: string, filePath: string): string => {
@@ -173,7 +175,7 @@ const defaultGeneratedSectionTitle = (source: PromptGeneratedSectionConfig["sour
 
 const renderRuntimeCapabilityAppendixSection = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  return renderOperatorCapabilityAppendix(getRuntimeCapabilitySnapshot(settings));
+  return renderPrimaryCapabilityAppendix(getRuntimeCapabilitySnapshot(settings));
 };
 
 const renderFilesystemPolicySection = async (): Promise<string> => {

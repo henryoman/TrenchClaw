@@ -116,5 +116,24 @@ export const getRuntimeCapabilitySnapshot = (settings: RuntimeSettings): Runtime
   };
 };
 
-export const buildRuntimeChatToolNameCatalog = (settings: RuntimeSettings): string[] =>
-  getRuntimeCapabilitySnapshot(settings).chatTools.map((toolEntry) => toolEntry.name);
+export const buildRuntimeChatToolNameCatalog = (
+  input:
+    | RuntimeSettings
+    | {
+        actionNames: string[];
+        workspaceToolsEnabled: boolean;
+      },
+): string[] => {
+  if ("actionNames" in input) {
+    const actionNames = [...input.actionNames].toSorted((left, right) => left.localeCompare(right));
+    if (!input.workspaceToolsEnabled) {
+      return actionNames;
+    }
+    return [
+      ...actionNames,
+      ...workspaceToolCapabilityDefinitions.map((definition) => definition.name),
+    ].toSorted((left, right) => left.localeCompare(right));
+  }
+
+  return getRuntimeCapabilitySnapshot(input).chatTools.map((toolEntry) => toolEntry.name);
+};

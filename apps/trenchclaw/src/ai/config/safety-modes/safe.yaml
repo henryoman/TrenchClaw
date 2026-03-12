@@ -26,6 +26,13 @@ trading:
   enabled: false
   liveWalletUse: false
   requireUserConfirmationForDangerousActions: true
+  preferences:
+    defaultSwapProvider: ultra
+    defaultSwapMode: ExactIn
+    defaultAmountUnit: ui
+    scheduleActionName: scheduleManagedUltraSwap
+    quickBuyPresets: []
+    customPresets: []
 
 agent:
   enabled: true

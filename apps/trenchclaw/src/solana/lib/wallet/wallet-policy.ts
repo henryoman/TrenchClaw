@@ -37,7 +37,7 @@
 //     Count today's signing_log entries for this wallet. Check count < limit.
 //
 //   requireConfirmation:
-//     If enabled, pause and require operator confirmation via TUI before signing.
+//     If enabled, pause and require user confirmation via TUI before signing.
 //     (Only works in interactive mode, not headless.)
 //
 //   timeWindow:

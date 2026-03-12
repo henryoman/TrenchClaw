@@ -1,14 +1,15 @@
 import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
-import { resolveBundledBrainPath, resolveRuntimeStatePath } from "../runtime-paths";
+import { resolveCoreRelativePath, resolveRuntimeStatePath } from "../runtime-paths";
 import { loadResolvedUserSettings } from "../../ai/llm/user-settings-loader";
+import { parseStructuredFile } from "../../ai/llm/shared";
 
 export type RuntimeSettingsProfile = "safe" | "dangerous" | "veryDangerous";
 
 const SETTINGS_FILE_BY_PROFILE: Record<RuntimeSettingsProfile, string> = {
-  safe: "../../ai/brain/protected/system/safety-modes/safe.yaml",
-  dangerous: "../../ai/brain/protected/system/safety-modes/dangerous.yaml",
-  veryDangerous: "../../ai/brain/protected/system/safety-modes/veryDangerous.yaml",
+  safe: "src/ai/config/safety-modes/safe.json",
+  dangerous: "src/ai/config/safety-modes/dangerous.json",
+  veryDangerous: "src/ai/config/safety-modes/veryDangerous.json",
 };
 
 const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
@@ -47,16 +48,15 @@ const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
   return merged;
 };
 
-const parseYaml = (source: string, filePath: string): unknown => {
+const parseSettingsFile = (raw: unknown, filePath: string): unknown => {
   try {
-    const parsed = Bun.YAML.parse(source);
-    if (parsed == null || typeof parsed !== "object") {
+    if (raw == null || typeof raw !== "object") {
       throw new Error("Settings file must parse to an object");
     }
-    return parsed;
+    return raw;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to parse settings YAML at "${filePath}": ${message}`, {
+    throw new Error(`Failed to parse settings file at "${filePath}": ${message}`, {
       cause: error,
     });
   }
@@ -68,7 +68,7 @@ const readSettingsFile = async (filePath: string): Promise<unknown> => {
     throw new Error(`Settings file does not exist: "${filePath}"`);
   }
 
-  return parseYaml(await file.text(), filePath);
+  return parseSettingsFile(await parseStructuredFile(filePath), filePath);
 };
 
 const loadOptionalSettingsFile = async (filePath: string | undefined): Promise<unknown> => {
@@ -90,6 +90,7 @@ const normalizeRuntimeSettings = (
   const network = isRecord(candidate.network) ? candidate.network : {};
   const trading = isRecord(candidate.trading) ? candidate.trading : {};
   const tradingJupiter = isRecord(trading.jupiter) ? trading.jupiter : {};
+  const tradingPreferences = isRecord(trading.preferences) ? trading.preferences : undefined;
   const wallet = isRecord(candidate.wallet) ? candidate.wallet : {};
   const agent = isRecord(candidate.agent) ? candidate.agent : {};
   const storage = isRecord(candidate.storage) ? candidate.storage : {};
@@ -107,9 +108,18 @@ const normalizeRuntimeSettings = (
     allowedClusters[0] ?? (profile === "safe" ? "devnet" : "mainnet-beta"),
   );
 
-  const ultraEnabled =
-    toStringValue(trading.preferredSwap, "").toLowerCase() === "ultra" ||
-    toStringValue(trading.defaultSwapProfile, "").toLowerCase() === "ultra";
+  const preferredSwapProvider = toStringValue(
+    tradingPreferences && typeof tradingPreferences.defaultSwapProvider === "string"
+      ? tradingPreferences.defaultSwapProvider
+      : undefined,
+    "",
+  ).toLowerCase();
+  const requestedSwapProvider =
+    preferredSwapProvider ||
+    toStringValue(trading.preferredSwap, "").toLowerCase() ||
+    toStringValue(trading.defaultSwapProfile, "").toLowerCase() ||
+    "ultra";
+  const ultraEnabled = requestedSwapProvider !== "standard";
   const triggerSettings = isRecord(tradingJupiter.trigger) ? tradingJupiter.trigger : {};
   const triggerEnabled =
     typeof triggerSettings.enabled === "boolean"
@@ -215,6 +225,7 @@ const normalizeRuntimeSettings = (
       dexscreener: {
         enabled: true,
       },
+      preferences: tradingPreferences ?? {},
     },
     agent: {
       enabled: toBooleanValue(agent.enabled, true),
@@ -338,8 +349,7 @@ export const resolveRuntimeSettingsProfile = (
 };
 
 export const getSettingsFilePath = (profile: RuntimeSettingsProfile): string => {
-  const relativePath = SETTINGS_FILE_BY_PROFILE[profile];
-  return resolveBundledBrainPath(relativePath.replace("../../ai/brain/", ""));
+  return resolveCoreRelativePath(SETTINGS_FILE_BY_PROFILE[profile]);
 };
 
 export const loadRuntimeSettings = async (

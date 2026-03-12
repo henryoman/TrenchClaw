@@ -45,17 +45,7 @@ export interface PromptPayloadManifest {
   modes: Record<string, PromptModeConfig>;
 }
 
-export const parsePromptManifest = (source: string, filePath: string): PromptPayloadManifest => {
-  let raw: unknown;
-  try {
-    raw = Bun.YAML.parse(source);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to parse prompt manifest "${filePath}": ${detail}`, {
-      cause: error,
-    });
-  }
-
+export const parsePromptManifest = (raw: unknown, filePath: string): PromptPayloadManifest => {
   if (!isRecord(raw)) {
     throw new Error(`Prompt manifest "${filePath}" must be an object`);
   }

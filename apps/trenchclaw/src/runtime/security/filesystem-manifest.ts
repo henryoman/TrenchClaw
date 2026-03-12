@@ -1,10 +1,11 @@
 import path from "node:path";
 import type { RuntimeActor } from "../../ai/runtime/types/context";
 import {
-  resolveBundledBrainPath,
+  resolveCoreRelativePath,
   resolveRuntimeContractPath,
   toRuntimeContractRelativePath,
 } from "../runtime-paths";
+import { parseStructuredFile } from "../../ai/llm/shared";
 
 type FilesystemSubject = "model" | "user" | "system";
 type FilesystemPermission = "none" | "read" | "write";
@@ -44,7 +45,7 @@ interface FilesystemManifest {
   rules: FilesystemRule[];
 }
 
-const MANIFEST_PATH_FROM_MODULE = resolveBundledBrainPath("protected/system/filesystem-manifest.yaml");
+const MANIFEST_PATH_FROM_MODULE = resolveCoreRelativePath("src/ai/config/filesystem-manifest.json");
 
 const DEFAULT_MANIFEST_CANDIDATE_PATHS = [
   MANIFEST_PATH_FROM_MODULE,
@@ -143,7 +144,7 @@ const loadManifest = async (): Promise<FilesystemManifest> => {
     throw new Error(`Filesystem manifest does not exist: "${manifestPath}"`);
   }
 
-  const parsed = parseManifest(Bun.YAML.parse(await file.text()));
+  const parsed = parseManifest(await parseStructuredFile(manifestPath));
   cachedManifestPath = manifestPath;
   cachedManifest = parsed;
   return parsed;
@@ -242,7 +243,7 @@ export const buildFilesystemPolicyPrompt = async (input: {
     `- default permission: ${defaultPermission}`,
     `- write paths: ${writePaths.length > 0 ? writePaths.join(", ") : "none"}`,
     `- read-only paths: ${readPaths.length > 0 ? readPaths.join(", ") : "none"}`,
-    "- never assume access outside allowed paths; request operator help if blocked.",
+    "- never assume access outside allowed paths; request user help if blocked.",
   ].join("\n");
 };
 

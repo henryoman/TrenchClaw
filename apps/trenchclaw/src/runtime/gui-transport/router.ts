@@ -2,6 +2,7 @@ import { CORS_HEADERS } from "./constants";
 import type { UIMessage } from "ai";
 import type { RuntimeGuiDomainContext } from "./contracts";
 import {
+  parseUpdateAiSettingsRequest,
   parseCreateInstanceRequest,
   parseDeleteSecretRequest,
   parseDispatcherTestRequest,
@@ -10,6 +11,7 @@ import {
   parseUpdateVaultRequest,
   parseUpsertSecretRequest,
 } from "./parsers";
+import { getAiSettings, updateAiSettings } from "./domains/ai-settings";
 import { streamChat, getConversationMessages, getConversations } from "./domains/chat";
 import { createInstance, listInstances, signInInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
@@ -316,6 +318,27 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
         return Response.json(await getVault(), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/ai-settings") {
+      try {
+        return Response.json(await getAiSettings(), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/gui/ai-settings") {
+      const payload = await parseUpdateAiSettingsRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid AI settings payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      try {
+        return Response.json(await updateAiSettings(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
       }
     }
 

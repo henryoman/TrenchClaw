@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "defaults": {
+    "mode": "primary",
+    "includeKnowledgeManifest": true,
+    "includeKnowledgeDirectoryTreeFallback": true,
+    "includeWorkspaceDirectoryTree": true
+  },
+  "modes": {
+    "primary": {
+      "title": "Primary Mode",
+      "sections": [
+        {
+          "kind": "file",
+          "title": "Core System Prompt",
+          "path": "system.md"
+        },
+        {
+          "kind": "file",
+          "title": "Primary Mode Instructions",
+          "path": "agent-modes/primary.md"
+        },
+        {
+          "kind": "generated",
+          "title": "Runtime Capability Appendix",
+          "source": "runtimeCapabilityAppendix"
+        },
+        {
+          "kind": "file",
+          "title": "Workspace Context Snapshot",
+          "path": "../brain/protected/context/workspace-and-schema.md"
+        },
+        {
+          "kind": "generated",
+          "title": "Knowledge Manifest",
+          "source": "knowledgeManifest",
+          "fallbackSource": "knowledgeDirectoryTree"
+        },
+        {
+          "kind": "generated",
+          "title": "Workspace Directory Tree",
+          "source": "workspaceDirectoryTree"
+        },
+        {
+          "kind": "generated",
+          "title": "Filesystem Policy",
+          "source": "filesystemPolicy"
+        },
+        {
+          "kind": "generated",
+          "title": "Resolved User Settings",
+          "source": "resolvedUserSettings"
+        }
+      ]
+    }
+  }
+}

@@ -45,7 +45,7 @@ export const renderRuntimeChatToolCatalogTable = (snapshot: RuntimeCapabilitySna
     ]),
   );
 
-export const renderOperatorCapabilityAppendix = (snapshot: RuntimeCapabilitySnapshot): string => {
+export const renderPrimaryCapabilityAppendix = (snapshot: RuntimeCapabilitySnapshot): string => {
   const actionBlocks = snapshot.actions
     .map((entry) => {
       const statusBits = [

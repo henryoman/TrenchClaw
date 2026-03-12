@@ -1,4 +1,5 @@
 import type {
+  GuiAiSettingsView,
   GuiActivityEntry,
   GuiInstanceProfileView,
   GuiPublicRpcOptionView,
@@ -47,6 +48,11 @@ interface RuntimeUiState {
   queueJobs: GuiQueueJobView[];
   scheduleJobs: GuiScheduleJobView[];
   activityEntries: GuiActivityEntry[];
+  aiSettingsFilePath: string;
+  aiSettingsTemplatePath: string;
+  aiSettings: GuiAiSettingsView | null;
+  aiSettingsBusy: boolean;
+  aiSettingsError: string;
   vaultFilePath: string;
   vaultTemplatePath: string;
   secretsOptions: GuiSecretOptionView[];
@@ -103,6 +109,11 @@ export const createRuntimeController = () => {
     queueJobs: [],
     scheduleJobs: [],
     activityEntries: [],
+    aiSettingsFilePath: "",
+    aiSettingsTemplatePath: "",
+    aiSettings: null,
+    aiSettingsBusy: false,
+    aiSettingsError: "",
     vaultFilePath: "",
     vaultTemplatePath: "",
     secretsOptions: [],
@@ -256,6 +267,7 @@ export const createRuntimeController = () => {
         state.activeInstance = bootstrap.activeInstance;
         state.phase = "app";
         await loadAppData();
+        await loadAiSettings();
         await loadSecrets();
         await checkLlm();
         await loadWallets();
@@ -327,6 +339,7 @@ export const createRuntimeController = () => {
       state.showCreateModal = nextState.showCreateModal;
       state.phase = nextState.phase;
       await loadAppData();
+      await loadAiSettings();
       await loadSecrets();
       await checkLlm();
       await loadWallets();
@@ -359,6 +372,7 @@ export const createRuntimeController = () => {
       state.activeInstance = signedIn.instance;
       state.phase = "app";
       await loadAppData();
+      await loadAiSettings();
       await loadSecrets();
       await checkLlm();
       await loadWallets();
@@ -401,6 +415,38 @@ export const createRuntimeController = () => {
       state.secretsError = error instanceof Error ? error.message : "Failed to load secrets.";
     } finally {
       state.secretsBusy = false;
+    }
+  };
+
+  const loadAiSettings = async (): Promise<void> => {
+    state.aiSettingsBusy = true;
+    state.aiSettingsError = "";
+    try {
+      const payload = await runtimeApi.aiSettings();
+      state.aiSettingsFilePath = payload.filePath;
+      state.aiSettingsTemplatePath = payload.templatePath;
+      state.aiSettings = payload.settings;
+    } catch (error) {
+      state.aiSettingsError = error instanceof Error ? error.message : "Failed to load AI settings.";
+    } finally {
+      state.aiSettingsBusy = false;
+    }
+  };
+
+  const saveAiSettings = async (settings: GuiAiSettingsView): Promise<void> => {
+    state.aiSettingsBusy = true;
+    state.aiSettingsError = "";
+    try {
+      const result = await runtimeApi.updateAiSettings({ settings });
+      state.aiSettingsFilePath = result.filePath;
+      state.aiSettings = result.settings;
+      const bootstrap = await runtimeApi.bootstrap();
+      state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
+      await checkLlm();
+    } catch (error) {
+      state.aiSettingsError = error instanceof Error ? error.message : "Failed to save AI settings.";
+    } finally {
+      state.aiSettingsBusy = false;
     }
   };
 
@@ -500,7 +546,9 @@ export const createRuntimeController = () => {
     submitCreateInstance,
     submitSignIn,
     loadSecrets,
+    loadAiSettings,
     loadWallets,
+    saveAiSettings,
     upsertSecret,
     clearSecret,
     checkLlm,

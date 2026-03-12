@@ -173,7 +173,8 @@ Helius-specific / closely related action entry points:
 ## Runtime Integration Points
 
 - RPC provider pool: `src/solana/lib/adapters/rpc-pool.ts`
-- User chain settings: `src/ai/brain/user-blockchain-settings/settings.yaml`
+- Compatibility settings: `src/ai/brain/instance-settings/settings.yaml`
+- Active instance trading settings: `src/ai/brain/protected/instance/<instanceId>/settings/trading.json`
 - Secret refs: `src/ai/brain/protected/no-read/README.md`
 
 ## Required Secret Keys / Refs

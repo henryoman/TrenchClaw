@@ -11,7 +11,6 @@ import {
 } from "ai";
 import { z } from "zod";
 import { createActionContext } from "../ai/runtime/types/context";
-import { buildRuntimeChatToolNameCatalog } from "../ai/tools";
 import type {
   ActionDispatcher,
   ActionRegistry,
@@ -21,9 +20,13 @@ import type {
   LlmGenerateInput,
   LlmGenerateResult,
 } from "../ai";
+import { loadAiSettings } from "../ai/llm/ai-settings-file";
 import { resolveGatewayConfig, resolveLlmProviderConfig } from "../ai/llm/config";
 import {
   createWorkspaceBashTools,
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
 } from "./workspace-bash";
 import { renderRuntimeWalletPromptContext } from "./wallet-model-context";
 import type { RuntimeCapabilitySnapshot } from "./capabilities";
@@ -100,6 +103,11 @@ const toToolDescription = (actionName: string, category: string, subcategory?: s
 const DEFAULT_WORKSPACE_ROOT_DIRECTORY = fileURLToPath(new URL("../ai/brain/workspace", import.meta.url));
 const DEFAULT_CHAT_ID_PREFIX = "chat";
 const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 1200;
+const RUNTIME_WORKSPACE_TOOL_NAMES = [
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
+] as const;
 
 const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
@@ -184,6 +192,19 @@ const resolveChatMaxOutputTokens = (): number => {
     return DEFAULT_CHAT_MAX_OUTPUT_TOKENS;
   }
   return parsed;
+};
+
+const resolveChatGenerationDefaults = async (): Promise<{ maxOutputTokens: number; temperature?: number }> => {
+  const envMaxOutputTokens = resolveChatMaxOutputTokens();
+  try {
+    const aiSettings = await loadAiSettings();
+    return {
+      maxOutputTokens: aiSettings.settings.maxOutputTokens ?? envMaxOutputTokens,
+      temperature: aiSettings.settings.temperature ?? undefined,
+    };
+  } catch {
+    return { maxOutputTokens: envMaxOutputTokens };
+  }
 };
 
 const withChatHeaders = (headers: HeadersInit | undefined, chatId: string): Headers => {
@@ -323,13 +344,13 @@ export const createRuntimeChatService = (
   const listToolNames = (): string[] =>
     deps.capabilitySnapshot
       ? deps.capabilitySnapshot.chatTools.map((toolEntry) => toolEntry.name)
-      : buildRuntimeChatToolNameCatalog({
-          actionNames: deps.registry
+      : [
+          ...deps.registry
             .list()
             .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
             .map((entry) => entry.name),
-          workspaceToolsEnabled,
-        });
+          ...(workspaceToolsEnabled ? [...RUNTIME_WORKSPACE_TOOL_NAMES] : []),
+        ].toSorted((leftToolName, rightToolName) => leftToolName.localeCompare(rightToolName));
 
   const generateText = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
     if (!deps.llm) {
@@ -399,19 +420,21 @@ export const createRuntimeChatService = (
       });
 
       const streamBuildStartedAt = Date.now();
-      const maxOutputTokens = resolveChatMaxOutputTokens();
+      const generationDefaults = await resolveChatGenerationDefaults();
       const result = streamWithModel({
         model,
         system: systemPrompt,
         messages: modelMessages,
-        maxOutputTokens,
+        maxOutputTokens: generationDefaults.maxOutputTokens,
+        temperature: generationDefaults.temperature,
         stopWhen: stepCountIs(12),
         tools,
       });
       deps.logger?.info("chat:model_stream_initialized", {
         chatId,
         durationMs: Date.now() - streamBuildStartedAt,
-        maxOutputTokens,
+        maxOutputTokens: generationDefaults.maxOutputTokens,
+        temperature: generationDefaults.temperature ?? null,
       });
 
       const response = result.toUIMessageStreamResponse({

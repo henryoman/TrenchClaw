@@ -30,7 +30,7 @@ Switching instances does not fully rebuild the live runtime policy engine. A fre
 ## Runtime Exposure
 
 - the runtime is meant to stay local
-- the runtime API exposes sensitive operator surfaces
+- the runtime API exposes sensitive runtime surfaces
 - if you bind it off-loopback or proxy it without your own protections, you are expanding trust to anything that can reach it
 
 ## Not Shipped
