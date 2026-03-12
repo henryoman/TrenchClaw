@@ -20,14 +20,14 @@
   },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.53.4",
+    "@sveltejs/kit": "^2.54.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "marked": "^17.0.4",
-    "svelte": "^5.53.9"
+    "svelte": "^5.53.10"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.1",
-    "oxlint": "^1.52.0",
+    "oxlint": "^1.54.0",
     "svelte-check": "^4.4.5",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
