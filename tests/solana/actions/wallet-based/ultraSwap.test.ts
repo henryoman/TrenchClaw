@@ -1,17 +1,21 @@
 import { describe, expect, test } from "bun:test";
 
+import type {
+  JupiterUltraExecuteRequest,
+  JupiterUltraOrderRequest,
+} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
 import { ultraSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/swap";
 
 describe("ultra swap actions", () => {
   test("uses Ultra-managed execution settings for a simple swap", async () => {
-    let capturedOrderRequest: Record<string, unknown> | null = null;
-    let capturedExecuteRequest: Record<string, unknown> | null = null;
+    let capturedOrderRequest: JupiterUltraOrderRequest | null = null;
+    let capturedExecuteRequest: JupiterUltraExecuteRequest | null = null;
 
     const result = await ultraSwapAction.execute(
       {
         jupiterUltra: {
           async getOrder(request: Record<string, unknown>) {
-            capturedOrderRequest = request;
+            capturedOrderRequest = request as unknown as JupiterUltraOrderRequest;
             return {
               requestId: "req-1",
               transaction: "unsigned-swap-tx",
@@ -23,7 +27,7 @@ describe("ultra swap actions", () => {
             };
           },
           async executeOrder(request: Record<string, unknown>) {
-            capturedExecuteRequest = request;
+            capturedExecuteRequest = request as unknown as JupiterUltraExecuteRequest;
             return {
               status: "Success",
               signature: "swap-sig-1",
@@ -73,15 +77,17 @@ describe("ultra swap actions", () => {
     if (!capturedOrderRequest || !capturedExecuteRequest) {
       return;
     }
+    const orderRequest = capturedOrderRequest as JupiterUltraOrderRequest;
+    const executeRequest = capturedExecuteRequest as JupiterUltraExecuteRequest;
 
-    expect(capturedOrderRequest.inputMint).toBe("So11111111111111111111111111111111111111112");
-    expect(capturedOrderRequest.outputMint).toBe("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-    expect(capturedOrderRequest.amount).toBe("250000000");
-    expect(capturedOrderRequest.taker).toBe("wallet-1");
-    expect(capturedOrderRequest.swapMode).toBe("ExactIn");
-    expect(capturedOrderRequest.slippageBps).toBeUndefined();
+    expect(orderRequest.inputMint).toBe("So11111111111111111111111111111111111111112");
+    expect(orderRequest.outputMint).toBe("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+    expect(orderRequest.amount).toBe("250000000");
+    expect(orderRequest.taker).toBe("wallet-1");
+    expect(orderRequest.swapMode).toBe("ExactIn");
+    expect(orderRequest.slippageBps).toBeUndefined();
 
-    expect(capturedExecuteRequest).toEqual({
+    expect(executeRequest).toEqual({
       requestId: "req-1",
       signedTransaction: "signed:unsigned-swap-tx",
     });

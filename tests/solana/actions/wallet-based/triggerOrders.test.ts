@@ -1,19 +1,24 @@
 import { describe, expect, test } from "bun:test";
 
+import type {
+  JupiterTriggerCreateOrderRequest,
+  JupiterTriggerExecuteRequest,
+  JupiterTriggerGetOrdersRequest,
+} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-trigger";
 import { triggerCancelOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/cancelOrders";
 import { getTriggerOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/getOrders";
 import { triggerOrderAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/order";
 
 describe("trigger order actions", () => {
   test("creates and executes a Jupiter Trigger order from a limit price", async () => {
-    let capturedCreateRequest: Record<string, unknown> | null = null;
-    let capturedExecuteRequest: Record<string, unknown> | null = null;
+    let capturedCreateRequest: JupiterTriggerCreateOrderRequest | null = null;
+    let capturedExecuteRequest: JupiterTriggerExecuteRequest | null = null;
 
     const result = await triggerOrderAction.execute(
       {
         jupiterTrigger: {
           async createOrder(request: Record<string, unknown>) {
-            capturedCreateRequest = request;
+            capturedCreateRequest = request as unknown as JupiterTriggerCreateOrderRequest;
             return {
               requestId: "req-1",
               transaction: "unsigned-order-tx",
@@ -25,7 +30,7 @@ describe("trigger order actions", () => {
             };
           },
           async executeOrder(request: Record<string, unknown>) {
-            capturedExecuteRequest = request;
+            capturedExecuteRequest = request as unknown as JupiterTriggerExecuteRequest;
             return {
               status: "Success",
               signature: "sig-1",
@@ -61,7 +66,15 @@ describe("trigger order actions", () => {
       return;
     }
 
-    expect(capturedCreateRequest).toEqual({
+    expect(capturedCreateRequest).not.toBeNull();
+    expect(capturedExecuteRequest).not.toBeNull();
+    if (!capturedCreateRequest || !capturedExecuteRequest) {
+      return;
+    }
+    const createRequest = capturedCreateRequest as JupiterTriggerCreateOrderRequest;
+    const executeRequest = capturedExecuteRequest as JupiterTriggerExecuteRequest;
+
+    expect(createRequest).toEqual({
       inputMint: "So11111111111111111111111111111111111111112",
       outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       maker: "maker-wallet",
@@ -71,7 +84,7 @@ describe("trigger order actions", () => {
         takingAmount: "105000000",
       },
     });
-    expect(capturedExecuteRequest).toEqual({
+    expect(executeRequest).toEqual({
       requestId: "req-1",
       signedTransaction: "signed:unsigned-order-tx",
     });
@@ -82,13 +95,13 @@ describe("trigger order actions", () => {
   });
 
   test("lists trigger orders for the resolved wallet", async () => {
-    let capturedQuery: Record<string, unknown> | null = null;
+    let capturedQuery: JupiterTriggerGetOrdersRequest | null = null;
 
     const result = await getTriggerOrdersAction.execute(
       {
         jupiterTrigger: {
           async getTriggerOrders(query: Record<string, unknown>) {
-            capturedQuery = query;
+            capturedQuery = query as unknown as JupiterTriggerGetOrdersRequest;
             return {
               page: 2,
               hasMoreData: true,
@@ -119,7 +132,13 @@ describe("trigger order actions", () => {
       return;
     }
 
-    expect(capturedQuery).toEqual({
+    expect(capturedQuery).not.toBeNull();
+    if (!capturedQuery) {
+      return;
+    }
+    const query = capturedQuery as JupiterTriggerGetOrdersRequest;
+
+    expect(query).toEqual({
       user: "maker-wallet",
       orderStatus: "active",
       page: 2,

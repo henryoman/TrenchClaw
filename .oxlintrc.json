@@ -50,6 +50,9 @@
       ],
       "env": {
         "browser": true
+      },
+      "rules": {
+        "eslint/no-unassigned-vars": "off"
       }
     },
     {
@@ -62,6 +65,7 @@
         "browser": true
       },
       "rules": {
+        "eslint/no-unassigned-vars": "off",
         "import/no-unassigned-import": "off"
       }
     }
