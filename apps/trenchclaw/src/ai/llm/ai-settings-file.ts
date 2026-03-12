@@ -12,8 +12,8 @@ const defaultModelByProvider: Record<LlmProvider, string> = {
   "openai-compatible": "gpt-4.1-mini",
 };
 
-const DEFAULT_AI_SETTINGS_FILE = "../brain/protected/no-read/ai.json";
-const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../brain/protected/no-read/ai.template.json";
+const DEFAULT_AI_SETTINGS_FILE = "../../../.runtime-state/user/ai.json";
+const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";
 const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";
 const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
 

@@ -15,6 +15,7 @@ import {
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
 } from "../../apps/trenchclaw/src/runtime/workspace-bash";
+import { runtimeStatePath } from "../helpers/core-paths";
 
 const makeActionResult = (input: {
   ok: boolean;
@@ -32,8 +33,8 @@ const makeActionResult = (input: {
 });
 
 const sqliteDbPaths: string[] = [];
-const RUNTIME_DB_DIRECTORY = fileURLToPath(new URL("../../apps/trenchclaw/src/ai/brain/db", import.meta.url));
-const RUNTIME_INSTANCE_DIRECTORY = fileURLToPath(new URL("../../apps/trenchclaw/src/ai/brain/protected/instance", import.meta.url));
+const RUNTIME_DB_DIRECTORY = runtimeStatePath("db");
+const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
 const createTestDbPath = (): string =>
   path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-chat-runtime-${crypto.randomUUID()}.db`);
 const tempInstanceDirectories: string[] = [];

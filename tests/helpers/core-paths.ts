@@ -23,3 +23,10 @@ const isCoreRoot = (candidate: string): boolean =>
 export const CORE_APP_ROOT = candidateCoreRoots().find(isCoreRoot) ?? path.resolve(REPO_ROOT, "apps/trenchclaw");
 
 export const coreAppPath = (...segments: string[]): string => path.join(CORE_APP_ROOT, ...segments);
+export const runtimeStatePath = (...segments: string[]): string => {
+  const configuredRoot = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
+  const runtimeRoot = configuredRoot
+    ? (path.isAbsolute(configuredRoot) ? path.resolve(configuredRoot) : path.resolve(CORE_APP_ROOT, configuredRoot))
+    : path.join(CORE_APP_ROOT, ".runtime-state");
+  return path.join(runtimeRoot, ...segments);
+};

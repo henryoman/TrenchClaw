@@ -1,13 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { renderRuntimeWalletPromptContext } from "../../apps/trenchclaw/src/runtime/wallet-model-context";
+import { runtimeStatePath } from "../helpers/core-paths";
 
-const RUNTIME_INSTANCE_DIRECTORY = fileURLToPath(
-  new URL("../../apps/trenchclaw/src/ai/brain/protected/instance", import.meta.url),
-);
+const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
 const tempInstanceDirectories: string[] = [];
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
 

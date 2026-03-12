@@ -11,17 +11,16 @@ import {
   renderRuntimeActionCatalogTable,
   renderRuntimeChatToolCatalogTable,
 } from "../../runtime/capabilities";
+import { RUNTIME_DB_ROOT, RUNTIME_GENERATED_ROOT } from "../../runtime/runtime-paths";
 
 const APP_ROOT_DIR = fileURLToPath(new URL("../../../", import.meta.url));
 const CONTEXT_ROOT_LABEL = "apps/trenchclaw";
-const PROTECTED_CONTEXT_FILE = fileURLToPath(
-  new URL("../../ai/brain/protected/context/workspace-and-schema.md", import.meta.url),
-);
+const PROTECTED_CONTEXT_FILE = `${RUNTIME_GENERATED_ROOT}/workspace-context.md`;
 const SQLITE_SQL_SNAPSHOT_FILE = fileURLToPath(new URL("../../../../../docs/storage-schema.snapshot.sql", import.meta.url));
 const GUI_TRANSPORT_FILE = fileURLToPath(new URL("../../runtime/gui-transport/router.ts", import.meta.url));
 const CONTEXT_DB_PATH_ENV = "TRENCHCLAW_CONTEXT_DB_PATH";
 const DEFAULT_LIVE_DB_PATH_CANDIDATES = [
-  join(APP_ROOT_DIR, "src/ai/brain/db/runtime.sqlite"),
+  join(RUNTIME_DB_ROOT, "runtime.sqlite"),
 ];
 
 const OMITTED_DIR_NAMES = new Set([
@@ -227,7 +226,7 @@ ${DEFAULT_LIVE_DB_PATH_CANDIDATES.map((pathCandidate) => `- \`${pathCandidate}\`
   await mkdir(dirname(PROTECTED_CONTEXT_FILE), { recursive: true });
   assertWritePathInRoots({
     targetPath: PROTECTED_CONTEXT_FILE,
-    roots: ["src/ai/brain/protected/context"],
+    roots: [".runtime-state/generated"],
     scope: "system-context-refresh",
     operation: "write workspace context snapshot",
   });

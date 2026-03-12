@@ -10,9 +10,9 @@ import { resetFilesystemManifestCacheForTests } from "../../../apps/trenchclaw/s
 const createdFiles: string[] = [];
 const previousManifestFile = process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE;
 
-const writeTempManifest = async (yaml: string): Promise<string> => {
-  const target = `/tmp/trenchclaw-protected-policy-${crypto.randomUUID()}.yaml`;
-  await Bun.write(target, yaml);
+const writeTempManifest = async (content: string): Promise<string> => {
+  const target = `/tmp/trenchclaw-protected-policy-${crypto.randomUUID()}.json`;
+  await Bun.write(target, content);
   createdFiles.push(target);
   return target;
 };
@@ -32,42 +32,47 @@ afterEach(async () => {
 
 describe("protected-write-policy", () => {
   test("rejects writes outside protected directory even if manifest allows", async () => {
-    const manifestPath = await writeTempManifest(`
-version: 1
-defaults:
-  model: write
-  user: write
-  system: write
-rules: []
-`);
+    const manifestPath = await writeTempManifest(`{
+  "version": 1,
+  "defaults": {
+    "model": "write",
+    "user": "write",
+    "system": "write"
+  },
+  "rules": []
+}`);
     process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE = manifestPath;
 
     await expect(
       assertProtectedWriteAllowed({
         actor: "agent",
-        targetPath: "src/ai/brain/workspace/notes/outside-protected.md",
+        targetPath: ".runtime-state/generated/outside-protected.md",
         operation: "write outside protected root",
       }),
     ).rejects.toBeInstanceOf(ProtectedWriteForbiddenError);
   });
 
   test("allows model read from log directories when manifest grants read", async () => {
-    const manifestPath = await writeTempManifest(`
-version: 1
-defaults:
-  model: none
-  user: write
-  system: write
-rules:
-  - path: src/ai/brain/db/sessions
-    model: read
-`);
+    const manifestPath = await writeTempManifest(`{
+  "version": 1,
+  "defaults": {
+    "model": "none",
+    "user": "write",
+    "system": "write"
+  },
+  "rules": [
+    {
+      "path": ".runtime-state/db/sessions",
+      "model": "read"
+    }
+  ]
+}`);
     process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE = manifestPath;
 
     await expect(
       assertProtectedReadAllowed({
         actor: "agent",
-        targetPath: "src/ai/brain/db/sessions/sessions.json",
+        targetPath: ".runtime-state/db/sessions/sessions.json",
         operation: "read session index",
       }),
     ).resolves.toBeUndefined();

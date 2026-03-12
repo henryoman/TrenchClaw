@@ -42,6 +42,14 @@ TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply:patch
 Release notes continue to use commit ranges from previous `v*` tag to `HEAD`.
 Tag output from version commands is returned as `nextTag` for release workflow use.
 
+## Release Gate
+
+The release workflow only accepts a manual `version` input that exactly matches `v${package.json version}`.
+
+- If `package.json` is `0.0.2-beta.3`, dispatch with `version=v0.0.2-beta.3` and `prerelease=true`
+- If `package.json` is `0.0.2`, dispatch with `version=v0.0.2` and `prerelease=false`
+- Existing tags are rejected before build/publish starts
+
 ## Flow
 
 ```mermaid

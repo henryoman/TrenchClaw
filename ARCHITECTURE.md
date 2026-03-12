@@ -103,9 +103,9 @@ Authority/sanitization rules:
 - `apps/trenchclaw/src/runtime/load/authority.ts`
 
 Bundled safety profiles:
-- `apps/trenchclaw/src/ai/brain/protected/system/safety-modes/safe.yaml`
-- `apps/trenchclaw/src/ai/brain/protected/system/safety-modes/dangerous.yaml`
-- `apps/trenchclaw/src/ai/brain/protected/system/safety-modes/veryDangerous.yaml`
+- `apps/trenchclaw/src/ai/config/safety-modes/safe.json`
+- `apps/trenchclaw/src/ai/config/safety-modes/dangerous.json`
+- `apps/trenchclaw/src/ai/config/safety-modes/veryDangerous.json`
 
 Merge order in loader:
 1. Base profile file
@@ -120,9 +120,9 @@ Storage implementation lives in:
 - `apps/trenchclaw/src/runtime/storage/*`
 
 Default normalized settings currently point to:
-- SQLite DB: `src/ai/brain/db/runtime.sqlite`
-- Sessions: `src/ai/brain/db/sessions`
-- Memory: `src/ai/brain/db/memory`
+- SQLite DB: `.runtime-state/db/runtime.sqlite`
+- Sessions: `.runtime-state/db/sessions`
+- Memory: `.runtime-state/db/memory`
 
 SQLite tables include:
 - `jobs`

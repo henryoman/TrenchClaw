@@ -14,21 +14,14 @@ config/.env.*
 *.key
 *.p12
 
-# Vault runtime files (never commit real vault configs)
-apps/trenchclaw/src/ai/brain/protected/no-read/*.json
-!apps/trenchclaw/src/ai/brain/protected/no-read/vault.template.json
-
-# Wallet key material and wallet registry (never commit)
-apps/trenchclaw/src/ai/brain/protected/keypairs/**
-!apps/trenchclaw/src/ai/brain/protected/keypairs/.keep
-apps/trenchclaw/src/ai/brain/protected/wallet-library.jsonl
+# App runtime state
+apps/trenchclaw/.runtime-state/
 
 # Generated clients from IDL codegen
 lib/client/generated/
 
 # Runtime data (Bun SQLite)
 data/
-apps/trenchclaw/src/ai/brain/db/
 *.db
 *.db-shm
 *.db-wal

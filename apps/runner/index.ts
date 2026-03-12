@@ -1,14 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import os from "node:os";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 
-import { bootstrapRuntime } from "../trenchclaw/src/runtime/bootstrap";
-import {
-  resolveRuntimeSettingsProfile,
-  type RuntimeSettingsProfile,
-} from "../trenchclaw/src/runtime/load";
-import { startRuntimeServer, type RuntimeServerInfo } from "../trenchclaw/src/runtime/start-runtime-server";
+import type { bootstrapRuntime as bootstrapRuntimeType } from "../trenchclaw/src/runtime/bootstrap";
+import type { RuntimeSettingsProfile } from "../trenchclaw/src/runtime/load";
+import type { startRuntimeServer as startRuntimeServerType, RuntimeServerInfo } from "../trenchclaw/src/runtime/start-runtime-server";
 
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
 const DEFAULT_RUNTIME_PORT = Number.parseInt(process.env.RUNTIME_PORT || "4020", 10);
@@ -49,15 +45,8 @@ const isReleaseRoot = (candidate: string): boolean =>
   existsSync(path.join(candidate, "core", "src", "ai", "brain")) &&
   existsSync(path.join(candidate, "gui", "index.html"));
 
-const resolveDefaultRuntimeHome = (): string => {
-  if (process.platform === "darwin") {
-    return path.join(os.homedir(), "Library/Application Support/TrenchClaw");
-  }
-  if (process.platform === "win32") {
-    return path.join(process.env.APPDATA || path.join(os.homedir(), "AppData/Roaming"), "TrenchClaw");
-  }
-  return path.join(os.homedir(), ".local", "share", "trenchclaw");
-};
+const resolveDefaultRuntimeStateRoot = (): string =>
+  path.join(process.env.HOME || process.env.USERPROFILE || process.cwd(), ".trenchclaw");
 
 const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
   const configured = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
@@ -66,10 +55,10 @@ const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): strin
   }
 
   if (kind === "workspace") {
-    return path.join(coreAssetRoot, "src", "ai", "brain");
+    return path.join(coreAssetRoot, ".runtime-state");
   }
 
-  return path.join(resolveDefaultRuntimeHome(), "state");
+  return resolveDefaultRuntimeStateRoot();
 };
 
 const resolveLayout = (): ResolvedLayout => {
@@ -114,6 +103,59 @@ const resolveLayout = (): ResolvedLayout => {
 };
 
 const LAYOUT = resolveLayout();
+
+let runtimeImportsPromise: Promise<{
+  bootstrapRuntime: typeof bootstrapRuntimeType;
+  resolveRuntimeSettingsProfile: () => RuntimeSettingsProfile;
+  startRuntimeServer: typeof startRuntimeServerType;
+}> | null = null;
+
+const loadRuntimeImports = async (): Promise<{
+  bootstrapRuntime: typeof bootstrapRuntimeType;
+  resolveRuntimeSettingsProfile: () => RuntimeSettingsProfile;
+  startRuntimeServer: typeof startRuntimeServerType;
+}> => {
+  if (!runtimeImportsPromise) {
+    runtimeImportsPromise = Promise.all([
+      import("../trenchclaw/src/runtime/bootstrap"),
+      import("../trenchclaw/src/runtime/load"),
+      import("../trenchclaw/src/runtime/start-runtime-server"),
+    ]).then(([bootstrapModule, loadModule, serverModule]) => ({
+      bootstrapRuntime: bootstrapModule.bootstrapRuntime,
+      resolveRuntimeSettingsProfile: loadModule.resolveRuntimeSettingsProfile,
+      startRuntimeServer: serverModule.startRuntimeServer,
+    }));
+  }
+  return runtimeImportsPromise;
+};
+
+const resolveBinaryVersion = (): string => {
+  const configuredVersion = process.env.TRENCHCLAW_BUILD_VERSION?.trim();
+  if (configuredVersion) {
+    return configuredVersion;
+  }
+
+  const metadataFiles = [
+    path.join(LAYOUT.root, "release-metadata.json"),
+    path.join(LAYOUT.root, "build-metadata.json"),
+    path.join(LAYOUT.root, "package.json"),
+  ];
+  for (const candidate of metadataFiles) {
+    if (!existsSync(candidate)) {
+      continue;
+    }
+    try {
+      const parsed = JSON.parse(readFileSync(candidate, "utf8")) as { version?: unknown };
+      if (typeof parsed.version === "string" && parsed.version.trim().length > 0) {
+        return parsed.version.trim();
+      }
+    } catch {
+      // Try next file.
+    }
+  }
+
+  return "unknown";
+};
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value > 0 && value <= 65535;
 
@@ -328,16 +370,26 @@ const copyFileIfMissing = (source: string, target: string): void => {
   writeFileSync(target, readFileSync(source));
 };
 
+const writeFileIfMissing = (target: string, contents: string): void => {
+  if (existsSync(target)) {
+    return;
+  }
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, contents, "utf8");
+};
+
 const ensureRuntimeStateLayout = (): void => {
   const directories = [
     path.join(LAYOUT.runtimeStateRoot, "db"),
     path.join(LAYOUT.runtimeStateRoot, "db/events"),
     path.join(LAYOUT.runtimeStateRoot, "db/sessions"),
     path.join(LAYOUT.runtimeStateRoot, "db/memory"),
-    path.join(LAYOUT.runtimeStateRoot, "protected/no-read"),
-    path.join(LAYOUT.runtimeStateRoot, "protected/instance"),
+    path.join(LAYOUT.runtimeStateRoot, "user"),
+    path.join(LAYOUT.runtimeStateRoot, "user/workspace"),
+    path.join(LAYOUT.runtimeStateRoot, "user/workspace/routines"),
+    path.join(LAYOUT.runtimeStateRoot, "instances"),
+    path.join(LAYOUT.runtimeStateRoot, "generated"),
     path.join(LAYOUT.runtimeStateRoot, "protected/keypairs"),
-    path.join(LAYOUT.runtimeStateRoot, "protected/context"),
   ];
 
   for (const directory of directories) {
@@ -346,32 +398,27 @@ const ensureRuntimeStateLayout = (): void => {
 
   const placeholders: Array<{ source: string; target: string }> = [
     {
-      source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/no-read/README.md"),
-      target: path.join(LAYOUT.runtimeStateRoot, "protected/no-read/README.md"),
-    },
-    {
-      source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/no-read/vault.template.json"),
-      target: path.join(LAYOUT.runtimeStateRoot, "protected/no-read/vault.template.json"),
+      source: path.join(LAYOUT.coreAssetRoot, "src/ai/config/vault.template.json"),
+      target: path.join(LAYOUT.runtimeStateRoot, "user/vault.template.json"),
     },
     {
       source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/keypairs/.keep"),
       target: path.join(LAYOUT.runtimeStateRoot, "protected/keypairs/.keep"),
-    },
-    {
-      source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/instance/.gitkeep"),
-      target: path.join(LAYOUT.runtimeStateRoot, "protected/instance/.gitkeep"),
     },
   ];
 
   for (const placeholder of placeholders) {
     copyFileIfMissing(placeholder.source, placeholder.target);
   }
+
+  writeFileIfMissing(path.join(LAYOUT.runtimeStateRoot, "user/settings.json"), "{}\n");
 };
 
 const toSettingsFileName = (profile: RuntimeSettingsProfile): string =>
-  profile === "veryDangerous" ? "veryDangerous.yaml" : `${profile}.yaml`;
+  profile === "veryDangerous" ? "veryDangerous.json" : `${profile}.json`;
 
-const configureRuntimeEnvironment = (runtimePort: number, guiUrl: string): void => {
+const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string): Promise<void> => {
+  const { resolveRuntimeSettingsProfile } = await loadRuntimeImports();
   const profile = resolveRuntimeSettingsProfile();
   const bundledBrainRoot = path.join(LAYOUT.coreAssetRoot, "src/ai/brain");
 
@@ -389,30 +436,55 @@ const configureRuntimeEnvironment = (runtimePort: number, guiUrl: string): void 
   process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "0";
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE =
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE ||
-    path.join(bundledBrainRoot, "protected/system/safety-modes", toSettingsFileName(profile));
+    path.join(LAYOUT.coreAssetRoot, "src/ai/config/safety-modes", toSettingsFileName(profile));
   process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE =
     process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE ||
-    path.join(bundledBrainRoot, "protected/system/filesystem-manifest.yaml");
+    path.join(LAYOUT.coreAssetRoot, "src/ai/config/filesystem-manifest.json");
   process.env.TRENCHCLAW_PROMPT_MANIFEST_FILE =
     process.env.TRENCHCLAW_PROMPT_MANIFEST_FILE ||
-    path.join(bundledBrainRoot, "protected/system/payload-manifest.yaml");
+    path.join(LAYOUT.coreAssetRoot, "src/ai/config/payload-manifest.json");
   process.env.TRENCHCLAW_KNOWLEDGE_DIR =
     process.env.TRENCHCLAW_KNOWLEDGE_DIR || path.join(bundledBrainRoot, "knowledge");
   process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
-    path.join(bundledBrainRoot, "knowledge/KNOWLEDGE_MANIFEST.md");
+    path.join(LAYOUT.runtimeStateRoot, "generated/knowledge-manifest.md");
   process.env.TRENCHCLAW_USER_SETTINGS_FILE =
     process.env.TRENCHCLAW_USER_SETTINGS_FILE ||
-    path.join(bundledBrainRoot, "user-blockchain-settings/settings.yaml");
+    path.join(LAYOUT.runtimeStateRoot, "user/settings.json");
+  process.env.TRENCHCLAW_AI_SETTINGS_FILE =
+    process.env.TRENCHCLAW_AI_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "user/ai.json");
+  process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE =
+    process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE ||
+    path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
   process.env.TRENCHCLAW_VAULT_FILE =
-    process.env.TRENCHCLAW_VAULT_FILE ||
-    path.join(LAYOUT.runtimeStateRoot, "protected/no-read/vault.json");
+    process.env.TRENCHCLAW_VAULT_FILE || path.join(LAYOUT.runtimeStateRoot, "user/vault.json");
   process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
-    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE ||
-    path.join(bundledBrainRoot, "protected/no-read/vault.template.json");
+    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE || path.join(LAYOUT.runtimeStateRoot, "user/vault.template.json");
+};
+
+const logOptionalToolDiagnostics = (): void => {
+  const missingTools: string[] = [];
+  if (!Bun.which("solana")) {
+    missingTools.push("solana");
+  }
+  if (!Bun.which("solana-keygen")) {
+    missingTools.push("solana-keygen");
+  }
+  if (missingTools.length === 0) {
+    return;
+  }
+
+  console.log(
+    `${RUNNER_LOG_PREFIX} optional tools missing: ${emphasize(missingTools.join(", "))} (only required for specific features)`,
+  );
 };
 
 const main = async (): Promise<void> => {
+  const args = process.argv.slice(2);
+  if (args.includes("--version") || args.includes("-V")) {
+    console.log(resolveBinaryVersion());
+    return;
+  }
   if (!existsSync(LAYOUT.guiIndexPath)) {
     throw new Error(`GUI build output not found at ${LAYOUT.guiIndexPath}. Run: bun run app:build`);
   }
@@ -428,13 +500,15 @@ const main = async (): Promise<void> => {
   const runtimeUrl = `http://${RUNTIME_HOST}:${runtimePort}`;
   const guiUrl = `http://${RUNTIME_HOST}:${guiPort}`;
 
-  configureRuntimeEnvironment(runtimePort, guiUrl);
+  await configureRuntimeEnvironment(runtimePort, guiUrl);
 
   console.log(`${RUNNER_LOG_PREFIX} mode: ${emphasize(LAYOUT.kind)}`);
   console.log(`${RUNNER_LOG_PREFIX} runtime state: ${emphasize(LAYOUT.runtimeStateRoot)}`);
   console.log(`${RUNNER_LOG_PREFIX} runtime target: ${emphasize(runtimeUrl)}`);
   console.log(`${RUNNER_LOG_PREFIX} gui target: ${emphasize(guiUrl)}`);
+  logOptionalToolDiagnostics();
 
+  const { bootstrapRuntime, startRuntimeServer } = await loadRuntimeImports();
   const runtime = await bootstrapRuntime();
   const runtimeServerInfo: RuntimeServerInfo = startRuntimeServer(runtime);
   let guiServer: Bun.Server<unknown> | null = createStaticServer({
@@ -492,7 +566,7 @@ const main = async (): Promise<void> => {
     console.log(`${RUNNER_LOG_PREFIX} smoke test passed.`);
     shutdown(0);
     await shutdownDone;
-    return;
+    process.exit(0);
   }
 
   const guiLaunchDecision = await waitForGuiLaunchConfirmation();

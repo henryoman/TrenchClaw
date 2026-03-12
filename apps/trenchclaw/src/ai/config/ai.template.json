@@ -1,0 +1,8 @@
+{
+  "provider": "openrouter",
+  "model": "stepfun/step-3.5-flash:free",
+  "baseURL": "https://openrouter.ai/api/v1",
+  "defaultMode": "primary",
+  "temperature": null,
+  "maxOutputTokens": null
+}

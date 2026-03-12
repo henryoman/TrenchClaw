@@ -25,8 +25,6 @@ interface ReleaseArtifactMetadata {
   platformTarget: string;
   binaryName: string;
   artifactName: string;
-  artifactPath: string;
-  checksumSha256: string;
 }
 
 const parseArgs = (argv: string[]): CliArgs => {
@@ -136,31 +134,6 @@ const sha256File = async (filePath: string): Promise<string> => {
 
 const normalizeTarget = (target: string): string => target.replace(/^bun-/, "");
 
-const writeReleaseReadme = async (targetRoot: string, platformTarget: string): Promise<void> => {
-  const markdown = `# TrenchClaw ${platformTarget}
-
-This release is a standalone TrenchClaw build. Bun is already embedded in the executable.
-
-Contents:
-- \`trenchclaw\`: standalone executable
-- \`gui/\`: prebuilt GUI assets
-- \`core/\`: readonly runtime assets/config/templates
-
-Fresh install flow:
-\`\`\`bash
-curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-trenchclaw.sh | sh
-trenchclaw
-\`\`\`
-
-First launch creates a new local runtime state directory. This release does not include user vaults, keypairs, databases, or logs.
-
-Optional overrides:
-- \`TRENCHCLAW_RUNTIME_STATE_ROOT\`: choose where writable runtime data is stored
-- \`TRENCHCLAW_PROFILE\`: choose the base runtime profile
-`;
-  await writeFile(path.join(targetRoot, "README.md"), markdown, "utf8");
-};
-
 const compileStandaloneBinary = async (targetRoot: string, compileTarget: string): Promise<string> => {
   const binaryName = "trenchclaw";
   const binaryPath = path.join(targetRoot, binaryName);
@@ -183,21 +156,16 @@ const packageTarget = async (input: {
   compileTarget: string;
 }): Promise<ReleaseArtifactMetadata> => {
   const platformTarget = normalizeTarget(input.compileTarget);
-  const targetDirName = `trenchclaw-${platformTarget}`;
-  const targetRoot = path.join(input.outputRoot, targetDirName);
+  const targetRoot = path.join(input.outputRoot, `.staging-${platformTarget}`);
+  const artifactName = `trenchclaw-${input.version}-${platformTarget}.tar.gz`;
+  const artifactPath = path.join(input.outputRoot, artifactName);
+  const metadataPath = path.join(input.outputRoot, `trenchclaw-${input.version}-${platformTarget}.release-metadata.json`);
 
   await rm(targetRoot, { recursive: true, force: true });
   await mkdir(targetRoot, { recursive: true });
   await cp(path.join(input.bundleRoot, "gui"), path.join(targetRoot, "gui"), { recursive: true });
   await cp(path.join(input.bundleRoot, "core"), path.join(targetRoot, "core"), { recursive: true });
   const binaryName = await compileStandaloneBinary(targetRoot, input.compileTarget);
-  await writeReleaseReadme(targetRoot, platformTarget);
-
-  const artifactName = `trenchclaw-${input.version}-${platformTarget}.tar.gz`;
-  const artifactPath = path.join(input.outputRoot, artifactName);
-  await run(["tar", "-czf", artifactPath, targetDirName], input.outputRoot);
-  const checksum = await sha256File(artifactPath);
-  await writeFile(`${artifactPath}.sha256`, `${checksum}  ${artifactName}\n`, "utf8");
 
   const metadata: ReleaseArtifactMetadata = {
     version: input.version,
@@ -207,18 +175,17 @@ const packageTarget = async (input: {
     platformTarget,
     binaryName,
     artifactName,
-    artifactPath: path.relative(REPO_ROOT, artifactPath),
-    checksumSha256: checksum,
   };
   await writeFile(path.join(targetRoot, "release-metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
-  await writeFile(
-    path.join(input.outputRoot, `release-metadata.${platformTarget}.json`),
-    `${JSON.stringify(metadata, null, 2)}\n`,
-    "utf8",
-  );
+
+  await run(["tar", "-czf", artifactPath, "-C", targetRoot, "trenchclaw", "gui", "core", "release-metadata.json"]);
+  const checksum = await sha256File(artifactPath);
+  await writeFile(`${artifactPath}.sha256`, `${checksum}  ${artifactName}\n`, "utf8");
+  await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 
   console.log(`[package-app-release] created ${artifactPath}`);
   console.log(`[package-app-release] wrote ${artifactPath}.sha256`);
+  console.log(`[package-app-release] wrote ${metadataPath}`);
   return metadata;
 };
 
@@ -249,7 +216,6 @@ const main = async (): Promise<void> => {
       }),
     );
   }
-
   await writeFile(path.join(args.outputRoot, "release-metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 };
 

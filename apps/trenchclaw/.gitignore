@@ -30,12 +30,5 @@ report.*.*.*.*.json
 # Finder (MacOS) folder config
 .DS_Store
 
-# Secrets
-src/ai/brain/protected/no-read/*
-!src/ai/brain/protected/no-read/.gitkeep
-!src/ai/brain/protected/no-read/README.md
-!src/ai/brain/protected/no-read/vault.template.json
-
-# Local runtime instances
-src/ai/brain/protected/instance/user-*.json
-!src/ai/brain/protected/instance/.gitkeep
+# Local runtime state
+.runtime-state/

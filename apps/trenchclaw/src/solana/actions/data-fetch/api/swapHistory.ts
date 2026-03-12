@@ -4,12 +4,12 @@ import { createHelius } from "helius-sdk";
 
 import type { Action } from "../../../../ai/runtime/types/action";
 import { ensureVaultFileExists, parseVaultJsonText } from "../../../../ai/llm/vault-file";
-import { RUNTIME_NO_READ_ROOT, resolveBundledBrainPath } from "../../../../runtime/runtime-paths";
+import { RUNTIME_NO_READ_ROOT, resolveCoreRelativePath } from "../../../../runtime/runtime-paths";
 
 const HELIUS_SWAP_HISTORY_LIMIT = 20;
 const HELIUS_CONTINUATION_RETRY_LIMIT = 10;
 const HELIUS_VAULT_FILE_PATH = `${RUNTIME_NO_READ_ROOT}/vault.json`;
-const HELIUS_VAULT_TEMPLATE_PATH = resolveBundledBrainPath("protected/no-read/vault.template.json");
+const HELIUS_VAULT_TEMPLATE_PATH = resolveCoreRelativePath("src/ai/config/vault.template.json");
 const HELIUS_CONTINUATION_SIGNATURE_REGEX = /before(?:-signature|Signature)\s*(?:parameter)?\s*(?:set to)?\s*([1-9A-HJ-NP-Za-km-z]{32,})/i;
 
 const base58AddressSchema = z.string().trim().min(32).max(44).regex(/^[1-9A-HJ-NP-Za-km-z]+$/);

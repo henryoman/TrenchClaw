@@ -33,9 +33,9 @@ interface InstanceDocument {
 
 const INSTANCE_FILE_REGEX = /^i-(\d+)\.json$/u;
 const INSTANCE_DIRECTORY_REGEX = /^i-(\d+)$/u;
+const INSTANCE_PROFILE_FILE_NAME = "instance.json";
 const formatInstanceNumber = (value: number): string => String(value).padStart(2, "0");
 const formatInstanceId = (value: number): string => `i-${formatInstanceNumber(value)}`;
-const formatInstanceFileName = (value: number): string => `${formatInstanceId(value)}.json`;
 const getInstanceNumber = (value: string): number | null => {
   const fileMatch = INSTANCE_FILE_REGEX.exec(value);
   if (fileMatch?.[1]) {
@@ -58,6 +58,12 @@ const compareInstanceIds = (left: string, right: string): number => {
   }
   return left.localeCompare(right);
 };
+
+const getInstanceProfilePath = (localInstanceId: string): string =>
+  path.join(INSTANCE_DIRECTORY, localInstanceId, INSTANCE_PROFILE_FILE_NAME);
+
+const getLegacyInstanceProfilePath = (localInstanceId: string): string =>
+  path.join(INSTANCE_DIRECTORY, `${localInstanceId}.json`);
 
 const toInstanceView = (fileName: string, document: InstanceDocument): GuiInstanceProfileView => ({
   fileName,
@@ -177,24 +183,35 @@ const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: 
         return null;
       }
 
+      if (entry.directoryName) {
+        try {
+          const profilePath = getInstanceProfilePath(entry.directoryName);
+          const content = await readFile(profilePath, "utf8");
+          const document = parseInstanceDocument(content);
+          if (document) {
+            return { fileName: INSTANCE_PROFILE_FILE_NAME, document };
+          }
+        } catch {
+          // Fall back to directory recovery below.
+        }
+
+        return {
+          fileName: INSTANCE_PROFILE_FILE_NAME,
+          document: await resolveRecoveredInstanceDocument(entry.directoryName),
+        };
+      }
+
       if (entry.fileName) {
         try {
-          const absolutePath = path.join(INSTANCE_DIRECTORY, entry.fileName);
+          const absolutePath = getLegacyInstanceProfilePath(localInstanceId);
           const content = await readFile(absolutePath, "utf8");
           const document = parseInstanceDocument(content);
           if (document) {
-            return { fileName: entry.fileName, document };
+            return { fileName: INSTANCE_PROFILE_FILE_NAME, document };
           }
         } catch {
-          // Fall back to directory recovery below when available.
+          // Fall back to null below.
         }
-      }
-
-      if (entry.directoryName) {
-        return {
-          fileName: entry.fileName ?? `${entry.directoryName}.json`,
-          document: await resolveRecoveredInstanceDocument(entry.directoryName),
-        };
       }
 
       return null;
@@ -229,9 +246,9 @@ export const createInstance = async (
   assertInstanceSystemWritePath(INSTANCE_DIRECTORY, "initialize instance profile directory");
   await mkdir(INSTANCE_DIRECTORY, { recursive: true });
   const existing = await readInstanceFiles();
-  const nextNumber = nextInstanceNumberFromFiles(existing.map((entry) => entry.fileName));
+  const nextNumber = nextInstanceNumberFromFiles(existing.map((entry) => entry.document.instance.localInstanceId));
   const localInstanceId = formatInstanceId(nextNumber);
-  const fileName = formatInstanceFileName(nextNumber);
+  const fileName = INSTANCE_PROFILE_FILE_NAME;
   const nowIso = new Date().toISOString();
   const safetyProfile = payload.safetyProfile ?? "dangerous";
 
@@ -248,8 +265,9 @@ export const createInstance = async (
     },
   };
 
-  const nextInstanceFilePath = path.join(INSTANCE_DIRECTORY, fileName);
+  const nextInstanceFilePath = getInstanceProfilePath(localInstanceId);
   assertInstanceSystemWritePath(nextInstanceFilePath, "write instance profile");
+  await mkdir(path.dirname(nextInstanceFilePath), { recursive: true });
   await writeFile(nextInstanceFilePath, `${JSON.stringify(document, null, 2)}\n`, "utf8");
   const instance = toInstanceView(fileName, document);
   context.setActiveInstance(instance);

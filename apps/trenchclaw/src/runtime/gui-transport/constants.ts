@@ -3,7 +3,7 @@ import type { GuiPublicRpcOptionView, GuiSecretOptionView } from "@trenchclaw/ty
 import {
   RUNTIME_INSTANCE_ROOT,
   RUNTIME_NO_READ_ROOT,
-  resolveBundledBrainPath,
+  resolveCoreRelativePath,
 } from "../runtime-paths";
 
 export const MAX_ACTIVITY_ITEMS = 250;
@@ -17,9 +17,9 @@ export const CORS_HEADERS = {
 export const INSTANCE_DIRECTORY = RUNTIME_INSTANCE_ROOT;
 export const NO_READ_DIRECTORY = RUNTIME_NO_READ_ROOT;
 export const AI_SETTINGS_FILE_PATH = path.join(NO_READ_DIRECTORY, "ai.json");
-export const AI_SETTINGS_TEMPLATE_FILE_PATH = resolveBundledBrainPath("protected/no-read/ai.template.json");
+export const AI_SETTINGS_TEMPLATE_FILE_PATH = resolveCoreRelativePath("src/ai/config/ai.template.json");
 export const VAULT_FILE_PATH = path.join(NO_READ_DIRECTORY, "vault.json");
-export const VAULT_TEMPLATE_FILE_PATH = resolveBundledBrainPath("protected/no-read/vault.template.json");
+export const VAULT_TEMPLATE_FILE_PATH = resolveCoreRelativePath("src/ai/config/vault.template.json");
 export const DISPATCH_TEST_DEFAULT_WAIT_MS = 4000;
 export const DISPATCH_TEST_MAX_WAIT_MS = 20000;
 

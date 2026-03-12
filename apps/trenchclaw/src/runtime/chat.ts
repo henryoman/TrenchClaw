@@ -1,5 +1,4 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { fileURLToPath } from "node:url";
 import {
   convertToModelMessages,
   createGateway,
@@ -32,6 +31,7 @@ import { renderRuntimeWalletPromptContext } from "./wallet-model-context";
 import type { RuntimeCapabilitySnapshot } from "./capabilities";
 import type { RuntimeLogger } from "./logging";
 import type { RuntimeJobControlRequest, RuntimeJobEnqueueRequest } from "../ai/runtime/types/context";
+import { RUNTIME_WORKSPACE_ROOT } from "./runtime-paths";
 
 export interface RuntimeChatService {
   listToolNames: () => string[];
@@ -100,7 +100,7 @@ const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> 
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
-const DEFAULT_WORKSPACE_ROOT_DIRECTORY = fileURLToPath(new URL("../ai/brain/workspace", import.meta.url));
+const DEFAULT_WORKSPACE_ROOT_DIRECTORY = RUNTIME_WORKSPACE_ROOT;
 const DEFAULT_CHAT_ID_PREFIX = "chat";
 const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 1200;
 const RUNTIME_WORKSPACE_TOOL_NAMES = [

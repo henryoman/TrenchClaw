@@ -2,7 +2,7 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { RoutinePlanner } from "../../ai/runtime/types/scheduler";
-import { resolveBundledBrainPath } from "../../runtime/runtime-paths";
+import { RUNTIME_WORKSPACE_ROUTINES_ROOT } from "../../runtime/runtime-paths";
 import { createWalletsRoutine } from "./create-wallets";
 
 const retryPolicySchema = z.object({
@@ -72,7 +72,7 @@ const workspaceRoutineDefinitionSchema = z
   })
   .passthrough();
 
-const WORKSPACE_ROUTINES_DIRECTORY = resolveBundledBrainPath("workspace/routines");
+const WORKSPACE_ROUTINES_DIRECTORY = RUNTIME_WORKSPACE_ROUTINES_ROOT;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);

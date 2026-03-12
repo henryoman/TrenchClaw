@@ -67,22 +67,14 @@ const run = async (): Promise<void> => {
   const relFiles = files.map((filePath) => toRelativeUnixPath(bundleRoot, filePath));
 
   const blockedExactPaths = new Set<string>([
-    "core/src/ai/brain/protected/no-read/vault.json",
     "core/src/ai/brain/protected/wallet-library.jsonl",
-  ]);
-
-  const noReadAllowedPaths = new Set<string>([
-    "core/src/ai/brain/protected/no-read/.gitkeep",
-    "core/src/ai/brain/protected/no-read/README.md",
-    "core/src/ai/brain/protected/no-read/vault.template.json",
   ]);
 
   const requiredPaths = [
     "gui/index.html",
-    "core/src/ai/brain/protected/no-read/vault.template.json",
-    "core/src/ai/brain/protected/no-read/README.md",
+    "core/src/ai/config/vault.template.json",
+    "core/src/ai/config/ai.template.json",
     "core/src/ai/brain/protected/keypairs/.keep",
-    "core/src/ai/brain/protected/instance/.gitkeep",
   ];
 
   const violations: string[] = [];
@@ -118,9 +110,7 @@ const run = async (): Promise<void> => {
     }
 
     if (relPath.startsWith("core/src/ai/brain/protected/no-read/")) {
-      if (!noReadAllowedPaths.has(relPath)) {
-        violations.push(`unexpected no-read file in bundle: ${relPath}`);
-      }
+      violations.push(`unexpected no-read file in bundle: ${relPath}`);
     }
 
     if (fileName.endsWith(".sqlite") || fileName.endsWith(".jsonl") || fileName.endsWith(".log")) {

@@ -251,9 +251,9 @@ Existing Helius-related implementation in repo:
 
 - Agentic signup sample: `src/solana/actions/agentic-signup/helius.ts`
 - RPC routing/failover: `src/solana/lib/adapters/rpc-pool.ts`
-- Compatibility settings wiring: `src/ai/brain/instance-settings/settings.yaml`
-- Active instance trading overrides: `src/ai/brain/protected/instance/<instanceId>/settings/trading.json`
-- Secret refs documentation: `src/ai/brain/protected/no-read/README.md`
+- Personal runtime settings: `.runtime-state/user/settings.json`
+- Active instance trading overrides: `.runtime-state/instances/<instanceId>/settings/trading.json`
+- Secret refs live in `.runtime-state/user/vault.json` and use the tracked template `src/ai/config/vault.template.json`
 
 Current runtime strategy:
 

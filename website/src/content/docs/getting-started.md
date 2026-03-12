@@ -6,15 +6,15 @@ order: 1
 
 ## Package Type
 
-Current public builds are a standalone `trenchclaw` executable.
+Current public builds ship as a standalone compiled binary named `trenchclaw`.
 
-- Bun is embedded in the binary
-- the installer also installs Solana CLI tools
-- writable runtime state is stored outside the release bundle
+- end users do not need Bun installed
+- GitHub Releases is the only installable binary distribution channel
+- writable runtime state lives outside the install tree
 
 ## Supported Targets
 
-The default packaging script currently builds:
+Published release artifacts are built for:
 
 - `darwin-arm64`
 - `linux-x64`
@@ -36,10 +36,15 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linu
 
 ## What The Installer Does
 
-- downloads a published GitHub Release artifact for the requested version and detected platform
-- installs `trenchclaw` into `~/.local/bin`
-- installs or updates the Solana CLI
-- adds the expected bin paths to common shell profiles when missing
+- fetches the real installer script from the TrenchClaw repository
+- resolves the latest GitHub Release tag or uses `TRENCHCLAW_VERSION`
+- downloads the matching platform tarball and `.sha256`
+- verifies the checksum before extraction
+- installs the app to `~/.local/share/trenchclaw/<version>/`
+- updates `~/.local/share/trenchclaw/current`
+- writes `~/.local/bin/trenchclaw`
+
+The public installer does not install Bun, Solana CLI, or any other external tool by default.
 
 ## Pin A Specific Release
 
@@ -66,29 +71,45 @@ Default local ports:
 - runtime API: `127.0.0.1:4020`
 - GUI: `127.0.0.1:4173`
 
-If those ports are busy, TrenchClaw uses the next available local ports.
+If those ports are busy, TrenchClaw selects the next available local ports.
 
-## First Run
+## State Layout
 
-On first launch, set up:
+Readonly install root:
 
-- an instance
-- RPC settings
-- AI provider secrets if you want chat features
+```text
+~/.local/share/trenchclaw/
+  current -> ~/.local/share/trenchclaw/<version>
+  <version>/
+    trenchclaw
+    gui/
+    core/
+    release-metadata.json
+```
 
-Default writable state root:
+Writable state root:
 
-- macOS: `~/Library/Application Support/TrenchClaw/state`
-- Linux: `~/.local/share/trenchclaw/state`
+```text
+~/.trenchclaw/
+  db/
+  generated/
+  instances/
+  protected/
+    keypairs/
+  user/
+    vault.json
+    vault.template.json
+    workspace/
+```
 
 ## Troubleshooting
 
 ### `trenchclaw: command not found`
 
-Reload your shell, or add both expected bin directories:
+Reload your shell, or ensure `~/.local/bin` is on `PATH`:
 
 ```bash
-export PATH="$HOME/.local/share/solana/install/active_release/bin:$HOME/.local/bin:$PATH"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
 Then open a new shell and retry.
@@ -101,10 +122,10 @@ Check:
 - the target artifact for your platform exists
 - the tag matches `TRENCHCLAW_VERSION` if you pinned one
 
-### Solana CLI install fails
+### Checksum verification fails
 
-Required tools:
+The installer stops on checksum mismatch. Retry the install after confirming the release assets finished publishing correctly.
 
-- `curl`
-- `tar`
-- `sh`
+### Optional external tools are missing
+
+First launch is not blocked by missing Solana CLI tools. Install optional tools separately only when a specific feature asks for them.

@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
 import { SqliteStateStore } from "../../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import { queryRuntimeStoreAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/queryRuntimeStore";
+import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const dbPaths: string[] = [];
-const RUNTIME_DB_DIRECTORY = fileURLToPath(new URL("../../../../apps/trenchclaw/src/ai/brain/db", import.meta.url));
+const RUNTIME_DB_DIRECTORY = runtimeStatePath("db");
 const createTestDbPath = (): string =>
   path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-query-runtime-${crypto.randomUUID()}.db`);
 

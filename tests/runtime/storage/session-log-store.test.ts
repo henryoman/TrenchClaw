@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
 import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/session-log-store";
-import { coreAppPath } from "../../helpers/core-paths";
+import { runtimeStatePath } from "../../helpers/core-paths";
 
 const sessionDirs: string[] = [];
 
@@ -15,7 +15,7 @@ afterEach(async () => {
 describe("SessionLogStore", () => {
   test("creates sessions index and per-session jsonl log", async () => {
     const directory = path.resolve(
-      coreAppPath("src/ai/brain/db/.tests"),
+      runtimeStatePath("db/.tests"),
       `session-log-${crypto.randomUUID()}`,
     );
     sessionDirs.push(directory);
@@ -48,7 +48,7 @@ describe("SessionLogStore", () => {
 
   test("reuses existing session file when runtime restarts with same session key", async () => {
     const directory = path.resolve(
-      coreAppPath("src/ai/brain/db/.tests"),
+      runtimeStatePath("db/.tests"),
       `session-log-${crypto.randomUUID()}`,
     );
     sessionDirs.push(directory);
@@ -82,7 +82,7 @@ describe("SessionLogStore", () => {
 
   test("creates a new session file when reuseSessionOnBoot is disabled", async () => {
     const directory = path.resolve(
-      coreAppPath("src/ai/brain/db/.tests"),
+      runtimeStatePath("db/.tests"),
       `session-log-${crypto.randomUUID()}`,
     );
     sessionDirs.push(directory);

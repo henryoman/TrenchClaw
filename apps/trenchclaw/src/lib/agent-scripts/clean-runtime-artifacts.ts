@@ -2,9 +2,10 @@ import type { Dirent } from "node:fs";
 import { readdir, rm, unlink } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { RUNTIME_DB_ROOT } from "../../runtime/runtime-paths";
 
 const APP_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const DB_ROOT = join(APP_ROOT, "src/ai/brain/db");
+const DB_ROOT = RUNTIME_DB_ROOT;
 const TURBO_ROOT = join(APP_ROOT, ".turbo");
 
 const DB_FILES_TO_KEEP = new Set([

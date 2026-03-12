@@ -6,7 +6,7 @@ import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/se
 import { SessionSummaryStore } from "../../../apps/trenchclaw/src/runtime/storage/session-summary-store";
 import { SummaryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/summary-log-store";
 import { SystemLogStore } from "../../../apps/trenchclaw/src/runtime/storage/system-log-store";
-import { coreAppPath } from "../../helpers/core-paths";
+import { runtimeStatePath } from "../../helpers/core-paths";
 
 const tmpTargets: string[] = [];
 
@@ -30,7 +30,7 @@ afterEach(async () => {
 describe("SystemLogStore + SessionSummaryStore", () => {
   test("writes runtime logger entries to daily system log files", async () => {
     const root = path.resolve(
-      coreAppPath("src/ai/brain/db/.tests"),
+      runtimeStatePath("db/.tests"),
       `system-log-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
@@ -58,7 +58,7 @@ describe("SystemLogStore + SessionSummaryStore", () => {
 
   test("creates compact markdown summaries for sessions", async () => {
     const root = path.resolve(
-      coreAppPath("src/ai/brain/db/.tests"),
+      runtimeStatePath("db/.tests"),
       `session-summary-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
@@ -99,7 +99,7 @@ describe("SystemLogStore + SessionSummaryStore", () => {
 
   test("writes concise summary entries to daily files", async () => {
     const root = path.resolve(
-      coreAppPath("src/ai/brain/db/.tests"),
+      runtimeStatePath("db/.tests"),
       `runtime-summary-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
