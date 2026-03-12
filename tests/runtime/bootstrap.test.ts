@@ -152,6 +152,8 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
+  "TRENCHCLAW_BOOT_REFRESH_CONTEXT",
+  "TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE",
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
 ] as const;
@@ -399,6 +401,22 @@ wallet:
 
         expect(unblockedByToken.results[0]?.error ?? "").not.toContain("requires explicit user confirmation");
       }
+    } finally {
+      runtime.stop();
+    }
+  });
+
+  test("recreates missing generated runtime prompt artifacts on bootstrap", async () => {
+    await applyDefaultEnv();
+    process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = "0";
+    process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = "0";
+    await Bun.file(runtimeStatePath("generated/workspace-context.md")).delete().catch(() => {});
+    await Bun.file(runtimeStatePath("generated/knowledge-manifest.md")).delete().catch(() => {});
+
+    const runtime = await bootstrapRuntime();
+    try {
+      expect(await Bun.file(runtimeStatePath("generated/workspace-context.md")).exists()).toBe(true);
+      expect(await Bun.file(runtimeStatePath("generated/knowledge-manifest.md")).exists()).toBe(true);
     } finally {
       runtime.stop();
     }

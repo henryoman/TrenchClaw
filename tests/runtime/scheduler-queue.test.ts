@@ -43,6 +43,31 @@ const waitForJobResult = async (
 };
 
 describe("Scheduler queue dispatch", () => {
+  test("defaults embedded queue storage to the runtime-state db directory", async () => {
+    const scheduler = new Scheduler(
+      {
+        stateStore: new InMemoryStateStore(),
+        dispatcher: new ActionDispatcher({
+          registry: new ActionRegistry(),
+          policyEngine: new PolicyEngine([]),
+          stateStore: new InMemoryStateStore(),
+          eventBus: new InMemoryRuntimeEventBus(),
+        }),
+        eventBus: new InMemoryRuntimeEventBus(),
+        createContext: () => createActionContext({ actor: "system" }),
+        resolveRoutine: () => actionSequenceRoutine,
+      },
+      1,
+    );
+
+    scheduler.start();
+    try {
+      expect(process.env.DATA_PATH).toBe(runtimeStatePath("db/queue/bunqueue.sqlite"));
+    } finally {
+      await scheduler.stop();
+    }
+  });
+
   test("runs queued actionSequence job and stores returned value", async () => {
     const registry = new ActionRegistry();
     registry.register({
