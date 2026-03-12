@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -9,11 +9,7 @@ import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 
 const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-instance.json");
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
-const LEGACY_INSTANCE_ID_PATTERN = /^i-(\d{2})$/u;
-const INSTANCE_FILE_PATTERN = /^\d{2}\.json$/u;
-const LEGACY_INSTANCE_FILE_PATTERN = /^i-(\d{2})\.json$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
-const LEGACY_INSTANCE_DIRECTORY_PATTERN = /^i-(\d{2})$/u;
 const INSTANCE_PROFILE_FILE_NAME = "instance.json";
 
 const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileView => {
@@ -35,34 +31,16 @@ const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileVie
 
 const normalizeInstanceId = (localInstanceId: string): string => {
   const normalized = localInstanceId.trim();
-  const legacyMatch = LEGACY_INSTANCE_ID_PATTERN.exec(normalized);
-  if (legacyMatch?.[1]) {
-    return legacyMatch[1];
-  }
   if (!normalized || !INSTANCE_ID_PATTERN.test(normalized)) {
     throw new Error(`Invalid instance id: ${localInstanceId}`);
   }
   return normalized;
 };
 
-const toLegacyInstanceId = (localInstanceId: string): string => `i-${normalizeInstanceId(localInstanceId)}`;
-
 const getInstanceProfileFilePath = (localInstanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId), INSTANCE_PROFILE_FILE_NAME);
 
-const getLegacyInstanceProfileFilePath = (localInstanceId: string): string =>
-  path.join(RUNTIME_INSTANCE_ROOT, `${toLegacyInstanceId(localInstanceId)}.json`);
-
-const getInstanceDirectoryPath = (localInstanceId: string): string =>
-  path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId));
-
-const hasStoredInstance = (localInstanceId: string): boolean =>
-  existsSync(getInstanceProfileFilePath(localInstanceId))
-  || existsSync(getLegacyInstanceProfileFilePath(localInstanceId))
-  || existsSync(getInstanceDirectoryPath(localInstanceId));
-
-const toInstanceTimestamp = (value: number): string =>
-  new Date(value > 0 ? value : Date.now()).toISOString();
+const hasStoredInstance = (localInstanceId: string): boolean => existsSync(getInstanceProfileFilePath(localInstanceId));
 
 const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | null => {
   try {
@@ -88,22 +66,8 @@ const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
   try {
     const instanceIds = new Set<string>();
     for (const entry of readdirSync(RUNTIME_INSTANCE_ROOT, { withFileTypes: true })) {
-      if (entry.isFile() && INSTANCE_FILE_PATTERN.test(entry.name)) {
-        instanceIds.add(entry.name.replace(/\.json$/u, ""));
-        continue;
-      }
-      const legacyFileMatch = LEGACY_INSTANCE_FILE_PATTERN.exec(entry.name);
-      if (entry.isFile() && legacyFileMatch?.[1]) {
-        instanceIds.add(legacyFileMatch[1]);
-        continue;
-      }
       if (entry.isDirectory() && INSTANCE_DIRECTORY_PATTERN.test(entry.name)) {
         instanceIds.add(entry.name);
-        continue;
-      }
-      const legacyDirectoryMatch = LEGACY_INSTANCE_DIRECTORY_PATTERN.exec(entry.name);
-      if (entry.isDirectory() && legacyDirectoryMatch?.[1]) {
-        instanceIds.add(legacyDirectoryMatch[1]);
       }
     }
 
@@ -147,55 +111,7 @@ const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
       }
     }
 
-    const legacyProfilePath = getLegacyInstanceProfileFilePath(localInstanceId);
-    if (existsSync(legacyProfilePath)) {
-      const content = readFileSync(legacyProfilePath, "utf8");
-      const parsed = JSON.parse(content) as {
-        instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
-        runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };
-      };
-
-      const name = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
-      const parsedInstanceId =
-        typeof parsed.instance?.localInstanceId === "string" ? normalizeInstanceId(parsed.instance.localInstanceId) : "";
-      const safetyProfile =
-        parsed.runtime?.safetyProfile === "safe"
-        || parsed.runtime?.safetyProfile === "dangerous"
-        || parsed.runtime?.safetyProfile === "veryDangerous"
-          ? parsed.runtime.safetyProfile
-          : "dangerous";
-      const createdAt =
-        typeof parsed.runtime?.createdAt === "string" ? parsed.runtime.createdAt : new Date(0).toISOString();
-      const updatedAt = typeof parsed.runtime?.updatedAt === "string" ? parsed.runtime.updatedAt : createdAt;
-
-      if (name && parsedInstanceId) {
-        return {
-          fileName,
-          localInstanceId: parsedInstanceId,
-          name,
-          safetyProfile,
-          userPinRequired: parsed.instance?.userPin !== null && parsed.instance?.userPin !== undefined,
-          createdAt,
-          updatedAt,
-        };
-      }
-    }
-
-    const directoryPath = getInstanceDirectoryPath(localInstanceId);
-    if (!existsSync(directoryPath)) {
-      return null;
-    }
-
-    const directoryStats = statSync(directoryPath);
-    return {
-      fileName,
-      localInstanceId,
-      name: localInstanceId,
-      safetyProfile: "dangerous",
-      userPinRequired: false,
-      createdAt: toInstanceTimestamp(directoryStats.birthtimeMs || directoryStats.ctimeMs || directoryStats.mtimeMs),
-      updatedAt: toInstanceTimestamp(directoryStats.mtimeMs || directoryStats.ctimeMs || directoryStats.birthtimeMs),
-    };
+    return null;
   } catch {
     return null;
   }

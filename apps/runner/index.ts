@@ -197,12 +197,7 @@ const findAvailablePort = async (host: string, preferredPort: number, label: str
 };
 
 const openBrowser = async (url: string): Promise<void> => {
-  const commands =
-    process.platform === "darwin"
-      ? [["open", url]]
-      : process.platform === "win32"
-        ? [["cmd", "/c", "start", "", url]]
-        : [["xdg-open", url]];
+  const commands = process.platform === "darwin" ? [["open", url]] : [["xdg-open", url]];
   const tryCommand = async (index: number): Promise<void> => {
     const command = commands[index];
     if (!command) {

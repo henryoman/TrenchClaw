@@ -8,46 +8,38 @@ import {
 
 describe("versioning", () => {
   test("parses stable and beta versions", () => {
-    expect(parseVersion("0.0.1")).toEqual({
+    expect(parseVersion("0.0.0")).toEqual({
       major: 0,
       minor: 0,
-      patch: 1,
+      patch: 0,
       beta: null,
     });
-    expect(parseVersion("v0.0.1-beta.3")).toEqual({
+    expect(parseVersion("v0.0.0-beta.3")).toEqual({
       major: 0,
       minor: 0,
-      patch: 1,
+      patch: 0,
       beta: 3,
     });
   });
 
   test("rejects invalid beta number", () => {
-    expect(() => parseVersion("0.0.1-beta.0")).toThrow();
-  });
-
-  test("auto increments patch for stable version", () => {
-    expect(incrementVersion("0.0.1", "auto")).toBe("0.0.2");
-  });
-
-  test("auto increments beta counter for beta version", () => {
-    expect(incrementVersion("0.0.1-beta.1", "auto")).toBe("0.0.1-beta.2");
-  });
-
-  test("beta strategy starts a beta cycle from stable version", () => {
-    expect(incrementVersion("0.0.1", "beta")).toBe("0.0.2-beta.1");
+    expect(() => parseVersion("0.0.0-beta.0")).toThrow();
   });
 
   test("beta strategy increments existing beta number", () => {
-    expect(incrementVersion("0.0.2-beta.2", "beta")).toBe("0.0.2-beta.3");
+    expect(incrementVersion("0.0.0-beta.1", "beta")).toBe("0.0.0-beta.2");
   });
 
-  test("patch strategy finalizes beta versions to stable", () => {
-    expect(incrementVersion("0.0.2-beta.3", "patch")).toBe("0.0.2");
+  test("beta-only track rejects stable versions", () => {
+    expect(() => incrementVersion("0.0.0", "beta")).toThrow(
+      'Current version "0.0.0" must stay on the 0.0.0-beta.N track for now.',
+    );
   });
 
-  test("patch strategy increments stable patch number", () => {
-    expect(incrementVersion("0.0.2", "patch")).toBe("0.0.3");
+  test("beta-only track rejects non-zero release lines", () => {
+    expect(() => incrementVersion("0.0.1-beta.1", "beta")).toThrow(
+      'Current version "0.0.1-beta.1" must stay on the 0.0.0-beta.N track for now.',
+    );
   });
 
   test("formats parsed versions consistently", () => {
@@ -55,9 +47,9 @@ describe("versioning", () => {
       formatVersion({
         major: 0,
         minor: 0,
-        patch: 1,
+        patch: 0,
         beta: 4,
       }),
-    ).toBe("0.0.1-beta.4");
+    ).toBe("0.0.0-beta.4");
   });
 });

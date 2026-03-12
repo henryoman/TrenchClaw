@@ -42,7 +42,17 @@ export const resolveCoreAppRoot = (): string => {
 export const CORE_APP_ROOT = resolveCoreAppRoot();
 export const BUNDLED_BRAIN_ROOT = path.join(CORE_APP_ROOT, LEGACY_BRAIN_ROOT);
 
-const resolveDefaultRuntimeStateRoot = (): string => path.join(os.homedir(), ".trenchclaw");
+const isWorkspaceCoreAppRoot = (candidate: string): boolean =>
+  existsSync(path.join(candidate, "package.json"))
+  && existsSync(path.join(candidate, "..", "frontends", "gui"));
+
+const resolveDefaultRuntimeStateRoot = (): string => {
+  if (isWorkspaceCoreAppRoot(CORE_APP_ROOT)) {
+    return path.join(CORE_APP_ROOT, ".runtime-state");
+  }
+
+  return path.join(os.homedir(), ".trenchclaw");
+};
 
 export const DEFAULT_RUNTIME_STATE_ROOT = resolveDefaultRuntimeStateRoot();
 

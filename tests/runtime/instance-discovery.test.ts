@@ -27,6 +27,30 @@ const createDirectoryOnlyInstance = async (runtimeRoot: string, localInstanceId:
   await mkdir(path.join(instanceRoot, "keypairs/test-wallets"), { recursive: true });
 };
 
+const createPersistedInstance = async (
+  runtimeRoot: string,
+  input: { localInstanceId: string; name: string; userPin?: string | null },
+): Promise<void> => {
+  const instanceRoot = path.join(runtimeRoot, "instances", input.localInstanceId);
+  await mkdir(instanceRoot, { recursive: true });
+  await writeFile(
+    path.join(instanceRoot, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: input.name,
+        localInstanceId: input.localInstanceId,
+        userPin: input.userPin ?? null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-11T00:00:00.000Z",
+        updatedAt: "2026-03-11T00:00:00.000Z",
+      },
+    })}\n`,
+    "utf8",
+  );
+};
+
 const runScriptJson = async <T>(input: {
   script: string;
   runtimeRoot: string;
@@ -67,7 +91,7 @@ afterEach(async () => {
 });
 
 describe("instance discovery", () => {
-  test("lists directory-only instances and skips their ids when creating a new instance", async () => {
+  test("ignores directory-only instance roots and creates the first persisted profile at 01", async () => {
     const runtimeRoot = await createRuntimeRoot();
     await createDirectoryOnlyInstance(runtimeRoot, "01");
 
@@ -96,23 +120,22 @@ describe("instance discovery", () => {
       `,
     });
 
-    expect(result.listed.instances).toHaveLength(1);
-    expect(result.listed.instances[0]?.localInstanceId).toBe("01");
-    expect(result.listed.instances[0]?.name).toBe("01");
-    expect(result.created.instance.localInstanceId).toBe("02");
+    expect(result.listed.instances).toHaveLength(0);
+    expect(result.created.instance.localInstanceId).toBe("01");
   });
 
-  test("signs into a directory-only instance", async () => {
+  test("lists and signs into a persisted instance profile", async () => {
     const runtimeRoot = await createRuntimeRoot();
-    await createDirectoryOnlyInstance(runtimeRoot, "01");
+    await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });
 
     const result = await runScriptJson<{
+      listed: { instances: Array<{ localInstanceId: string; name: string }> };
       signedIn: { instance: { localInstanceId: string; name: string } };
       activeInstanceId: string | null;
     }>({
       runtimeRoot,
       script: `
-        const { signInInstance } = await import(${JSON.stringify(INSTANCES_MODULE_URL)});
+        const { listInstances, signInInstance } = await import(${JSON.stringify(INSTANCES_MODULE_URL)});
         let activeInstanceId = null;
         const context = {
           runtime: {},
@@ -128,17 +151,52 @@ describe("instance discovery", () => {
           getActivityEntries: () => [],
           waitForJobResult: async () => null,
         };
+        const listed = await listInstances();
         const signedIn = await signInInstance(context, { localInstanceId: "01" });
-        process.stdout.write(JSON.stringify({ signedIn, activeInstanceId }));
+        process.stdout.write(JSON.stringify({ listed, signedIn, activeInstanceId }));
       `,
     });
 
+    expect(result.listed.instances).toHaveLength(1);
+    expect(result.listed.instances[0]?.name).toBe("test");
     expect(result.signedIn.instance.localInstanceId).toBe("01");
-    expect(result.signedIn.instance.name).toBe("01");
+    expect(result.signedIn.instance.name).toBe("test");
     expect(result.activeInstanceId).toBe("01");
   });
 
-  test("restores a persisted active instance when only the directory exists", async () => {
+  test("does not sign into a directory-only instance", async () => {
+    const runtimeRoot = await createRuntimeRoot();
+    await createDirectoryOnlyInstance(runtimeRoot, "01");
+
+    const result = await runScriptJson<{ message: string }>({
+      runtimeRoot,
+      script: `
+        const { signInInstance } = await import(${JSON.stringify(INSTANCES_MODULE_URL)});
+        const context = {
+          runtime: {},
+          getActiveInstance: () => null,
+          setActiveInstance: () => {},
+          getActiveChatId: () => null,
+          setActiveChatId: () => {},
+          addActivity: () => {},
+          listInstanceConversations: () => [],
+          resolveDefaultChatId: () => "chat-test",
+          getActivityEntries: () => [],
+          waitForJobResult: async () => null,
+        };
+        try {
+          await signInInstance(context, { localInstanceId: "01" });
+          process.stdout.write(JSON.stringify({ message: "unexpected-success" }));
+        } catch (error) {
+          process.stdout.write(JSON.stringify({ message: error instanceof Error ? error.message : String(error) }));
+        }
+      `,
+    });
+
+    expect(result.message).toContain("Instance not found");
+  });
+
+  test("does not restore a persisted active instance when the profile file is missing", async () => {
     const runtimeRoot = await createRuntimeRoot();
     await createDirectoryOnlyInstance(runtimeRoot, "01");
     await writeFile(
@@ -167,15 +225,12 @@ describe("instance discovery", () => {
       `,
     });
 
-    expect(restored).not.toBeNull();
-    expect(restored?.localInstanceId).toBe("01");
-    expect(restored?.name).toBe("one");
-    expect(restored?.fileName).toBe("instance.json");
+    expect(restored).toBeNull();
   });
 
-  test("auto-restores a single directory-only instance without active-instance metadata", async () => {
+  test("auto-restores a single persisted instance profile", async () => {
     const runtimeRoot = await createRuntimeRoot();
-    await createDirectoryOnlyInstance(runtimeRoot, "01");
+    await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });
 
     const restored = await runScriptJson<{
       fileName: string;
@@ -192,7 +247,7 @@ describe("instance discovery", () => {
 
     expect(restored).not.toBeNull();
     expect(restored?.localInstanceId).toBe("01");
-    expect(restored?.name).toBe("01");
+    expect(restored?.name).toBe("test");
     expect(restored?.userPinRequired).toBe(false);
   });
 });

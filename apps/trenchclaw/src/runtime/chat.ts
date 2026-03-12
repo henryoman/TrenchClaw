@@ -29,7 +29,7 @@ import {
 } from "./workspace-bash";
 import { renderRuntimeWalletPromptContext } from "./wallet-model-context";
 import type { RuntimeCapabilitySnapshot } from "./capabilities";
-import type { RuntimeLogger } from "./logging";
+import type { RuntimeLogger } from "./logging/runtime-logger";
 import type { RuntimeJobControlRequest, RuntimeJobEnqueueRequest } from "../ai/runtime/types/context";
 import { RUNTIME_WORKSPACE_ROOT } from "./runtime-paths";
 

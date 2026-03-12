@@ -1,171 +1,555 @@
 # TrenchClaw Architecture
 
-This file reflects the repository as it exists now (monorepo layout, package boundaries, runtime wiring, and currently active surfaces).
+This document describes the repository as it exists now: current startup modes, package boundaries, runtime wiring, capability registration, instance/state layout, and release/install behavior.
 
-## Monorepo Layout
+## Repo Boundaries
 
-- Root workspace (`package.json`) uses Turbo + Bun.
-- Workspaces:
-  - `apps/trenchclaw` (`@trenchclaw/core`)
-  - `apps/runner` (`@trenchclaw/runner`)
-  - `apps/frontends/gui` (`@trenchclaw/web-gui`)
-  - `apps/types`
+Root workspace:
 
-Top-level supporting directories:
-- `tests/` (runtime, AI, solana action/routine tests)
-- `docs/` (storage schema and examples)
-- `deploy/systemd/` (service/env templates)
-- `scripts/systemd/install.ts` (installer)
-- `lib/client/idl/` (IDL JSONs)
+- `package.json` defines a Bun monorepo with Turbo orchestration.
 
-## Runtime Entry Path
+Primary workspaces:
 
-- App command path:
-  - `bun run app:build` creates `dist/app`
-  - `bun run start` starts `apps/runner`
-- Runner entrypoint: `apps/runner/index.ts`
-- Runtime bootstrap: `apps/trenchclaw/src/runtime/bootstrap.ts`.
+- `apps/trenchclaw` (`@trenchclaw/core`): runtime composition root, Solana actions, AI integration, storage, queueing, and HTTP API.
+- `apps/runner` (`@trenchclaw/runner`): standalone launcher/binary entrypoint for built and released app bundles.
+- `apps/frontends/gui` (`@trenchclaw/web-gui`): Svelte 5 + Vite operator GUI that talks to the runtime over HTTP.
+- `apps/types` (`@trenchclaw/types`): thin shared types facade that re-exports runtime-facing types.
+- `website`: docs/marketing frontend, separate from the local app runtime.
 
-Boot sequence in current code:
-1. Parse mode/profile inputs in CLI.
-2. Load runtime settings (`safe | dangerous | veryDangerous`).
-3. Bootstrap runtime core/services.
-4. Start HTTP runtime server (`/`, `/health`) plus `/api/gui/*` endpoints.
-5. Start scheduler loop.
+Supporting top-level directories:
 
-## Runtime Composition
+- `tests/`: runtime, GUI transport, Solana action/routine, and security tests.
+- `docs/`: release, versioning, storage, and example reference docs.
+- `scripts/`: build, packaging, release, install, verification, and dev bootstrap scripts.
+- `deploy/systemd/`: service templates and related deployment assets.
+- `lib/client/idl/`: program IDL inputs for generated Solana client code.
 
-`apps/trenchclaw/src/runtime/bootstrap.ts` currently wires:
-- `ActionRegistry`
-- `PolicyEngine` (runtime settings gate)
-- `ActionDispatcher`
-- `Scheduler`
-- `StateStore` (`SqliteStateStore` or `InMemoryStateStore`)
-- `InMemoryRuntimeEventBus`
-- Optional LLM client (from env)
-- Solana adapters:
-  - `jupiter-ultra`
-  - `token-account`
-  - `ultra-signer`
-- File/session/memory/system/summary logging stores
+## Startup Modes
 
-## Actions
+TrenchClaw currently has three real startup paths:
 
-Codebase action modules exist under `apps/trenchclaw/src/solana/actions/**`.
+### 1. Workspace development
 
-Actions that are actually registered are decided at runtime by settings (`buildActionCatalog`):
-- Always:
+Entry:
+
+- `bun run dev`
+- `bun run dev:bootstrap`
+- `scripts/dev-bootstrap.ts`
+
+Behavior:
+
+- Finds open ports for runtime and GUI.
+- Spawns runtime-only mode via `bun run --cwd apps/trenchclaw runtime:start`.
+- Spawns Vite directly for the GUI.
+- Sets `VITE_TRENCHCLAW_RUNTIME_URL` to the runtime server.
+
+This is the active dev path when working in the repo.
+
+### 2. Built local app / packaged app
+
+Entry:
+
+- `bun run start`
+- `bun run app:start`
+- compiled standalone `trenchclaw` binary from releases
+
+Behavior:
+
+- Runs `apps/runner/index.ts`.
+- Detects whether it is running from a workspace layout or a packaged release layout.
+- Prepares runtime-state directories and template files.
+- Sets runtime env paths.
+- Boots the runtime in-process.
+- Starts the runtime API server.
+- Serves built GUI assets and proxies `/api/*` to the runtime.
+- Optionally prompts to launch the browser.
+
+This is the main consumer-facing startup path.
+
+### 3. Runtime-only mode
+
+Entry:
+
+- `bun run --cwd apps/trenchclaw runtime:start`
+- `apps/trenchclaw/src/runtime/start-runtime-server.ts`
+
+Behavior:
+
+- Boots the runtime directly.
+- Exposes `/`, `/health`, and the runtime API handler.
+- Does not serve the GUI.
+
+This path is useful for development and testing, but it is not the normal packaged-app entrypoint.
+
+## Runner, Core, And GUI Responsibilities
+
+### Runner
+
+`apps/runner/index.ts` is responsible for:
+
+- detecting `workspace` vs `release` layout
+- resolving the runtime-state root
+- creating writable runtime directories
+- copying placeholder/template files when missing
+- setting runtime env variables
+- starting the runtime core in-process
+- serving static GUI files
+- proxying `/api/*` requests to the runtime API
+- browser launch UX and graceful shutdown
+
+The runner is a launcher/distribution wrapper, not the place where runtime policy, actions, or scheduler behavior are defined.
+
+### Core runtime
+
+`apps/trenchclaw/src/runtime/bootstrap.ts` is the runtime composition root. It owns:
+
+- runtime settings load and normalization
+- logger creation
+- optional context/knowledge refresh hooks
+- storage creation and recovery
+- capability snapshot generation
+- LLM client creation
+- action catalog registration
+- Solana adapter creation
+- scheduler and queue integration
+- chat service construction
+- event logging and runtime shutdown behavior
+
+### GUI
+
+`apps/frontends/gui` is the operator-facing Svelte app. It consumes runtime APIs for:
+
+- bootstrap/runtime status
+- chat
+- instances
+- queue/schedule state
+- activity feed
+- vault / AI settings / secrets
+- wallet tree and runtime tools
+
+The GUI is not the source of truth for runtime state; it is a client over the runtime HTTP surface.
+
+## Runtime Boot Flow
+
+The real runtime boot order in `apps/trenchclaw/src/runtime/bootstrap.ts` is:
+
+1. Resolve the runtime profile with `resolveRuntimeSettingsProfile()`.
+2. Load and normalize settings through `loadRuntimeSettings()`.
+3. Create the runtime logger.
+4. Optionally run boot refresh tasks for workspace context and knowledge manifest.
+5. Create the in-memory event bus.
+6. Open the durable state store. This is `SqliteStateStore` when SQLite is enabled, otherwise `InMemoryStateStore`.
+7. Open file-backed log stores: `SystemLogStore`, `SessionSummaryStore`, and `SummaryLogStore`.
+8. Recover interrupted jobs, sync SQLite schema, and prune old runtime data when SQLite is enabled.
+9. Build the capability snapshot.
+10. Create and instrument the optional LLM client.
+11. Create `ActionRegistry`, `PolicyEngine`, and `ActionDispatcher`.
+12. Register the runtime action catalog.
+13. Create Solana adapters: Jupiter Ultra, Jupiter Trigger, token account adapter, and Ultra signer adapter.
+14. Create the scheduler backed by `bunqueue`.
+15. Open session and memory stores.
+16. Attach event logging to the event bus and log sinks.
+17. Start the scheduler.
+18. Create the runtime chat service.
+
+## Runtime API Surface
+
+`apps/trenchclaw/src/runtime/start-runtime-server.ts` starts the runtime API.
+
+Built-in endpoints:
+
+- `GET /`: runtime status summary
+- `GET /health`: simple health check
+- additional runtime API routes via `createRuntimeApiHandler()`
+
+The built app does not expose the GUI directly from the runtime server. The runner serves GUI assets separately and proxies `/api/*` into the runtime server.
+
+## Capability Model
+
+Capability registration is definition-driven, not directory-driven.
+
+Authoritative definitions:
+
+- `apps/trenchclaw/src/runtime/capabilities/action-definitions.ts`
+- `apps/trenchclaw/src/runtime/capabilities/selectors.ts`
+- `apps/trenchclaw/src/runtime/capabilities/workspace-tool-definitions.ts`
+
+There are three different states to keep separate:
+
+1. Action code exists in the repo.
+2. Action is included in the runtime catalog.
+3. Action is exposed to chat as a model tool.
+
+The runtime boot process uses `getRuntimeActionCatalog(settings)` to decide what gets registered.
+
+### Current action families
+
+Always or broadly available:
+
+- wallet lifecycle and wallet organization:
+  - `devnetAirdrop`
+  - `createWalletGroupDirectory`
   - `createWallets`
   - `renameWallets`
+- runtime queue and diagnostics:
+  - `enqueueRuntimeJob`
+  - `manageRuntimeJob`
   - `queryRuntimeStore`
-- When trading enabled:
-  - `createBlockchainAlert`
-- When signing + transfer limits allow:
-  - `transfer`
-  - `privacyTransfer`
-  - `privacyAirdrop`
-- When Jupiter Ultra enabled:
-  - `ultraQuoteSwap`
-  - `ultraExecuteSwap`
-  - `ultraSwap`
-- When both Ultra + signing/limits allow:
-  - `privacySwap`
+  - `queryInstanceMemory`
+  - `mutateInstanceMemory`
+  - `pingRuntime`
+  - `sleep`
 
-Important: other action files exist (for example RPC swap/token/read-only helpers), but they are not all auto-registered in bootstrap.
+Trading-enabled families:
 
-## Routines and Triggers
+- alert creation
+- swap history
+- Dexscreener market-data actions
 
-Routines exported in `apps/trenchclaw/src/solana/routines/index.ts`:
-- `dca`
-- `create-wallets`
-- `action-sequence`
+Signing / transfer / execution gated families:
 
-Routines currently supported by the scheduler resolver in bootstrap:
-- `createWallets`
+- `transfer`
+- `privacyTransfer`
+- `privacyAirdrop`
+- `ultraQuoteSwap`
+- `ultraExecuteSwap`
+- `managedUltraSwap`
+- `scheduleManagedUltraSwap`
+- `ultraSwap`
+- `privacySwap`
+- Jupiter Trigger order actions:
+  - `getTriggerOrders`
+  - `triggerOrder`
+  - `managedTriggerOrder`
+  - `triggerCancelOrders`
+  - `managedTriggerCancelOrders`
+
+User confirmation is enforced separately for dangerous actions through runtime policy and capability metadata.
+
+### Chat exposure
+
+`apps/trenchclaw/src/runtime/chat.ts` converts registered actions with input schemas into AI SDK tools.
+
+Chat can also add workspace tools when enabled:
+
+- workspace bash
+- workspace read file
+- workspace write file
+
+So the model-facing tool surface is:
+
+- registered runtime actions with schemas
+- plus optional workspace tools
+- filtered again by capability metadata and settings
+
+## Routines, Queueing, And Trigger Reality
+
+### Queueing
+
+The scheduler is active today and uses:
+
+- runtime state store for job metadata
+- `bunqueue` SQLite durability for queued work
+- `enqueueJob()` / `manageJob()` helpers from runtime bootstrap
+
+Queue events are emitted on the runtime event bus:
+
+- `queue:enqueue`
+- `queue:dequeue`
+- `queue:complete`
+
+### Built-in routines
+
+Current built-in routine planners live in `apps/trenchclaw/src/solana/routines/load.ts`:
+
 - `actionSequence`
+- `createWallets`
 
-Triggers exist in `apps/trenchclaw/src/solana/triggers/`:
-- `timer`
-- `price`
-- `on-chain`
+Workspace-defined routine wrappers are also supported under:
 
-Trigger modules are present and exported, but not directly wired by `bootstrapRuntime()` today.
+- `.runtime-state/user/workspace/routines/*.routine.json`
 
-## Settings, Policy, and Safety
+These wrapper files do not introduce arbitrary new runtime engines. They delegate back into supported built-in routine planners with merged config.
 
-Settings loader path:
-- `apps/trenchclaw/src/runtime/load/loader.ts`
+### Trigger reality
 
-Schema:
-- `apps/trenchclaw/src/runtime/load/schema.ts`
+There are two different meanings of "trigger" in the repo:
 
-Authority/sanitization rules:
-- `apps/trenchclaw/src/runtime/load/authority.ts`
+1. Jupiter Trigger order actions are live runtime capabilities.
+2. Generic scheduler trigger modules under `apps/trenchclaw/src/solana/triggers/` are still design stubs.
+
+Current state of generic trigger modules:
+
+- `timer.ts`: comment-only design notes
+- `price.ts`: comment-only design notes
+- `on-chain.ts`: comment-only design notes
+
+They are not registered or booted by `bootstrapRuntime()` today. Architecture docs should treat them as planned interfaces, not active runtime subsystems.
+
+## Instance Model
+
+The instance system currently has two separate layers.
+
+### 1. Filesystem instance identity
+
+Runtime instance files live under the runtime-state root:
+
+- `instances/<NN>/instance.json`
+- `instances/active-instance.json`
+
+Key behaviors:
+
+- instance IDs are normalized to two-digit numeric IDs like `01`
+- legacy `i-01` IDs and files are still read for compatibility
+- the active instance is persisted separately
+
+Primary implementation:
+
+- `apps/trenchclaw/src/runtime/instance-state.ts`
+- `apps/trenchclaw/src/runtime/gui-transport/domains/instances.ts`
+
+### 2. Durable instance memory in SQLite
+
+SQLite also stores instance-scoped durable memory:
+
+- `instance_profiles`
+- `instance_facts`
+
+These tables hold stable profile data and granular facts for the model/runtime memory surface.
+
+### Active-instance semantics
+
+Active instance currently affects:
+
+- chat session scoping
+- instance conversation filtering
+- wallet prompt context
+- runtime GUI transport state
+- active instance env variables
+- instance-specific trading preference overlays
+
+Important limitation:
+
+- switching the active instance does not rebuild the already-booted runtime registry, policy engine, or capability catalog
+- active-instance changes mainly affect transport/session behavior and instance-scoped settings/memory lookup
+
+## Settings, Vault Resolution, And Policy Authority
+
+Runtime settings are loaded in `apps/trenchclaw/src/runtime/load/loader.ts`.
+
+Related modules:
+
+- schema: `apps/trenchclaw/src/runtime/load/schema.ts`
+- authority rules: `apps/trenchclaw/src/runtime/load/authority.ts`
+- resolved user settings: `apps/trenchclaw/src/ai/llm/user-settings-loader.ts`
+- active-instance trading settings: `apps/trenchclaw/src/runtime/load/trading-settings.ts`
 
 Bundled safety profiles:
-- `apps/trenchclaw/src/ai/config/safety-modes/safe.json`
-- `apps/trenchclaw/src/ai/config/safety-modes/dangerous.json`
-- `apps/trenchclaw/src/ai/config/safety-modes/veryDangerous.json`
 
-Merge order in loader:
-1. Base profile file
-2. Agent override (`TRENCHCLAW_SETTINGS_AGENT_FILE`) after profile-based sanitization
-3. User override (`TRENCHCLAW_SETTINGS_USER_FILE`)
-4. User-protected path enforcement
-5. Normalization + Zod validation
+- `safe`
+- `dangerous`
+- `veryDangerous`
 
-## Storage and Logging
+Actual merge flow:
 
-Storage implementation lives in:
-- `apps/trenchclaw/src/runtime/storage/*`
+1. Load bundled base profile.
+2. Load resolved user settings:
+   - compatibility settings from runtime-state user settings
+   - vault reference resolution via `vault://...`
+   - relative structured-file resolution
+   - active-instance trading settings overlay from `instances/<id>/settings/trading.json`
+3. Load optional explicit user settings file overlay.
+4. Load optional agent settings file.
+5. Sanitize agent settings according to authority rules.
+6. Merge as:
+   - base profile
+   - sanitized agent settings
+   - resolved user settings + explicit user overlay
+7. Re-apply protected user-owned paths so agent overlays cannot silently override them.
+8. Normalize into the runtime settings shape.
+9. Validate with Zod.
 
-Default normalized settings currently point to:
-- SQLite DB: `.runtime-state/db/runtime.sqlite`
-- Sessions: `.runtime-state/db/sessions`
-- Memory: `.runtime-state/db/memory`
+This means the practical precedence is not "simple base + agent + user". It is base profile plus sanitized agent settings, with resolved user/vault/instance settings taking final authority over protected paths.
 
-SQLite tables include:
+## Runtime-State Layout
+
+The runtime-state root is environment-aware.
+
+Default behavior from `apps/trenchclaw/src/runtime/runtime-paths.ts`:
+
+- default runtime-state root: `~/.trenchclaw`
+
+Runner overrides:
+
+- workspace mode: `apps/trenchclaw/.runtime-state`
+- release mode: `~/.trenchclaw`
+
+Key runtime-state directories:
+
+- `db/`
+- `db/queue/`
+- `db/sessions/`
+- `db/memory/`
+- `db/events/` created by runner for future/event use
+- `user/`
+- `user/workspace/`
+- `user/workspace/routines/`
+- `instances/`
+- `generated/`
+- `protected/`
+- `protected/keypairs/`
+
+Compatibility helpers in `runtime-paths.ts` still map legacy `src/ai/brain/...` contract paths into the modern runtime-state layout.
+
+## Storage And Logging
+
+Primary storage docs:
+
+- `apps/trenchclaw/src/runtime/storage/README.md`
+- `docs/storage-schema.md`
+
+### SQLite durability
+
+Main runtime database:
+
+- `storage.sqlite.path`
+- default normalized path: `db/runtime.sqlite`
+
+Separate queue durability database:
+
+- `storage.queue.path`
+- default normalized path: `db/queue/bunqueue.sqlite`
+
+Core SQLite tables include:
+
 - `jobs`
 - `action_receipts`
 - `conversations`
 - `chat_messages`
+- `instance_profiles`
+- `instance_facts`
 - `market_instruments`
 - `ohlcv_bars`
 - `market_snapshots`
 - `http_cache`
 - `schema_migrations`
 
-Active stores in runtime:
-- `SqliteStateStore`
-- `SessionLogStore`
-- `SessionSummaryStore`
-- `MemoryLogStore`
-- `SystemLogStore`
-- `SummaryLogStore`
+Boot behavior in SQLite mode:
 
-## AI and Solana Package Surfaces
+- recover interrupted jobs
+- auto-sync schema
+- log schema snapshot
+- prune retained runtime/cache data
 
-`apps/trenchclaw/src/ai/` exports:
-- `runtime` types
-- `core` runtime engine pieces
-- `llm` client/config/prompt loaders
+### File-backed log stores
 
-`apps/trenchclaw/src/solana/` exports:
-- `lib/adapters`
-- `lib/wallet`
-- `actions`
-- `routines`
-- `triggers`
+Active file-backed stores:
 
-## Frontends
+- `SystemLogStore`: daily runtime/system logs
+- `SessionLogStore`: session index plus JSONL transcript stream
+- `SessionSummaryStore`: per-session markdown summaries on stop
+- `SummaryLogStore`: concise daily summary log
+- `MemoryLogStore`: daily plus long-term markdown memory
 
-Web GUI package:
-- Svelte + Vite app in `apps/frontends/gui/src/*`
-- build output generated locally in `apps/frontends/gui/dist/*` (not tracked)
+The runtime uses these stores for human-readable audit/history alongside SQLite durability.
 
-## Tests Present
+## Wallet Runtime Context
 
-Current tests under `tests/`:
-- AI: config + prompt loader
-- Runtime: bootstrap, authority, storage stores
-- Solana: alerts/query runtime store, wallet creation/rename, create-wallets routine
+`apps/trenchclaw/src/runtime/wallet-model-context.ts` renders wallet prompt context for the model based on the active instance and the managed wallet library.
+
+This context provides:
+
+- active instance ID
+- wallet library contract path
+- wallet group and wallet alias variables
+- wallet JSON summary
+- constraints around allowed wallet organization writes
+
+The model is expected to use wallet actions rather than editing wallet metadata files directly.
+
+## Release Bundle And Install Layout
+
+### Build staging
+
+`bun run app:build` runs `scripts/build-app.ts` and assembles:
+
+- `dist/app/gui`
+- `dist/app/core`
+- `dist/app/build-metadata.json`
+
+The readonly bundle intentionally includes:
+
+- GUI build output
+- runtime brain assets
+- runtime config assets
+- keypair placeholder files only
+
+The readonly bundle intentionally excludes:
+
+- runtime databases
+- session and memory logs
+- vault contents
+- wallet-library data
+- real key material
+- `.env` files and key/cert files
+
+Bundle verification is enforced by:
+
+- `scripts/verify-app-bundle.ts`
+
+### Release packaging
+
+`scripts/package-app-release.ts` packages per-platform tarballs containing:
+
+- standalone compiled `trenchclaw` binary
+- `gui/`
+- `core/`
+- `release-metadata.json`
+
+Current default compile targets:
+
+- `bun-darwin-arm64`
+- `bun-linux-x64`
+- `bun-linux-arm64`
+
+### Install layout
+
+The installer places immutable app files under:
+
+- `~/.local/share/trenchclaw/<version>/`
+
+And updates:
+
+- `~/.local/share/trenchclaw/current`
+- `~/.local/bin/trenchclaw`
+
+Writable runtime state remains outside the install tree under:
+
+- `~/.trenchclaw`
+
+The architecture is therefore split between:
+
+- readonly shipped assets
+- writable operator/runtime state
+
+## Current Limits And Non-Goals
+
+The current architecture has some important limits:
+
+- generic scheduler trigger modules are not active runtime subsystems yet
+- instance switching does not live-rebootstrap the runtime capability surface
+- the runner creates `db/events`, but there is no primary event-store implementation using that directory today
+- the website is a separate docs/marketing surface, not part of the local runtime app
+- the normal packaged-app path is runner-first, not direct runtime-only startup
+
+## Short Mental Model
+
+The current app is best understood as:
+
+- a Bun monorepo
+- with `apps/trenchclaw` as the actual runtime core
+- `apps/runner` as the packaged launcher and local app wrapper
+- `apps/frontends/gui` as the operator client
+- capability-driven action registration
+- a durable queue plus SQLite/file-backed audit state
+- instance-scoped runtime context layered on top of one live booted runtime

@@ -1,7 +1,7 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-import type { RuntimeLogEntry } from "../logging";
+import type { RuntimeLogEntry } from "../logging/runtime-logger";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
 import { resolveRuntimeContractPath } from "../runtime-paths";
 import { getLogIoWorkerClient } from "./log-io-worker";
