@@ -14,6 +14,7 @@ import {
 import { getSwapHistoryAction } from "../../solana/actions/data-fetch/api/swapHistory";
 import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/mutateInstanceMemory";
 import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
+import { getManagedWalletSolBalancesAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
 import { manageRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/manageRuntimeJob";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
@@ -342,6 +343,19 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
         type: "getBundle",
         instanceId: "01",
       },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getManagedWalletSolBalancesAction,
+    description: "Fetch SOL balances for managed wallets in the active or requested instance.",
+    purpose: "Answer wallet balance questions directly using managed wallet metadata, including label-file fallback when the wallet library file is missing.",
+    tags: ["wallets", "balances", "sol", "read"],
+    exampleInput: {
+      walletGroup: "practice-wallets",
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,

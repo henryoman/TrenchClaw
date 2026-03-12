@@ -359,7 +359,7 @@ export const inferManagedWalletLibraryEntriesFromFilesystem = async (input?: {
 
 export const findManagedWalletEntry = async (input: ManagedWalletRef): Promise<ManagedWalletLibraryEntry> => {
   const ref = managedWalletRefSchema.parse(input);
-  const { entries } = await readManagedWalletLibraryEntries();
+  const { entries } = await readManagedWalletLibraryEntries({ inferFromFilesystem: true });
   const entry = entries.find((candidate) =>
     candidate.walletGroup === ref.walletGroup && candidate.walletName === ref.walletName);
 
@@ -399,7 +399,7 @@ export const listManagedWalletsByGroup = async (input: {
 }): Promise<ManagedWalletLibraryEntry[]> => {
   const walletGroup = walletGroupNameSchema.parse(input.walletGroup);
   const requestedNames = input.walletNames ? new Set(input.walletNames.map((name) => walletNameSchema.parse(name))) : null;
-  const { entries } = await readManagedWalletLibraryEntries();
+  const { entries } = await readManagedWalletLibraryEntries({ inferFromFilesystem: true });
   return entries.filter((entry) => {
     if (entry.walletGroup !== walletGroup) {
       return false;
