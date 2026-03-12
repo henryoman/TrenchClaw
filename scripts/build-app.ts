@@ -101,7 +101,7 @@ const shouldBundleBrainFile = (trackedFile: string): boolean => {
     return fileName === ".gitkeep";
   }
   if (relativeToBrain.startsWith("protected/no-read/")) {
-    return fileName === "readme.md" || fileName === "vault.template.json" || fileName === ".gitkeep";
+    return false;
   }
 
   return true;
@@ -137,6 +137,12 @@ const copyReleaseBrainAssets = async (): Promise<void> => {
   }
 };
 
+const copyReleaseConfigAssets = async (): Promise<void> => {
+  await cp(path.join(REPO_ROOT, "apps/trenchclaw/src/ai/config"), path.join(CORE_OUTPUT_ROOT, "src/ai/config"), {
+    recursive: true,
+  });
+};
+
 const ensurePlaceholderFile = async (filePath: string, contents = ""): Promise<void> => {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, contents, "utf8");
@@ -158,8 +164,8 @@ const main = async (): Promise<void> => {
   await mkdir(OUTPUT_ROOT, { recursive: true });
   await cp(path.join(REPO_ROOT, "apps/frontends/gui/dist"), GUI_OUTPUT_ROOT, { recursive: true });
   await copyReleaseBrainAssets();
+  await copyReleaseConfigAssets();
   await ensurePlaceholderFile(path.join(CORE_OUTPUT_ROOT, "src/ai/brain/protected/keypairs/.keep"));
-  await ensurePlaceholderFile(path.join(CORE_OUTPUT_ROOT, "src/ai/brain/protected/instance/.gitkeep"));
 
   const metadata = {
     version: buildMetadata.version,

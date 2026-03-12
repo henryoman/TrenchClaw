@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
 import { MemoryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/memory-log-store";
-import { coreAppPath } from "../../helpers/core-paths";
+import { runtimeStatePath } from "../../helpers/core-paths";
 
 const tmpTargets: string[] = [];
 
@@ -26,7 +26,7 @@ afterEach(async () => {
 describe("MemoryLogStore", () => {
   test("writes daily and long-term memory logs", async () => {
     const root = path.resolve(
-      coreAppPath("src/ai/brain/db/.tests"),
+      runtimeStatePath("db/.tests"),
       `memory-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);

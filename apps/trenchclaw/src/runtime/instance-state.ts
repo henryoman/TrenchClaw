@@ -11,6 +11,7 @@ const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-inst
 const INSTANCE_ID_PATTERN = /^[a-zA-Z0-9_-]+$/u;
 const INSTANCE_FILE_PATTERN = /^i-\d+\.json$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^i-\d+$/u;
+const INSTANCE_PROFILE_FILE_NAME = "instance.json";
 
 const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileView => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
@@ -38,13 +39,18 @@ const normalizeInstanceId = (localInstanceId: string): string => {
 };
 
 const getInstanceProfileFilePath = (localInstanceId: string): string =>
+  path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId), INSTANCE_PROFILE_FILE_NAME);
+
+const getLegacyInstanceProfileFilePath = (localInstanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, `${normalizeInstanceId(localInstanceId)}.json`);
 
 const getInstanceDirectoryPath = (localInstanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId));
 
 const hasStoredInstance = (localInstanceId: string): boolean =>
-  existsSync(getInstanceProfileFilePath(localInstanceId)) || existsSync(getInstanceDirectoryPath(localInstanceId));
+  existsSync(getInstanceProfileFilePath(localInstanceId))
+  || existsSync(getLegacyInstanceProfileFilePath(localInstanceId))
+  || existsSync(getInstanceDirectoryPath(localInstanceId));
 
 const toInstanceTimestamp = (value: number): string =>
   new Date(value > 0 ? value : Date.now()).toISOString();
@@ -87,10 +93,44 @@ const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
       return null;
     }
 
-    const fileName = `${localInstanceId}.json`;
-    const profilePath = path.join(RUNTIME_INSTANCE_ROOT, fileName);
+    const fileName = INSTANCE_PROFILE_FILE_NAME;
+    const profilePath = getInstanceProfileFilePath(localInstanceId);
     if (existsSync(profilePath)) {
       const content = readFileSync(profilePath, "utf8");
+      const parsed = JSON.parse(content) as {
+        instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
+        runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };
+      };
+
+      const name = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
+      const parsedInstanceId =
+        typeof parsed.instance?.localInstanceId === "string" ? normalizeInstanceId(parsed.instance.localInstanceId) : "";
+      const safetyProfile =
+        parsed.runtime?.safetyProfile === "safe"
+        || parsed.runtime?.safetyProfile === "dangerous"
+        || parsed.runtime?.safetyProfile === "veryDangerous"
+          ? parsed.runtime.safetyProfile
+          : "dangerous";
+      const createdAt =
+        typeof parsed.runtime?.createdAt === "string" ? parsed.runtime.createdAt : new Date(0).toISOString();
+      const updatedAt = typeof parsed.runtime?.updatedAt === "string" ? parsed.runtime.updatedAt : createdAt;
+
+      if (name && parsedInstanceId) {
+        return {
+          fileName,
+          localInstanceId: parsedInstanceId,
+          name,
+          safetyProfile,
+          userPinRequired: parsed.instance?.userPin !== null && parsed.instance?.userPin !== undefined,
+          createdAt,
+          updatedAt,
+        };
+      }
+    }
+
+    const legacyProfilePath = getLegacyInstanceProfileFilePath(localInstanceId);
+    if (existsSync(legacyProfilePath)) {
+      const content = readFileSync(legacyProfilePath, "utf8");
       const parsed = JSON.parse(content) as {
         instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
         runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };

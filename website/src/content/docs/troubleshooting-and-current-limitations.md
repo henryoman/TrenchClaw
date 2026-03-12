@@ -7,7 +7,7 @@ order: 9
 ## Release Limits
 
 - the default packaging script currently targets `darwin-arm64`, `linux-x64`, and `linux-arm64`
-- the public installer logic can detect more platforms than the default release pipeline actually builds
+- GitHub Releases is the only official binary distribution channel
 
 ## Default Local Ports
 
@@ -44,4 +44,5 @@ Switching instances does not fully rebuild the live runtime policy engine. A fre
 - keep the runtime local
 - verify the active instance before touching wallets
 - treat vault contents and wallet backup files as sensitive material
+- install optional external tools only when a specific workflow requires them
 - test with devnet or small amounts before relying on more dangerous execution paths

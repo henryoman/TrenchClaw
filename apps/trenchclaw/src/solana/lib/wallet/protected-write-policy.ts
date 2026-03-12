@@ -6,11 +6,17 @@ import {
   assertModelFilesystemWriteAllowed,
 } from "../../../runtime/security/filesystem-manifest";
 import {
+  RUNTIME_INSTANCE_ROOT,
   RUNTIME_PROTECTED_ROOT,
+  RUNTIME_USER_ROOT,
   resolveRuntimeContractPath,
 } from "../../../runtime/runtime-paths";
 
-const BRAIN_PROTECTED_ROOT_DIRECTORY = RUNTIME_PROTECTED_ROOT;
+const PROTECTED_WRITE_ROOT_DIRECTORIES = [
+  RUNTIME_INSTANCE_ROOT,
+  RUNTIME_USER_ROOT,
+  RUNTIME_PROTECTED_ROOT,
+] as const;
 
 export class ProtectedWriteForbiddenError extends Error {
   constructor(message: string) {
@@ -24,13 +30,11 @@ export const resolveAbsolutePath = (targetPath: string): string =>
 
 export const assertWithinBrainProtectedDirectory = (targetPath: string): void => {
   const normalizedTarget = path.resolve(targetPath);
-
-  if (
-    normalizedTarget !== BRAIN_PROTECTED_ROOT_DIRECTORY &&
-    !normalizedTarget.startsWith(`${BRAIN_PROTECTED_ROOT_DIRECTORY}${path.sep}`)
-  ) {
+  const withinProtectedRoots = PROTECTED_WRITE_ROOT_DIRECTORIES.some((rootPath) =>
+    normalizedTarget === rootPath || normalizedTarget.startsWith(`${rootPath}${path.sep}`));
+  if (!withinProtectedRoots) {
     throw new ProtectedWriteForbiddenError(
-      `Protected writes must stay under ${BRAIN_PROTECTED_ROOT_DIRECTORY}. Received: ${normalizedTarget}`,
+      `Protected writes must stay under ${PROTECTED_WRITE_ROOT_DIRECTORIES.join(", ")}. Received: ${normalizedTarget}`,
     );
   }
 };

@@ -36,8 +36,8 @@
   const terminalLines = [
     { tone: 'dim', text: '$ trenchclaw' },
     { tone: 'dim', text: 'booting runtime...' },
-    { tone: 'bright', text: 'openrouter model resolved' },
-    { tone: 'bright', text: 'wallet library loaded from protected instance path' },
+    { tone: 'bright', text: 'readonly app loaded from ~/.local/share/trenchclaw/current' },
+    { tone: 'bright', text: 'state root: ~/.trenchclaw' },
     { tone: 'bright', text: 'scheduler online' },
     { tone: 'dim', text: 'web gui: http://127.0.0.1:4173' },
     { tone: 'dim', text: 'docs: /docs/getting-started' },
@@ -45,7 +45,7 @@
   ];
 
   const stack = [
-    { label: 'Stack', value: 'Bun, TypeScript, and a local web app' },
+    { label: 'Stack', value: 'Compiled Bun binary, TypeScript, and a local web app' },
     { label: 'Solana', value: '@solana/kit with provider-agnostic RPC adapters' },
     { label: 'Agent', value: 'AI SDK orchestration with runtime policies' },
     { label: 'State', value: 'SQLite, JSONL indexes, and protected filesystem storage' }
@@ -91,7 +91,7 @@
           TrenchClaw is a local Solana runtime with actions, wallets, routines, and a local GUI.
         </p>
         <p class="mt-4 max-w-2xl text-sm leading-7 text-foreground-soft">
-          The docs focus on what is actually shipped right now.
+          The docs focus on the only public install path that is actually shipped right now.
         </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -137,7 +137,7 @@
         <div class="surface-card mt-5 grid gap-3 p-5">
           <div class="flex items-center justify-between">
             <span class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Install</span>
-            <span class="text-xs text-muted">Bootstrap script</span>
+            <span class="text-xs text-muted">Bootstrap to installer</span>
           </div>
           {#each installTargets as target (target.label)}
             <div class="rounded-2xl border border-border-subtle bg-white/2 p-4">
@@ -149,7 +149,7 @@
             </div>
           {/each}
           <p class="text-xs leading-6 text-muted">
-            Requires published GitHub Release artifacts for the selected version.
+            Fetches the installer, which resolves a GitHub Release tarball and verifies its checksum before install.
           </p>
         </div>
       </div>

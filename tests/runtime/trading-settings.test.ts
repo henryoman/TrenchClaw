@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { loadResolvedUserSettings } from "../../apps/trenchclaw/src/ai/llm/user-settings-loader";
 import { loadRuntimeSettings, writeInstanceTradingSettings } from "../../apps/trenchclaw/src/runtime/load";
-import { coreAppPath } from "../helpers/core-paths";
+import { coreAppPath, runtimeStatePath } from "../helpers/core-paths";
 
 const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_ACTIVE_INSTANCE_ID",
@@ -104,7 +104,7 @@ describe("trading settings layering", () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = `i-${crypto.randomUUID()}`;
 
     const instanceDirectory = path.join(
-      coreAppPath("src/ai/brain/protected/instance"),
+      runtimeStatePath("instances"),
       process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID,
     );
     createdDirectories.add(instanceDirectory);
@@ -136,7 +136,7 @@ describe("trading settings layering", () => {
     const settings = await loadRuntimeSettings("dangerous");
 
     expect(payload.activeInstanceId).toBe(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
-    expect(payload.instanceTradingSettingsPath).toContain("/protected/instance/");
+    expect(payload.instanceTradingSettingsPath).toContain("/.runtime-state/instances/");
     expect((payload.resolvedSettings as { trading?: { preferences?: { defaultSwapProvider?: string } } }).trading?.preferences?.defaultSwapProvider).toBe(
       "standard",
     );
@@ -149,7 +149,7 @@ describe("trading settings layering", () => {
 
   test("writes canonical instance trading settings under protected instance state", async () => {
     const instanceId = `i-${crypto.randomUUID()}`;
-    const instanceDirectory = path.join(coreAppPath("src/ai/brain/protected/instance"), instanceId);
+    const instanceDirectory = path.join(runtimeStatePath("instances"), instanceId);
     createdDirectories.add(instanceDirectory);
 
     const filePath = await writeInstanceTradingSettings(instanceId, {
@@ -167,7 +167,7 @@ describe("trading settings layering", () => {
     });
 
     expect(filePath).toBe(
-      path.join(coreAppPath("src/ai/brain/protected/instance"), instanceId, "settings", "trading.json"),
+      path.join(runtimeStatePath("instances"), instanceId, "settings", "trading.json"),
     );
 
     const stored = await Bun.file(filePath).json();

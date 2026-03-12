@@ -18,7 +18,7 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
     purpose: "Read exact file contents after you already know the path, especially for docs and source inspection.",
     tags: ["workspace", "filesystem", "read", "docs"],
     exampleInput: {
-      path: "src/ai/brain/knowledge/KNOWLEDGE_MANIFEST.md",
+      path: ".runtime-state/generated/knowledge-manifest.md",
     },
     enabledBySettings: workspaceToolsEnabledByRuntimeSettings,
     chatExposed: true,

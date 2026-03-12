@@ -1,6 +1,6 @@
 # Workspace Rules
 
-- Command execution root: `src/ai/brain/workspace`
+- Command execution root: `.runtime-state/user/workspace`
 - Default writable folders:
   - `strategies/`
   - `configs/`

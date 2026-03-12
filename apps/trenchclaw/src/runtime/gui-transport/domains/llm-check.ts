@@ -1,11 +1,12 @@
 import type { GuiLlmCheckResponse } from "@trenchclaw/types";
 import { resolveLlmProviderConfigFromVault } from "../../../ai/llm/config";
 import { resolvePathFromModule } from "../../../ai/llm/shared";
+import { RUNTIME_USER_ROOT } from "../../runtime-paths";
 
 const OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_TIMEOUT_MS = 8000;
-const DEFAULT_VAULT_FILE = "../../../ai/brain/protected/no-read/vault.json";
+const DEFAULT_VAULT_FILE = `${RUNTIME_USER_ROOT}/vault.json`;
 
 const toKeyFingerprint = async (key: string): Promise<string | null> => {
   if (!key) {

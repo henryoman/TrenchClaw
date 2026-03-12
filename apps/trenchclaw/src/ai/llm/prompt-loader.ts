@@ -15,7 +15,7 @@ import { buildFilesystemPolicyPrompt } from "../../runtime/security/filesystem-m
 
 const DEFAULT_PROMPT_MANIFEST_FILE = "../config/payload-manifest.json";
 const DEFAULT_KNOWLEDGE_DIR = "../brain/knowledge/";
-const DEFAULT_KNOWLEDGE_MANIFEST_FILE = "../brain/knowledge/KNOWLEDGE_MANIFEST.md";
+const DEFAULT_KNOWLEDGE_MANIFEST_FILE = "../../../.runtime-state/generated/knowledge-manifest.md";
 const DEFAULT_WORKSPACE_DIR = "../../../";
 
 const FALLBACK_SYSTEM_PROMPT = [

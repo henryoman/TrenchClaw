@@ -24,7 +24,9 @@ Use this map to navigate from intent -> decision -> execution:
 - `src/ai/config/payload-manifest.json`: central source of truth for prompt payload composition, section order, and file locations by mode.
 - `src/ai/config/system.md`: baseline system prompt for all runs.
 - `src/ai/config/agent-modes/`: specialized mode prompts that tune behavior by mission.
-- `src/ai/brain/protected/no-read/ai.json`: runtime model/provider settings for the app.
+- `.runtime-state/user/ai.json`: runtime model/provider settings for the app.
+- `.runtime-state/user/settings.json`: personal cross-instance runtime defaults.
+- `.runtime-state/instances/<id>/`: instance-owned wallets, trading settings, and local instance state.
 
 ### 3) Runtime AI core
 - `src/ai/core/action-registry.ts`: in-memory action registration.
@@ -57,7 +59,7 @@ Use this map to navigate from intent -> decision -> execution:
 ## How To Navigate the Filesystem Fast
 When adding or changing behavior, follow this order:
 
-1. **Define intent** in `system/prompts/system.md` (via payload manifest) and one mode prompt.
+1. **Define intent** in the payload manifest, `src/ai/config/system.md`, and one mode prompt.
    Use `src/ai/config/system.md` and `src/ai/config/agent-modes/`.
 2. **Check constraints** in `rules.md` and wallet policy code.
 3. **Verify capability exists** in `src/runtime/capabilities/` and the backing action folders.

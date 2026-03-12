@@ -3,9 +3,10 @@ import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderDirectoryTree } from "../../ai/brain/knowledge/knowledge-tree";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
+import { RUNTIME_GENERATED_ROOT } from "../../runtime/runtime-paths";
 
 const KNOWLEDGE_DIR = fileURLToPath(new URL("../../ai/brain/knowledge/", import.meta.url));
-const MANIFEST_PATH = fileURLToPath(new URL("../../ai/brain/knowledge/KNOWLEDGE_MANIFEST.md", import.meta.url));
+const MANIFEST_PATH = `${RUNTIME_GENERATED_ROOT}/knowledge-manifest.md`;
 
 export const refreshKnowledgeManifest = async (): Promise<string[]> => {
   const generatedAt = new Date().toISOString();
@@ -26,7 +27,7 @@ ${tree}
   await mkdir(dirname(MANIFEST_PATH), { recursive: true });
   assertWritePathInRoots({
     targetPath: MANIFEST_PATH,
-    roots: ["src/ai/brain/knowledge"],
+    roots: [".runtime-state/generated"],
     scope: "system-knowledge-refresh",
     operation: "write knowledge manifest",
   });

@@ -28,7 +28,7 @@
         {
           "kind": "file",
           "title": "Workspace Context Snapshot",
-          "path": "../brain/protected/context/workspace-and-schema.md"
+          "path": "../../../.runtime-state/generated/workspace-context.md"
         },
         {
           "kind": "generated",

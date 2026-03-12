@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWallets";
 import { renameWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/renameWallets";
-import { coreAppPath } from "../../../helpers/core-paths";
+import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
 const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
@@ -33,10 +33,9 @@ describe("renameWalletsAction", () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
     const renamedWalletGroup = `ops-wallets-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-rename-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
-    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
+    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
 
     const createResult = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -119,10 +118,9 @@ describe("renameWalletsAction", () => {
   test("rejects rename when target wallet name already exists", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join("src/ai/brain/protected", `test-rename-conflict-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-rename-conflict-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
-    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
+    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
 
     await createWalletsAction.execute({} as never, {
       count: 1,

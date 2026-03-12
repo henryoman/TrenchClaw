@@ -7,40 +7,44 @@
   },
   "rules": [
     {
-      "path": "src/ai/brain/db/events",
+      "path": ".runtime-state/db/events",
       "model": "read"
     },
     {
-      "path": "src/ai/brain/db/sessions",
+      "path": ".runtime-state/db/sessions",
       "model": "read"
     },
     {
-      "path": "src/ai/brain/db/system",
+      "path": ".runtime-state/db/system",
       "model": "read"
     },
     {
-      "path": "src/ai/brain/db/summary",
+      "path": ".runtime-state/db/summary",
       "model": "read"
     },
     {
-      "path": "src/ai/brain/db/summaries",
+      "path": ".runtime-state/db/summaries",
       "model": "read"
     },
     {
-      "path": "src/ai/brain/db/memory",
+      "path": ".runtime-state/db/memory",
       "model": "read"
     },
     {
-      "path": "src/ai/brain/workspace",
+      "path": ".runtime-state/user/workspace",
       "model": "write"
     },
     {
-      "path": "src/ai/brain/protected/instance",
+      "path": ".runtime-state/instances",
       "model": "write"
     },
     {
-      "path": "src/ai/brain/protected/no-read",
+      "path": ".runtime-state/user",
       "model": "none"
+    },
+    {
+      "path": ".runtime-state/generated",
+      "model": "read"
     }
   ]
 }

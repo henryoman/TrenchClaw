@@ -27,7 +27,7 @@ Main workspaces:
 - `apps/types`: shared type package.
 - `website`: the public docs and marketing site.
 
-Think of the repo as two different product surfaces sharing one core:
+Think of the repo as two different surfaces sharing one core:
 
 1. the local runtime application
 2. the public website
@@ -58,12 +58,13 @@ Within `apps/trenchclaw/src`, the architecture is split by responsibility.
 
 ### 1. Brain and prompt assets
 
-`src/ai/brain/` contains tracked prompt and knowledge assets:
+`src/ai/` now splits authored AI config from runtime state:
 
-- `protected/system/`: base system prompt, mode prompts, payload manifest, and safety-mode YAML files.
-- `knowledge/`: internal docs and skill/reference material.
-- `instance-settings/`: compatibility-layer settings files such as `settings.yaml` and `swaps.yaml`.
-- `protected/no-read/`: local vault template and vault conventions.
+- `config/`: authored system prompt, mode prompts, payload manifest, filesystem manifest, and JSON safety profiles.
+- `brain/knowledge/`: internal docs and skill/reference material.
+- `.runtime-state/user/`: personal app settings such as `ai.json`, `settings.json`, and `vault.json`.
+- `.runtime-state/instances/`: per-instance settings, wallets, and local instance state.
+- `.runtime-state/generated/`: generated workspace context and knowledge inventory.
 
 These files are inputs to runtime configuration and model prompting. They are not the execution engine.
 
@@ -138,27 +139,27 @@ Settings are layered rather than coming from one file.
 
 ### Base safety profile
 
-The first layer is the selected safety profile YAML:
+The first layer is the selected safety profile JSON:
 
-- `src/ai/brain/protected/system/safety-modes/safe.yaml`
-- `src/ai/brain/protected/system/safety-modes/dangerous.yaml`
-- `src/ai/brain/protected/system/safety-modes/veryDangerous.yaml`
+- `src/ai/config/safety-modes/safe.json`
+- `src/ai/config/safety-modes/dangerous.json`
+- `src/ai/config/safety-modes/veryDangerous.json`
 
 This defines the starting policy posture.
 
 ### Compatibility settings
 
-The next layer is the compatibility settings file:
+The next layer is the personal runtime settings file:
 
-- `src/ai/brain/instance-settings/settings.yaml`
+- `.runtime-state/user/settings.json`
 
-This is where RPC preferences, compatibility swap preferences, and vault references are loaded from the tracked brain assets.
+This is where RPC preferences and vault references are loaded for the current user.
 
 ### Per-instance trading settings
 
 The active instance can also contribute runtime trading preferences through:
 
-- `src/ai/brain/protected/instance/<instanceId>/settings/trading.json`
+- `.runtime-state/instances/<instanceId>/settings/trading.json`
 
 That file is the canonical per-instance trading override path used by the runtime loader.
 
@@ -267,13 +268,14 @@ This means the runtime is both:
 
 ## Persistence and State
 
-Runtime state is persisted under the runtime state root, which defaults to the bundled brain path unless `TRENCHCLAW_RUNTIME_STATE_ROOT` overrides it.
+Runtime state is persisted under the runtime state root, which defaults to `~/.trenchclaw` unless `TRENCHCLAW_RUNTIME_STATE_ROOT` overrides it.
 
 Important runtime path zones:
 
 - `db/`: SQLite databases, sessions, memory files, queue state, and log artifacts
-- `protected/no-read/`: vault secrets
-- `protected/instance/`: instance profiles, active instance state, and per-instance files
+- `user/`: vault files and user workspace content
+- `instances/`: instance profiles, active instance state, and per-instance files
+- `generated/`: generated manifests and derived runtime files
 - `protected/keypairs/`: managed wallets and key material
 
 In practical terms, TrenchClaw stores:
@@ -289,6 +291,8 @@ In practical terms, TrenchClaw stores:
 - vault secrets
 
 The storage layer is intentionally local and file-backed. This is not a hosted multi-tenant cloud architecture.
+
+In release installs, that writable state is intentionally separate from the immutable install tree under `~/.local/share/trenchclaw/<version>/`.
 
 ## Instance Boundaries
 

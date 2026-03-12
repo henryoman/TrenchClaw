@@ -4,7 +4,7 @@ import path from "node:path";
 import { createActionContext } from "../../apps/trenchclaw/src/ai";
 import { bootstrapRuntime } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
-import { coreAppPath } from "../helpers/core-paths";
+import { runtimeStatePath } from "../helpers/core-paths";
 
 const BASE_SETTINGS_YAML = `
 configVersion: 1
@@ -315,7 +315,7 @@ wallet:
 
     const runtime = await bootstrapRuntime();
     const alertsFile = path.resolve(
-      coreAppPath("src/ai/brain/workspace/strategies/.tests"),
+      runtimeStatePath("user/workspace/strategies/.tests"),
       `bootstrap-alerts-${crypto.randomUUID()}.json`,
     );
     try {

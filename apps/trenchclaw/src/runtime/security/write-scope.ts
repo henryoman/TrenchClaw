@@ -18,15 +18,16 @@ export class WriteScopeViolationError extends Error {
 }
 
 export const RUNTIME_SYSTEM_WRITE_ROOTS = [
-  "src/ai/brain/db",
+  ".runtime-state/db",
+  ".runtime-state/generated",
 ] as const;
 
 export const INSTANCE_SYSTEM_WRITE_ROOTS = [
-  "src/ai/brain/protected/instance",
+  ".runtime-state/instances",
 ] as const;
 
 export const PROTECTED_NO_READ_WRITE_ROOTS = [
-  "src/ai/brain/protected/no-read",
+  ".runtime-state/user",
 ] as const;
 
 export const assertWritePathInRoots = (input: {

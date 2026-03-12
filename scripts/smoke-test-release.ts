@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
-import { mkdir, rm, stat } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, stat } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,22 +9,22 @@ const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 interface CliArgs {
-  artifactRoot: string;
+  artifactPath: string;
   timeoutMs: number;
 }
 
 const parseArgs = (argv: string[]): CliArgs => {
-  let artifactRoot = "";
+  let artifactPath = "";
   let timeoutMs = DEFAULT_TIMEOUT_MS;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
-    if (arg === "--artifact-root") {
+    if (arg === "--artifact-path") {
       const value = argv[i + 1];
       if (!value) {
-        throw new Error("Missing value for --artifact-root");
+        throw new Error("Missing value for --artifact-path");
       }
-      artifactRoot = path.resolve(value);
+      artifactPath = path.resolve(value);
       i += 1;
       continue;
     }
@@ -37,33 +38,46 @@ const parseArgs = (argv: string[]): CliArgs => {
     }
   }
 
-  if (!artifactRoot) {
-    throw new Error("Missing required --artifact-root");
+  if (!artifactPath) {
+    throw new Error("Missing required --artifact-path");
   }
 
-  return { artifactRoot, timeoutMs };
+  return { artifactPath, timeoutMs };
 };
 
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
-  const binaryPath = path.join(args.artifactRoot, "trenchclaw");
+  const extractRoot = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-smoke-"));
+  const artifactName = path.basename(args.artifactPath);
+  const extractCode = await Bun.spawn(["tar", "-xzf", args.artifactPath, "-C", extractRoot], {
+    cwd: REPO_ROOT,
+    stdout: "inherit",
+    stderr: "inherit",
+    stdin: "ignore",
+    env: process.env,
+  }).exited;
+  if ((extractCode ?? 1) !== 0) {
+    throw new Error(`Failed to extract release artifact: ${artifactName}`);
+  }
+
+  const binaryPath = path.join(extractRoot, "trenchclaw");
   const binaryStat = await stat(binaryPath).catch(() => null);
   if (!binaryStat?.isFile()) {
     throw new Error(`Standalone binary not found: ${binaryPath}`);
   }
 
-  const runtimeStateRoot = path.join(args.artifactRoot, ".smoke-state");
+  const runtimeStateRoot = path.join(extractRoot, ".smoke-state");
   await rm(runtimeStateRoot, { recursive: true, force: true });
   await mkdir(runtimeStateRoot, { recursive: true });
 
   const proc = Bun.spawn([binaryPath], {
-    cwd: args.artifactRoot,
+    cwd: extractRoot,
     stdout: "inherit",
     stderr: "inherit",
     stdin: "ignore",
     env: {
       ...process.env,
-      TRENCHCLAW_RELEASE_ROOT: args.artifactRoot,
+      TRENCHCLAW_RELEASE_ROOT: extractRoot,
       TRENCHCLAW_RUNTIME_STATE_ROOT: runtimeStateRoot,
       TRENCHCLAW_RUNNER_SMOKE_TEST: "1",
       TRENCHCLAW_RUNNER_PROMPT_GUI_LAUNCH: "0",
@@ -77,7 +91,7 @@ const main = async (): Promise<void> => {
     proc.exited,
     Bun.sleep(args.timeoutMs).then(() => {
       proc.kill("SIGKILL");
-      throw new Error(`Smoke test timed out after ${args.timeoutMs}ms for ${path.relative(REPO_ROOT, args.artifactRoot)}`);
+      throw new Error(`Smoke test timed out after ${args.timeoutMs}ms for ${path.relative(REPO_ROOT, args.artifactPath)}`);
     }),
   ]);
 
@@ -85,7 +99,8 @@ const main = async (): Promise<void> => {
     throw new Error(`Smoke test failed with exit code ${exitCode ?? 1}`);
   }
 
-  console.log(`[smoke-test-release] OK -> ${args.artifactRoot}`);
+  await rm(extractRoot, { recursive: true, force: true });
+  console.log(`[smoke-test-release] OK -> ${artifactName}`);
 };
 
 await main();

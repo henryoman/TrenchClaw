@@ -3,9 +3,9 @@ import { isRecord, parseStructuredFile, resolvePathFromModule } from "./shared";
 import { ensureVaultFileExists } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
-const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../brain/instance-settings/settings.json";
-const DEFAULT_VAULT_FILE = "../brain/protected/no-read/vault.json";
-const DEFAULT_VAULT_TEMPLATE_FILE = "../brain/protected/no-read/vault.template.json";
+const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/user/settings.json";
+const DEFAULT_VAULT_FILE = "../../../.runtime-state/user/vault.json";
+const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 
 const USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";

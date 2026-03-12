@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import {
@@ -14,9 +13,10 @@ import {
 import { createActionContext } from "../../apps/trenchclaw/src/ai/runtime/types/context";
 import type { JobState } from "../../apps/trenchclaw/src/ai/runtime/types/state";
 import { actionSequenceRoutine } from "../../apps/trenchclaw/src/solana/routines/action-sequence";
+import { runtimeStatePath } from "../helpers/core-paths";
 
 const queueDbPaths: string[] = [];
-const RUNTIME_DB_DIRECTORY = fileURLToPath(new URL("../../apps/trenchclaw/src/ai/brain/db", import.meta.url));
+const RUNTIME_DB_DIRECTORY = runtimeStatePath("db");
 const createTestQueueDbPath = (): string =>
   path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-scheduler-queue-${crypto.randomUUID()}.sqlite`);
 

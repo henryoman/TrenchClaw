@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWallets";
-import { coreAppPath } from "../../../helpers/core-paths";
+import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
 const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
@@ -32,7 +32,7 @@ describe("createWalletsAction", () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     delete process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
     const walletGroup = `default-wallets-${crypto.randomUUID()}`;
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
+    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -53,17 +53,16 @@ describe("createWalletsAction", () => {
       return;
     }
 
-    expect(result.data?.walletLibraryFilePath).toContain(`/instance/${TEST_INSTANCE_ID}/keypairs/wallet-library.jsonl`);
+    expect(result.data?.walletLibraryFilePath).toContain(path.join("instances", TEST_INSTANCE_ID, "keypairs", "wallet-library.jsonl"));
   });
 
   test("creates multiple flat groups in one batch and defaults wallet names to wallet_00 style", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const coreGroup = `core-wallets-${crypto.randomUUID()}`;
     const snipersGroup = `snipers-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join("src/ai/brain/protected", `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
-    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
+    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
 
     const result = await createWalletsAction.execute({} as never, {
       groups: [
@@ -105,10 +104,9 @@ describe("createWalletsAction", () => {
   test("creates wallets inside the selected wallet group directory and appends library metadata", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join("src/ai/brain/protected", `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
-    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
+    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -140,7 +138,7 @@ describe("createWalletsAction", () => {
     expect(data.wallets[0]?.walletGroup).toBe(walletGroup);
     expect(data.wallets[0]?.walletName).toBe("wallet001");
     expect(data.walletGroup).toBe(walletGroup);
-    expect(data.outputDirectory).toContain(`/instance/${TEST_INSTANCE_ID}/keypairs/${walletGroup}`);
+    expect(data.outputDirectory).toContain(path.join("instances", TEST_INSTANCE_ID, "keypairs", walletGroup));
 
     const libraryLines = (await Bun.file(data.walletLibraryFilePath).text())
       .trim()
@@ -213,12 +211,11 @@ describe("createWalletsAction", () => {
   test("uses existing wallet group directory when createGroupIfMissing is false", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `existing-wallets-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join("src/ai/brain/protected", `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    const walletGroupPath = path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID, "keypairs", walletGroup);
+    const walletGroupPath = path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID, "keypairs", walletGroup);
     await Bun.$`mkdir -p ${walletGroupPath}`.quiet();
-    createdPaths.add(path.join(coreAppPath("src/ai/brain/protected/instance"), TEST_INSTANCE_ID));
-    createdPaths.add(path.join(coreAppPath(), walletLibraryFile));
+    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -238,6 +235,6 @@ describe("createWalletsAction", () => {
       return;
     }
     expect(result.data?.wallets).toHaveLength(1);
-    expect(result.data?.outputDirectory).toContain(`/instance/${TEST_INSTANCE_ID}/keypairs/${walletGroup}`);
+    expect(result.data?.outputDirectory).toContain(path.join("instances", TEST_INSTANCE_ID, "keypairs", walletGroup));
   });
 });

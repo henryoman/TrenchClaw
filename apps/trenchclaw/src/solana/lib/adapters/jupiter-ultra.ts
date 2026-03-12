@@ -7,10 +7,11 @@ import {
 } from "../ultra/parsing";
 import { parseStructuredFile, resolvePathFromModule } from "../../../ai/llm/shared";
 import { ensureVaultFileExists } from "../../../ai/llm/vault-file";
+import { RUNTIME_USER_ROOT, resolveCoreRelativePath } from "../../../runtime/runtime-paths";
 
 const DEFAULT_JUPITER_ULTRA_BASE_URL = "https://api.jup.ag/ultra/v1";
-const DEFAULT_VAULT_FILE = "../../../ai/brain/protected/no-read/vault.json";
-const DEFAULT_VAULT_TEMPLATE_FILE = "../../../ai/brain/protected/no-read/vault.template.json";
+const DEFAULT_VAULT_FILE = `${RUNTIME_USER_ROOT}/vault.json`;
+const DEFAULT_VAULT_TEMPLATE_FILE = resolveCoreRelativePath("src/ai/config/vault.template.json");
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 

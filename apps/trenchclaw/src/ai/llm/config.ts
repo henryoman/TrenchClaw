@@ -17,8 +17,8 @@ const defaultModelByProvider: Record<LlmProvider, string> = {
 };
 
 const providerSchema = z.enum(LLM_PROVIDERS);
-const DEFAULT_VAULT_FILE = "../brain/protected/no-read/vault.json";
-const DEFAULT_VAULT_TEMPLATE_FILE = "../brain/protected/no-read/vault.template.json";
+const DEFAULT_VAULT_FILE = "../../../.runtime-state/user/vault.json";
+const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 

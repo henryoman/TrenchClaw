@@ -18,12 +18,12 @@ const createdRuntimeRoots: string[] = [];
 const createRuntimeRoot = async (): Promise<string> => {
   const runtimeRoot = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-instance-discovery-"));
   createdRuntimeRoots.push(runtimeRoot);
-  await mkdir(path.join(runtimeRoot, "protected/instance"), { recursive: true });
+  await mkdir(path.join(runtimeRoot, "instances"), { recursive: true });
   return runtimeRoot;
 };
 
 const createDirectoryOnlyInstance = async (runtimeRoot: string, localInstanceId: string): Promise<void> => {
-  const instanceRoot = path.join(runtimeRoot, "protected/instance", localInstanceId);
+  const instanceRoot = path.join(runtimeRoot, "instances", localInstanceId);
   await mkdir(path.join(instanceRoot, "keypairs/test-wallets"), { recursive: true });
 };
 
@@ -142,9 +142,9 @@ describe("instance discovery", () => {
     const runtimeRoot = await createRuntimeRoot();
     await createDirectoryOnlyInstance(runtimeRoot, "i-01");
     await writeFile(
-      path.join(runtimeRoot, "protected/instance/active-instance.json"),
+      path.join(runtimeRoot, "instances/active-instance.json"),
       `${JSON.stringify({
-        fileName: "i-01.json",
+        fileName: "instance.json",
         localInstanceId: "i-01",
         name: "Recovered Alpha",
         safetyProfile: "dangerous",
@@ -170,7 +170,7 @@ describe("instance discovery", () => {
     expect(restored).not.toBeNull();
     expect(restored?.localInstanceId).toBe("i-01");
     expect(restored?.name).toBe("Recovered Alpha");
-    expect(restored?.fileName).toBe("i-01.json");
+    expect(restored?.fileName).toBe("instance.json");
   });
 
   test("auto-restores a single directory-only instance without active-instance metadata", async () => {

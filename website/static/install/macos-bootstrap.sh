@@ -72,7 +72,9 @@ install_or_upgrade_trenchclaw() {
 
 print_summary() {
   info "TrenchClaw is ready."
-  info " - trenchclaw: $(trenchclaw --version)"
+  info " - launcher: $(command -v trenchclaw)"
+  info " - app root: $HOME/.local/share/trenchclaw/current"
+  info " - state root: $HOME/.trenchclaw"
   info "If your shell still cannot find commands, run: exec \$SHELL -l"
 }
 
