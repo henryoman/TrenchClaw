@@ -167,13 +167,9 @@ const legacyCreateWalletsInputSchema = z.object({
 
 const createWalletsInputSchema = z.union([createWalletsBatchInputSchema, legacyCreateWalletsInputSchema]);
 
-type CreateWalletsInput = z.output<typeof createWalletsBatchInputSchema>;
+type CreateWalletsInput = z.output<typeof createWalletsInputSchema>;
 type LegacyCreateWalletsInput = z.output<typeof legacyCreateWalletsInputSchema>;
-
-interface NormalizedWalletGroupInput {
-  walletGroup: string;
-  walletNames: string[];
-}
+type NormalizedCreateWalletsInput = z.output<typeof createWalletsBatchInputSchema>;
 
 interface CreatedWallet {
   walletId: string;
@@ -211,7 +207,7 @@ const normalizeLegacyWalletNames = (input: LegacyCreateWalletsInput): string[] =
   return Array.from({ length: input.count }, (_, index) => toDefaultWalletName(index));
 };
 
-const normalizeCreateWalletsInput = (rawInput: unknown): CreateWalletsInput => {
+const normalizeCreateWalletsInput = (rawInput: unknown): NormalizedCreateWalletsInput => {
   const parsed = createWalletsInputSchema.parse(rawInput);
   if ("groups" in parsed) {
     return {
@@ -295,11 +291,12 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
           directoryPath: outputDirectory,
         });
 
-        if (groupInput.walletNames.length > MAX_WALLETS_PER_GROUP) {
+        const walletNames = groupInput.walletNames ?? [];
+        if (walletNames.length > MAX_WALLETS_PER_GROUP) {
           throw new Error(`Wallet group "${groupInput.walletGroup}" exceeds the maximum of ${MAX_WALLETS_PER_GROUP} wallets`);
         }
 
-        for (const wallet of groupInput.walletNames) {
+        for (const wallet of walletNames) {
           const walletId = toWalletId(groupInput.walletGroup, wallet);
           const keypairFilePath = path.join(outputDirectory, `${wallet}.json`);
           const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);

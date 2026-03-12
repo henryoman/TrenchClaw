@@ -128,7 +128,7 @@ const parsePositiveDecimal = (value: number | string): { numerator: bigint; scal
     throw new Error(`Invalid limit price: "${value}"`);
   }
 
-  const [wholePart, fractionalPart = ""] = raw.split(".");
+  const [wholePart = "", fractionalPart = ""] = raw.split(".");
   const normalizedWhole = wholePart.replace(/^0+(?=\d)/, "") || "0";
   const normalizedFraction = fractionalPart.replace(/0+$/, "");
   const normalized = normalizedFraction.length > 0 ? `${normalizedWhole}.${normalizedFraction}` : normalizedWhole;

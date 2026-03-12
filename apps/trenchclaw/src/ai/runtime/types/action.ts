@@ -3,7 +3,7 @@ import type { ActionContext } from "./context";
 import type { PolicyResult } from "./policy";
 
 export type ActionCategory = "data-based" | "wallet-based";
-export type ActionSubcategory = "read-only" | "swap" | "transfer" | "mint";
+export type ActionSubcategory = "read-only" | "swap" | "transfer" | "mint" | "trigger";
 
 export interface RetryPolicy {
   maxAttempts: number;
