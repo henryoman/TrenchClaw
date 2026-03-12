@@ -1,14 +1,10 @@
 ---
 title: Swaps, Transfers, and Market Data
-description: Document the currently exposed execution and research surfaces without overstating roadmap-only swap paths or trigger systems.
+description: Use the shipped execution and research features without confusing them with roadmap-only swap or trigger surfaces.
 order: 6
 ---
 
-This page covers the execution and research capabilities that are actually exposed in the current runtime catalog.
-
-## What Is Clearly Shipped
-
-The runtime exposes operator-facing actions for:
+## Shipped Surfaces
 
 - direct transfers
 - privacy transfer paths
@@ -18,11 +14,11 @@ The runtime exposes operator-facing actions for:
 - recent swap history
 - Dexscreener market-data queries
 
-## Ultra Is The Live Swap Path
+## Live Swap Path
 
-Current public docs should describe Jupiter Ultra as the active shipped swap path.
+Jupiter Ultra is the current shipped swap path.
 
-Exposed Ultra surfaces include:
+Exposed Ultra actions:
 
 - `ultraQuoteSwap`
 - `ultraExecuteSwap`
@@ -30,47 +26,25 @@ Exposed Ultra surfaces include:
 - `managedUltraSwap`
 - `privacySwap`
 
-## Standard RPC Swap Path Is Not A Shipped Public Feature
-
-There are placeholder files for a standard or RPC-based swap flow in the repo, but that path is not the one the current runtime exposes publicly.
-
-Document it as not yet shipped for operators rather than as a supported alternate swap mode.
+Standard or RPC swap files in the repo are not the current public operator path.
 
 ## Transfers
-
-Transfer execution depends on runtime settings and signing permissions.
-
-Current transfer-style surfaces include:
 
 - `transfer`
 - `privacyTransfer`
 - `privacyAirdrop`
 
-These are high-impact actions and should be described as gated by runtime settings and confirmation behavior, not as always-on buttons.
-
 ## Devnet Airdrop
 
-`devnetAirdrop` is useful for:
-
-- testing managed wallet setups
-- validating sequences without live funds
-- dry-running wallet workflows on devnet
-
-Treat it as a devnet testing feature, not a general funding mechanism.
+`devnetAirdrop` is for devnet testing, not general wallet funding.
 
 ## Swap History
 
-The runtime exposes `getSwapHistory`, which pulls recent Solana swap activity for a wallet through the Helius-backed path.
+`getSwapHistory` is available for recent swap activity on a wallet.
 
-That is useful for:
+## Dexscreener
 
-- verifying recent execution
-- checking whether swaps actually landed
-- building runtime summaries and operator context
-
-## Dexscreener And Market Data
-
-The current catalog also exposes a meaningful Dexscreener surface:
+Available market-data actions include:
 
 - latest token profiles
 - latest token boosts
@@ -83,9 +57,7 @@ The current catalog also exposes a meaningful Dexscreener surface:
 
 This is research tooling, not execution tooling.
 
-## Confirmation And Policy Notes
-
-Many transfer and swap paths are not simply "on" or "off". They depend on:
+## Requirements
 
 - trading being enabled
 - wallet signing being allowed
@@ -93,20 +65,8 @@ Many transfer and swap paths are not simply "on" or "off". They depend on:
 - confirmation settings for dangerous actions
 - the currently active Ultra-related settings
 
-## What To Say Publicly
-
-Good public summary:
-
-- TrenchClaw currently ships an Ultra-centered swap path plus transfer, airdrop, history, and market-data surfaces.
-
-Bad public summary:
-
-- claiming full generic Jupiter swap parity
-- claiming trigger-driven strategy automation from these primitives alone
-- implying that every exposed action is equally tested or equally GUI-driven
-
-## Operator Guidance
+## Usage Notes
 
 - use quote paths before execution when possible
 - verify balances and recent history after high-impact actions
-- treat market-data and swap-history features as research and verification aids, not guarantees of execution quality
+- use market-data and swap-history features for research and verification
