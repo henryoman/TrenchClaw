@@ -31,18 +31,12 @@ export const DEFAULT_VAULT_JSON = {
   llm: {
     openrouter: {
       "api-key": "",
-      model: "stepfun/step-3.5-flash:free",
-      "base-url": "https://openrouter.ai/api/v1",
     },
     openai: {
       "api-key": "",
-      model: "gpt-4.1-mini",
-      "base-url": "",
     },
     "openai-compatible": {
       "api-key": "",
-      model: "gpt-4.1-mini",
-      "base-url": "",
     },
     gateway: {
       "api-key": "",

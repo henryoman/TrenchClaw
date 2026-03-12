@@ -127,11 +127,22 @@
       {/if}
     {:else if activeTab === "config"}
       <SecretsPanel
+        aiSettingsFilePath={runtime.state.aiSettingsFilePath}
+        aiSettingsTemplatePath={runtime.state.aiSettingsTemplatePath}
+        aiSettings={runtime.state.aiSettings}
+        aiSettingsBusy={runtime.state.aiSettingsBusy}
+        aiSettingsError={runtime.state.aiSettingsError}
         options={runtime.state.secretsOptions}
         entries={runtime.state.secretEntries}
         publicRpcOptions={runtime.state.publicRpcOptions}
         busy={runtime.state.secretsBusy}
         error={runtime.state.secretsError}
+        onReloadAiSettings={() => {
+          void runtime.loadAiSettings();
+        }}
+        onSaveAiSettings={(settings) => {
+          void runtime.saveAiSettings(settings);
+        }}
         llmCheckBusy={runtime.state.llmCheckBusy}
         llmCheckMessage={runtime.state.llmCheckMessage}
         onReload={() => {

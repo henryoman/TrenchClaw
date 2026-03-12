@@ -85,7 +85,7 @@ The runtime queue now uses embedded `bunqueue` with its own SQLite durability fi
   - creates missing tables
   - adds missing columns
   - creates missing indexes
-  - logs a compact schema snapshot for model/operator context
+  - logs a compact schema snapshot for model/runtime context
 
 ## Runtime file stores
 
@@ -116,7 +116,7 @@ All runtime log sinks are file-backed and write through a dedicated Bun worker q
 - Downloaded chart candles: `ohlcv_bars`
 - Latest computed market state: `market_snapshots`
 - Raw API cacheable responses: `http_cache`
-- Human-readable operator history: session/memory file stores
+- Human-readable runtime history: session/memory file stores
 
 ## Model query surface
 

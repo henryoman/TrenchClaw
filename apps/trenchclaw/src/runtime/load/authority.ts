@@ -2,6 +2,7 @@ const USER_PROTECTED_PATH_PREFIXES = [
   "wallet.dangerously",
   "trading.enabled",
   "trading.limits",
+  "trading.preferences",
   "trading.jupiter.ultra.allowExecutions",
   "trading.jupiter.trigger.allowExecutions",
   "trading.jupiter.trigger.allowCancellations",

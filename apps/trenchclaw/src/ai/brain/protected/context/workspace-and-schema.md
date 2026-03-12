@@ -71,7 +71,7 @@ apps/trenchclaw/
 |   |   |   |   |-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db
 |   |   |   |   |-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db-shm
 |   |   |   |   `-- trenchclaw-chat-runtime-a30c7ad9-3767-405e-b130-48f920e7a6e3.db-wal
-|   |   |   |-- instance-blockchain-settings/
+|   |   |   |-- instance-settings/
 |   |   |   |   |-- alerts.yaml
 |   |   |   |   |-- current-swap-config.json
 |   |   |   |   |-- settings.yaml
@@ -177,7 +177,7 @@ apps/trenchclaw/
 |   |   |   |   `-- solana-cli.md
 |   |   |   |-- protected/
 |   |   |   |   |-- agent-modes/
-|   |   |   |   |   |-- operator.md
+|   |   |   |   |   |-- primary.md
 |   |   |   |   |   `-- summarize-and-extract.md
 |   |   |   |   |-- context/
 |   |   |   |   |   `-- workspace-and-schema.md
@@ -198,7 +198,7 @@ apps/trenchclaw/
 |   |   |   |   |   `-- vault.template.json
 |   |   |   |   |-- system/
 |   |   |   |   |   |-- modes/
-|   |   |   |   |   |   `-- operator.md
+|   |   |   |   |   |   `-- primary.md
 |   |   |   |   |   |-- safety-modes/
 |   |   |   |   |   |   |-- dangerous.yaml
 |   |   |   |   |   |   |-- safe.yaml
@@ -250,10 +250,6 @@ apps/trenchclaw/
 |   |   |   |   |-- policy.ts
 |   |   |   |   |-- scheduler.ts
 |   |   |   |   `-- state.ts
-|   |   |   `-- index.ts
-|   |   |-- tools/
-|   |   |   |-- catalog.ts
-|   |   |   |-- chat-tools.ts
 |   |   |   `-- index.ts
 |   |   |-- index.ts
 |   |   `-- README.md

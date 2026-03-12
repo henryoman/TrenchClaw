@@ -351,7 +351,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: mutateInstanceMemoryAction,
     description: "Write instance-scoped profile fields and durable facts.",
-    purpose: "Store operator preferences and other persistent memory in the canonical runtime memory surface.",
+    purpose: "Store user preferences and other persistent memory in the canonical runtime memory surface.",
     tags: ["memory", "profile", "facts", "write"],
     exampleInput: {
       request: {

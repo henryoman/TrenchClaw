@@ -1,19 +1,19 @@
 version: 1
 defaults:
-  mode: operator
+  mode: primary
   includeKnowledgeManifest: true
   includeKnowledgeDirectoryTreeFallback: true
   includeWorkspaceDirectoryTree: true
 modes:
-  operator:
-    title: Operator Mode
+  primary:
+    title: Primary Mode
     sections:
       - kind: file
         title: Core System Prompt
         path: system.md
       - kind: file
-        title: Operator Mode Instructions
-        path: modes/operator.md
+        title: Primary Mode Instructions
+        path: modes/primary.md
       - kind: generated
         title: Runtime Capability Appendix
         source: runtimeCapabilityAppendix

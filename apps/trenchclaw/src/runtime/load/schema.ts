@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_TRADING_PREFERENCES, tradingPreferencesSchema } from "./trading-settings";
 
 const rpcEndpointSchema = z.object({
   name: z.string().min(1),
@@ -81,6 +82,7 @@ const tradingSchema = z.object({
   dexscreener: z.object({
     enabled: z.boolean(),
   }),
+  preferences: tradingPreferencesSchema.default(DEFAULT_TRADING_PREFERENCES),
 });
 
 const agentSchema = z.object({

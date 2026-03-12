@@ -9,6 +9,13 @@ export type DocListItem = {
 
 export type DocPage = DocListItem & {
   html: string;
+  headings: DocHeading[];
+};
+
+export type DocHeading = {
+  id: string;
+  text: string;
+  level: 2 | 3;
 };
 
 type FrontMatter = {
@@ -81,6 +88,57 @@ const normalizeOrder = (value: unknown): number => {
   return Number.MAX_SAFE_INTEGER;
 };
 
+const slugifyHeading = (value: string): string =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+
+const renderDocContent = (content: string): { html: string; headings: DocHeading[] } => {
+  const headings: DocHeading[] = [];
+  const headingCounts = new Map<string, number>();
+  const renderer = new marked.Renderer();
+
+  renderer.heading = ({ tokens, depth }) => {
+    const text = tokens
+      .map((token) => {
+        if ('text' in token && typeof token.text === 'string') {
+          return token.text;
+        }
+        if ('raw' in token && typeof token.raw === 'string') {
+          return token.raw;
+        }
+        return '';
+      })
+      .join('')
+      .trim();
+    if (depth !== 2 && depth !== 3) {
+      const fallbackId = slugifyHeading(text);
+      return `<h${depth}${fallbackId ? ` id="${fallbackId}"` : ''}>${text}</h${depth}>`;
+    }
+
+    const baseId = slugifyHeading(text) || 'section';
+    const seenCount = headingCounts.get(baseId) ?? 0;
+    headingCounts.set(baseId, seenCount + 1);
+    const id = seenCount === 0 ? baseId : `${baseId}-${seenCount + 1}`;
+    if (depth === 2) {
+      headings.push({
+        id,
+        text,
+        level: depth,
+      });
+    }
+    return `<h${depth} id="${id}">${text}</h${depth}>`;
+  };
+
+  return {
+    html: marked.parse(content, { renderer }) as string,
+    headings,
+  };
+};
+
 const parseDoc = (filePath: string, source: string): DocPage => {
   const slugMatch = filePath.match(/\/src\/content\/docs\/(.+)\.md$/);
   const slug = slugMatch?.[1];
@@ -92,13 +150,15 @@ const parseDoc = (filePath: string, source: string): DocPage => {
   const { data: frontMatter, content } = parseFrontMatter(source);
   const title = frontMatter.title?.trim() || headingFromContent(content) || titleFromSlug(slug);
   const description = frontMatter.description?.trim() || `Installation and usage guide for ${title}.`;
+  const rendered = renderDocContent(content);
 
   return {
     slug,
     title,
     description,
     order: normalizeOrder(frontMatter.order),
-    html: marked.parse(content) as string
+    html: rendered.html,
+    headings: rendered.headings,
   };
 };
 

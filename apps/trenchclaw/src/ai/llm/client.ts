@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
+import { loadAiSettings } from "./ai-settings-file";
 import { resolveLlmProviderConfig } from "./config";
 import { loadSystemPromptPayload } from "./prompt-loader";
 import type {
@@ -79,8 +80,8 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
       model,
       system,
       prompt: input.prompt,
-      maxOutputTokens: input.maxOutputTokens,
-      temperature: input.temperature,
+      maxOutputTokens: input.maxOutputTokens ?? config.defaultMaxOutputTokens ?? undefined,
+      temperature: input.temperature ?? config.defaultTemperature ?? undefined,
     });
 
     return toGenerateResult(result);
@@ -92,8 +93,8 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
       model,
       system,
       prompt: input.prompt,
-      maxOutputTokens: input.maxOutputTokens,
-      temperature: input.temperature,
+      maxOutputTokens: input.maxOutputTokens ?? config.defaultMaxOutputTokens ?? undefined,
+      temperature: input.temperature ?? config.defaultTemperature ?? undefined,
     });
 
     return toStreamResult(result);
@@ -114,11 +115,16 @@ export const createLlmClientFromEnv = async (): Promise<LlmClient | null> => {
   if (!providerConfig) {
     return null;
   }
-  const defaultPromptPayload = await loadSystemPromptPayload(process.env.TRENCHCLAW_AGENT_MODE);
+  const aiSettingsPayload = await loadAiSettings();
+  const defaultPromptPayload = await loadSystemPromptPayload(
+    process.env.TRENCHCLAW_AGENT_MODE ?? aiSettingsPayload.settings.defaultMode,
+  );
 
   return createLlmClient({
     ...providerConfig,
     defaultSystemPrompt: defaultPromptPayload.systemPrompt,
-    defaultMode: defaultPromptPayload.mode,
+    defaultMode: aiSettingsPayload.settings.defaultMode || defaultPromptPayload.mode,
+    defaultTemperature: aiSettingsPayload.settings.temperature,
+    defaultMaxOutputTokens: aiSettingsPayload.settings.maxOutputTokens,
   });
 };

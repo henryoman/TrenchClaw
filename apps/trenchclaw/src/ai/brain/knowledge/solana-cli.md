@@ -7,7 +7,7 @@ sidebar_position: 3
 # Solana CLI Quick Reference
 
 This note exists so the runtime model has direct local guidance for common
-Solana CLI operations. Treat the Solana CLI as the default operator toolchain
+Solana CLI operations. Treat the Solana CLI as the default local toolchain
 for local wallet inspection, config management, balance checks, airdrops, and
 transaction submission.
 
@@ -144,9 +144,9 @@ solana account <ADDRESS> --output json
 
 - Prefer `solana config get`, `solana address`, and `solana balance` before any
   transfer or signing flow.
-- Prefer devnet for testing unless the operator explicitly wants mainnet.
+- Prefer devnet for testing unless the user explicitly wants mainnet.
 - Do not assume the active RPC URL or keypair; verify them with `solana config get`.
-- Use the Solana CLI for operator checks and debugging even when runtime actions
+- Use the Solana CLI for direct checks and debugging even when runtime actions
   exist for the same domain.
 - Treat `solana-keygen` as part of the Solana CLI toolchain, not as a separate
   product dependency.

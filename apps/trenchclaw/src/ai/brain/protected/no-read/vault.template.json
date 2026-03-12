@@ -27,19 +27,13 @@
   },
   "llm": {
     "openrouter": {
-      "api-key": "",
-      "model": "stepfun/step-3.5-flash:free",
-      "base-url": "https://openrouter.ai/api/v1"
+      "api-key": ""
     },
     "openai": {
-      "api-key": "",
-      "model": "gpt-4.1-mini",
-      "base-url": ""
+      "api-key": ""
     },
     "openai-compatible": {
-      "api-key": "",
-      "model": "gpt-4.1-mini",
-      "base-url": ""
+      "api-key": ""
     },
     "gateway": {
       "api-key": "",

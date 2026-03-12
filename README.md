@@ -212,7 +212,7 @@ In this repo's environment (AI SDK orchestration + schema-first tools + Solana e
 - **AI SDK + Zod is a single control plane in TS.** The same schema object drives model-visible tool contracts and runtime validation. In Go/Rust stacks this is usually split across generated types, JSON schemas, and adapter layers, which increases mismatch risk.
 - **Fast guardrail iteration matters more than compile targets.** We frequently adjust tool descriptions, policy checks, confirmation gates, and schema constraints. TS lets these changes land in one place and ship quickly without regeneration/rebinding cycles.
 - **Wallet and execution safety are runtime-policy problems.** Confirmation requirements, amount/notional limits, allowlists, idempotency keys, decision traces, and policy block reasons all live in orchestration/runtime layers. That layer benefits most from TS-native schema + event tooling.
-- **Most Go/Rust "agent frameworks" optimize for infra shape, not operator safety UX.** They can be excellent for service performance, but often require extra custom work to match strict tool schemas, rich stream events, and interactive safety controls expected in trading/operator systems.
+- **Most Go/Rust "agent frameworks" optimize for infra shape, not execution-safety UX.** They can be excellent for service performance, but often require extra custom work to match strict tool schemas, rich stream events, and interactive safety controls expected in trading systems.
 
 Systems languages still fit extremely well behind strict boundaries (signing, parsing, deterministic execution, high-throughput services). They are usually not the fastest path for the orchestrator that must remain tightly coupled to AI SDK tool contracts and streaming UI behavior.
 
@@ -325,15 +325,15 @@ If you are evaluating Solana agent stacks today, the practical split is this: Tr
 | API style | Functional + composable | Framework/plugin driven | Framework/toolkit driven |
 | Tree-shaking | Strong (modular Kit packages) | Often weaker due to `Connection`-style clients | Often weaker due to broad utility bundles |
 | Type guarantees around tx composition | Strong compile-time checks in Kit pipeline | Depends on plugin quality | Depends on toolkit layer |
-| Runtime focus | Terminal-first operator runtime | Multi-platform agent framework | General AI-agent developer UX |
+| Runtime focus | Terminal-first local runtime | Multi-platform agent framework | General AI-agent developer UX |
 
 Why this matters:
 
 - `@solana/web3.js` v1 is in maintenance mode, while `@solana/kit` is the actively developed path forward from Anza.
 - Legacy web3.js-heavy integrations usually carry more historical baggage (polyfills, looser typing, larger utility surfaces).
-- TrenchClaw is optimized for production operator workflows (actions, routines, triggers, policies, and control-plane UX), not generic chatbot abstractions first.
+- TrenchClaw is optimized for production runtime workflows (actions, routines, triggers, policies, and control-plane UX), not generic chatbot abstractions first.
 
-**Bottom line:** if you want a Solana-native operator runtime with modern SDK foundations, TrenchClaw is purpose-built for that. If you want a broad agent framework with Solana as one plugin among many, ElizaOS/Agent Kit can fit — but the Solana layer is frequently still tied to older web3.js assumptions.
+**Bottom line:** if you want a Solana-native local runtime with modern SDK foundations, TrenchClaw is purpose-built for that. If you want a broad agent framework with Solana as one plugin among many, ElizaOS/Agent Kit can fit — but the Solana layer is frequently still tied to older web3.js assumptions.
 
 ### Cross-framework context (same benchmark source)
 
@@ -352,7 +352,7 @@ TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for runtime jobs, receipts,
 Schema is Zod-first and auto-synced on boot:
 - Row/table schema source of truth: `src/runtime/storage/sqlite-schema.ts`
 - Zod-to-SQL mapping + boot sync: `src/runtime/storage/sqlite-orm.ts`
-- Runtime prints a compact schema snapshot at boot for operator/model context
+- Runtime prints a compact schema snapshot at boot for runtime/model context
 
 Runtime log/data layout is split by purpose under `src/ai/brain/db/`:
 - `runtime/`: SQLite DB + runtime event files
@@ -377,7 +377,7 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Persists runtime state + chat history in Bun SQLite (restart-safe)
 - Auto-syncs SQLite schema from Zod table specs on boot (no manual version bump for additive changes)
 - Emits structured events on a typed bus consumed by CLI logs and future alerting
-- Exposes an operator control surface through the CLI
+- Exposes a runtime control surface through the CLI
 - Keeps agent knowledge (soul, rules, skills, outside context) in `src/ai/brain/`, loaded by orchestration in `src/ai/`
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
@@ -455,7 +455,7 @@ bun run gui:dev
 - [ ] Build full portfolio tracking (positions, cost basis, realized/unrealized PnL, exposure).
 - [ ] Expand risk controls (max size, slippage, drawdown, per-strategy limits).
 - [ ] Add alert delivery for runtime, strategy, and trade events.
-- [ ] Add operator control commands (pause, resume, kill switch, recovery).
+- [ ] Add runtime control commands (pause, resume, kill switch, recovery).
 - [ ] Add external API controls with auth, rate limits, and typed contracts.
 - [ ] Improve production secrets/key handling (secure loading and rotation).
 - [ ] Add storage maintenance tools (prune, compact, export/import, backup/restore verification).

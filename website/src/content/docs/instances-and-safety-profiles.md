@@ -71,6 +71,6 @@ The selected safety profile is stored on the instance, but the live runtime poli
 
 ## Notes
 
-- use separate instances when you want separate local operator contexts
+- use separate instances when you want separate local contexts
 - keep the instance profile JSON intact
 - do not treat directory-only recovery as a normal workflow

@@ -1,8 +1,25 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import type { Action } from 'svelte/action';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
+  type DocsTheme = 'dark' | 'light';
+
+  const DOCS_THEME_STORAGE_KEY = 'trenchclaw-docs-theme';
+  let theme = $state<DocsTheme>('dark');
+
+  onMount(() => {
+    const storedTheme = window.localStorage.getItem(DOCS_THEME_STORAGE_KEY);
+    if (storedTheme === 'dark' || storedTheme === 'light') {
+      theme = storedTheme;
+    }
+  });
+
+  const toggleTheme = (): void => {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    window.localStorage.setItem(DOCS_THEME_STORAGE_KEY, theme);
+  };
 
   const setCopiedState = (button: HTMLButtonElement): void => {
     button.textContent = 'Copied';
@@ -75,21 +92,24 @@
   <meta name="description" content={data.doc.description} />
 </svelte:head>
 
-<div class="docs-shell min-h-screen">
+<div class="docs-shell min-h-screen" data-docs-theme={theme}>
   <header class="docs-header">
     <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
       <a href="/" class="docs-logo">TrenchClaw Docs</a>
-      <nav class="flex items-center gap-4 text-sm">
+      <nav class="flex items-center gap-3 text-sm">
+        <button type="button" class="docs-theme-toggle" onclick={toggleTheme}>
+          {theme === 'dark' ? 'Light mode' : 'Dark mode'}
+        </button>
         <a class="docs-header-link" href="/docs">Docs Home</a>
         <a class="docs-header-link" href="/">Main Site</a>
       </nav>
     </div>
   </header>
 
-  <main class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-12">
+  <main class="mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)_220px] lg:gap-10">
     <aside class="hidden lg:block">
       <div class="docs-sidebar">
-        <p class="docs-sidebar-label">Guides</p>
+        <p class="docs-sidebar-label">Docs</p>
         <nav class="mt-2">
           {#each data.docs as doc (doc.slug)}
             <a
@@ -126,17 +146,30 @@
 
       <a href="/docs" class="docs-back-link">&larr; All docs</a>
       <div class="docs-article-shell mt-4">
-        <div class="docs-article-topbar">
-          <span class="terminal-dot"></span>
-          <span class="terminal-dot"></span>
-          <span class="terminal-dot"></span>
-          <span class="docs-article-title">{data.doc.title}</span>
-        </div>
         <article class="docs-content" use:copyCodeBlocks={data.doc.html}>
           <h1>{data.doc.title}</h1>
+          <p class="docs-lead">{data.doc.description}</p>
           {@html data.doc.html}
         </article>
       </div>
     </section>
+
+    <aside class="hidden lg:block">
+      {#if data.doc.headings.length > 0}
+        <div class="docs-toc">
+          <p class="docs-sidebar-label">On this page</p>
+          <nav class="mt-3">
+            {#each data.doc.headings as heading (`${heading.level}-${heading.id}`)}
+              <a
+                class={`docs-toc-link ${heading.level === 3 ? 'docs-toc-link-nested' : ''}`}
+                href={`#${heading.id}`}
+              >
+                {heading.text}
+              </a>
+            {/each}
+          </nav>
+        </div>
+      {/if}
+    </aside>
   </main>
 </div>

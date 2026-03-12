@@ -53,7 +53,7 @@
 
   const comparison = [
     { feature: 'Actions', current: 'Validated modules for on-chain and runtime tasks', prior: 'Reduces invalid execution' },
-    { feature: 'Routines', current: 'Automated flows for repeated operator work', prior: 'Keeps execution consistent across runs' },
+    { feature: 'Routines', current: 'Automated flows for repeated runtime work', prior: 'Keeps execution consistent across runs' },
     { feature: 'Storage', current: 'SQLite, JSONL sidecars, and protected filesystem paths', prior: 'Local state stays inspectable and durable' }
   ];
 </script>
@@ -83,12 +83,12 @@
     <div class="hero-grid pointer-events-none absolute inset-0 opacity-60"></div>
     <div class="relative mx-auto grid max-w-7xl items-start gap-12 lg:grid-cols-[1.1fr_minmax(0,0.9fr)]">
       <div class="max-w-3xl">
-        <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Operator runtime for Solana</p>
+        <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Local Solana runtime</p>
         <h1 class="mt-4 max-w-4xl text-6xl font-extrabold leading-[0.94] tracking-[-0.06em] text-balance md:text-8xl">
           The Solana-native AI assistant.
         </h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-foreground-soft">
-          TrenchClaw is a local Solana operator runtime with actions, wallets, routines, and a local GUI.
+          TrenchClaw is a local Solana runtime with actions, wallets, routines, and a local GUI.
         </p>
         <p class="mt-4 max-w-2xl text-sm leading-7 text-foreground-soft">
           The docs focus on what is actually shipped right now.
@@ -125,7 +125,7 @@
             <span class="terminal-dot"></span>
             <span class="terminal-dot"></span>
             <span class="terminal-dot"></span>
-            <span class="terminal-label ml-3">operator shell</span>
+            <span class="terminal-label ml-3">runtime shell</span>
           </div>
           <div class="terminal-body space-y-2 px-5 py-5">
             {#each terminalLines as line}
@@ -190,7 +190,7 @@
       <div class="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
           <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Principles</p>
-          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Built for operator control.</h2>
+          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Built for direct control.</h2>
         </div>
         <p class="max-w-xl text-sm leading-7 text-foreground-soft">
           Validated actions, policy checks, and local state make behavior easier to inspect when the agent is allowed to act.
@@ -253,8 +253,8 @@
     <div class="mx-auto max-w-7xl">
       <div class="mb-8 flex items-end justify-between gap-6">
         <div>
-          <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Operator dashboard</p>
-          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Operator dashboard</h2>
+          <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Runtime dashboard</p>
+          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Runtime dashboard</h2>
         </div>
       </div>
 
@@ -265,7 +265,7 @@
           <span class="terminal-dot"></span>
           <span class="terminal-label ml-3">dashboard</span>
         </div>
-        <img src="/ui.png" alt="TrenchClaw operator dashboard" class="w-full object-cover" width="1024" height="780" />
+        <img src="/ui.png" alt="TrenchClaw runtime dashboard" class="w-full object-cover" width="1024" height="780" />
       </div>
     </div>
   </section>
@@ -274,7 +274,7 @@
     <div class="mx-auto flex max-w-7xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
       <div>
         <p class="text-sm font-semibold tracking-[-0.02em]">TrenchClaw</p>
-        <p class="mt-1 text-sm text-muted">Bun runtime, Solana operator tooling, and local-first state.</p>
+        <p class="mt-1 text-sm text-muted">Bun runtime, Solana tooling, and local-first state.</p>
       </div>
       <div class="flex gap-6 text-sm text-muted">
         <a href="/docs" class="transition-colors hover:text-foreground">Docs</a>

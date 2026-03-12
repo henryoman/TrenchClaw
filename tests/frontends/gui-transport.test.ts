@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { rm } from "node:fs/promises";
 import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
@@ -320,6 +321,56 @@ describe("Runtime v1 API", () => {
       } else {
         process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = previous;
       }
+    }
+  });
+
+  test("GET and PUT /api/gui/ai-settings round-trip ai.json settings", async () => {
+    const target = `/tmp/trenchclaw-ai-settings-${crypto.randomUUID()}.json`;
+    const previous = process.env.TRENCHCLAW_AI_SETTINGS_FILE;
+    process.env.TRENCHCLAW_AI_SETTINGS_FILE = target;
+    try {
+      const runtime = buildRuntime();
+      const transport = new RuntimeGuiTransport(runtime);
+      const handler = transport.createApiHandler();
+
+      const initialResponse = await handler(new Request("http://localhost/api/gui/ai-settings", { method: "GET" }));
+      expect(initialResponse.status).toBe(200);
+      const initialPayload = (await initialResponse.json()) as {
+        filePath: string;
+        settings: { provider: string; model: string };
+      };
+      expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
+      expect(initialPayload.settings.provider).toBe("openrouter");
+
+      const updateResponse = await handler(new Request("http://localhost/api/gui/ai-settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            provider: "openai-compatible",
+            model: "vendor/model",
+            baseURL: "https://llm.example.com/v1",
+            defaultMode: "primary",
+            temperature: 0.4,
+            maxOutputTokens: 2048,
+          },
+        }),
+      }));
+      expect(updateResponse.status).toBe(200);
+      const updatePayload = (await updateResponse.json()) as {
+        settings: { provider: string; model: string; baseURL: string; maxOutputTokens: number | null };
+      };
+      expect(updatePayload.settings.provider).toBe("openai-compatible");
+      expect(updatePayload.settings.model).toBe("vendor/model");
+      expect(updatePayload.settings.baseURL).toBe("https://llm.example.com/v1");
+      expect(updatePayload.settings.maxOutputTokens).toBe(2048);
+    } finally {
+      if (previous === undefined) {
+        delete process.env.TRENCHCLAW_AI_SETTINGS_FILE;
+      } else {
+        process.env.TRENCHCLAW_AI_SETTINGS_FILE = previous;
+      }
+      await rm(target, { force: true });
     }
   });
 });

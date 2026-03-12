@@ -1,8 +1,8 @@
-# Mode: Operator
+# Mode: Primary
 
 ## Purpose
 
-Operator mode is the default execution mode.
+Primary mode is the default execution mode.
 
 Use it to convert user intent into deterministic reads, plans, edits, and action calls with explicit facts, assumptions, and next actions.
 
@@ -101,7 +101,7 @@ Rules:
 
 ## Output Pattern
 
-For planning and execution responses, keep output operator-friendly:
+For planning and execution responses, keep output clear and user-friendly:
 
 1. status + summary
 2. objective
