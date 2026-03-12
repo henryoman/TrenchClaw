@@ -11,6 +11,7 @@ import type {
 import {
   assertInstanceSystemWritePath,
 } from "../../security/write-scope";
+import { ensureInstanceLayout } from "../../instance-layout";
 import { persistActiveInstance } from "../../instance-state";
 import { INSTANCE_DIRECTORY } from "../constants";
 import { isRecord } from "../parsers";
@@ -202,6 +203,7 @@ export const createInstance = async (
   assertInstanceSystemWritePath(nextInstanceFilePath, "write instance profile");
   await mkdir(path.dirname(nextInstanceFilePath), { recursive: true });
   await writeFile(nextInstanceFilePath, `${JSON.stringify(document, null, 2)}\n`, "utf8");
+  await ensureInstanceLayout(localInstanceId);
   const instance = toInstanceView(fileName, document);
   context.setActiveInstance(instance);
   context.setActiveChatId(null);
@@ -230,6 +232,7 @@ export const signInInstance = async (
   }
 
   const instance = toInstanceView(target.fileName, target.document);
+  await ensureInstanceLayout(instance.localInstanceId);
   context.setActiveInstance(instance);
   context.setActiveChatId(null);
   await persistActiveInstance(instance);

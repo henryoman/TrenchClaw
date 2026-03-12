@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -122,6 +122,8 @@ describe("instance discovery", () => {
 
     expect(result.listed.instances).toHaveLength(0);
     expect(result.created.instance.localInstanceId).toBe("01");
+    expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
+    expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
   });
 
   test("lists and signs into a persisted instance profile", async () => {
@@ -162,6 +164,8 @@ describe("instance discovery", () => {
     expect(result.signedIn.instance.localInstanceId).toBe("01");
     expect(result.signedIn.instance.name).toBe("test");
     expect(result.activeInstanceId).toBe("01");
+    expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
+    expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
   });
 
   test("does not sign into a directory-only instance", async () => {
