@@ -12,6 +12,7 @@
     activeConversationId?: string | null;
     sending?: boolean;
     chatDisabledReason?: string;
+    runtimeError?: string;
     onSelectConversation: (conversationId: string) => void;
     onCreateConversation: () => void;
     onSubmit: () => void;
@@ -24,6 +25,7 @@
     activeConversationId = null,
     sending = false,
     chatDisabledReason = "",
+    runtimeError = "",
     onSelectConversation,
     onCreateConversation,
     onSubmit,
@@ -413,6 +415,10 @@
     <p class="chat-disabled">{chatDisabledReason}</p>
   {/if}
 
+  {#if runtimeError.trim().length > 0}
+    <p class="chat-runtime-error">{runtimeError}</p>
+  {/if}
+
   <form
     class="chat-form"
     onsubmit={(event) => {
@@ -760,6 +766,15 @@
     padding: var(--tc-space-2) var(--tc-space-3);
     font-size: 0.72rem;
     text-transform: uppercase;
+    letter-spacing: var(--tc-sidebar-letter-spacing);
+  }
+
+  .chat-runtime-error {
+    margin: 0;
+    border-top: var(--tc-border-muted);
+    color: var(--tc-color-red);
+    padding: var(--tc-space-2) var(--tc-space-3);
+    font-size: 0.72rem;
     letter-spacing: var(--tc-sidebar-letter-spacing);
   }
 

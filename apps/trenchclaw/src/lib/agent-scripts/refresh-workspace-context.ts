@@ -1,16 +1,10 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Database } from "bun:sqlite";
 
-import { loadRuntimeSettings } from "../../runtime/load";
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import {
-  getRuntimeCapabilitySnapshot,
-  renderRuntimeActionCatalogTable,
-  renderRuntimeChatToolCatalogTable,
-} from "../../runtime/capabilities";
 import { RUNTIME_DB_ROOT, RUNTIME_GENERATED_ROOT } from "../../runtime/runtime-paths";
 
 const APP_ROOT_DIR = fileURLToPath(new URL("../../../", import.meta.url));
@@ -33,45 +27,6 @@ const OMITTED_DIR_NAMES = new Set([
   "build",
   "coverage",
 ]);
-
-type TreeEntry = { name: string; isDirectory: boolean };
-
-const sortEntries = (a: TreeEntry, b: TreeEntry): number => {
-  if (a.isDirectory !== b.isDirectory) {
-    return a.isDirectory ? -1 : 1;
-  }
-  return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
-};
-
-const buildTree = async (rootPath: string, rootLabel?: string): Promise<string> => {
-  const { readdir } = await import("node:fs/promises");
-  const walk = async (dirPath: string, prefix: string): Promise<string[]> => {
-    const entries = (await readdir(dirPath, { withFileTypes: true }))
-      .filter((entry) => !OMITTED_DIR_NAMES.has(entry.name))
-      .map((entry) => ({ name: entry.name, isDirectory: entry.isDirectory() }))
-      .toSorted(sortEntries);
-
-    const renderedEntries = await Promise.all(
-      entries.map(async (entry, index) => {
-        const isLast = index === entries.length - 1;
-        const connector = isLast ? "`-- " : "|-- ";
-        const nextPrefix = prefix + (isLast ? "    " : "|   ");
-        const rendered = [`${prefix}${connector}${entry.isDirectory ? `${entry.name}/` : entry.name}`];
-
-        if (entry.isDirectory) {
-          rendered.push(...(await walk(join(dirPath, entry.name), nextPrefix)));
-        }
-
-        return rendered;
-      }),
-    );
-
-    return renderedEntries.flat();
-  };
-
-  const lines = [`${rootLabel ?? basename(rootPath)}/`, ...(await walk(rootPath, ""))];
-  return lines.join("\n");
-};
 
 const normalizeSqlStatement = (statement: string): string => {
   const trimmed = statement.trim();
@@ -152,6 +107,16 @@ const toMarkdownTable = (headers: string[], rows: string[][]): string => {
   return [headerLine, dividerLine, body].filter((line) => line.length > 0).join("\n");
 };
 
+const renderImportantWorkspacePaths = (): string =>
+  [
+    "- `apps/trenchclaw/src/ai/config/`",
+    "- `apps/trenchclaw/src/ai/llm/`",
+    "- `apps/trenchclaw/src/runtime/`",
+    "- `apps/trenchclaw/src/solana/`",
+    "- `apps/trenchclaw/.runtime-state/generated/knowledge-manifest.md`",
+    `- \`apps/trenchclaw/${relative(APP_ROOT_DIR, join(RUNTIME_DB_ROOT, "runtime.sqlite"))}\``,
+  ].join("\n");
+
 const getGuiApiRoutesTable = async (): Promise<string> => {
   const source = await readFile(GUI_TRANSPORT_FILE, "utf8");
   const matches = source.matchAll(/pathname\s*===\s*"([^"]+)"/g);
@@ -164,15 +129,11 @@ const getGuiApiRoutesTable = async (): Promise<string> => {
 
 export const refreshWorkspaceContext = async (): Promise<string[]> => {
   const generatedAt = new Date().toISOString();
-  const runtimeSettings = await loadRuntimeSettings();
-  const capabilitySnapshot = getRuntimeCapabilitySnapshot(runtimeSettings);
-  const sourceTree = await buildTree(APP_ROOT_DIR, CONTEXT_ROOT_LABEL);
   const sqliteSchemaSnapshot = getSqliteSchemaSnapshot();
   const canonicalSchemaSql = getCanonicalSchemaSqlDump();
   const liveSchemaSql = await getLiveSchemaSqlDump();
-  const runtimeActionCatalogTable = renderRuntimeActionCatalogTable(capabilitySnapshot);
-  const runtimeChatToolCatalogTable = renderRuntimeChatToolCatalogTable(capabilitySnapshot);
   const guiApiRoutesTable = await getGuiApiRoutesTable();
+  const importantWorkspacePaths = renderImportantWorkspacePaths();
 
   const markdown = `# Workspace Context Snapshot
 
@@ -182,19 +143,15 @@ Root: ${CONTEXT_ROOT_LABEL}/
 This file is generated. Refresh with:
 \`bun run context:refresh\`
 
-## Workspace Map (${CONTEXT_ROOT_LABEL}/)
-\`\`\`text
-# WORKSPACE ROOT: ${CONTEXT_ROOT_LABEL}/
-${sourceTree}
-\`\`\`
+## Workspace Scope
+This file intentionally omits the full directory tree to avoid prompt bloat.
 
-Omitted generated/vendor directories: ${Array.from(OMITTED_DIR_NAMES).join(", ")}
+Use \`.runtime-state/generated/knowledge-manifest.md\` for documentation inventory and workspace tools for exact path discovery.
 
-## Runtime Action Catalog (Generated)
-${runtimeActionCatalogTable}
+Important paths:
+${importantWorkspacePaths}
 
-## Runtime Chat Tool Catalog (Generated)
-${runtimeChatToolCatalogTable}
+Omitted generated/vendor directories if a tree is requested elsewhere: ${Array.from(OMITTED_DIR_NAMES).join(", ")}
 
 ## GUI API Route Catalog (Generated)
 ${guiApiRoutesTable}

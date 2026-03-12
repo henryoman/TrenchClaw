@@ -3,12 +3,12 @@ import { rm } from "node:fs/promises";
 import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
-import { RuntimeGuiTransport } from "../../apps/trenchclaw/src/runtime/gui-transport";
+import { RuntimeGuiTransport } from "../../apps/trenchclaw/src/runtime/gui-transport/runtime-gui-transport";
 
 const buildRuntime = (input?: {
   streamImpl?: (
     messages: UIMessage[],
-    options?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
+    options?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
   ) => Promise<Response>;
 }): RuntimeBootstrap => {
   const stateStore = new InMemoryStateStore();
@@ -77,12 +77,14 @@ describe("Runtime v1 API", () => {
     let callCount = 0;
     let capturedHeaders: HeadersInit | undefined;
     let capturedChatId: string | undefined;
+    let capturedAbortSignal: AbortSignal | undefined;
 
     const runtime = buildRuntime({
       streamImpl: async (_messages, options) => {
         callCount += 1;
         capturedHeaders = options?.headers;
         capturedChatId = options?.chatId;
+        capturedAbortSignal = options?.abortSignal;
         return new Response("event: done\ndata: [DONE]\n\n", {
           status: 200,
           headers: { "content-type": "text/event-stream" },
@@ -92,20 +94,20 @@ describe("Runtime v1 API", () => {
     const transport = new RuntimeGuiTransport(runtime);
     const handler = transport.createApiHandler();
 
-    const response = await handler(
-      new Request("http://localhost/v1/chat/stream", {
+    const request = new Request("http://localhost/v1/chat/stream", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", parts: [{ type: "text", text: "hello" }] }],
           chatId: "chat-v1-1",
         }),
-      }),
-    );
+      });
+    const response = await handler(request);
 
     expect(response.status).toBe(200);
     expect(callCount).toBe(1);
     expect(capturedChatId).toBe("chat-v1-1");
+    expect(capturedAbortSignal).toBe(request.signal);
     const headers = new Headers(capturedHeaders);
     expect(headers.get("access-control-allow-origin")).toBe("*");
   });
@@ -127,57 +129,6 @@ describe("Runtime v1 API", () => {
     const payload = (await response.json()) as { error: { code: string; message: string } };
     expect(payload.error.code).toBe("invalid_payload");
     expect(payload.error.message).toContain("Invalid chat payload");
-  });
-
-  test("POST /v1/chat/turn returns the final assistant message", async () => {
-    const runtime = buildRuntime({
-      streamImpl: async (_messages, options) => {
-        const chatId = options?.chatId ?? "chat-default";
-        const now = Date.now();
-        runtime.stateStore.saveConversation({
-          id: chatId,
-          createdAt: now,
-          updatedAt: now,
-        });
-        runtime.stateStore.saveChatMessage({
-          id: `msg-${chatId}-1`,
-          conversationId: chatId,
-          role: "user",
-          content: "hello",
-          createdAt: now,
-        });
-        runtime.stateStore.saveChatMessage({
-          id: `msg-${chatId}-2`,
-          conversationId: chatId,
-          role: "assistant",
-          content: "hi there",
-          createdAt: now + 1,
-        });
-        return new Response("event: done\ndata: [DONE]\n\n", {
-          status: 200,
-          headers: { "content-type": "text/event-stream" },
-        });
-      },
-    });
-
-    const transport = new RuntimeGuiTransport(runtime);
-    const handler = transport.createApiHandler();
-    const response = await handler(
-      new Request("http://localhost/v1/chat/turn", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", parts: [{ type: "text", text: "hello" }] }],
-          chatId: "chat-turn-1",
-        }),
-      }),
-    );
-
-    expect(response.status).toBe(200);
-    const payload = (await response.json()) as { chatId: string; message: UIMessage; messages: UIMessage[] };
-    expect(payload.chatId).toBe("chat-turn-1");
-    expect(payload.message.role).toBe("assistant");
-    expect(payload.messages.length).toBeGreaterThan(0);
   });
 
   test("GET /v1/health and /v1/runtime are available", async () => {
@@ -239,24 +190,6 @@ describe("Runtime v1 API", () => {
 
     abortController.abort();
     await reader.cancel();
-  });
-
-  test("legacy /api chat route is available", async () => {
-    const runtime = buildRuntime();
-    const transport = new RuntimeGuiTransport(runtime);
-    const handler = transport.createApiHandler();
-
-    const response = await handler(
-      new Request("http://localhost/api/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          messages: [{ role: "user", parts: [{ type: "text", text: "hello" }] }],
-          chatId: "legacy-chat-1",
-        }),
-      }),
-    );
-    expect(response.status).toBe(200);
   });
 
   test("GET /api/gui/schedule returns upcoming recurring jobs", async () => {

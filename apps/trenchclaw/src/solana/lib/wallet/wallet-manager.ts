@@ -1,4 +1,4 @@
-import { appendFile, copyFile, mkdir, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { RuntimeActor } from "../../../ai/runtime/types/context";
@@ -219,58 +219,10 @@ export const resolveWalletGroupDirectoryPath = (walletGroup: string): string => 
   return groupDirectoryPath;
 };
 
-export const resolveLegacyWalletLibraryFilePath = (): string =>
-  path.join(resolveWalletInstanceRootPath(), DEFAULT_WALLET_LIBRARY_FILE_NAME);
-
 export const resolveWalletLibraryFilePath = (): string => {
   const absolutePath = resolveAbsolutePath(resolveConfiguredWalletLibraryPath() ?? resolveDefaultWalletLibraryFilePath());
   assertWithinBrainProtectedDirectory(absolutePath);
   return absolutePath;
-};
-
-export const resolveReadableWalletLibraryFilePath = async (): Promise<string> => {
-  const configuredPath = resolveConfiguredWalletLibraryPath();
-  const preferredPath = resolveWalletLibraryFilePath();
-  if (configuredPath) {
-    return preferredPath;
-  }
-
-  if (await Bun.file(preferredPath).exists()) {
-    return preferredPath;
-  }
-
-  const legacyPath = resolveLegacyWalletLibraryFilePath();
-  if (await Bun.file(legacyPath).exists()) {
-    return legacyPath;
-  }
-
-  return preferredPath;
-};
-
-export const migrateLegacyWalletLibraryIfNeeded = async (): Promise<string> => {
-  const preferredPath = resolveWalletLibraryFilePath();
-  if (resolveConfiguredWalletLibraryPath()) {
-    return preferredPath;
-  }
-
-  const legacyPath = resolveLegacyWalletLibraryFilePath();
-  if (legacyPath === preferredPath) {
-    return preferredPath;
-  }
-
-  if (await Bun.file(preferredPath).exists() || !(await Bun.file(legacyPath).exists())) {
-    return preferredPath;
-  }
-
-  await mkdir(path.dirname(preferredPath), { recursive: true });
-  try {
-    await rename(legacyPath, preferredPath);
-  } catch {
-    await copyFile(legacyPath, preferredPath);
-    await unlink(legacyPath).catch(() => {});
-  }
-
-  return preferredPath;
 };
 
 export const isWalletLabelFileName = (fileName: string): boolean =>
@@ -294,7 +246,7 @@ export const readManagedWalletLibraryEntries = async (input?: {
   entries: ManagedWalletLibraryEntry[];
   invalidLineCount: number;
 }> => {
-  const filePath = input?.filePath ?? await resolveReadableWalletLibraryFilePath();
+  const filePath = input?.filePath ?? resolveWalletLibraryFilePath();
   const file = Bun.file(filePath);
   if (!(await file.exists())) {
     if (input?.allowMissing) {

@@ -1,6 +1,6 @@
 import {
   readManagedWalletLibraryEntries,
-  resolveReadableWalletLibraryFilePath,
+  resolveWalletLibraryFilePath,
 } from "../solana/lib/wallet/wallet-manager";
 import {
   DEFAULT_WALLET_LIBRARY_FILE_NAME,
@@ -48,7 +48,7 @@ export const renderRuntimeWalletPromptContext = async (
 No active wallet instance is selected, so no wallet variables are loaded for this turn.`;
   }
 
-  const walletLibraryFilePath = input.walletLibraryFilePath ?? await resolveReadableWalletLibraryFilePath();
+  const walletLibraryFilePath = input.walletLibraryFilePath ?? resolveWalletLibraryFilePath();
   const walletLibraryContractPath = toRuntimeContractRelativePath(walletLibraryFilePath);
   const walletLibraryFile = Bun.file(walletLibraryFilePath);
   if (!(await walletLibraryFile.exists())) {

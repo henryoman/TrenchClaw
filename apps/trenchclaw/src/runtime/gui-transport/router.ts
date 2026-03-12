@@ -1,5 +1,4 @@
 import { CORS_HEADERS } from "./constants";
-import type { UIMessage } from "ai";
 import type { RuntimeGuiDomainContext } from "./contracts";
 import {
   parseUpdateAiSettingsRequest,
@@ -30,69 +29,6 @@ const toErrorPayloadV1 = (code: string, message: string, details?: unknown): { e
 });
 const jsonWithCors = (payload: unknown, status = 200): Response => Response.json(payload, { status, headers: CORS_HEADERS });
 
-const extractLastAssistantMessage = (messages: UIMessage[]): UIMessage | null => {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (message?.role === "assistant") {
-      return message;
-    }
-  }
-  return null;
-};
-
-const toUiMessagesFromStore = (context: RuntimeGuiDomainContext, conversationId: string): UIMessage[] =>
-  context.runtime.stateStore
-    .listChatMessages(conversationId, 10_000)
-    .filter((message): message is typeof message & { role: "assistant" | "system" | "user" } => message.role !== "tool")
-    .map((message) => ({
-      id: message.id,
-      role: message.role,
-      parts: [{ type: "text", text: message.content }],
-    }));
-
-const runChatTurn = async (
-  context: RuntimeGuiDomainContext,
-  input: { messages: UIMessage[]; chatId?: string; conversationTitle?: string },
-): Promise<{ chatId: string; message: UIMessage; messages: UIMessage[] }> => {
-  const response = await streamChat(context, input.messages, {
-    chatId: input.chatId,
-    conversationTitle: input.conversationTitle,
-  });
-  if (!response.ok) {
-    throw new Error(`Chat turn failed with status ${response.status}`);
-  }
-
-  await response.text();
-
-  const chatId = input.chatId?.trim() || context.getActiveChatId() || context.resolveDefaultChatId();
-  const finalMessages = toUiMessagesFromStore(context, chatId);
-  const assistantMessage = extractLastAssistantMessage(finalMessages);
-  if (!assistantMessage) {
-    throw new Error("Model returned no assistant message");
-  }
-
-  return {
-    chatId,
-    message: assistantMessage,
-    messages: finalMessages,
-  };
-};
-
-const toErrorPayload = (error: unknown): Record<string, unknown> => {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-      stack: error.stack ?? null,
-      cause:
-        error.cause instanceof Error
-          ? { name: error.cause.name, message: error.cause.message, stack: error.cause.stack ?? null }
-          : error.cause ?? null,
-    };
-  }
-  return { value: error };
-};
-
 export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request: Request) => Promise<Response>) => {
   return async (request: Request) => {
     const verboseApiLogs = process.env.TRENCHCLAW_API_LOGS === "1";
@@ -113,7 +49,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
     if (
       request.method === "OPTIONS" &&
-      (url.pathname.startsWith("/api/gui/") || url.pathname === "/api/chat" || url.pathname.startsWith("/v1/"))
+      (url.pathname.startsWith("/api/gui/") || url.pathname.startsWith("/v1/"))
     ) {
       return logResponse(new Response(null, {
         status: 204,
@@ -148,54 +84,12 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
         return logResponse(await streamChat(context, payload.messages, {
           chatId: payload.chatId,
           conversationTitle: payload.conversationTitle,
+          abortSignal: request.signal,
         }));
       } catch (error) {
         const message = toErrorMessage(error);
         context.addActivity("runtime", `Chat stream failed: ${message}`);
         return logResponse(jsonWithCors(toErrorPayloadV1("runtime_error", message), 500));
-      }
-    }
-
-    if (request.method === "POST" && url.pathname === "/v1/chat/turn") {
-      const payload = await parseUiChatRequest(request);
-      if (!payload) {
-        return logResponse(jsonWithCors(toErrorPayloadV1("invalid_payload", "Invalid chat payload"), 400));
-      }
-
-      try {
-        const result = await runChatTurn(context, payload);
-        return logResponse(
-          jsonWithCors({
-            chatId: result.chatId,
-            message: result.message,
-            messages: result.messages,
-          }),
-        );
-      } catch (error) {
-        const message = toErrorMessage(error);
-        context.addActivity("runtime", `Chat turn failed: ${message}`);
-        return logResponse(jsonWithCors(toErrorPayloadV1("runtime_error", message), 500));
-      }
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/chat") {
-      const payload = await parseUiChatRequest(request);
-      if (!payload) {
-        return logResponse(Response.json({ error: "Invalid chat payload" }, { status: 400, headers: CORS_HEADERS }));
-      }
-      console.log(
-        `[api] [${requestId}] chat payload messages=${payload.messages.length} chatId=${payload.chatId ?? "auto"} title=${payload.conversationTitle ?? "n/a"}`,
-      );
-
-      try {
-        return logResponse(await streamChat(context, payload.messages, {
-          chatId: payload.chatId,
-          conversationTitle: payload.conversationTitle,
-        }));
-      } catch (error) {
-        context.addActivity("runtime", `Chat failed: ${toErrorMessage(error)}`);
-        console.error("[api/chat] stream failed", toErrorPayload(error));
-        return logResponse(Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS }));
       }
     }
 

@@ -8,8 +8,8 @@ import {
   resolveAbsolutePath,
 } from "../../../lib/wallet/protected-write-policy";
 import {
-  migrateLegacyWalletLibraryIfNeeded,
   readManagedWalletLibraryEntries,
+  resolveWalletLibraryFilePath,
   resolveWalletLabelFilePath,
   rewriteManagedWalletLibraryEntries,
 } from "../../../lib/wallet/wallet-manager";
@@ -103,7 +103,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
 
     try {
       const input = renameWalletsInputSchema.parse(rawInput);
-      const walletLibraryFilePath = await migrateLegacyWalletLibraryIfNeeded();
+      const walletLibraryFilePath = resolveWalletLibraryFilePath();
       assertWithinBrainProtectedDirectory(walletLibraryFilePath);
       await assertProtectedWriteAllowed({
         actor: _ctx.actor,

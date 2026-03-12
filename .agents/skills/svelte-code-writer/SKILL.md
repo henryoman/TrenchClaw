@@ -31,30 +31,20 @@ Retrieves full documentation for specified sections. Use after `list-sections` t
 npx @sveltejs/mcp get-documentation "$state,$derived,$effect"
 ```
 
-### Svelte Autofixer
+### Validation
+
+Do not use `svelte-autofixer` in this repo.
+
+Use project validation commands instead:
 
 ```bash
-npx @sveltejs/mcp svelte-autofixer "<code_or_path>" [options]
-```
+# GUI workspace
+bun run --cwd apps/frontends/gui typecheck
+bun run --cwd apps/frontends/gui lint
 
-Analyzes Svelte code and suggests fixes for common issues.
-
-**Options:**
-
-- `--async` - Enable async Svelte mode (default: false)
-- `--svelte-version` - Target version: 4 or 5 (default: 5)
-
-**Examples:**
-
-```bash
-# Analyze inline code (escape $ as \$)
-npx @sveltejs/mcp svelte-autofixer '<script>let count = \$state(0);</script>'
-
-# Analyze a file
-npx @sveltejs/mcp svelte-autofixer ./src/lib/Component.svelte
-
-# Target Svelte 4
-npx @sveltejs/mcp svelte-autofixer ./Component.svelte --svelte-version 4
+# Website workspace
+bun run --cwd website typecheck
+bun run --cwd website lint
 ```
 
 **Important:** When passing code with runes (`$state`, `$derived`, etc.) via the terminal, escape the `$` character as `\$` to prevent shell variable substitution.
@@ -62,5 +52,5 @@ npx @sveltejs/mcp svelte-autofixer ./Component.svelte --svelte-version 4
 ## Workflow
 
 1. **Uncertain about syntax?** Run `list-sections` then `get-documentation` for relevant topics
-2. **Reviewing/debugging?** Run `svelte-autofixer` on the code to detect issues
-3. **Always validate** - Run `svelte-autofixer` before finalizing any Svelte component
+2. **Reviewing/debugging?** Read the component carefully and use repo lint/typecheck commands
+3. **Always validate** - Run the relevant workspace `typecheck` and `lint` commands before finalizing any Svelte component

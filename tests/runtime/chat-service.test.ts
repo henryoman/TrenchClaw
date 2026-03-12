@@ -287,6 +287,12 @@ describe("RuntimeChatService", () => {
 
   test("preserves assistant role/history when preparing streaming messages", async () => {
     const registry = new ActionRegistry();
+    registry.register({
+      name: "echo",
+      category: "data-based",
+      inputSchema: z.object({ value: z.number() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
     let capturedMessages: UIMessage[] = [];
 
     const service = createRuntimeChatService(
@@ -328,19 +334,30 @@ describe("RuntimeChatService", () => {
       {
         id: "assistant-1",
         role: "assistant",
-        parts: [{ type: "text", text: "calling tool now" }],
+        parts: [
+          { type: "tool-echo", toolCallId: "tool-call-1", state: "output-available", input: { value: 42 }, output: { ok: true } },
+          { type: "text", text: "calling tool now" },
+        ] as UIMessage["parts"],
       },
     ]);
 
     expect(capturedMessages).toHaveLength(2);
     expect(capturedMessages[0]?.role).toBe("user");
     expect(capturedMessages[1]?.role).toBe("assistant");
-    expect(capturedMessages[1]?.parts[0]).toEqual({ type: "text", text: "calling tool now" });
+    expect(capturedMessages[1]?.parts[0]).toEqual({
+      type: "tool-echo",
+      toolCallId: "tool-call-1",
+      state: "output-available",
+      input: { value: 42 },
+      output: { ok: true },
+    });
   });
 
-  test("requests reasoning parts in streamed UI messages", async () => {
+  test("configures abort-safe streamed UI responses", async () => {
     const registry = new ActionRegistry();
-    let capturedSendReasoning: boolean | undefined;
+    let capturedConsumeSseStream: unknown;
+    let capturedGenerateMessageId: (() => string) | undefined;
+    let capturedOriginalMessages: UIMessage[] | undefined;
 
     const service = createRuntimeChatService(
       {
@@ -364,8 +381,14 @@ describe("RuntimeChatService", () => {
         resolveStreamingModel: () => ({}) as never,
         convertToModelMessages: async () => [],
         streamText: (() => ({
-          toUIMessageStreamResponse: (options?: { sendReasoning?: boolean }) => {
-            capturedSendReasoning = options?.sendReasoning;
+          toUIMessageStreamResponse: (options?: {
+            consumeSseStream?: unknown;
+            generateMessageId?: () => string;
+            originalMessages?: UIMessage[];
+          }) => {
+            capturedConsumeSseStream = options?.consumeSseStream;
+            capturedGenerateMessageId = options?.generateMessageId;
+            capturedOriginalMessages = options?.originalMessages;
             return new Response("ok");
           },
         })) as never,
@@ -380,7 +403,10 @@ describe("RuntimeChatService", () => {
       },
     ]);
 
-    expect(capturedSendReasoning).toBe(true);
+    expect(typeof capturedConsumeSseStream).toBe("function");
+    expect(typeof capturedGenerateMessageId).toBe("function");
+    expect(capturedGenerateMessageId?.()).toMatch(/^msg-/);
+    expect(capturedOriginalMessages).toHaveLength(1);
   });
 
   test("creates and persists conversation/messages from streamed chat", async () => {
@@ -532,6 +558,92 @@ describe("RuntimeChatService", () => {
     expect(assistant?.metadata?.uiParts).toEqual([
       { type: "reasoning", text: "Inspecting wallet state", state: "done" },
       { type: "text", text: "Wallet state inspected." },
+    ]);
+  });
+
+  test("persists tool-only assistant messages for replay", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "echo",
+      category: "data-based",
+      inputSchema: z.object({ value: z.number() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+    const stateStore = new InMemoryStateStore();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStreamResponse: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) => {
+            const assistantMessage: UIMessage = {
+              id: "assistant-tool-only-1",
+              role: "assistant",
+              parts: [
+                {
+                  type: "tool-echo",
+                  toolCallId: "tool-only-call-1",
+                  state: "output-available",
+                  input: { value: 7 },
+                  output: { echoed: 7 },
+                },
+              ] as UIMessage["parts"],
+            };
+            const original = options?.originalMessages ?? [];
+            options?.onFinish?.({
+              messages: [...original, assistantMessage],
+              isContinuation: false,
+              isAborted: false,
+              responseMessage: assistantMessage,
+              finishReason: "stop",
+            });
+            return new Response("ok");
+          },
+        })) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "user-tool-only-1",
+          role: "user",
+          parts: [{ type: "text", text: "run the echo tool" }],
+        },
+      ],
+      { chatId: "chat-tool-only-1" },
+    );
+
+    const assistant = stateStore.listChatMessages("chat-tool-only-1", 10).find((message) => message.role === "assistant");
+    expect(assistant).toBeDefined();
+    expect(assistant?.content).toBe("");
+    expect(assistant?.metadata?.uiParts).toEqual([
+      {
+        type: "tool-echo",
+        toolCallId: "tool-only-call-1",
+        state: "output-available",
+        input: { value: 7 },
+        output: { echoed: 7 },
+      },
     ]);
   });
 

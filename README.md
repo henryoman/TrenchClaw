@@ -150,7 +150,7 @@ TrenchClaw is designed as a constrained execution system, not a free-form chatbo
 
 - Filesystem access is enforced by manifest, not prompt intent (`apps/trenchclaw/src/runtime/security/filesystem-manifest.ts` + `src/ai/brain/protected/system/filesystem-manifest.yaml`).
 - Default model permission is deny (`model: none`), with explicit read/write allowlists for narrow runtime paths.
-- Sensitive vault paths are hard-blocked (`src/ai/brain/protected/no-read` is `model: none`), and protected writes are scoped under `src/ai/brain/protected/*` with explicit policy checks (`solana/lib/wallet/protected-write-policy.ts`).
+- Sensitive runtime user paths are hard-blocked (`.runtime-state/user` is `model: none`), and protected writes are scoped under the runtime-owned protected roots with explicit policy checks (`solana/lib/wallet/protected-write-policy.ts`).
 
 ### 5) Configuration authority boundaries
 

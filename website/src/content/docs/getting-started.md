@@ -2,6 +2,7 @@
 title: Getting Started
 description: Install the standalone release, launch TrenchClaw, and know where the local runtime and state live.
 order: 1
+featured: true
 ---
 
 ## Package Type

@@ -10,7 +10,7 @@ import {
 } from "../../../lib/wallet/protected-write-policy";
 import {
   appendManagedWalletLibraryEntries,
-  migrateLegacyWalletLibraryIfNeeded,
+  resolveWalletLibraryFilePath,
   resolveWalletGroupDirectoryPath,
   resolveWalletKeypairRootPath,
   resolveWalletLabelFilePath,
@@ -279,7 +279,7 @@ export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput
       const input = normalizeCreateWalletsInput(rawInput);
       const wallets: CreatedWallet[] = [];
       const files: string[] = [];
-      const walletLibraryFilePath = await migrateLegacyWalletLibraryIfNeeded();
+      const walletLibraryFilePath = resolveWalletLibraryFilePath();
       const keypairRootPath = resolveWalletKeypairRootPath();
       const groupDirectories: CreateWalletsOutput["groupDirectories"] = [];
 
