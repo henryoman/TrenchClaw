@@ -9,7 +9,7 @@ import type { RuntimeGuiDomainContext } from "../contracts";
 export const streamChat = async (
   context: RuntimeGuiDomainContext,
   messages: UIMessage[],
-  input?: { chatId?: string; conversationTitle?: string },
+  input?: { chatId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
 ): Promise<Response> => {
   const chatId = input?.chatId?.trim() || context.resolveDefaultChatId();
   context.setActiveChatId(chatId);
@@ -19,6 +19,7 @@ export const streamChat = async (
     chatId,
     sessionId: context.getActiveInstance()?.localInstanceId,
     conversationTitle: input?.conversationTitle,
+    abortSignal: input?.abortSignal,
   });
 };
 

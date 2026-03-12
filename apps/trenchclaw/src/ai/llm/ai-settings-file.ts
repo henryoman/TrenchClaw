@@ -29,16 +29,6 @@ export const aiSettingsSchema = z.object({
 export type AiSettings = z.output<typeof aiSettingsSchema>;
 export type AiSettingsInput = z.input<typeof aiSettingsSchema>;
 
-const legacyAiSettingsSchema = z.object({
-  trenchClawDefaultModel: z
-    .object({
-      provider: z.enum(LLM_PROVIDERS).optional(),
-      model: z.string().trim().min(1).optional(),
-      baseURL: z.string().trim().optional(),
-    })
-    .optional(),
-});
-
 export const DEFAULT_AI_SETTINGS: AiSettings = aiSettingsSchema.parse({});
 
 export const resolveAiSettingsPaths = (): { filePath: string; templatePath: string } => ({
@@ -50,30 +40,10 @@ export const resolveAiSettingsPaths = (): { filePath: string; templatePath: stri
   ),
 });
 
-const normalizeLegacyAiSettings = (value: unknown): AiSettings | null => {
-  const parsed = legacyAiSettingsSchema.safeParse(value);
-  if (!parsed.success || !parsed.data.trenchClawDefaultModel) {
-    return null;
-  }
-
-  const legacy = parsed.data.trenchClawDefaultModel;
-  const provider = legacy.provider ?? DEFAULT_AI_SETTINGS.provider;
-  return aiSettingsSchema.parse({
-    provider,
-    model: legacy.model ?? defaultModelByProvider[provider],
-    baseURL: legacy.baseURL ?? (provider === "openrouter" ? "https://openrouter.ai/api/v1" : ""),
-  });
-};
-
 const parseAiSettingsValue = (value: unknown): AiSettings => {
   const direct = aiSettingsSchema.safeParse(value);
   if (direct.success) {
     return direct.data;
-  }
-
-  const legacy = normalizeLegacyAiSettings(value);
-  if (legacy) {
-    return legacy;
   }
 
   return aiSettingsSchema.parse({});

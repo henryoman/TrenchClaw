@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { getDocBySlug, getDocsList } from '$lib/docs/content';
+import { getDocBySlug, getDocsList } from '$lib/docs';
 
 export const prerender = true;
 

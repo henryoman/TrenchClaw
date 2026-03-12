@@ -108,8 +108,9 @@
           bind:input={chat.state.input}
           conversations={chat.state.conversations}
           activeConversationId={chat.state.activeConversationId}
-          sending={chat.state.sending}
+          sending={chat.isSending()}
           chatDisabledReason={runtime.state.llmAvailable ? "" : runtime.state.llmCheckMessage}
+          runtimeError={chat.state.runtimeError}
           onSelectConversation={(conversationId) => {
             void chat?.selectConversation(conversationId);
           }}

@@ -88,7 +88,11 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
     return this.activity.slice(-limit);
   }
 
-  private toConversationTitle(timestamp: number): string {
+  private toConversationTitle(title: string | undefined, timestamp: number): string {
+    const trimmedTitle = title?.trim();
+    if (trimmedTitle) {
+      return trimmedTitle;
+    }
     return new Date(timestamp).toISOString();
   }
 
@@ -102,7 +106,7 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
       .slice(0, normalizedLimit)
       .map((conversation) => ({
         id: conversation.id,
-        title: this.toConversationTitle(conversation.createdAt),
+        title: this.toConversationTitle(conversation.title, conversation.createdAt),
         createdAt: conversation.createdAt,
         updatedAt: conversation.updatedAt,
       }));
@@ -144,7 +148,7 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
     return poll();
   }
 
-  async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string }): Promise<Response> {
+  async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string; abortSignal?: AbortSignal }): Promise<Response> {
     return streamChat(this, messages, input);
   }
 

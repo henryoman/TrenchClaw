@@ -7,12 +7,13 @@ import { runtimeApi, toRuntimeUrl } from "../../runtime-api";
 
 interface ChatUiState {
   input: string;
-  sending: boolean;
+  runtimeError: string;
   activeConversationId: string | null;
   conversations: GuiConversationView[];
 }
 
-const toTimestampTitle = (unixMs: number): string => new Date(unixMs).toISOString();
+const toFallbackTitle = (unixMs: number): string => new Date(unixMs).toISOString();
+const NEW_CONVERSATION_TITLE = "New chat";
 
 const toDisplayErrorText = (rawErrorText: string): string =>
   rawErrorText.includes("User not found")
@@ -47,18 +48,16 @@ const toUiMessageParts = (message: GuiConversationMessageView): UIMessage["parts
 };
 
 export const createChatController = () => {
-  let manuallySending = $state(false);
-  let submitInFlight = false;
   const state = $state<ChatUiState>({
     input: "",
-    sending: false,
+    runtimeError: "",
     activeConversationId: null,
     conversations: [],
   });
 
   const toConversationView = (conversation: GuiConversationView): GuiConversationView => ({
     ...conversation,
-    title: toTimestampTitle(conversation.createdAt),
+    title: conversation.title?.trim() || toFallbackTitle(conversation.createdAt),
   });
 
   const ensureActiveConversationId = (): string => {
@@ -72,7 +71,7 @@ export const createChatController = () => {
     state.conversations = [
       {
         id: conversationId,
-        title: toTimestampTitle(now),
+        title: NEW_CONVERSATION_TITLE,
         createdAt: now,
         updatedAt: now,
       },
@@ -82,65 +81,14 @@ export const createChatController = () => {
   };
 
   const toUiMessages = (messages: GuiConversationMessageView[]) =>
-    normalizeUiMessages(
-      messages
-        .filter((message): message is GuiConversationMessageView & { role: "assistant" | "system" | "user" } => message.role !== "tool")
-        .map((message) => ({
-          id: message.id,
-          role: message.role,
-          parts: toUiMessageParts(message),
-        })),
-    );
-
-  const normalizeUiMessages = (messages: UIMessage[]): UIMessage[] => {
-    const normalized: UIMessage[] = [];
-
-    for (const message of messages) {
-      const role = message.role;
-      if (role !== "system" && role !== "user" && role !== "assistant") {
-        continue;
-      }
-
-      const meaningfulParts = message.parts.filter((part) => {
-        if (part.type === "step-start") {
-          return false;
-        }
-        if (part.type === "text" || part.type === "reasoning") {
-          return typeof part.text === "string" && part.text.trim().length > 0;
-        }
-        if ("errorText" in part && typeof part.errorText === "string") {
-          return part.errorText.trim().length > 0;
-        }
-        return true;
-      });
-
-      if (meaningfulParts.length === 0) {
-        continue;
-      }
-
-      const id = message.id?.trim() ? message.id.trim() : `msg-${crypto.randomUUID()}`;
-      normalized.push({
-        id,
-        role,
-        parts: meaningfulParts,
-      });
-    }
-
-    return normalized;
-  };
-
-  const appendAssistantRuntimeError = (rawErrorText: string): void => {
-    const errorText = toDisplayErrorText(rawErrorText);
-    console.error(errorText);
-    chat.messages = normalizeUiMessages([
-      ...(chat.messages as UIMessage[]),
-      {
-        id: `msg-${crypto.randomUUID()}`,
-        role: "assistant",
-        parts: [{ type: "text", text: `Something went wrong: ${errorText}` }],
-      },
-    ]);
-  };
+    messages
+      .filter((message): message is GuiConversationMessageView & { role: "assistant" | "system" | "user" } => message.role !== "tool")
+      .map((message) => ({
+        id: message.id,
+        role: message.role,
+        parts: toUiMessageParts(message),
+      }))
+      .filter((message) => message.parts.length > 0);
 
   const chat = new Chat({
     transport: new DefaultChatTransport({
@@ -148,21 +96,38 @@ export const createChatController = () => {
       prepareSendMessagesRequest: ({ id, messages, body }) => {
         const chatId = ensureActiveConversationId();
         const activeConversation = state.conversations.find((conversation) => conversation.id === chatId);
+        const conversationTitle =
+          activeConversation?.title && activeConversation.title !== NEW_CONVERSATION_TITLE
+            ? activeConversation.title
+            : undefined;
         return {
           body: {
             id,
             messages,
             ...body,
             chatId,
-            conversationTitle: activeConversation?.title ?? toTimestampTitle(Date.now()),
+            conversationTitle,
           },
         };
       },
     }),
+    onError: (error) => {
+      const rawErrorText = error.message || DEFAULT_CHAT_ERROR;
+      state.runtimeError = toDisplayErrorText(rawErrorText);
+      void runtimeApi.reportClientError({
+        source: "gui-chat",
+        message: state.runtimeError,
+        metadata: {
+          chatStatus: chat.status,
+          conversationId: state.activeConversationId,
+        },
+      }).catch(() => {
+        // Best effort only; keep UI responsive even when runtime cannot accept error telemetry.
+      });
+    },
   });
 
-  const isSending = (): boolean =>
-    state.sending || manuallySending || submitInFlight || chat.status === "submitted" || chat.status === "streaming";
+  const isSending = (): boolean => chat.status === "submitted" || chat.status === "streaming";
 
   const refreshConversations = async (): Promise<void> => {
     const response = await runtimeApi.conversations();
@@ -178,6 +143,7 @@ export const createChatController = () => {
       return;
     }
 
+    state.runtimeError = "";
     const response = await runtimeApi.conversationMessages(nextConversationId);
     state.activeConversationId = nextConversationId;
     chat.messages = toUiMessages(response.messages);
@@ -197,10 +163,11 @@ export const createChatController = () => {
     const now = Date.now();
     const conversationId = `chat-${crypto.randomUUID()}`;
     state.activeConversationId = conversationId;
+    state.runtimeError = "";
     state.conversations = [
       {
         id: conversationId,
-        title: toTimestampTitle(now),
+        title: NEW_CONVERSATION_TITLE,
         createdAt: now,
         updatedAt: now,
       },
@@ -211,58 +178,25 @@ export const createChatController = () => {
 
   const submitChat = async (onAfterSend: (() => Promise<void>) | null = null): Promise<void> => {
     const nextMessage = state.input.trim();
-    if (!nextMessage || isSending() || submitInFlight) {
+    if (!nextMessage || isSending()) {
       return;
     }
 
-    submitInFlight = true;
     state.input = "";
+    state.runtimeError = "";
     ensureActiveConversationId();
-    state.sending = true;
-    manuallySending = true;
 
     try {
-      chat.messages = normalizeUiMessages(chat.messages as UIMessage[]);
       await chat.sendMessage({ text: nextMessage });
       if (chat.status === "error" && !hasTerminalAssistantText(chat.messages as UIMessage[])) {
-        const rawErrorText = chat.error?.message || DEFAULT_CHAT_ERROR;
-        appendAssistantRuntimeError(rawErrorText);
-        try {
-          await runtimeApi.reportClientError({
-            source: "gui-chat",
-            message: toDisplayErrorText(rawErrorText),
-            metadata: {
-              chatStatus: chat.status,
-              conversationId: state.activeConversationId,
-            },
-          });
-        } catch {
-          // Best effort only; keep UI responsive even when runtime cannot accept error telemetry.
-        }
+        state.runtimeError = toDisplayErrorText(chat.error?.message || DEFAULT_CHAT_ERROR);
       }
       await refreshConversations();
       if (onAfterSend) {
         await onAfterSend();
       }
     } catch (error) {
-      const rawErrorText = error instanceof Error ? error.message : DEFAULT_CHAT_ERROR;
-      appendAssistantRuntimeError(rawErrorText);
-      try {
-        await runtimeApi.reportClientError({
-          source: "gui-chat",
-          message: toDisplayErrorText(rawErrorText),
-          metadata: {
-            chatStatus: chat.status,
-            conversationId: state.activeConversationId,
-          },
-        });
-      } catch {
-        // Best effort only; keep UI responsive even when runtime cannot accept error telemetry.
-      }
-    } finally {
-      state.sending = false;
-      manuallySending = false;
-      submitInFlight = false;
+      state.runtimeError = toDisplayErrorText(error instanceof Error ? error.message : DEFAULT_CHAT_ERROR);
     }
   };
 

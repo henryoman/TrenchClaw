@@ -2,6 +2,7 @@
 title: AI, RPC, and Vault Setup
 description: Set the local vault, choose an RPC, and add the AI credentials used by the current GUI and runtime.
 order: 3
+featured: true
 ---
 
 ## Vault

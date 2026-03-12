@@ -1,6 +1,6 @@
 export const CREATE_NEW_OPTION = "__create_new__";
 
-export const CHAT_API_PATH = "/api/chat";
+export const CHAT_API_PATH = "/v1/chat/stream";
 export const GUI_API_BASE_PATH = "/api/gui";
 export const REQUEST_TIMEOUT_MS = 8000;
 

@@ -6,7 +6,7 @@ import type {
   GuiUpdateVaultRequest,
   GuiUpsertSecretRequest,
 } from "@trenchclaw/types";
-import type { UIMessage } from "ai";
+import { safeValidateUIMessages, type UIMessage } from "ai";
 import { DISPATCH_TEST_DEFAULT_WAIT_MS, DISPATCH_TEST_MAX_WAIT_MS } from "./constants";
 
 export interface DispatcherTestRequest {
@@ -128,8 +128,15 @@ export const parseUiChatRequest = async (
           : undefined;
     const metadata =
       isRecord(body.metadata) ? body.metadata : isRecord(payload.metadata) ? payload.metadata : undefined;
-    return {
+    const validation = await safeValidateUIMessages({
       messages,
+    });
+    if (!validation.success) {
+      return null;
+    }
+
+    return {
+      messages: validation.data,
       chatId,
       conversationTitle,
       metadata,

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
-import { RuntimeLogger } from "../../../apps/trenchclaw/src/runtime/logging";
+import { RuntimeLogger, type RuntimeLogEntry } from "../../../apps/trenchclaw/src/runtime/logging/runtime-logger";
 import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/session-log-store";
 import { SessionSummaryStore } from "../../../apps/trenchclaw/src/runtime/storage/session-summary-store";
 import { SummaryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/summary-log-store";
@@ -43,7 +43,7 @@ describe("SystemLogStore + SessionSummaryStore", () => {
     const systemLogStore = new SystemLogStore({
       directory: `${root}/system`,
     });
-    const unsubscribe = logger.subscribe((entry) => {
+    const unsubscribe = logger.subscribe((entry: RuntimeLogEntry) => {
       systemLogStore.append(entry);
     });
 

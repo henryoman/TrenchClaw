@@ -1,10 +1,12 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import {
+  consumeStream,
   convertToModelMessages,
   createGateway,
   stepCountIs,
   streamText,
   tool,
+  validateUIMessages,
   type LanguageModel,
   type UIMessage,
 } from "ai";
@@ -38,7 +40,7 @@ export interface RuntimeChatService {
   generateText: (input: LlmGenerateInput) => Promise<LlmGenerateResult>;
   stream: (
     messages: UIMessage[],
-    input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
+    input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
   ) => Promise<Response>;
 }
 
@@ -120,6 +122,9 @@ const extractUiMessageText = (message: UIMessage): string => {
       if (part.type === "text") {
         return part.text.trim();
       }
+      if (part.type === "reasoning") {
+        return part.text.trim();
+      }
       if ("errorText" in part && typeof part.errorText === "string") {
         return `Something went wrong: ${part.errorText}`.trim();
       }
@@ -135,33 +140,13 @@ const extractUiMessageText = (message: UIMessage): string => {
   return "";
 };
 
-const normalizeUiMessages = (messages: UIMessage[]): UIMessage[] => {
-  const normalized: UIMessage[] = [];
+const createResponseMessageId = (): string => `msg-${crypto.randomUUID()}`;
 
-  for (const message of messages) {
-    const sourceRole = message.role;
-    if (sourceRole !== "system" && sourceRole !== "user" && sourceRole !== "assistant") {
-      continue;
-    }
-
-    const normalizedParts = message.parts.filter(
-      (part): part is Extract<(typeof message.parts)[number], { type: "text" }> =>
-        part.type === "text" && (part.text ?? "").trim().length > 0,
-    );
-
-    if (normalizedParts.length === 0) {
-      continue;
-    }
-
-    normalized.push({
-      id: trimOrUndefinedValue(message.id) ?? `msg-${crypto.randomUUID()}`,
-      role: sourceRole,
-      parts: normalizedParts,
-    });
-  }
-
-  return normalized;
-};
+const filterPersistableMessages = (messages: UIMessage[]): UIMessage[] =>
+  messages.filter(
+    (message): message is UIMessage & { role: "assistant" | "system" | "user" } =>
+      message.role === "assistant" || message.role === "system" || message.role === "user",
+  );
 
 const sanitizeConversationTitle = (title: string | undefined, fallbackMessages: UIMessage[]): string | undefined => {
   const explicit = trimOrUndefinedValue(title);
@@ -365,15 +350,13 @@ export const createRuntimeChatService = (
 
   const stream = async (
     messages: UIMessage[],
-    input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string },
+    input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
   ): Promise<Response> => {
     const streamStartedAt = Date.now();
-    const normalizedMessages = normalizeUiMessages(messages);
     const chatId = resolveChatId(input?.chatId);
     deps.logger?.info("chat:stream_start", {
       chatId,
       inputMessageCount: messages.length,
-      normalizedMessageCount: normalizedMessages.length,
       sessionId: trimOrUndefinedValue(input?.sessionId) ?? null,
     });
 
@@ -390,7 +373,7 @@ export const createRuntimeChatService = (
     deps.stateStore.saveConversation({
       id: chatId,
       sessionId: trimOrUndefinedValue(input?.sessionId) ?? existingConversation?.sessionId,
-      title: sanitizeConversationTitle(input?.conversationTitle, normalizedMessages) ?? existingConversation?.title,
+      title: sanitizeConversationTitle(input?.conversationTitle, messages) ?? existingConversation?.title,
       summary: existingConversation?.summary,
       createdAt: existingConversation?.createdAt ?? now,
       updatedAt: now,
@@ -411,10 +394,21 @@ export const createRuntimeChatService = (
     try {
       const prepareModelInputStartedAt = Date.now();
       const systemPrompt = await buildSystemPrompt(deps);
-      const modelMessages = await convertMessages(normalizedMessages);
+      const validatedMessages =
+        messages.length === 0
+          ? []
+          : await validateUIMessages({
+              messages,
+              tools,
+            });
+      const modelMessages = await convertMessages(validatedMessages, {
+        tools,
+        ignoreIncompleteToolCalls: true,
+      });
       deps.logger?.info("chat:model_input_ready", {
         chatId,
         durationMs: Date.now() - prepareModelInputStartedAt,
+        validatedMessageCount: validatedMessages.length,
         toolCount: Object.keys(tools).length,
         systemPromptChars: systemPrompt.length,
       });
@@ -425,6 +419,7 @@ export const createRuntimeChatService = (
         model,
         system: systemPrompt,
         messages: modelMessages,
+        abortSignal: input?.abortSignal,
         maxOutputTokens: generationDefaults.maxOutputTokens,
         temperature: generationDefaults.temperature,
         stopWhen: stepCountIs(12),
@@ -439,26 +434,29 @@ export const createRuntimeChatService = (
 
       const response = result.toUIMessageStreamResponse({
         headers: withChatHeaders(input?.headers, chatId),
-        originalMessages: normalizedMessages,
-        sendReasoning: true,
+        originalMessages: validatedMessages,
+        generateMessageId: createResponseMessageId,
+        consumeSseStream: consumeStream,
         onError: (error) => toRuntimeChatErrorMessage(error),
         onFinish: ({ messages: finalMessages }) => {
           const updatedAt = Date.now();
+          const replayableMessages = filterPersistableMessages(finalMessages);
           const conversation = deps.stateStore.getConversation(chatId);
+          const existingMessagesById = new Map(
+            deps.stateStore.listChatMessages(chatId, 10_000).map((message) => [message.id, message]),
+          );
           deps.stateStore.saveConversation({
             id: chatId,
             sessionId: conversation?.sessionId ?? trimOrUndefinedValue(input?.sessionId),
-            title: conversation?.title ?? sanitizeConversationTitle(input?.conversationTitle, finalMessages),
+            title: conversation?.title ?? sanitizeConversationTitle(input?.conversationTitle, replayableMessages),
             summary: conversation?.summary,
             createdAt: conversation?.createdAt ?? updatedAt,
             updatedAt,
           });
 
-          for (const [index, message] of finalMessages.entries()) {
+          for (const [index, message] of replayableMessages.entries()) {
             const content = extractUiMessageText(message).trim();
-            if (content.length === 0) {
-              continue;
-            }
+            const existingMessage = trimOrUndefinedValue(message.id) ? existingMessagesById.get(message.id) : undefined;
 
             deps.stateStore.saveChatMessage({
               id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
@@ -474,14 +472,14 @@ export const createRuntimeChatService = (
                   : {
                       uiParts: message.parts,
                     },
-              createdAt: updatedAt + index,
+              createdAt: existingMessage?.createdAt ?? updatedAt + index,
             });
           }
 
           deps.logger?.info("chat:stream_finish", {
             chatId,
             durationMs: Date.now() - streamStartedAt,
-            finalMessageCount: finalMessages.length,
+            finalMessageCount: replayableMessages.length,
           });
         },
       });
@@ -531,8 +529,8 @@ export const createRuntimeChatService = (
         error: errorMessage,
         payload: serializeForLog({
           sessionId: trimOrUndefinedValue(input?.sessionId) ?? null,
-          normalizedMessageCount: normalizedMessages.length,
-          lastMessage: normalizedMessages.at(-1)?.parts ?? null,
+          inputMessageCount: messages.length,
+          lastMessage: messages.at(-1)?.parts ?? null,
         }),
       });
       throw new Error(errorMessage, { cause: error });

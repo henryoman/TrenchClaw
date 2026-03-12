@@ -1,75 +1,32 @@
 <script lang="ts">
-  const githubUrl = 'https://github.com/henryoman/trenchclaw';
+  import { resolve } from '$app/paths';
 
-  const installTargets = [
-    {
-      label: 'macOS',
-      command: "curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | bash"
-    },
-    {
-      label: 'Linux',
-      command: "curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash"
-    }
-  ];
+  import {
+    architectureHref,
+    comparison,
+    getHomepageQuickLinks,
+    githubUrl,
+    installTargets,
+    principles,
+    stack,
+    terminalLines,
+  } from '$lib/site/content';
 
-  const quickLinks = [
-    { label: 'Getting Started', href: '/docs/getting-started', description: 'Install the standalone release, understand supported targets, and launch the local runtime.' },
-    { label: 'Instances + Safety Profiles', href: '/docs/instances-and-safety-profiles', description: 'Create local instances, sign in, and understand current safety-profile behavior.' },
-    { label: 'AI, RPC, and Vault Setup', href: '/docs/ai-and-vault-setup', description: 'Configure the local vault, RPC path, and AI provider secrets the shipped GUI exposes.' }
-  ];
-
-  const principles = [
-    {
-      title: 'Automate repeatable tasks',
-      description: 'Actions, routines, and runtime controls are organized around the workflows operators actually run.'
-    },
-    {
-      title: 'Manage wallets locally',
-      description: 'Wallet groups, keypair dumps, and sidecar metadata stay aligned with the runtime contract.'
-    },
-    {
-      title: 'Use validated actions',
-      description: 'Validated actions, policy checks, and local state make runs easier to inspect and debug.'
-    }
-  ];
-
-  const terminalLines = [
-    { tone: 'dim', text: '$ trenchclaw' },
-    { tone: 'dim', text: 'booting runtime...' },
-    { tone: 'bright', text: 'readonly app loaded from ~/.local/share/trenchclaw/current' },
-    { tone: 'bright', text: 'state root: ~/.trenchclaw' },
-    { tone: 'bright', text: 'scheduler online' },
-    { tone: 'dim', text: 'web gui: http://127.0.0.1:4173' },
-    { tone: 'dim', text: 'docs: /docs/getting-started' },
-    { tone: 'bright', text: 'ready for actions and routines' }
-  ];
-
-  const stack = [
-    { label: 'Stack', value: 'Compiled Bun binary, TypeScript, and a local web app' },
-    { label: 'Solana', value: '@solana/kit with provider-agnostic RPC adapters' },
-    { label: 'Agent', value: 'AI SDK orchestration with runtime policies' },
-    { label: 'State', value: 'SQLite, JSONL indexes, and protected filesystem storage' }
-  ];
-
-  const comparison = [
-    { feature: 'Actions', current: 'Validated modules for on-chain and runtime tasks', prior: 'Reduces invalid execution' },
-    { feature: 'Routines', current: 'Automated flows for repeated runtime work', prior: 'Keeps execution consistent across runs' },
-    { feature: 'Storage', current: 'SQLite, JSONL sidecars, and protected filesystem paths', prior: 'Local state stays inspectable and durable' }
-  ];
+  const quickLinks = getHomepageQuickLinks();
 </script>
 
 <div class="min-h-screen bg-background text-foreground">
   <nav class="fixed inset-x-0 top-0 z-50 border-b border-border-subtle bg-background/85 backdrop-blur-xl">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-      <a href="/" class="flex items-center gap-3">
+      <a href={resolve('/')} class="flex items-center gap-3">
         <img src="/logo.png" alt="TrenchClaw" class="logo-white h-8 w-8 object-contain" width="32" height="32" />
         <img src="/trenchclaw.png" alt="" class="hidden" width="32" height="32" aria-hidden="true" />
         <span class="text-sm font-semibold tracking-[-0.02em] text-foreground">TrenchClaw</span>
       </a>
 
       <div class="flex items-center gap-6 text-sm">
-        <a href="/docs" class="text-muted transition-colors hover:text-foreground">Docs</a>
-        <a href={`${githubUrl}/blob/main/ARCHITECTURE.md`} target="_blank" rel="noopener noreferrer" class="text-muted transition-colors hover:text-foreground">
+        <a href={resolve('/docs')} class="text-muted transition-colors hover:text-foreground">Docs</a>
+        <a href={resolve(architectureHref)} class="text-muted transition-colors hover:text-foreground">
           Architecture
         </a>
         <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="rounded-full border border-border-strong px-4 py-2 text-foreground transition-colors hover:bg-white hover:text-black">
@@ -95,7 +52,7 @@
         </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
-          <a href="/docs" class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5">
+          <a href={resolve('/docs')} class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5">
             Open docs
           </a>
           <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-full border border-border-strong px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-white hover:text-black">
@@ -128,7 +85,7 @@
             <span class="terminal-label ml-3">runtime shell</span>
           </div>
           <div class="terminal-body space-y-2 px-5 py-5">
-            {#each terminalLines as line}
+            {#each terminalLines as line (line.text)}
               <p class={line.tone === 'bright' ? 'terminal-line-bright' : 'terminal-line-dim'}>{line.text}</p>
             {/each}
           </div>
@@ -168,7 +125,7 @@
 
       <div class="grid gap-4">
         {#each quickLinks as item (item.href)}
-          <a href={item.href} class="surface-card block p-6 transition-transform hover:-translate-y-0.5">
+          <a href={resolve(item.href)} class="surface-card block p-6 transition-transform hover:-translate-y-0.5">
             <div class="flex items-center justify-between gap-4">
               <div>
                 <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Guide</p>
@@ -198,7 +155,7 @@
       </div>
 
       <div class="grid gap-5 md:grid-cols-3">
-        {#each principles as principle}
+        {#each principles as principle (principle.title)}
           <div class="surface-card p-6">
             <div class="font-mono text-xs uppercase tracking-[0.16em] text-muted">0{principles.indexOf(principle) + 1}</div>
             <h3 class="mt-4 text-xl font-semibold tracking-[-0.03em]">{principle.title}</h3>
@@ -235,7 +192,7 @@
               </tr>
             </thead>
             <tbody>
-              {#each comparison as row, index}
+              {#each comparison as row, index (row.feature)}
                 <tr class={index < comparison.length - 1 ? 'border-t border-border-subtle' : ''}>
                   <td class="px-4 py-4 text-foreground">{row.feature}</td>
                   <td class="px-4 py-4 text-foreground-soft">{row.current}</td>
@@ -277,9 +234,9 @@
         <p class="mt-1 text-sm text-muted">Bun runtime, Solana tooling, and local-first state.</p>
       </div>
       <div class="flex gap-6 text-sm text-muted">
-        <a href="/docs" class="transition-colors hover:text-foreground">Docs</a>
+        <a href={resolve('/docs')} class="transition-colors hover:text-foreground">Docs</a>
         <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-foreground">GitHub</a>
-        <a href={`${githubUrl}/blob/main/ARCHITECTURE.md`} target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-foreground">
+        <a href={resolve(architectureHref)} class="transition-colors hover:text-foreground">
           Architecture
         </a>
       </div>

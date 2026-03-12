@@ -2,6 +2,7 @@
 title: Instances and Safety Profiles
 description: Create instances, sign in, and understand what safety profiles mean in the current app.
 order: 2
+featured: true
 ---
 
 ## What An Instance Stores
