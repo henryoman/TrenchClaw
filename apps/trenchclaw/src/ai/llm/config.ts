@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { loadAiSettings, LLM_PROVIDERS, type LlmProvider } from "./ai-settings-file";
-import { parseStructuredFile, resolvePathFromModule } from "./shared";
+import { parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
 import { ensureVaultFileExists } from "./vault-file";
 
 export interface LlmProviderConfig {
@@ -17,7 +17,8 @@ const defaultModelByProvider: Record<LlmProvider, string> = {
 };
 
 const providerSchema = z.enum(LLM_PROVIDERS);
-const DEFAULT_VAULT_FILE = "../../../.runtime-state/user/vault.json";
+const DEFAULT_VAULT_FILE = "../../../.runtime-state/runtime/vault.json";
+const LEGACY_VAULT_FILE = "../../../.runtime-state/user/vault.json";
 const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
@@ -42,7 +43,12 @@ const readVaultString = (root: unknown, refPath: string): string | undefined => 
 };
 
 const readVaultData = async (): Promise<unknown> => {
-  const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
+  const vaultPath = await resolvePreferredPathFromModule({
+    moduleUrl: import.meta.url,
+    preferredRelativePath: DEFAULT_VAULT_FILE,
+    envValues: [process.env[VAULT_FILE_ENV]],
+    legacyRelativePaths: [LEGACY_VAULT_FILE],
+  });
   const vaultTemplatePath = resolvePathFromModule(
     import.meta.url,
     DEFAULT_VAULT_TEMPLATE_FILE,

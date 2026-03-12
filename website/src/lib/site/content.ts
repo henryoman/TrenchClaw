@@ -56,6 +56,6 @@ export const comparison = [
 export const getHomepageQuickLinks = () =>
   getFeaturedDocs().map(({ slug, title, description }) => ({
     label: title,
-    href: `/docs/${slug}`,
+    slug,
     description,
   }));

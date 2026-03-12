@@ -2,7 +2,6 @@
   import { resolve } from '$app/paths';
 
   import {
-    architectureHref,
     comparison,
     getHomepageQuickLinks,
     githubUrl,
@@ -18,15 +17,15 @@
 <div class="min-h-screen bg-background text-foreground">
   <nav class="fixed inset-x-0 top-0 z-50 border-b border-border-subtle bg-background/85 backdrop-blur-xl">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-      <a href={resolve('/')} class="flex items-center gap-3">
+      <a href={resolve('/', {})} class="flex items-center gap-3">
         <img src="/logo.png" alt="TrenchClaw" class="logo-white h-8 w-8 object-contain" width="32" height="32" />
         <img src="/trenchclaw.png" alt="" class="hidden" width="32" height="32" aria-hidden="true" />
         <span class="text-sm font-semibold tracking-[-0.02em] text-foreground">TrenchClaw</span>
       </a>
 
       <div class="flex items-center gap-6 text-sm">
-        <a href={resolve('/docs')} class="text-muted transition-colors hover:text-foreground">Docs</a>
-        <a href={resolve(architectureHref)} class="text-muted transition-colors hover:text-foreground">
+        <a href={resolve('/docs', {})} class="text-muted transition-colors hover:text-foreground">Docs</a>
+        <a href={resolve('/docs/[slug]', { slug: 'architecture' })} class="text-muted transition-colors hover:text-foreground">
           Architecture
         </a>
         <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="rounded-full border border-border-strong px-4 py-2 text-foreground transition-colors hover:bg-white hover:text-black">
@@ -52,7 +51,7 @@
         </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
-          <a href={resolve('/docs')} class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5">
+          <a href={resolve('/docs', {})} class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5">
             Open docs
           </a>
           <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-full border border-border-strong px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-white hover:text-black">
@@ -124,8 +123,8 @@
       </div>
 
       <div class="grid gap-4">
-        {#each quickLinks as item (item.href)}
-          <a href={resolve(item.href)} class="surface-card block p-6 transition-transform hover:-translate-y-0.5">
+        {#each quickLinks as item (item.slug)}
+          <a href={resolve('/docs/[slug]', { slug: item.slug })} class="surface-card block p-6 transition-transform hover:-translate-y-0.5">
             <div class="flex items-center justify-between gap-4">
               <div>
                 <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Guide</p>
@@ -234,9 +233,9 @@
         <p class="mt-1 text-sm text-muted">Bun runtime, Solana tooling, and local-first state.</p>
       </div>
       <div class="flex gap-6 text-sm text-muted">
-        <a href={resolve('/docs')} class="transition-colors hover:text-foreground">Docs</a>
+        <a href={resolve('/docs', {})} class="transition-colors hover:text-foreground">Docs</a>
         <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-foreground">GitHub</a>
-        <a href={resolve(architectureHref)} class="transition-colors hover:text-foreground">
+        <a href={resolve('/docs/[slug]', { slug: 'architecture' })} class="transition-colors hover:text-foreground">
           Architecture
         </a>
       </div>

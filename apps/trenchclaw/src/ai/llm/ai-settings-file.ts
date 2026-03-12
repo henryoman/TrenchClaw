@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { parseStructuredFile, resolvePathFromModule } from "./shared";
+import { parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
 
 export const LLM_PROVIDERS = ["openai", "openrouter", "openai-compatible"] as const;
 export type LlmProvider = (typeof LLM_PROVIDERS)[number];
@@ -12,7 +12,8 @@ const defaultModelByProvider: Record<LlmProvider, string> = {
   "openai-compatible": "gpt-4.1-mini",
 };
 
-const DEFAULT_AI_SETTINGS_FILE = "../../../.runtime-state/user/ai.json";
+const DEFAULT_AI_SETTINGS_FILE = "../../../.runtime-state/runtime/ai.json";
+const LEGACY_AI_SETTINGS_FILE = "../../../.runtime-state/user/ai.json";
 const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";
 const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";
 const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
@@ -31,8 +32,13 @@ export type AiSettingsInput = z.input<typeof aiSettingsSchema>;
 
 export const DEFAULT_AI_SETTINGS: AiSettings = aiSettingsSchema.parse({});
 
-export const resolveAiSettingsPaths = (): { filePath: string; templatePath: string } => ({
-  filePath: resolvePathFromModule(import.meta.url, DEFAULT_AI_SETTINGS_FILE, process.env[AI_SETTINGS_FILE_ENV]),
+export const resolveAiSettingsPaths = async (): Promise<{ filePath: string; templatePath: string }> => ({
+  filePath: await resolvePreferredPathFromModule({
+    moduleUrl: import.meta.url,
+    preferredRelativePath: DEFAULT_AI_SETTINGS_FILE,
+    envValues: [process.env[AI_SETTINGS_FILE_ENV]],
+    legacyRelativePaths: [LEGACY_AI_SETTINGS_FILE],
+  }),
   templatePath: resolvePathFromModule(
     import.meta.url,
     DEFAULT_AI_SETTINGS_TEMPLATE_FILE,
@@ -50,7 +56,7 @@ const parseAiSettingsValue = (value: unknown): AiSettings => {
 };
 
 export const ensureAiSettingsFileExists = async (): Promise<{ initializedFromTemplate: boolean; filePath: string; templatePath: string }> => {
-  const { filePath, templatePath } = resolveAiSettingsPaths();
+  const { filePath, templatePath } = await resolveAiSettingsPaths();
   const targetPath = path.resolve(filePath);
 
   try {
@@ -97,7 +103,7 @@ export const loadAiSettings = async (): Promise<{ filePath: string; templatePath
 };
 
 export const writeAiSettings = async (input: AiSettingsInput): Promise<{ filePath: string; settings: AiSettings }> => {
-  const { filePath } = resolveAiSettingsPaths();
+  const { filePath } = await resolveAiSettingsPaths();
   const targetPath = path.resolve(filePath);
   await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
   const settings = aiSettingsSchema.parse(input);

@@ -87,7 +87,7 @@ This appendix is generated from the runtime capability registry. Treat it as the
 2. If a tool or action name appears elsewhere in the repo, docs, or workspace tree but does not appear in \`Runtime Chat Tool Catalog\`, treat it as unavailable.
 3. CLI access is available only through \`workspaceBash\`. Direct file access uses \`workspaceReadFile\` and \`workspaceWriteFile\`.
 4. Documentation/query surfaces come from the injected \`Knowledge Manifest\` and \`Workspace Context Snapshot\`.
-5. Treat \`src/ai/brain/knowledge/deep-knowledge/*.md\` as long-form references, \`src/ai/brain/knowledge/skills/*/SKILL.md\` as workflow guides, and \`src/ai/brain/knowledge/skills/*/references/*.md\` as topical docs.
+5. Treat \`ARCHITECTURE.md\`, \`src/ai/brain/rules.md\`, and \`src/ai/brain/knowledge/*.md\` as the primary model reference set.
 6. For structured runtime data, prefer JSON-style read actions such as \`queryRuntimeStore\` and \`queryInstanceMemory\` instead of shell commands.
 7. For docs and code, use \`workspaceBash\` to discover file paths and \`workspaceReadFile\` to open the exact files.
 

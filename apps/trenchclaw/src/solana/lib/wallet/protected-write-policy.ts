@@ -8,13 +8,13 @@ import {
 import {
   RUNTIME_INSTANCE_ROOT,
   RUNTIME_PROTECTED_ROOT,
-  RUNTIME_USER_ROOT,
+  RUNTIME_OWNED_ROOT,
   resolveRuntimeContractPath,
 } from "../../../runtime/runtime-paths";
 
 const PROTECTED_WRITE_ROOT_DIRECTORIES = [
   RUNTIME_INSTANCE_ROOT,
-  RUNTIME_USER_ROOT,
+  RUNTIME_OWNED_ROOT,
   RUNTIME_PROTECTED_ROOT,
 ] as const;
 

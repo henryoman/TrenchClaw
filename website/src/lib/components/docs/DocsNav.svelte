@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { resolve } from '$app/paths';
   import type { DocListItem } from '$lib/docs';
 
   let {
@@ -16,7 +17,7 @@
     {#each docs as doc (doc.slug)}
       <a
         class={`docs-nav-link ${doc.slug === currentSlug ? 'docs-nav-link-active' : ''}`}
-        href={`/docs/${doc.slug}`}
+        href={resolve('/docs/[slug]', { slug: doc.slug })}
         aria-current={doc.slug === currentSlug ? 'page' : undefined}
       >
         {doc.title}

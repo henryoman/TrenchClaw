@@ -165,7 +165,7 @@ const defaultGeneratedSectionTitle = (source: PromptGeneratedSectionConfig["sour
     case "workspaceDirectoryTree":
       return "Workspace Directory Tree";
     case "resolvedUserSettings":
-      return "Resolved User Settings";
+      return "Resolved Runtime Settings";
     case "runtimeCapabilityAppendix":
       return "Runtime Capability Appendix";
     case "filesystemPolicy":

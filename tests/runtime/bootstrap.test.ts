@@ -272,7 +272,7 @@ runtime:
     }
   });
 
-  test("blocks createWallets when wallet permission is disabled in user settings", async () => {
+  test("blocks createWallets when wallet permission is disabled in runtime settings", async () => {
     await applyDefaultEnv();
     const userSettingsPath = await writeYaml(`
 wallet:
@@ -310,7 +310,7 @@ wallet:
 
     const runtime = await bootstrapRuntime();
     const alertsFile = path.resolve(
-      runtimeStatePath("user/workspace/strategies/.tests"),
+      runtimeStatePath("runtime/workspace/strategies/.tests"),
       `bootstrap-alerts-${crypto.randomUUID()}.json`,
     );
     try {

@@ -269,7 +269,7 @@ Current built-in routine planners live in `apps/trenchclaw/src/solana/routines/l
 
 Workspace-defined routine wrappers are also supported under:
 
-- `.runtime-state/user/workspace/routines/*.routine.json`
+- `.runtime-state/runtime/workspace/routines/*.routine.json`
 
 These wrapper files do not introduce arbitrary new runtime engines. They delegate back into supported built-in routine planners with merged config.
 
@@ -343,7 +343,7 @@ Related modules:
 
 - schema: `apps/trenchclaw/src/runtime/load/schema.ts`
 - authority rules: `apps/trenchclaw/src/runtime/load/authority.ts`
-- resolved user settings: `apps/trenchclaw/src/ai/llm/user-settings-loader.ts`
+- resolved runtime settings: `apps/trenchclaw/src/ai/llm/user-settings-loader.ts`
 - active-instance trading settings: `apps/trenchclaw/src/runtime/load/trading-settings.ts`
 
 Bundled safety profiles:
@@ -355,23 +355,23 @@ Bundled safety profiles:
 Actual merge flow:
 
 1. Load bundled base profile.
-2. Load resolved user settings:
-   - compatibility settings from runtime-state user settings
+2. Load resolved runtime settings:
+   - compatibility settings from runtime-owned settings
    - vault reference resolution via `vault://...`
    - relative structured-file resolution
    - active-instance trading settings overlay from `instances/<id>/settings/trading.json`
-3. Load optional explicit user settings file overlay.
+3. Load optional explicit runtime settings file overlay.
 4. Load optional agent settings file.
 5. Sanitize agent settings according to authority rules.
 6. Merge as:
    - base profile
    - sanitized agent settings
-   - resolved user settings + explicit user overlay
-7. Re-apply protected user-owned paths so agent overlays cannot silently override them.
+   - resolved runtime settings + explicit runtime overlay
+7. Re-apply protected runtime-owned paths so agent overlays cannot silently override them.
 8. Normalize into the runtime settings shape.
 9. Validate with Zod.
 
-This means the practical precedence is not "simple base + agent + user". It is base profile plus sanitized agent settings, with resolved user/vault/instance settings taking final authority over protected paths.
+This means the practical precedence is not "simple base + agent + runtime". It is base profile plus sanitized agent settings, with resolved runtime/vault/instance settings taking final authority over protected paths.
 
 ## Runtime-State Layout
 
@@ -389,9 +389,9 @@ Key runtime-state directories:
 - `db/sessions/`
 - `db/memory/`
 - `db/events/` created by runner for future/event use
-- `user/`
-- `user/workspace/`
-- `user/workspace/routines/`
+- `runtime/`
+- `runtime/workspace/`
+- `runtime/workspace/routines/`
 - `instances/`
 - `generated/`
 - `protected/`

@@ -11,6 +11,8 @@ const OMITTED_DIRECTORY_NAMES = new Set([
   "dist",
   "build",
   "coverage",
+  "deep-knowledge",
+  "skills",
 ]);
 
 const sortEntries = (entries: Array<{ name: string; isDirectory: boolean }>) =>

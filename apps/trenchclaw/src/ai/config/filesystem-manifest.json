@@ -31,7 +31,7 @@
       "model": "read"
     },
     {
-      "path": ".runtime-state/user/workspace",
+      "path": ".runtime-state/runtime/workspace",
       "model": "write"
     },
     {
@@ -39,7 +39,7 @@
       "model": "write"
     },
     {
-      "path": ".runtime-state/user",
+      "path": ".runtime-state/runtime",
       "model": "none"
     },
     {

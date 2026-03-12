@@ -27,7 +27,7 @@ export const INSTANCE_SYSTEM_WRITE_ROOTS = [
 ] as const;
 
 export const PROTECTED_NO_READ_WRITE_ROOTS = [
-  ".runtime-state/user",
+  ".runtime-state/runtime",
 ] as const;
 
 export const assertWritePathInRoots = (input: {
