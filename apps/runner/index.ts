@@ -379,9 +379,9 @@ const ensureRuntimeStateLayout = (): void => {
     path.join(LAYOUT.runtimeStateRoot, "db/events"),
     path.join(LAYOUT.runtimeStateRoot, "db/sessions"),
     path.join(LAYOUT.runtimeStateRoot, "db/memory"),
-    path.join(LAYOUT.runtimeStateRoot, "user"),
-    path.join(LAYOUT.runtimeStateRoot, "user/workspace"),
-    path.join(LAYOUT.runtimeStateRoot, "user/workspace/routines"),
+    path.join(LAYOUT.runtimeStateRoot, "runtime"),
+    path.join(LAYOUT.runtimeStateRoot, "runtime/workspace"),
+    path.join(LAYOUT.runtimeStateRoot, "runtime/workspace/routines"),
     path.join(LAYOUT.runtimeStateRoot, "instances"),
     path.join(LAYOUT.runtimeStateRoot, "generated"),
     path.join(LAYOUT.runtimeStateRoot, "protected/keypairs"),
@@ -394,7 +394,7 @@ const ensureRuntimeStateLayout = (): void => {
   const placeholders: Array<{ source: string; target: string }> = [
     {
       source: path.join(LAYOUT.coreAssetRoot, "src/ai/config/vault.template.json"),
-      target: path.join(LAYOUT.runtimeStateRoot, "user/vault.template.json"),
+      target: path.join(LAYOUT.runtimeStateRoot, "runtime/vault.template.json"),
     },
     {
       source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/keypairs/.keep"),
@@ -406,7 +406,7 @@ const ensureRuntimeStateLayout = (): void => {
     copyFileIfMissing(placeholder.source, placeholder.target);
   }
 
-  writeFileIfMissing(path.join(LAYOUT.runtimeStateRoot, "user/settings.json"), "{}\n");
+  writeFileIfMissing(path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json"), "{}\n");
 };
 
 const toSettingsFileName = (profile: RuntimeSettingsProfile): string =>
@@ -443,18 +443,19 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
     path.join(LAYOUT.runtimeStateRoot, "generated/knowledge-manifest.md");
-  process.env.TRENCHCLAW_USER_SETTINGS_FILE =
+  process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE =
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE ||
     process.env.TRENCHCLAW_USER_SETTINGS_FILE ||
-    path.join(LAYOUT.runtimeStateRoot, "user/settings.json");
+    path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json");
   process.env.TRENCHCLAW_AI_SETTINGS_FILE =
-    process.env.TRENCHCLAW_AI_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "user/ai.json");
+    process.env.TRENCHCLAW_AI_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/ai.json");
   process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE =
     process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE ||
     path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
   process.env.TRENCHCLAW_VAULT_FILE =
-    process.env.TRENCHCLAW_VAULT_FILE || path.join(LAYOUT.runtimeStateRoot, "user/vault.json");
+    process.env.TRENCHCLAW_VAULT_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/vault.json");
   process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
-    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE || path.join(LAYOUT.runtimeStateRoot, "user/vault.template.json");
+    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/vault.template.json");
 };
 
 const logOptionalToolDiagnostics = (): void => {

@@ -11,7 +11,7 @@ import {
 } from "../../apps/trenchclaw/src/runtime/workspace-bash";
 import { runtimeStatePath } from "../helpers/core-paths";
 
-const TEST_ROOT = runtimeStatePath("user/workspace/.tests");
+const TEST_ROOT = runtimeStatePath("runtime/workspace/.tests");
 const createdPaths: string[] = [];
 
 afterEach(async () => {

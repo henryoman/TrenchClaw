@@ -47,13 +47,13 @@
 <div class="docs-shell min-h-screen" data-docs-theme={theme}>
   <header class="docs-header">
     <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-      <a href={resolve('/')} class="docs-logo">TrenchClaw Docs</a>
+      <a href={resolve('/', {})} class="docs-logo">TrenchClaw Docs</a>
       <nav class="flex items-center gap-3 text-sm">
         <button type="button" class="docs-theme-toggle" onclick={toggleTheme}>
           {theme === 'dark' ? 'Light mode' : 'Dark mode'}
         </button>
-        <a class="docs-header-link" href={resolve('/docs')}>Docs Home</a>
-        <a class="docs-header-link" href={resolve('/')}>Main Site</a>
+        <a class="docs-header-link" href={resolve('/docs', {})}>Docs Home</a>
+        <a class="docs-header-link" href={resolve('/', {})}>Main Site</a>
       </nav>
     </div>
   </header>

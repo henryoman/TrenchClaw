@@ -143,7 +143,7 @@ const main = async (): Promise<void> => {
     const timeoutId = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
     let response: Response;
     try {
-      response = await fetch(`${runtimeUrl}/api/chat`, {
+      response = await fetch(`${runtimeUrl}/v1/chat/stream`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -158,7 +158,7 @@ const main = async (): Promise<void> => {
     }
 
     if (!response.ok) {
-      throw new Error(`Expected /api/chat 200, got ${response.status}`);
+      throw new Error(`Expected /v1/chat/stream 200, got ${response.status}`);
     }
 
     const bodyText = await response.text();

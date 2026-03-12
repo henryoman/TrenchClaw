@@ -24,6 +24,7 @@ import type {
   ManagedWalletRef,
   ManagedWalletTreeNode,
   ManagedWalletTreeSnapshot,
+  WalletLabelFile,
 } from "./wallet-types";
 
 export interface WalletDeleteRequest {
@@ -95,33 +96,39 @@ const resolveDefaultWalletLibraryFilePath = (): string =>
 
 const toWalletDisplayName = (fileName: string): string => fileName.replace(/\.json$/iu, "");
 
+const readWalletLabelFile = async (keypairFilePath: string): Promise<WalletLabelFile | null> => {
+  const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);
+  const walletLabelFile = Bun.file(walletLabelFilePath);
+  if (!(await walletLabelFile.exists())) {
+    return null;
+  }
+
+  try {
+    return walletLabelFileSchema.parse(await walletLabelFile.json());
+  } catch {
+    return null;
+  }
+};
+
 const readWalletLabelMetadata = async (keypairFilePath: string): Promise<{
   walletId?: string;
   walletName?: string;
   address?: string;
   displayName?: string;
 }> => {
-  const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);
-  const walletLabelFile = Bun.file(walletLabelFilePath);
-  if (!(await walletLabelFile.exists())) {
+  const parsed = await readWalletLabelFile(keypairFilePath);
+  if (!parsed) {
     return {
       displayName: toWalletDisplayName(path.basename(keypairFilePath)),
     };
   }
 
-  try {
-    const parsed = walletLabelFileSchema.parse(await walletLabelFile.json());
-    return {
-      walletId: parsed.walletId,
-      walletName: parsed.walletName,
-      address: parsed.address,
-      displayName: parsed.walletName || toWalletDisplayName(parsed.walletFileName),
-    };
-  } catch {
-    return {
-      displayName: toWalletDisplayName(path.basename(keypairFilePath)),
-    };
-  }
+  return {
+    walletId: parsed.walletId,
+    walletName: parsed.walletName,
+    address: parsed.address,
+    displayName: parsed.walletName || toWalletDisplayName(parsed.walletFileName),
+  };
 };
 
 const buildManagedWalletTree = async (
@@ -225,6 +232,12 @@ export const resolveWalletLibraryFilePath = (): string => {
   return absolutePath;
 };
 
+export const resolveWalletKeypairRootPathForInstanceId = (instanceId: string): string => {
+  const absoluteRoot = resolveAbsolutePath(path.join(resolveInstanceDirectoryPath(instanceId), WALLET_KEYPAIRS_DIRECTORY_NAME));
+  assertWithinBrainProtectedDirectory(absoluteRoot);
+  return absoluteRoot;
+};
+
 export const isWalletLabelFileName = (fileName: string): boolean =>
   fileName.toLowerCase().endsWith(WALLET_LABEL_FILE_SUFFIX);
 
@@ -241,6 +254,7 @@ export const resolveWalletLabelFilePath = (keypairFilePath: string): string => {
 export const readManagedWalletLibraryEntries = async (input?: {
   filePath?: string;
   allowMissing?: boolean;
+  inferFromFilesystem?: boolean;
 }): Promise<{
   filePath: string;
   entries: ManagedWalletLibraryEntry[];
@@ -249,6 +263,14 @@ export const readManagedWalletLibraryEntries = async (input?: {
   const filePath = input?.filePath ?? resolveWalletLibraryFilePath();
   const file = Bun.file(filePath);
   if (!(await file.exists())) {
+    if (input?.inferFromFilesystem) {
+      const keypairRootPath = path.dirname(filePath);
+      return {
+        filePath,
+        entries: await inferManagedWalletLibraryEntriesFromFilesystem({ keypairRootPath }),
+        invalidLineCount: 0,
+      };
+    }
     if (input?.allowMissing) {
       return {
         filePath,
@@ -279,6 +301,60 @@ export const readManagedWalletLibraryEntries = async (input?: {
     entries,
     invalidLineCount,
   };
+};
+
+export const inferManagedWalletLibraryEntriesFromFilesystem = async (input?: {
+  keypairRootPath?: string;
+}): Promise<ManagedWalletLibraryEntry[]> => {
+  const absoluteRootPath = input?.keypairRootPath
+    ? resolveAbsolutePath(input.keypairRootPath)
+    : resolveWalletKeypairRootPath();
+  assertWithinBrainProtectedDirectory(absoluteRootPath);
+  const rootStats = await stat(absoluteRootPath).catch(() => null);
+  if (!rootStats || !rootStats.isDirectory()) {
+    return [];
+  }
+
+  const entries: ManagedWalletLibraryEntry[] = [];
+
+  const walk = async (directoryPath: string): Promise<void> => {
+    const directoryEntries = await readdir(directoryPath, { withFileTypes: true });
+    for (const entry of directoryEntries) {
+      const absoluteEntryPath = path.join(directoryPath, entry.name);
+      ensureWithinWalletRoot(absoluteRootPath, absoluteEntryPath);
+
+      if (entry.isDirectory()) {
+        await walk(absoluteEntryPath);
+        continue;
+      }
+
+      if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".json") || isWalletLabelFileName(entry.name)) {
+        continue;
+      }
+
+      const label = await readWalletLabelFile(absoluteEntryPath);
+      if (!label) {
+        continue;
+      }
+
+      entries.push({
+        walletId: label.walletId,
+        walletGroup: label.walletGroup,
+        walletName: label.walletName,
+        address: label.address,
+        keypairFilePath: absoluteEntryPath,
+        walletLabelFilePath: resolveWalletLabelFilePath(absoluteEntryPath),
+        createdAt: label.createdAt,
+        updatedAt: label.updatedAt,
+      });
+    }
+  };
+
+  await walk(absoluteRootPath);
+
+  return entries
+    .toSorted((left, right) => `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`))
+    .filter((entry, index, list) => index === 0 || list[index - 1]?.walletId !== entry.walletId);
 };
 
 export const findManagedWalletEntry = async (input: ManagedWalletRef): Promise<ManagedWalletLibraryEntry> => {

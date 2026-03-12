@@ -66,13 +66,13 @@ export const resolveRuntimeStateRoot = (): string => {
 
 export const RUNTIME_STATE_ROOT = resolveRuntimeStateRoot();
 export const RUNTIME_DB_ROOT = path.join(RUNTIME_STATE_ROOT, "db");
-export const RUNTIME_USER_ROOT = path.join(RUNTIME_STATE_ROOT, "user");
+export const RUNTIME_OWNED_ROOT = path.join(RUNTIME_STATE_ROOT, "runtime");
 export const RUNTIME_INSTANCE_ROOT = path.join(RUNTIME_STATE_ROOT, "instances");
 export const RUNTIME_GENERATED_ROOT = path.join(RUNTIME_STATE_ROOT, "generated");
-export const RUNTIME_WORKSPACE_ROOT = path.join(RUNTIME_USER_ROOT, "workspace");
+export const RUNTIME_WORKSPACE_ROOT = path.join(RUNTIME_OWNED_ROOT, "workspace");
 export const RUNTIME_WORKSPACE_ROUTINES_ROOT = path.join(RUNTIME_WORKSPACE_ROOT, "routines");
 export const RUNTIME_PROTECTED_ROOT = path.join(RUNTIME_STATE_ROOT, "protected");
-export const RUNTIME_NO_READ_ROOT = RUNTIME_USER_ROOT;
+export const RUNTIME_NO_READ_ROOT = RUNTIME_OWNED_ROOT;
 export const RUNTIME_KEYPAIRS_ROOT = path.join(RUNTIME_PROTECTED_ROOT, "keypairs");
 
 export const resolveCoreRelativePath = (targetPath: string): string =>

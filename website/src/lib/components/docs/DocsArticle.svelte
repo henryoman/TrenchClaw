@@ -7,7 +7,7 @@
   let { doc }: { doc: DocPage } = $props();
 </script>
 
-<a href={resolve('/docs')} class="docs-back-link">&larr; All docs</a>
+<a href={resolve('/docs', {})} class="docs-back-link">&larr; All docs</a>
 <div class="docs-article-shell mt-4">
   <article class="docs-content" use:copyCodeBlocks={doc.html}>
     <h1>{doc.title}</h1>

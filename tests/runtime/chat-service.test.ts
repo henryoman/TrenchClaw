@@ -285,6 +285,52 @@ describe("RuntimeChatService", () => {
     expect(capturedSystemPrompt).toContain("\"walletId\": \"practice-wallets.practice001\"");
   });
 
+  test("tells the model to answer directly when no managed wallets exist", async () => {
+    const registry = new ActionRegistry();
+    const instanceId = "98";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(instanceDirectory, { recursive: true });
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let capturedSystemPrompt = "";
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: {
+          provider: "test",
+          model: "test-model",
+          defaultSystemPrompt: "test system prompt",
+          defaultMode: "test",
+          generate: async () => ({ text: "ok", finishReason: "stop" }),
+          stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
+        } as unknown as LlmClient,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: { system?: string }) => {
+          capturedSystemPrompt = args.system ?? "";
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([]);
+
+    expect(capturedSystemPrompt).toContain("- WALLET_LIBRARY_STATUS=missing");
+    expect(capturedSystemPrompt).toContain("answer directly that no managed wallets are configured right now");
+    expect(capturedSystemPrompt).toContain("Do not ask follow-up questions before giving that direct answer");
+  });
+
   test("preserves assistant role/history when preparing streaming messages", async () => {
     const registry = new ActionRegistry();
     registry.register({

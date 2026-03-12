@@ -47,7 +47,7 @@
         },
         {
           "kind": "generated",
-          "title": "Resolved User Settings",
+          "title": "Resolved Runtime Settings",
           "source": "resolvedUserSettings"
         }
       ]

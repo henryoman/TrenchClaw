@@ -8,6 +8,8 @@ const ENV_KEYS = [
   "TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE",
   "TRENCHCLAW_KNOWLEDGE_DIR",
   "TRENCHCLAW_WORKSPACE_DIR",
+  "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
+  "TRENCHCLAW_VAULT_FILE",
 ] as const;
 
 const initialEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -26,11 +28,14 @@ afterEach(() => {
 
 describe("loadSystemPromptPayload", () => {
   test("builds the default primary payload from the manifest", async () => {
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = "apps/trenchclaw/.runtime-state/user/settings.json";
+    process.env.TRENCHCLAW_VAULT_FILE = "apps/trenchclaw/.runtime-state/user/vault.json";
+
     const payload = await loadSystemPromptPayload();
 
     expect(payload.mode).toBe("primary");
     expect(payload.title).toBe("Primary Mode");
-    expect(payload.sections.length).toBe(8);
+    expect(payload.sections.length).toBe(7);
     expect(payload.systemPrompt).toContain("TrenchClaw System Prompt");
     expect(payload.systemPrompt).toContain("# Primary Mode");
     expect(payload.systemPrompt).toContain("## Prompt Assembly Order");
@@ -41,36 +46,35 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("Workspace Context Snapshot");
     expect(payload.systemPrompt).toContain("Knowledge Manifest");
     expect(payload.systemPrompt).toContain("Filesystem Policy");
-    expect(payload.systemPrompt).toContain("Resolved User Settings");
+    expect(payload.systemPrompt).toContain("Runtime Settings (Resolved)");
     expect(payload.systemPrompt).toContain("Live Callable Capability Appendix");
     expect(payload.systemPrompt).toContain("Runtime Chat Tool Catalog");
     expect(payload.systemPrompt).toContain("Exact Callable Tool Names");
     expect(payload.systemPrompt).toContain("workspaceBash");
     expect(payload.systemPrompt).toContain("queryRuntimeStore");
     expect(payload.systemPrompt).toContain("queryInstanceMemory");
-    expect(payload.systemPrompt).toContain("Use `workspaceBash` first for discovery and search, then use `workspaceReadFile`");
-    expect(payload.systemPrompt).toContain("Knowledge Manifest");
-    expect(payload.systemPrompt).toContain("src/ai/brain/knowledge/deep-knowledge/*.md");
-    expect(payload.systemPrompt).toContain("Workspace Map (apps/trenchclaw/)");
-    expect(payload.systemPrompt).toContain("# WORKSPACE ROOT: apps/trenchclaw/");
+    expect(payload.systemPrompt).toContain("src/ai/brain/knowledge/runtime-reference.md");
+    expect(payload.systemPrompt).toContain("Root: apps/trenchclaw/");
     expect(payload.systemPrompt).toContain("Available Knowledge Manifest");
-    expect(payload.systemPrompt).toContain("ai/");
-    expect(payload.systemPrompt).toContain("User Settings (Resolved)");
+    expect(payload.systemPrompt).toContain("runtime-reference.md");
     expect(payload.systemPrompt).not.toContain("\"actionName\": \"checkSolBalance\"");
     expect(
       payload.systemPrompt.includes("\"primaryRpc\": \"helius\"") ||
-        payload.systemPrompt.includes("User settings could not be loaded:"),
+        payload.systemPrompt.includes("Runtime settings could not be loaded:"),
     ).toBe(true);
     expect(payload.promptFiles.length).toBe(3);
   });
 
   test("resolves explicit primary mode", async () => {
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = "apps/trenchclaw/.runtime-state/user/settings.json";
+    process.env.TRENCHCLAW_VAULT_FILE = "apps/trenchclaw/.runtime-state/user/vault.json";
+
     const payload = await loadSystemPromptPayload("primary");
 
     expect(payload.mode).toBe("primary");
     expect(payload.title).toBe("Primary Mode");
     expect(payload.systemPrompt).toContain("Mode: `primary`");
-    expect(payload.systemPrompt).toContain("Workspace Map (apps/trenchclaw/)");
+    expect(payload.systemPrompt).toContain("Root: apps/trenchclaw/");
   });
 
   test("throws on unknown modes", async () => {

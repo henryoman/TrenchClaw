@@ -1,13 +1,17 @@
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isRecord, parseStructuredFile, resolvePathFromModule } from "./shared";
+import { isRecord, parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
 import { ensureVaultFileExists } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
-const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/user/settings.json";
-const DEFAULT_VAULT_FILE = "../../../.runtime-state/user/vault.json";
+const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/runtime/settings.json";
+const LEGACY_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/user/settings.json";
+const DEFAULT_VAULT_FILE = "../../../.runtime-state/runtime/vault.json";
+const LEGACY_VAULT_FILE = "../../../.runtime-state/user/vault.json";
 const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 
-const USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
+const RUNTIME_SETTINGS_FILE_ENV = "TRENCHCLAW_RUNTIME_SETTINGS_FILE";
+const LEGACY_USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 
@@ -135,19 +139,37 @@ export interface ResolvedUserSettingsPayload {
   activeInstanceId: string | null;
 }
 
+const ensureStructuredSettingsFileExists = async (filePath: string): Promise<void> => {
+  const targetPath = path.resolve(filePath);
+  const file = Bun.file(targetPath);
+  if (await file.exists()) {
+    return;
+  }
+
+  await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
+  await writeFile(targetPath, "{}\n", { encoding: "utf8", mode: 0o600 });
+};
+
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
-  const compatibilitySettingsPath = resolvePathFromModule(
-    import.meta.url,
-    DEFAULT_COMPATIBILITY_SETTINGS_FILE,
-    process.env[USER_SETTINGS_FILE_ENV],
-  );
-  const vaultPath = resolvePathFromModule(import.meta.url, DEFAULT_VAULT_FILE, process.env[VAULT_FILE_ENV]);
+  const compatibilitySettingsPath = await resolvePreferredPathFromModule({
+    moduleUrl: import.meta.url,
+    preferredRelativePath: DEFAULT_COMPATIBILITY_SETTINGS_FILE,
+    envValues: [process.env[RUNTIME_SETTINGS_FILE_ENV], process.env[LEGACY_USER_SETTINGS_FILE_ENV]],
+    legacyRelativePaths: [LEGACY_COMPATIBILITY_SETTINGS_FILE],
+  });
+  const vaultPath = await resolvePreferredPathFromModule({
+    moduleUrl: import.meta.url,
+    preferredRelativePath: DEFAULT_VAULT_FILE,
+    envValues: [process.env[VAULT_FILE_ENV]],
+    legacyRelativePaths: [LEGACY_VAULT_FILE],
+  });
   const vaultTemplatePath = resolvePathFromModule(
     import.meta.url,
     DEFAULT_VAULT_TEMPLATE_FILE,
     process.env[VAULT_TEMPLATE_FILE_ENV],
   );
 
+  await ensureStructuredSettingsFileExists(compatibilitySettingsPath);
   await ensureVaultFileExists({
     vaultPath,
     templatePath: vaultTemplatePath,
@@ -196,7 +218,7 @@ export const renderResolvedUserSettingsSection = async (): Promise<string> => {
         ? `\nWarnings:\n${payload.warnings.map((warning) => `- ${warning}`).join("\n")}\n`
         : "";
 
-    return `## User Settings (Resolved)
+    return `## Runtime Settings (Resolved)
 Source:
 - compatibility settings: ${payload.compatibilitySettingsPath}
 - instance trading settings: ${payload.instanceTradingSettingsPath ?? "none"}
@@ -207,7 +229,7 @@ ${JSON.stringify(payload.resolvedSettings, null, 2)}
 \`\`\``;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return `## User Settings (Resolved)
-User settings could not be loaded: ${message}`;
+    return `## Runtime Settings (Resolved)
+Runtime settings could not be loaded: ${message}`;
   }
 };

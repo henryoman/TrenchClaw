@@ -13,14 +13,14 @@ import {
 import { parseStructuredFile, resolvePathFromModule } from "../../../ai/llm/shared";
 import { ensureVaultFileExists } from "../../../ai/llm/vault-file";
 import { resolveRequiredRpcUrl } from "../rpc/urls";
-import { RUNTIME_USER_ROOT, resolveCoreRelativePath } from "../../../runtime/runtime-paths";
+import { RUNTIME_OWNED_ROOT, resolveCoreRelativePath } from "../../../runtime/runtime-paths";
 
 export interface UltraSignerAdapter {
   address: string;
   signBase64Transaction(base64Transaction: string): Promise<string>;
 }
 
-const DEFAULT_VAULT_FILE = `${RUNTIME_USER_ROOT}/vault.json`;
+const DEFAULT_VAULT_FILE = `${RUNTIME_OWNED_ROOT}/vault.json`;
 const DEFAULT_VAULT_TEMPLATE_FILE = resolveCoreRelativePath("src/ai/config/vault.template.json");
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";

@@ -58,7 +58,11 @@ These wallet variables are loaded from the active instance wallet library at req
 - ACTIVE_INSTANCE_ID=${activeInstanceId}
 - WALLET_LIBRARY_FILE=${walletLibraryContractPath}
 - WALLET_LIBRARY_STATUS=missing
-- WALLET_LIBRARY_EXPECTED_FILE_NAME=${DEFAULT_WALLET_LIBRARY_FILE_NAME}`;
+- WALLET_LIBRARY_EXPECTED_FILE_NAME=${DEFAULT_WALLET_LIBRARY_FILE_NAME}
+
+If the user asks for the current balance, holdings, or total money in "our wallets", interpret that as the managed wallets for this active instance.
+When WALLET_LIBRARY_STATUS=missing, answer directly that no managed wallets are configured right now, so the tracked managed-wallet total is zero.
+Do not ask follow-up questions before giving that direct answer unless the user explicitly asks to add, import, or inspect external wallets.`;
   }
 
   const { entries, invalidLineCount } = await readManagedWalletLibraryEntries({ filePath: walletLibraryFilePath });
@@ -148,6 +152,10 @@ These wallet variables are loaded from the active instance wallet library at req
 
   if (orderedEntries.length === 0) {
     lines.push("- WALLET_LIBRARY_STATUS=empty");
+    lines.push("");
+    lines.push("If the user asks for the current balance, holdings, or total money in \"our wallets\", interpret that as the managed wallets for this active instance.");
+    lines.push("When WALLET_LIBRARY_STATUS=empty, answer directly that there are no managed wallets configured yet, so the tracked managed-wallet total is zero.");
+    lines.push("Do not ask follow-up questions before giving that direct answer unless the user explicitly asks to add, import, or inspect external wallets.");
     return lines.join("\n");
   }
 
