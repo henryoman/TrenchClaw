@@ -1,34 +1,30 @@
 ---
 title: Runtime and Frontends
-description: Understand the current local networking model, what the GUI really does today, and which workflows are chat-driven versus dedicated GUI features.
+description: Understand the local runtime, the GUI, and what each surface actually does today.
 order: 7
 ---
 
-TrenchClaw currently runs as a local runtime plus a locally served GUI.
+## Local Model
 
-## Local Networking Model
+TrenchClaw runs as:
 
-In the packaged path, the runner:
+- a local runtime API
+- a local GUI
+- a local proxy from the GUI to the runtime
 
-- starts the runtime API on localhost near `127.0.0.1:4020`
-- starts the GUI on localhost near `127.0.0.1:4173`
-- proxies GUI `/api/*` requests back to the runtime
+Default ports:
 
-If the preferred ports are busy, the runner increments to the next available local ports.
+- runtime API: `127.0.0.1:4020`
+- GUI: `127.0.0.1:4173`
 
-## What The Runtime Owns
+## Runtime
 
-The runtime owns:
+- actions and policy checks
+- queued routines
+- local state
+- conversations, activity, receipts, and memory
 
-- action registration and policy checks
-- queued routines and scheduler behavior
-- local state and SQLite-backed persistence
-- conversations, activity, receipts, and runtime memory
-- wallet- and vault-adjacent operator surfaces
-
-## What The GUI Owns
-
-The current GUI is an operator surface on top of the runtime. Today it is strongest at:
+## GUI
 
 - instance selection and sign-in
 - chat
@@ -38,18 +34,14 @@ The current GUI is an operator surface on top of the runtime. Today it is strong
 - queue, schedule, and activity visibility
 - conversation history browsing
 
-## Important Current Limitation
+## Current Limits
 
-The shipped GUI is not a full parity surface for every runtime capability.
+- no dedicated GUI wallet creation flow
+- no dedicated GUI wallet rename flow
+- no full runtime settings editor
+- many execution flows are still chat-driven
 
-Examples of what the website should not overclaim:
-
-- there is no dedicated GUI wallet creation flow
-- there is no dedicated GUI wallet rename flow
-- there is no full runtime settings editor in the current GUI
-- many execution workflows are still chat-driven or action-driven rather than button-driven
-
-## Browser Launch Behavior
+## Browser Launch
 
 After startup, the runner prompts whether to open the GUI automatically.
 
@@ -57,9 +49,9 @@ After startup, the runner prompts whether to open the GUI automatically.
 - `skip` leaves the runtime running without opening the browser
 - `quit` exits the app
 
-## Runtime Health And API
+## Main Endpoints
 
-Current runtime endpoints include:
+Current endpoints include:
 
 - `/health`
 - `/`
@@ -69,20 +61,16 @@ Current runtime endpoints include:
 - `/v1/chat/stream`
 - `/v1/chat/turn`
 
-The GUI and runtime are designed for local use. Keep the runtime loopback-only unless you intentionally add your own access controls in front of it.
+## Instance Scope
 
-## Instance Awareness
-
-The GUI and runtime surfaces are organized around the active local instance.
-
-That affects:
+The active instance affects:
 
 - wallet roots
 - conversations
 - memory and profile facts
 - operator-facing state in the protected instance directory
 
-## Typical Operator Flow
+## Typical Flow
 
 1. Launch `trenchclaw`.
 2. Choose or create an instance.

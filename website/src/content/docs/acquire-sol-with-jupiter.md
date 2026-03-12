@@ -1,46 +1,24 @@
 ---
 title: Funding Wallets
-description: Fund wallets for real use or devnet testing, and understand which funding paths are external guidance versus product-native runtime actions.
+description: Fund wallets for real use or devnet testing.
 order: 5
 ---
 
-This guide covers the funding paths that matter for TrenchClaw usage today.
+## Real Funds
 
-## Two Different Funding Cases
+For real funds, TrenchClaw does not provide a built-in fiat onramp. Fund the wallet externally, then use TrenchClaw after the assets are already there.
 
-### Real Funds
+## Devnet
 
-For mainnet-style usage, TrenchClaw does not currently provide a fiat onramp inside the product. You fund wallets externally, then use TrenchClaw once assets are already available.
+For devnet testing, the runtime exposes `devnetAirdrop`.
 
-### Test Funds
-
-For devnet testing, TrenchClaw does expose a devnet SOL airdrop action surface.
-
-## Mainnet Funding Path
-
-If you need real SOL before using live runtime features:
-
-1. Fund a wallet externally.
-2. Confirm the wallet address is the one you intend to operate with.
-3. Verify the wallet holds enough SOL for network fees and the action you want to test.
-
-Common external path:
-
-- use Jupiter's public site for onramp or token swaps when that fits your region and account setup
-
-That is external operator guidance, not an embedded TrenchClaw workflow.
-
-## Devnet Funding Path
-
-The runtime exposes a `devnetAirdrop` action for confirmed SOL airdrops on Solana devnet.
-
-What it is useful for:
+Use it for:
 
 - testing managed wallet flows
-- testing routines against disposable balances
-- validating queueing and action wiring without mainnet funds
+- testing routines without real funds
+- validating action wiring
 
-## Before Funding Any Wallet
+## Before Funding
 
 Confirm:
 
@@ -49,24 +27,16 @@ Confirm:
 - the wallet you are funding is the wallet you actually intend to use
 - you are keeping extra SOL available for fees
 
-## External Jupiter Guidance
+## External Jupiter Path
 
-If you use Jupiter outside TrenchClaw to fund a wallet:
+If you use Jupiter outside TrenchClaw:
 
 1. Verify the URL is `https://jup.ag`.
 2. Use the wallet address you intend to use with TrenchClaw.
 3. Wait for settlement and final confirmation.
 4. Recheck balances before running runtime actions.
 
-## Current Product Boundary
-
-Document this boundary clearly:
-
-- buying or onramping fiat is outside the current product
-- devnet airdrop is inside the current action surface
-- swap execution inside TrenchClaw is a separate runtime capability and not the same thing as funding from fiat
-
-## Verify Before Continuing
+## Verify
 
 - the asset is visible in the target wallet
 - you still have enough SOL left for fees
@@ -74,14 +44,14 @@ Document this boundary clearly:
 
 ## Common Issues
 
-### I funded the wrong wallet
+### Wrong wallet funded
 
 Stop and confirm addresses before sending more funds or starting routines.
 
-### I bought a token but still cannot pay Solana fees
+### No SOL for fees
 
 You still need native SOL for fees even if you hold SPL tokens.
 
-### I want to test flows without using real capital
+### Testing only
 
 Use devnet and the runtime's devnet airdrop capability instead of mainnet funds.

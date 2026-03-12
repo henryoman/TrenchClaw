@@ -88,12 +88,10 @@
           The Solana-native AI assistant.
         </h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-foreground-soft">
-          TrenchClaw is a Bun-based Solana operator runtime with validated actions, filesystem-backed wallets, AI orchestration,
-          and local state built for actions, routines, and operator control.
+          TrenchClaw is a local Solana operator runtime with actions, wallets, routines, and a local GUI.
         </p>
         <p class="mt-4 max-w-2xl text-sm leading-7 text-foreground-soft">
-          The hosted install scripts fetch a published GitHub Release for your platform, install the `trenchclaw` launcher,
-          and provision the required Solana CLI toolchain before first launch.
+          The docs focus on what is actually shipped right now.
         </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -116,7 +114,7 @@
           </div>
           <div class="surface-card p-5">
             <div class="text-2xl font-bold tracking-[-0.04em]">CLI first</div>
-            <div class="mt-1 text-sm text-muted">Some workflows remain chat- and runtime-driven rather than full GUI parity</div>
+            <div class="mt-1 text-sm text-muted">Some workflows are still chat- and runtime-driven</div>
           </div>
         </div>
       </div>
