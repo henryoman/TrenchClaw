@@ -11,12 +11,10 @@ const OMITTED_DIRECTORY_NAMES = new Set([
   "dist",
   "build",
   "coverage",
-  "deep-knowledge",
-  "skills",
 ]);
 
 const sortEntries = (entries: Array<{ name: string; isDirectory: boolean }>) =>
-  entries.toSorted((a, b) => {
+  [...entries].sort((a, b) => {
     if (a.isDirectory !== b.isDirectory) {
       return a.isDirectory ? -1 : 1;
     }
@@ -46,22 +44,20 @@ const renderTree = async (
 
   const rootLabel = rootName ?? path.basename(targetDir);
   const lines: string[] = prefix ? [] : [`${rootLabel}/`];
-  const renderedEntries = await Promise.all(
-    normalized.map(async (entry, index) => {
-      const absolutePath = path.join(targetDir, entry.name);
-      const isLast = index === normalized.length - 1;
-      const branch = isLast ? "`-- " : "|-- ";
-      const rendered = [`${prefix}${branch}${entry.name}${entry.isDirectory ? "/" : ""}`];
 
-      if (entry.isDirectory) {
-        const childPrefix = `${prefix}${isLast ? "    " : "|   "}`;
-        rendered.push(...(await renderTree(absolutePath, childPrefix)));
-      }
+  for (let index = 0; index < normalized.length; index += 1) {
+    const entry = normalized[index]!;
+    const absolutePath = path.join(targetDir, entry.name);
+    const isLast = index === normalized.length - 1;
+    const branch = isLast ? "`-- " : "|-- ";
+    lines.push(`${prefix}${branch}${entry.name}${entry.isDirectory ? "/" : ""}`);
 
-      return rendered;
-    }),
-  );
-  lines.push(...renderedEntries.flat());
+    if (entry.isDirectory) {
+      const childPrefix = `${prefix}${isLast ? "    " : "|   "}`;
+      const childLines = await renderTree(absolutePath, childPrefix);
+      lines.push(...childLines);
+    }
+  }
 
   return lines;
 };

@@ -59,4 +59,56 @@ describe("renderRuntimeWalletPromptContext", () => {
     expect(prompt).toContain('"updateLabelFiles": true');
     expect(prompt).toContain("There is no wallet delete tool in chat.");
   });
+
+  test("falls back to wallet label files when the wallet library is missing", async () => {
+    const instanceId = "95";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    const walletGroupDirectory = path.join(keypairsDirectory, "core");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(walletGroupDirectory, { recursive: true });
+    await writeFile(path.join(walletGroupDirectory, "wallet_000.json"), "[1,2,3]\n", "utf8");
+    await writeFile(
+      path.join(walletGroupDirectory, "wallet_000.label.json"),
+      `${JSON.stringify({
+        version: 1,
+        walletId: "practice-wallets.practice001",
+        walletGroup: "practice-wallets",
+        walletName: "practice001",
+        walletFileName: "wallet_000.json",
+        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+        createdAt: "2026-03-12T00:00:00.000Z",
+        updatedAt: "2026-03-12T00:00:00.000Z",
+      })}\n`,
+      "utf8",
+    );
+    await writeFile(path.join(walletGroupDirectory, "wallet_001.json"), "[4,5,6]\n", "utf8");
+    await writeFile(
+      path.join(walletGroupDirectory, "wallet_001.label.json"),
+      `${JSON.stringify({
+        version: 1,
+        walletId: "practice-wallets.practice002",
+        walletGroup: "practice-wallets",
+        walletName: "practice002",
+        walletFileName: "wallet_001.json",
+        address: "2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq",
+        createdAt: "2026-03-12T00:00:00.000Z",
+        updatedAt: "2026-03-12T00:00:00.000Z",
+      })}\n`,
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    const prompt = await renderRuntimeWalletPromptContext({
+      activeInstanceId: instanceId,
+      walletLibraryFilePath: path.join(keypairsDirectory, "wallet-library.jsonl"),
+    });
+
+    expect(prompt).toContain("WALLET_LIBRARY_STATUS=missing");
+    expect(prompt).toContain("WALLET_DISCOVERY_FALLBACK=label-files (2 wallets discovered)");
+    expect(prompt).toContain("getManagedWalletSolBalances");
+    expect(prompt).toContain("practice-wallets");
+    expect(prompt).toContain("DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
+    expect(prompt).toContain("2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq");
+  });
 });

@@ -1,4 +1,7 @@
+import path from "node:path";
+
 import {
+  inferManagedWalletLibraryEntriesFromFilesystem,
   readManagedWalletLibraryEntries,
   resolveWalletLibraryFilePath,
 } from "../solana/lib/wallet/wallet-manager";
@@ -52,6 +55,66 @@ No active wallet instance is selected, so no wallet variables are loaded for thi
   const walletLibraryContractPath = toRuntimeContractRelativePath(walletLibraryFilePath);
   const walletLibraryFile = Bun.file(walletLibraryFilePath);
   if (!(await walletLibraryFile.exists())) {
+    const inferredEntries = await inferManagedWalletLibraryEntriesFromFilesystem({
+      keypairRootPath: path.dirname(walletLibraryFilePath),
+    });
+    if (inferredEntries.length > 0) {
+      const inferredWalletJson = inferredEntries.map((entry) => ({
+        alias: toWalletAlias(entry),
+        walletId: entry.walletId,
+        walletGroup: entry.walletGroup,
+        walletName: entry.walletName,
+        address: entry.address,
+        keypairFile: toContractPath(entry.keypairFilePath),
+        walletLabelFile: toContractPath(entry.walletLabelFilePath),
+      }));
+      return [
+        "## Wallet Runtime Variables",
+        "These wallet variables are loaded from the active instance wallet library at request time.",
+        "",
+        `- ACTIVE_INSTANCE_ID=${activeInstanceId}`,
+        `- WALLET_LIBRARY_FILE=${walletLibraryContractPath}`,
+        "- WALLET_LIBRARY_STATUS=missing",
+        `- WALLET_LIBRARY_EXPECTED_FILE_NAME=${DEFAULT_WALLET_LIBRARY_FILE_NAME}`,
+        `- WALLET_DISCOVERY_FALLBACK=label-files (${inferredEntries.length} wallets discovered)`,
+        "- For questions about SOL balance of each managed wallet, call `getManagedWalletSolBalances` instead of using workspaceBash.",
+        "",
+        "### Wallet Alias Variables",
+        ...inferredEntries.flatMap((entry) => {
+          const alias = toWalletAlias(entry);
+          const lines = [
+            `- WALLET__${alias}__ID=${entry.walletId}`,
+            `- WALLET__${alias}__GROUP=${entry.walletGroup}`,
+            `- WALLET__${alias}__NAME=${entry.walletName}`,
+            `- WALLET__${alias}__ADDRESS=${entry.address}`,
+          ];
+          const keypairFile = toContractPath(entry.keypairFilePath);
+          if (keypairFile) {
+            lines.push(`- WALLET__${alias}__KEYPAIR_FILE=${keypairFile}`);
+          }
+          const walletLabelFile = toContractPath(entry.walletLabelFilePath);
+          if (walletLabelFile) {
+            lines.push(`- WALLET__${alias}__LABEL_FILE=${walletLabelFile}`);
+          }
+          return lines;
+        }),
+        "",
+        "### Wallet JSON",
+        "```json",
+        JSON.stringify(
+          {
+            activeInstanceId,
+            walletLibraryFile: walletLibraryContractPath,
+            walletCount: inferredEntries.length,
+            walletGroups: [...new Set(inferredEntries.map((entry) => entry.walletGroup))],
+            wallets: inferredWalletJson,
+          },
+          null,
+          2,
+        ),
+        "```",
+      ].join("\n");
+    }
     return `## Wallet Runtime Variables
 These wallet variables are loaded from the active instance wallet library at request time.
 
@@ -65,7 +128,10 @@ When WALLET_LIBRARY_STATUS=missing, answer directly that no managed wallets are 
 Do not ask follow-up questions before giving that direct answer unless the user explicitly asks to add, import, or inspect external wallets.`;
   }
 
-  const { entries, invalidLineCount } = await readManagedWalletLibraryEntries({ filePath: walletLibraryFilePath });
+  const { entries, invalidLineCount } = await readManagedWalletLibraryEntries({
+    filePath: walletLibraryFilePath,
+    inferFromFilesystem: true,
+  });
   const maxWallets = Math.max(1, Math.trunc(input.maxWallets ?? DEFAULT_MAX_PROMPT_WALLETS));
   const orderedEntries = [...entries].toSorted((left, right) =>
     `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`));
@@ -91,6 +157,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     `- WALLET_COUNT=${entries.length}`,
     `- WALLET_GROUPS=${groups.join(", ") || "(none)"}`,
     `- WALLET_INVALID_LIBRARY_LINES=${invalidLineCount}`,
+    "- For questions about SOL balance of each managed wallet, call `getManagedWalletSolBalances` instead of using workspaceBash.",
   ];
 
   lines.push(
