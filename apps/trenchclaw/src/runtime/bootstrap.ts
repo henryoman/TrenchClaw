@@ -36,7 +36,7 @@ import {
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
 } from "./load";
-import { createRuntimeLogger, type RuntimeLogger } from "./logging";
+import { createRuntimeLogger, type RuntimeLogger } from "./logging/runtime-logger";
 import { refreshWorkspaceContext } from "../lib/agent-scripts/refresh-workspace-context";
 import { refreshKnowledgeManifest } from "../lib/agent-scripts/refresh-knowledge-manifest";
 import {

@@ -161,7 +161,7 @@ agent-browser network requests                 # View tracked requests
 agent-browser network requests --filter api    # Filter requests
 ```
 
-## Tabs and Windows
+## Tabs and Pages
 
 ```bash
 agent-browser tab                 # List tabs

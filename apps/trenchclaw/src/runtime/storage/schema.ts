@@ -10,8 +10,6 @@ import type {
 } from "../../ai/runtime/types/state";
 import { sqliteJobStatusSchema } from "./sqlite-schema";
 
-export * from "./sqlite-schema";
-
 const nonEmpty = z.string().trim().min(1);
 const unixMs = z.number().int().nonnegative();
 const optionalUnixMs = unixMs.optional();

@@ -120,7 +120,6 @@ detect_platform() {
   case "$os" in
     darwin) platform="darwin-$arch" ;;
     linux) platform="linux-$arch" ;;
-    mingw*|msys*|cygwin*) platform="windows-$arch" ;;
     *) fail "Unsupported OS: $os" ;;
   esac
 }

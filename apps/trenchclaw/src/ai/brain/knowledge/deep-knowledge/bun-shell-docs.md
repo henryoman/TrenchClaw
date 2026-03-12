@@ -23,7 +23,7 @@ await $`cat < ${response} | wc -c`; // 1256
 
 ## Features
 
-* **Cross-platform**: works on Windows, Linux & macOS. Instead of `rimraf` or `cross-env`', you can use Bun Shell without installing extra dependencies. Common shell commands like `ls`, `cd`, `rm` are implemented natively.
+* **Cross-platform**: works across Unix-like environments including Linux and macOS. Instead of `rimraf` or `cross-env`', you can use Bun Shell without installing extra dependencies. Common shell commands like `ls`, `cd`, `rm` are implemented natively.
 * **Familiar**: Bun Shell is a bash-like shell, supporting redirection, pipes, environment variables and more.
 * **Globs**: Glob patterns are supported natively, including `**`, `*`, `{expansion}`, and more.
 * **Template literals**: Template literals are used to execute shell commands. This allows for easy interpolation of variables and expressions.
@@ -546,14 +546,14 @@ bun ./script.sh
 Hello World! pwd=/home/demo
 ```
 
-Scripts with Bun Shell are cross platform, which means they work on Windows:
+Scripts with Bun Shell work in Unix-like environments such as macOS and Linux:
 
-```powershell powershell icon="windows" theme={"theme":{"light":"github-light","dark":"dracula"}}
-bun .\script.sh
+```sh terminal icon="terminal" theme={"theme":{"light":"github-light","dark":"dracula"}}
+bun ./script.sh
 ```
 
 ```txt  theme={"theme":{"light":"github-light","dark":"dracula"}}
-Hello World! pwd=C:\Users\Demo
+Hello World! pwd=/home/demo
 ```
 
 ***

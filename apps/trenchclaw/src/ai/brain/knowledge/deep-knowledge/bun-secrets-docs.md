@@ -45,7 +45,7 @@ console.log(`Logged in as ${(await response.json()).login}`);
 
 * **macOS**: Keychain Services
 * **Linux**: libsecret (GNOME Keyring, KWallet, etc.)
-* **Windows**: Windows Credential Manager
+* Credentials are managed by the host platform's secure storage integration.
 
 All operations are asynchronous and non-blocking, running on Bun's threadpool.
 
@@ -257,13 +257,6 @@ await Bun.secrets.set({
 * May prompt for unlock if the keyring is locked
 * The secret service must be running
 
-### Windows (Credential Manager)
-
-* Credentials are stored in Windows Credential Manager
-* Visible in Control Panel → Credential Manager → Windows Credentials
-* Persist with `CRED_PERSIST_ENTERPRISE` flag so it's scoped per user
-* Encrypted using Windows Data Protection API
-
 ## Security Considerations
 
 1. **Encryption**: Credentials are encrypted by the operating system's credential manager
@@ -280,7 +273,6 @@ await Bun.secrets.set({
 * Requires appropriate system services:
   * Linux: Secret service daemon must be running
   * macOS: Keychain Access must be available
-  * Windows: Credential Manager service must be enabled
 
 ***
 

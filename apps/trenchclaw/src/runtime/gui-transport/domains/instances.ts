@@ -1,4 +1,4 @@
-import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
   GuiCreateInstanceRequest,
@@ -31,32 +31,14 @@ interface InstanceDocument {
   };
 }
 
-const INSTANCE_FILE_REGEX = /^(\d{2})\.json$/u;
-const LEGACY_INSTANCE_FILE_REGEX = /^i-(\d{2})\.json$/u;
 const INSTANCE_DIRECTORY_REGEX = /^(\d{2})$/u;
-const LEGACY_INSTANCE_DIRECTORY_REGEX = /^i-(\d{2})$/u;
 const INSTANCE_PROFILE_FILE_NAME = "instance.json";
 const formatInstanceNumber = (value: number): string => String(value).padStart(2, "0");
 const formatInstanceId = (value: number): string => formatInstanceNumber(value);
 const getInstanceNumber = (value: string): number | null => {
-  const fileMatch = INSTANCE_FILE_REGEX.exec(value);
-  if (fileMatch?.[1]) {
-    return Number(fileMatch[1]);
-  }
-
-  const legacyFileMatch = LEGACY_INSTANCE_FILE_REGEX.exec(value);
-  if (legacyFileMatch?.[1]) {
-    return Number(legacyFileMatch[1]);
-  }
-
   const directoryMatch = INSTANCE_DIRECTORY_REGEX.exec(value);
   if (directoryMatch?.[1]) {
     return Number(directoryMatch[1]);
-  }
-
-  const legacyDirectoryMatch = LEGACY_INSTANCE_DIRECTORY_REGEX.exec(value);
-  if (legacyDirectoryMatch?.[1]) {
-    return Number(legacyDirectoryMatch[1]);
   }
 
   return null;
@@ -73,10 +55,6 @@ const compareInstanceIds = (left: string, right: string): number => {
 
 const normalizeInstanceId = (value: string): string => {
   const trimmed = value.trim();
-  const legacyMatch = /^i-(\d{2})$/u.exec(trimmed);
-  if (legacyMatch?.[1]) {
-    return legacyMatch[1];
-  }
   if (!/^\d{2}$/u.test(trimmed)) {
     throw new Error(`Invalid instance id: ${value}`);
   }
@@ -85,9 +63,6 @@ const normalizeInstanceId = (value: string): string => {
 
 const getInstanceProfilePath = (localInstanceId: string): string =>
   path.join(INSTANCE_DIRECTORY, localInstanceId, INSTANCE_PROFILE_FILE_NAME);
-
-const getLegacyInstanceProfilePath = (localInstanceId: string): string =>
-  path.join(INSTANCE_DIRECTORY, `i-${normalizeInstanceId(localInstanceId)}.json`);
 
 const toInstanceView = (fileName: string, document: InstanceDocument): GuiInstanceProfileView => ({
   fileName,
@@ -140,81 +115,15 @@ const parseInstanceDocument = (raw: string): InstanceDocument | null => {
   }
 };
 
-const createRecoveredInstanceDocument = (input: {
-  localInstanceId: string;
-  createdAt: string;
-  updatedAt: string;
-}): InstanceDocument => ({
-  instance: {
-    name: normalizeInstanceId(input.localInstanceId),
-    localInstanceId: normalizeInstanceId(input.localInstanceId),
-    userPin: null,
-  },
-  runtime: {
-    safetyProfile: "dangerous",
-    createdAt: input.createdAt,
-    updatedAt: input.updatedAt,
-  },
-});
-
-const resolveRecoveredInstanceDocument = async (directoryName: string): Promise<InstanceDocument> => {
-  const absolutePath = path.join(INSTANCE_DIRECTORY, directoryName);
-  try {
-    const directoryStats = await stat(absolutePath);
-    const createdAt = new Date(directoryStats.birthtimeMs || directoryStats.ctimeMs || directoryStats.mtimeMs).toISOString();
-    const updatedAt = new Date(directoryStats.mtimeMs || directoryStats.ctimeMs || directoryStats.birthtimeMs).toISOString();
-    return createRecoveredInstanceDocument({
-      localInstanceId: directoryName,
-      createdAt,
-      updatedAt,
-    });
-  } catch {
-    const nowIso = new Date().toISOString();
-    return createRecoveredInstanceDocument({
-      localInstanceId: directoryName,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    });
-  }
-};
-
 const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: InstanceDocument }>> => {
   assertInstanceSystemWritePath(INSTANCE_DIRECTORY, "initialize instance profile directory");
   await mkdir(INSTANCE_DIRECTORY, { recursive: true });
   const entries = await readdir(INSTANCE_DIRECTORY, { withFileTypes: true, encoding: "utf8" });
-  const instanceEntries = new Map<string, { fileName: string | null; directoryName: string | null }>();
+  const instanceEntries = new Map<string, { directoryName: string }>();
 
   for (const entry of entries) {
-    if (entry.isFile() && INSTANCE_FILE_REGEX.test(entry.name)) {
-      const localInstanceId = entry.name.replace(/\.json$/u, "");
-      const existing = instanceEntries.get(localInstanceId) ?? { fileName: null, directoryName: null };
-      existing.fileName = entry.name;
-      instanceEntries.set(localInstanceId, existing);
-      continue;
-    }
-
-    const legacyFileMatch = LEGACY_INSTANCE_FILE_REGEX.exec(entry.name);
-    if (entry.isFile() && legacyFileMatch?.[1]) {
-      const localInstanceId = legacyFileMatch[1];
-      const existing = instanceEntries.get(localInstanceId) ?? { fileName: null, directoryName: null };
-      existing.fileName = entry.name;
-      instanceEntries.set(localInstanceId, existing);
-      continue;
-    }
-
     if (entry.isDirectory() && INSTANCE_DIRECTORY_REGEX.test(entry.name)) {
-      const existing = instanceEntries.get(entry.name) ?? { fileName: null, directoryName: null };
-      existing.directoryName = entry.name;
-      instanceEntries.set(entry.name, existing);
-      continue;
-    }
-
-    const legacyDirectoryMatch = LEGACY_INSTANCE_DIRECTORY_REGEX.exec(entry.name);
-    if (entry.isDirectory() && legacyDirectoryMatch?.[1]) {
-      const localInstanceId = legacyDirectoryMatch[1];
-      const existing = instanceEntries.get(localInstanceId) ?? { fileName: null, directoryName: null };
-      existing.directoryName = entry.name;
-      instanceEntries.set(localInstanceId, existing);
+      instanceEntries.set(entry.name, { directoryName: entry.name });
     }
   }
 
@@ -227,35 +136,15 @@ const readInstanceFiles = async (): Promise<Array<{ fileName: string; document: 
         return null;
       }
 
-      if (entry.directoryName) {
-        try {
-          const profilePath = getInstanceProfilePath(entry.directoryName);
-          const content = await readFile(profilePath, "utf8");
-          const document = parseInstanceDocument(content);
-          if (document) {
-            return { fileName: INSTANCE_PROFILE_FILE_NAME, document };
-          }
-        } catch {
-          // Fall back to directory recovery below.
+      try {
+        const absolutePath = getInstanceProfilePath(entry.directoryName);
+        const content = await readFile(absolutePath, "utf8");
+        const document = parseInstanceDocument(content);
+        if (document) {
+          return { fileName: INSTANCE_PROFILE_FILE_NAME, document };
         }
-
-        return {
-          fileName: INSTANCE_PROFILE_FILE_NAME,
-          document: await resolveRecoveredInstanceDocument(entry.directoryName),
-        };
-      }
-
-      if (entry.fileName) {
-        try {
-          const absolutePath = getLegacyInstanceProfilePath(localInstanceId);
-          const content = await readFile(absolutePath, "utf8");
-          const document = parseInstanceDocument(content);
-          if (document) {
-            return { fileName: INSTANCE_PROFILE_FILE_NAME, document };
-          }
-        } catch {
-          // Fall back to null below.
-        }
+      } catch {
+        // Fall back to null below.
       }
 
       return null;
