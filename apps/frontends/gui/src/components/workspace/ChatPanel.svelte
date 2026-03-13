@@ -302,11 +302,18 @@
       >
       <button
         type="button"
-        class="conversation-picker-button"
+        class="conversation-picker-button conversation-picker-toggle"
         aria-label="Open conversations"
         onclick={() => {
           showConversationModal = !showConversationModal;
-        }}>▼</button
+        }}
+      >
+        <span
+          class="conversation-picker-caret"
+          class:is-open={showConversationModal}
+          aria-hidden="true">▼</span
+        >
+      </button
       >
     </div>
   </header>
@@ -314,14 +321,19 @@
   {#if showConversationModal}
     <section class="conversation-modal" aria-label="Conversations">
       <header class="conversation-modal-header">
-        <span>Conversations</span>
+        <span class="conversation-modal-title">conversations</span>
         <button
           type="button"
           class="conversation-modal-close"
           aria-label="Close conversations"
           onclick={() => {
             showConversationModal = false;
-          }}>Close</button
+          }}
+        >
+          <svg class="conversation-modal-close-icon" viewBox="0 0 8 8" aria-hidden="true" focusable="false">
+            <path d="M1 1L7 7M7 1L1 7" />
+          </svg>
+        </button
         >
       </header>
       <div class="conversation-modal-list">
@@ -353,7 +365,10 @@
         {#if hasAssistantActivity(segments)}
           <div class="message-row assistant activity-row">
             <details class="activity-panel">
-              <summary>{getActivitySummaryLabel(segments)}</summary>
+              <summary>
+                <span>{getActivitySummaryLabel(segments)}</span>
+                <span class="activity-summary-caret" aria-hidden="true">▼</span>
+              </summary>
               <div class="activity-body">
                 {#each segments.reasoningTextParts as text, textIndex (`${message.id}:reasoning:${textIndex}`)}
                   <p class="reasoning-text">{text}</p>
@@ -480,6 +495,21 @@
     line-height: 1;
   }
 
+  .conversation-picker-toggle {
+    color: var(--tc-color-lime);
+  }
+
+  .conversation-picker-caret {
+    display: inline-flex;
+    line-height: 1;
+    transform-origin: center;
+    transition: transform 160ms ease;
+  }
+
+  .conversation-picker-caret.is-open {
+    transform: rotate(180deg);
+  }
+
   .plus-icon {
     font-size: 0.82rem;
     line-height: 1;
@@ -502,14 +532,18 @@
 
   .conversation-modal-header {
     border-bottom: var(--tc-border-muted);
-    color: var(--tc-color-turquoise);
     padding: var(--tc-space-2);
-    font-size: 0.74rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .conversation-modal-title {
+    color: var(--tc-color-cream);
+    font-size: var(--tc-type-md);
+    font-weight: 700;
+    line-height: 1.2;
+    text-transform: uppercase;
   }
 
   .conversation-modal-close {
@@ -520,9 +554,16 @@
     height: 18px;
     padding: 0;
     cursor: pointer;
-    font-size: 0.62rem;
-    line-height: 1;
-    text-transform: uppercase;
+    display: grid;
+    place-items: center;
+  }
+
+  .conversation-modal-close-icon {
+    width: 8px;
+    height: 8px;
+    stroke: currentColor;
+    stroke-width: 1.25;
+    fill: none;
   }
 
   .conversation-modal-list {
@@ -564,7 +605,7 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0 var(--tc-space-2) var(--tc-space-2);
+    padding: var(--tc-space-1) var(--tc-space-2) var(--tc-space-2);
     display: flex;
     flex-direction: column;
     gap: var(--tc-space-2);
@@ -630,10 +671,28 @@
     color: var(--tc-color-turquoise);
     text-transform: uppercase;
     letter-spacing: 0.08em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--tc-space-2);
   }
 
   .activity-panel summary::-webkit-details-marker {
     display: none;
+  }
+
+  .activity-summary-caret {
+    color: var(--tc-color-lime);
+    font-size: 0.7rem;
+    line-height: 1;
+    display: inline-flex;
+    flex-shrink: 0;
+    transform-origin: center;
+    transition: transform 160ms ease;
+  }
+
+  .activity-panel[open] .activity-summary-caret {
+    transform: rotate(180deg);
   }
 
   .activity-body {

@@ -18,12 +18,16 @@ const rootPackageVersion =
 
 const appVersion = process.env.TRENCHCLAW_BUILD_VERSION?.trim() || `v${rootPackageVersion}`;
 const appCommit = process.env.TRENCHCLAW_BUILD_COMMIT?.trim() || "local";
+const queuePanelEnabled = new Set(["1", "true", "yes", "on"]).has(
+  process.env.TRENCHCLAW_GUI_ENABLE_QUEUE_PANEL?.trim().toLowerCase() ?? "",
+);
 
 export default defineConfig({
   plugins: [svelte()],
   define: {
     __TRENCHCLAW_APP_VERSION__: JSON.stringify(appVersion),
     __TRENCHCLAW_APP_COMMIT__: JSON.stringify(appCommit),
+    __TRENCHCLAW_GUI_ENABLE_QUEUE_PANEL__: JSON.stringify(queuePanelEnabled),
   },
   server: {
     proxy: {

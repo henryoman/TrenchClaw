@@ -22,8 +22,23 @@
   export let onReloadTradingSettings: () => void = () => {};
   export let onSaveTradingSettings: (settings: GuiTradingSettingsView) => Promise<void> | void = () => {};
 
+  const AI_MODEL_OPTIONS = [
+    "anthropic/claude-haiku-4.5",
+    "anthropic/claude-sonnet-4.6",
+    "anthropic/claude-opus-4.6",
+    "openai/gpt-5.4",
+    "google/gemini-3.1-pro-preview",
+    "google/gemini-3.1-flash-lite-preview",
+    "x-ai/grok-4.20-beta",
+    "qwen/qwen3.5-flash-02-23",
+    "qwen/qwen3.5-122b-a10b",
+    "moonshotai/kimi-k2.5",
+    "openrouter/free",
+    "stepfun/step-3.5-flash:free",
+  ] as const;
+
   const DEFAULT_AI_SETTINGS: GuiAiSettingsView = {
-    model: "",
+    model: AI_MODEL_OPTIONS[0],
     defaultMode: "primary",
     temperature: null,
     maxOutputTokens: null,
@@ -120,7 +135,8 @@
   const saveTradingSettings = (): void => {
     const normalized: GuiTradingSettingsView = {
       ...tradingSettingsDraft,
-      scheduleActionName: tradingSettingsDraft.scheduleActionName.trim() || "scheduleManagedUltraSwap",
+      defaultAmountUnit: "ui",
+      scheduleActionName: "scheduleManagedUltraSwap",
       quickBuyPresets: [...tradingSettingsDraft.quickBuyPresets],
       customPresets: [...tradingSettingsDraft.customPresets],
     };
@@ -157,6 +173,9 @@
 
   $: aiSettingsErrorText = aiSettingsError.trim();
   $: tradingSettingsErrorText = tradingSettingsError.trim();
+  $: aiModelOptions = aiSettingsDraft.model.trim().length > 0 && !AI_MODEL_OPTIONS.includes(aiSettingsDraft.model.trim() as typeof AI_MODEL_OPTIONS[number])
+    ? [aiSettingsDraft.model.trim(), ...AI_MODEL_OPTIONS]
+    : [...AI_MODEL_OPTIONS];
 </script>
 
 <section class="settings-panel" aria-label="Settings panel">
@@ -167,34 +186,33 @@
   <div class="section-stack">
     <section class="settings-section" aria-label="AI settings">
       <div class="section-heading">
-        <div>
-          <p class="section-label">AI settings</p>
-          <p class="section-meta">{aiSettingsFilePath || "No AI settings file detected."}</p>
-          <p class="section-meta">Transport resolves automatically from your Gateway or OpenRouter key.</p>
-        </div>
+        <p class="section-label">AI settings</p>
         <div class="actions">
-          <RetroButton variant="secondary" disabled={aiSettingsBusy} on:click={handleReloadAiSettings}>Reload AI settings</RetroButton>
+          <RetroButton variant="secondary" disabled={aiSettingsBusy} on:click={handleReloadAiSettings}>Reload</RetroButton>
           <RetroButton
             variant="primary"
             disabled={aiSettingsBusy || !aiSettingsDraft.model.trim() || !aiSettingsDraft.defaultMode.trim()}
             on:click={saveAiSettings}
           >
-            Save AI settings
+            Save
           </RetroButton>
         </div>
       </div>
 
       <div class="settings-grid">
         <RetroField label="Model">
-          <RetroInput
+          <RetroSelect
             value={aiSettingsDraft.model}
-            placeholder="anthropic/claude-sonnet-4.6"
             disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
+            on:change={(event) => {
+              const target = event.currentTarget as HTMLSelectElement;
               onAiSettingChange("model", target.value);
             }}
-          />
+          >
+            {#each aiModelOptions as modelOption}
+              <option value={modelOption}>{modelOption}</option>
+            {/each}
+          </RetroSelect>
         </RetroField>
 
         <RetroField label="Default mode">
@@ -212,7 +230,7 @@
         <RetroField label="Temperature">
           <RetroInput
             value={aiSettingsDraft.temperature === null ? "" : String(aiSettingsDraft.temperature)}
-            placeholder="blank = provider default"
+            placeholder="Provider default"
             disabled={aiSettingsBusy}
             on:input={(event) => {
               const target = event.currentTarget as HTMLInputElement;
@@ -225,7 +243,7 @@
         <RetroField label="Max output tokens">
           <RetroInput
             value={aiSettingsDraft.maxOutputTokens === null ? "" : String(aiSettingsDraft.maxOutputTokens)}
-            placeholder="blank = runtime default"
+            placeholder="Runtime default"
             disabled={aiSettingsBusy}
             on:input={(event) => {
               const target = event.currentTarget as HTMLInputElement;
@@ -236,9 +254,6 @@
         </RetroField>
       </div>
 
-      {#if aiSettingsTemplatePath}
-        <p class="section-meta">Template: {aiSettingsTemplatePath}</p>
-      {/if}
     </section>
 
     <RetroStatusMessage tone="error" text={aiSettingsErrorText} />
@@ -247,26 +262,15 @@
 
     <section class="settings-section" aria-label="Trading settings">
       <div class="section-heading">
-        <div>
-          <p class="section-label">Trading settings</p>
-          <p class="section-meta">{tradingSettingsFilePath || "No trading settings file detected."}</p>
-        </div>
+        <p class="section-label">Trading settings</p>
         <div class="actions">
-          <RetroButton variant="secondary" disabled={tradingSettingsBusy} on:click={handleReloadTradingSettings}>
-            Reload trading settings
-          </RetroButton>
-          <RetroButton
-            variant="primary"
-            disabled={tradingSettingsBusy || !tradingSettingsDraft.scheduleActionName.trim()}
-            on:click={saveTradingSettings}
-          >
-            Save trading settings
-          </RetroButton>
+          <RetroButton variant="secondary" disabled={tradingSettingsBusy} on:click={handleReloadTradingSettings}>Reload</RetroButton>
+          <RetroButton variant="primary" disabled={tradingSettingsBusy} on:click={saveTradingSettings}>Save</RetroButton>
         </div>
       </div>
 
       <div class="settings-grid">
-        <RetroField label="Default swap provider">
+        <RetroField label="Default swap settings">
           <RetroSelect
             value={tradingSettingsDraft.defaultSwapProvider}
             disabled={tradingSettingsBusy}
@@ -276,50 +280,10 @@
             }}
           >
             <option value="ultra">Ultra</option>
-            <option value="standard">Standard</option>
+            <option value="standard">RPC</option>
           </RetroSelect>
         </RetroField>
 
-        <RetroField label="Default swap mode">
-          <RetroSelect
-            value={tradingSettingsDraft.defaultSwapMode}
-            disabled={tradingSettingsBusy}
-            on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
-              onTradingSettingChange("defaultSwapMode", target.value as GuiTradingSettingsView["defaultSwapMode"]);
-            }}
-          >
-            <option value="ExactIn">ExactIn</option>
-            <option value="ExactOut">ExactOut</option>
-          </RetroSelect>
-        </RetroField>
-
-        <RetroField label="Default amount unit">
-          <RetroSelect
-            value={tradingSettingsDraft.defaultAmountUnit}
-            disabled={tradingSettingsBusy}
-            on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
-              onTradingSettingChange("defaultAmountUnit", target.value as GuiTradingSettingsView["defaultAmountUnit"]);
-            }}
-          >
-            <option value="ui">UI</option>
-            <option value="native">Native</option>
-            <option value="percent">Percent</option>
-          </RetroSelect>
-        </RetroField>
-
-        <RetroField label="Schedule action">
-          <RetroInput
-            value={tradingSettingsDraft.scheduleActionName}
-            placeholder="scheduleManagedUltraSwap"
-            disabled={tradingSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              onTradingSettingChange("scheduleActionName", target.value);
-            }}
-          />
-        </RetroField>
       </div>
     </section>
 
@@ -382,13 +346,6 @@
     font-size: var(--tc-field-label-size);
     letter-spacing: var(--tc-field-label-letter-spacing);
     text-transform: uppercase;
-  }
-
-  .section-meta {
-    margin: 0.35rem 0 0;
-    color: var(--tc-color-gray-1);
-    font-size: 0.8rem;
-    word-break: break-all;
   }
 
   .settings-grid {

@@ -11,25 +11,6 @@ export const DEFAULT_VAULT_JSON = {
       source: "custom",
       "public-id": "",
     },
-    helius: {
-      "http-url": "",
-      "ws-url": "",
-      "api-key": "",
-    },
-    quicknode: {
-      "http-url": "",
-      "ws-url": "",
-      "api-key": "",
-    },
-    "solana-vibestation": {
-      "api-key": "",
-    },
-    chainstack: {
-      "api-key": "",
-    },
-    temporal: {
-      "api-key": "",
-    },
   },
   llm: {
     openrouter: {
@@ -47,13 +28,79 @@ export const DEFAULT_VAULT_JSON = {
       "api-key": "",
     },
   },
-  wallet: {
-    "ultra-signer": {
-      "private-key": "",
-      "private-key-encoding": "base64",
-    },
-  },
 } as const;
+
+const LEGACY_RPC_PROVIDER_PATHS = [
+  ["rpc", "helius"],
+  ["rpc", "quicknode"],
+  ["rpc", "solana-vibestation"],
+  ["rpc", "chainstack"],
+  ["rpc", "temporal"],
+] as const;
+
+const isBlankValue = (value: unknown): boolean => {
+  if (typeof value === "string") {
+    return value.trim().length === 0;
+  }
+  if (Array.isArray(value)) {
+    return value.every((entry) => isBlankValue(entry));
+  }
+  if (isRecord(value)) {
+    return Object.values(value).every((entry) => isBlankValue(entry));
+  }
+  return value == null;
+};
+
+const deleteByPath = (root: Record<string, unknown>, segments: readonly string[]): boolean => {
+  if (segments.length === 0) {
+    return false;
+  }
+
+  const parents: Array<{ node: Record<string, unknown>; key: string }> = [];
+  let current: Record<string, unknown> | undefined = root;
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const key = segments[index];
+    if (!key || !current || !isRecord(current[key])) {
+      return false;
+    }
+    parents.push({ node: current, key });
+    current = current[key] as Record<string, unknown>;
+  }
+
+  const leafKey = segments[segments.length - 1];
+  if (!leafKey || !current || !(leafKey in current)) {
+    return false;
+  }
+
+  delete current[leafKey];
+
+  for (let index = parents.length - 1; index >= 0; index -= 1) {
+    const parent = parents[index];
+    if (!parent) {
+      continue;
+    }
+    const child = parent.node[parent.key];
+    if (!isRecord(child) || Object.keys(child).length > 0) {
+      break;
+    }
+    delete parent.node[parent.key];
+  }
+
+  return true;
+};
+
+export const sanitizeVaultData = (vaultData: Record<string, unknown>): { changed: boolean } => {
+  let changed = deleteByPath(vaultData, ["wallet", "ultra-signer"]);
+
+  for (const pathSegments of LEGACY_RPC_PROVIDER_PATHS) {
+    const candidate = getByPath(vaultData, [...pathSegments]);
+    if (candidate !== undefined && isBlankValue(candidate)) {
+      changed = deleteByPath(vaultData, [...pathSegments]) || changed;
+    }
+  }
+
+  return { changed };
+};
 
 const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";

@@ -9,3 +9,4 @@ declare module "*.svelte" {
 
 declare const __TRENCHCLAW_APP_VERSION__: string;
 declare const __TRENCHCLAW_APP_COMMIT__: string;
+declare const __TRENCHCLAW_GUI_ENABLE_QUEUE_PANEL__: boolean;

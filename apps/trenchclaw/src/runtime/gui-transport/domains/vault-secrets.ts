@@ -11,7 +11,12 @@ import type {
   GuiUpsertSecretResponse,
   GuiVaultResponse,
 } from "@trenchclaw/types";
-import { ensureVaultFileExists, parseVaultJsonText, resolveRequiredVaultFile } from "../../../ai/llm/vault-file";
+import {
+  ensureVaultFileExists,
+  parseVaultJsonText,
+  resolveRequiredVaultFile,
+  sanitizeVaultData,
+} from "../../../ai/llm/vault-file";
 import { assertInstanceSystemWritePath } from "../../security/write-scope";
 import { PUBLIC_RPC_OPTIONS, SECRET_OPTIONS } from "../constants";
 import { isRecord } from "../parsers";
@@ -112,15 +117,29 @@ const resolveManagedVaultTarget = async () => {
   };
 };
 
-export const getVault = async (): Promise<GuiVaultResponse> => {
+const serializeVaultData = (vaultData: Record<string, unknown>): string => `${JSON.stringify(vaultData, null, 2)}\n`;
+
+const loadManagedVaultData = async () => {
   const target = await resolveManagedVaultTarget();
   const content = await readFile(target.vaultPath, "utf8");
-  parseVaultJsonText(content);
+  const vaultData = parseVaultJsonText(content);
+  const { changed } = sanitizeVaultData(vaultData);
+  if (changed) {
+    await writeFile(target.vaultPath, serializeVaultData(vaultData), { encoding: "utf8", mode: 0o600 });
+  }
+  return {
+    target,
+    vaultData,
+  };
+};
+
+export const getVault = async (): Promise<GuiVaultResponse> => {
+  const { target, vaultData } = await loadManagedVaultData();
   return {
     filePath: target.vaultPath,
     templatePath: target.templatePath,
     initializedFromTemplate: target.initializedFromTemplate,
-    content,
+    content: serializeVaultData(vaultData),
   };
 };
 
@@ -130,7 +149,8 @@ export const updateVault = async (
 ): Promise<GuiUpdateVaultResponse> => {
   const target = await resolveManagedVaultTarget();
   const parsed = parseVaultJsonText(payload.content);
-  const serialized = `${JSON.stringify(parsed, null, 2)}\n`;
+  sanitizeVaultData(parsed);
+  const serialized = serializeVaultData(parsed);
   await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
   context.addActivity("runtime", "Vault updated");
   return {
@@ -140,9 +160,7 @@ export const updateVault = async (
 };
 
 export const getSecrets = async (): Promise<GuiSecretsResponse> => {
-  const target = await resolveManagedVaultTarget();
-  const content = await readFile(target.vaultPath, "utf8");
-  const vaultData = parseVaultJsonText(content);
+  const { target, vaultData } = await loadManagedVaultData();
   const entries = SECRET_OPTIONS_INTERNAL.map((option) => toSecretEntry(vaultData, option));
   return {
     filePath: target.vaultPath,
@@ -158,15 +176,13 @@ export const upsertSecret = async (
   context: RuntimeGuiDomainContext,
   payload: GuiUpsertSecretRequest,
 ): Promise<GuiUpsertSecretResponse> => {
-  const target = await resolveManagedVaultTarget();
+  const { target, vaultData } = await loadManagedVaultData();
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
   if (!option) {
     throw new Error(`Unsupported secret option: ${payload.optionId}`);
   }
 
-  const content = await readFile(target.vaultPath, "utf8");
-  const vaultData = parseVaultJsonText(content);
   const trimmedValue = payload.value.trim();
   setByPath(vaultData, option.pathSegments, trimmedValue);
 
@@ -185,7 +201,7 @@ export const upsertSecret = async (
     }
   }
 
-  const serialized = `${JSON.stringify(vaultData, null, 2)}\n`;
+  const serialized = serializeVaultData(vaultData);
   await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
 
   const entry = toSecretEntry(vaultData, option);
@@ -201,22 +217,20 @@ export const deleteSecret = async (
   context: RuntimeGuiDomainContext,
   payload: GuiDeleteSecretRequest,
 ): Promise<GuiDeleteSecretResponse> => {
-  const target = await resolveManagedVaultTarget();
+  const { target, vaultData } = await loadManagedVaultData();
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
   if (!option) {
     throw new Error(`Unsupported secret option: ${payload.optionId}`);
   }
 
-  const content = await readFile(target.vaultPath, "utf8");
-  const vaultData = parseVaultJsonText(content);
   setByPath(vaultData, option.pathSegments, "");
   if (option.supportsPublicRpc) {
     setByPath(vaultData, ["rpc", "default", "source"], "custom");
     setByPath(vaultData, ["rpc", "default", "public-id"], "");
   }
 
-  const serialized = `${JSON.stringify(vaultData, null, 2)}\n`;
+  const serialized = serializeVaultData(vaultData);
   await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
   context.addActivity("runtime", `Secret cleared: ${option.label}`);
   return {

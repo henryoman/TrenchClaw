@@ -546,7 +546,7 @@ export const createRuntimeController = () => {
       const result = await runtimeApi.llmCheck();
       state.llmAvailable = result.keyConfigured && result.probeOk;
       if (state.llmAvailable) {
-        state.llmCheckMessage = "AI connection is ready.";
+        state.llmCheckMessage = "";
       } else if (!result.keyConfigured) {
         state.llmCheckMessage = "Add an AI provider key to use chat.";
       } else {
