@@ -75,8 +75,10 @@ export const DEFAULT_TRADING_PREFERENCES: TradingPreferences = tradingPreference
 export const resolveInstanceTradingSettingsPath = (instanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, instanceId, "settings", "trading.json");
 
-export const loadInstanceTradingSettings = async (): Promise<InstanceTradingSettingsPayload> => {
-  const instanceId = resolveCurrentActiveInstanceIdSync();
+export const loadInstanceTradingSettings = async (input?: {
+  instanceId?: string | null;
+}): Promise<InstanceTradingSettingsPayload> => {
+  const instanceId = input?.instanceId ?? resolveCurrentActiveInstanceIdSync();
   if (!instanceId) {
     return {
       instanceId: null,

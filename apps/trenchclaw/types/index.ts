@@ -270,6 +270,48 @@ export interface GuiUpdateAiSettingsResponse {
   settings: GuiAiSettingsView;
 }
 
+export type GuiTradingSwapProvider = "ultra" | "standard";
+export type GuiTradingSwapMode = "ExactIn" | "ExactOut";
+export type GuiTradingAmountUnit = "ui" | "native" | "percent";
+
+export interface GuiTradingPresetView {
+  id: string;
+  label: string;
+  enabled: boolean;
+  amount: number | string;
+  amountUnit: GuiTradingAmountUnit;
+  swapProvider: GuiTradingSwapProvider;
+  swapMode: GuiTradingSwapMode;
+  executeTimeoutMs?: number;
+}
+
+export interface GuiTradingSettingsView {
+  defaultSwapProvider: GuiTradingSwapProvider;
+  defaultSwapMode: GuiTradingSwapMode;
+  defaultAmountUnit: GuiTradingAmountUnit;
+  scheduleActionName: string;
+  quickBuyPresets: GuiTradingPresetView[];
+  customPresets: GuiTradingPresetView[];
+}
+
+export interface GuiTradingSettingsResponse {
+  instanceId: string | null;
+  filePath: string | null;
+  exists: boolean;
+  settings: GuiTradingSettingsView;
+}
+
+export interface GuiUpdateTradingSettingsRequest {
+  settings: GuiTradingSettingsView;
+}
+
+export interface GuiUpdateTradingSettingsResponse {
+  instanceId: string;
+  filePath: string;
+  savedAt: string;
+  settings: GuiTradingSettingsView;
+}
+
 export type GuiSecretCategory = "ai" | "blockchain";
 
 export interface GuiSecretOptionView {

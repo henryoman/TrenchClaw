@@ -12,6 +12,11 @@ const defaultModelByProvider: Record<LlmProvider, string> = {
   "openai-compatible": "gpt-4.1-mini",
 };
 
+const defaultBaseUrlByProvider: Partial<Record<LlmProvider, string>> = {
+  openai: "https://api.openai.com/v1",
+  openrouter: "https://openrouter.ai/api/v1",
+};
+
 const DEFAULT_AI_SETTINGS_FILE = "../../../.runtime-state/runtime/ai.json";
 const LEGACY_AI_SETTINGS_FILE = "../../../.runtime-state/user/ai.json";
 const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";
@@ -30,7 +35,18 @@ export const aiSettingsSchema = z.object({
 export type AiSettings = z.output<typeof aiSettingsSchema>;
 export type AiSettingsInput = z.input<typeof aiSettingsSchema>;
 
-export const DEFAULT_AI_SETTINGS: AiSettings = aiSettingsSchema.parse({});
+export const resolveAutomaticAiBaseUrl = (provider: LlmProvider, fallback = ""): string =>
+  defaultBaseUrlByProvider[provider] ?? fallback;
+
+export const normalizeAiSettingsInput = (input: AiSettingsInput): AiSettings => {
+  const settings = aiSettingsSchema.parse(input);
+  return {
+    ...settings,
+    baseURL: resolveAutomaticAiBaseUrl(settings.provider, settings.baseURL),
+  };
+};
+
+export const DEFAULT_AI_SETTINGS: AiSettings = normalizeAiSettingsInput({});
 
 export const resolveAiSettingsPaths = async (): Promise<{ filePath: string; templatePath: string }> => ({
   filePath: await resolvePreferredPathFromModule({
@@ -49,10 +65,10 @@ export const resolveAiSettingsPaths = async (): Promise<{ filePath: string; temp
 const parseAiSettingsValue = (value: unknown): AiSettings => {
   const direct = aiSettingsSchema.safeParse(value);
   if (direct.success) {
-    return direct.data;
+    return normalizeAiSettingsInput(direct.data);
   }
 
-  return aiSettingsSchema.parse({});
+  return normalizeAiSettingsInput({});
 };
 
 export const ensureAiSettingsFileExists = async (): Promise<{ initializedFromTemplate: boolean; filePath: string; templatePath: string }> => {
@@ -106,7 +122,7 @@ export const writeAiSettings = async (input: AiSettingsInput): Promise<{ filePat
   const { filePath } = await resolveAiSettingsPaths();
   const targetPath = path.resolve(filePath);
   await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
-  const settings = aiSettingsSchema.parse(input);
+  const settings = normalizeAiSettingsInput(input);
   await writeFile(targetPath, `${JSON.stringify(settings, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   try {
     await chmod(targetPath, 0o600);

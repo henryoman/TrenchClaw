@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { normalizeTarget, resolveHostPlatformTarget, shouldSmokeCompileTargetOnHost } from "./lib/release-platform";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const DEFAULT_BUNDLE_ROOT = path.join(REPO_ROOT, "dist", "app");
@@ -132,8 +133,6 @@ const sha256File = async (filePath: string): Promise<string> => {
   return createHash("sha256").update(file).digest("hex");
 };
 
-const normalizeTarget = (target: string): string => target.replace(/^bun-/, "");
-
 const compileStandaloneBinary = async (targetRoot: string, compileTarget: string): Promise<string> => {
   const binaryName = "trenchclaw";
   const binaryPath = path.join(targetRoot, binaryName);
@@ -154,7 +153,7 @@ const packageTarget = async (input: {
   bundleRoot: string;
   outputRoot: string;
   compileTarget: string;
-}): Promise<ReleaseArtifactMetadata> => {
+}): Promise<ReleaseArtifactMetadata & { artifactPath: string }> => {
   const platformTarget = normalizeTarget(input.compileTarget);
   const targetRoot = path.join(input.outputRoot, `.staging-${platformTarget}`);
   const artifactName = `trenchclaw-${input.version}-${platformTarget}.tar.gz`;
@@ -186,13 +185,21 @@ const packageTarget = async (input: {
   console.log(`[package-app-release] created ${artifactPath}`);
   console.log(`[package-app-release] wrote ${artifactPath}.sha256`);
   console.log(`[package-app-release] wrote ${metadataPath}`);
-  return metadata;
+  return {
+    ...metadata,
+    artifactPath,
+  };
+};
+
+const smokeTestArtifact = async (artifactPath: string): Promise<void> => {
+  await run([process.execPath, "run", "scripts/smoke-test-release.ts", "--artifact-path", artifactPath]);
 };
 
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
   const version = await resolveVersion(args.version);
   const commit = await runCapture(["git", "rev-parse", "--short", "HEAD"]);
+  const hostTarget = resolveHostPlatformTarget();
 
   await run([
     process.execPath,
@@ -204,17 +211,30 @@ const main = async (): Promise<void> => {
 
   await mkdir(args.outputRoot, { recursive: true });
 
-  const metadata = [];
+  const metadata: ReleaseArtifactMetadata[] = [];
+  let smokedArtifact = false;
   for (const compileTarget of args.targets) {
-    metadata.push(
-      await packageTarget({
-        version,
-        commit,
-        bundleRoot: args.bundleRoot,
-        outputRoot: args.outputRoot,
-        compileTarget,
-      }),
-    );
+    const packaged = await packageTarget({
+      version,
+      commit,
+      bundleRoot: args.bundleRoot,
+      outputRoot: args.outputRoot,
+      compileTarget,
+    });
+    const { artifactPath, ...artifactMetadata } = packaged;
+    metadata.push(artifactMetadata);
+    if (shouldSmokeCompileTargetOnHost(compileTarget) && !smokedArtifact) {
+      console.log(`[package-app-release] smoke testing ${path.basename(artifactPath)} on ${hostTarget}`);
+      await smokeTestArtifact(artifactPath);
+      smokedArtifact = true;
+    }
+  }
+  if (!smokedArtifact) {
+    if (hostTarget) {
+      console.log(`[package-app-release] skipped smoke test: no artifact for host target ${hostTarget}`);
+    } else {
+      console.log(`[package-app-release] skipped smoke test: unsupported host ${process.platform}-${process.arch}`);
+    }
   }
   await writeFile(path.join(args.outputRoot, "release-metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
 };

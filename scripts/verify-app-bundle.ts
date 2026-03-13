@@ -3,6 +3,7 @@
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { hasBlockedBundlePath } from "./lib/release-bundle-filter";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const DEFAULT_BUNDLE_ROOT = path.join(REPO_ROOT, "dist", "app");
@@ -66,59 +67,20 @@ const run = async (): Promise<void> => {
   const files = await walkFiles(bundleRoot);
   const relFiles = files.map((filePath) => toRelativeUnixPath(bundleRoot, filePath));
 
-  const blockedExactPaths = new Set<string>([
-    "core/src/ai/brain/protected/wallet-library.jsonl",
-  ]);
-
   const requiredPaths = [
     "gui/index.html",
     "core/src/ai/config/vault.template.json",
     "core/src/ai/config/ai.template.json",
     "core/src/ai/brain/protected/keypairs/.keep",
+    "core/src/runtime/gui-transport/router.ts",
   ];
 
   const violations: string[] = [];
 
   for (const relPath of relFiles) {
-    const lower = relPath.toLowerCase();
-    const fileName = path.posix.basename(relPath).toLowerCase();
-
-    if (blockedExactPaths.has(relPath)) {
-      violations.push(`blocked file present: ${relPath}`);
-    }
-
-    if (fileName.startsWith(".env") && fileName !== ".env.example") {
-      violations.push(`environment file present in bundle: ${relPath}`);
-    }
-
-    if (relPath.includes("/node_modules/") || relPath.startsWith("node_modules/")) {
-      violations.push(`node_modules should not be bundled: ${relPath}`);
-    }
-
-    if (relPath.startsWith("core/src/ai/brain/db/")) {
-      violations.push(`runtime db/state file present in readonly bundle: ${relPath}`);
-    }
-
-    if (relPath.startsWith("core/src/ai/brain/protected/keypairs/")) {
-      if (fileName !== ".keep" && fileName !== ".gitkeep") {
-        violations.push(`unexpected keypair file in bundle: ${relPath}`);
-      }
-    }
-
-    if (relPath.startsWith("core/src/ai/brain/protected/instance/") && fileName !== ".gitkeep") {
-      violations.push(`unexpected instance-state file in bundle: ${relPath}`);
-    }
-
-    if (relPath.startsWith("core/src/ai/brain/protected/no-read/")) {
-      violations.push(`unexpected no-read file in bundle: ${relPath}`);
-    }
-
-    if (fileName.endsWith(".sqlite") || fileName.endsWith(".jsonl") || fileName.endsWith(".log")) {
-      violations.push(`runtime artifact present in bundle: ${relPath}`);
-    }
-
-    if (lower.endsWith(".pem") || lower.endsWith(".key") || lower.endsWith(".p12")) {
-      violations.push(`blocked key/cert file in bundle: ${relPath}`);
+    const violation = hasBlockedBundlePath(relPath);
+    if (violation) {
+      violations.push(violation);
     }
   }
 

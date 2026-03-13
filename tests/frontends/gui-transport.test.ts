@@ -4,6 +4,7 @@ import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { RuntimeGuiTransport } from "../../apps/trenchclaw/src/runtime/gui-transport/runtime-gui-transport";
+import { runtimeStatePath } from "../helpers/core-paths";
 
 const buildRuntime = (input?: {
   streamImpl?: (
@@ -280,9 +281,9 @@ describe("Runtime v1 API", () => {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           settings: {
-            provider: "openai-compatible",
-            model: "vendor/model",
-            baseURL: "https://llm.example.com/v1",
+            provider: "openai",
+            model: "gpt-4.1-mini",
+            baseURL: "https://should-be-ignored.example/v1",
             defaultMode: "primary",
             temperature: 0.4,
             maxOutputTokens: 2048,
@@ -293,9 +294,9 @@ describe("Runtime v1 API", () => {
       const updatePayload = (await updateResponse.json()) as {
         settings: { provider: string; model: string; baseURL: string; maxOutputTokens: number | null };
       };
-      expect(updatePayload.settings.provider).toBe("openai-compatible");
-      expect(updatePayload.settings.model).toBe("vendor/model");
-      expect(updatePayload.settings.baseURL).toBe("https://llm.example.com/v1");
+      expect(updatePayload.settings.provider).toBe("openai");
+      expect(updatePayload.settings.model).toBe("gpt-4.1-mini");
+      expect(updatePayload.settings.baseURL).toBe("https://api.openai.com/v1");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
     } finally {
       if (previous === undefined) {
@@ -304,6 +305,75 @@ describe("Runtime v1 API", () => {
         process.env.TRENCHCLAW_AI_SETTINGS_FILE = previous;
       }
       await rm(target, { force: true });
+    }
+  });
+
+  test("GET and PUT /api/gui/trading-settings round-trip instance trading settings", async () => {
+    const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+    const instanceId = "98";
+    const instanceDirectory = runtimeStatePath("instances", instanceId);
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    try {
+      await rm(instanceDirectory, { recursive: true, force: true });
+
+      const runtime = buildRuntime();
+      const transport = new RuntimeGuiTransport(runtime);
+      transport.setActiveInstance({
+        fileName: "instance.json",
+        localInstanceId: instanceId,
+        name: "test-instance",
+        safetyProfile: "dangerous",
+        userPinRequired: false,
+        createdAt: "2026-03-12T00:00:00.000Z",
+        updatedAt: "2026-03-12T00:00:00.000Z",
+      });
+      const handler = transport.createApiHandler();
+
+      const initialResponse = await handler(new Request("http://localhost/api/gui/trading-settings", { method: "GET" }));
+      expect(initialResponse.status).toBe(200);
+      const initialPayload = (await initialResponse.json()) as {
+        instanceId: string | null;
+        filePath: string | null;
+        settings: { defaultSwapProvider: string; defaultSwapMode: string };
+      };
+      expect(initialPayload.instanceId).toBe(instanceId);
+      expect(initialPayload.filePath).toContain(`/instances/${instanceId}/settings/trading.json`);
+      expect(initialPayload.settings.defaultSwapProvider).toBe("ultra");
+      expect(initialPayload.settings.defaultSwapMode).toBe("ExactIn");
+
+      const updateResponse = await handler(new Request("http://localhost/api/gui/trading-settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            defaultSwapProvider: "standard",
+            defaultSwapMode: "ExactOut",
+            defaultAmountUnit: "percent",
+            scheduleActionName: "scheduleManagedUltraSwap",
+            quickBuyPresets: [],
+            customPresets: [],
+          },
+        }),
+      }));
+      expect(updateResponse.status).toBe(200);
+      const updatePayload = (await updateResponse.json()) as {
+        instanceId: string;
+        filePath: string;
+        settings: { defaultSwapProvider: string; defaultSwapMode: string; defaultAmountUnit: string };
+      };
+      expect(updatePayload.instanceId).toBe(instanceId);
+      expect(updatePayload.filePath).toContain(`/instances/${instanceId}/settings/trading.json`);
+      expect(updatePayload.settings.defaultSwapProvider).toBe("standard");
+      expect(updatePayload.settings.defaultSwapMode).toBe("ExactOut");
+      expect(updatePayload.settings.defaultAmountUnit).toBe("percent");
+    } finally {
+      if (previousActiveInstanceId === undefined) {
+        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+      } else {
+        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+      }
+      await rm(instanceDirectory, { recursive: true, force: true });
     }
   });
 });
