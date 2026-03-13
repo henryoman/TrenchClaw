@@ -17,7 +17,6 @@ import {
 const nonEmptyStringSchema = z.string().trim().min(1);
 
 const latestInputSchema = z.object({});
-
 const tokenAddressInputSchema = z.object({
   tokenAddress: nonEmptyStringSchema,
 });

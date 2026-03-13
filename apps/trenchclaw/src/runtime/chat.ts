@@ -16,9 +16,6 @@ import type {
   ActionRegistry,
   RuntimeEventBus,
   StateStore,
-  LlmClient,
-  LlmGenerateInput,
-  LlmGenerateResult,
 } from "../ai";
 import type { RuntimeGateway } from "../ai/gateway";
 import {
@@ -34,7 +31,6 @@ import type { RuntimeJobControlRequest, RuntimeJobEnqueueRequest } from "../ai/r
 
 export interface RuntimeChatService {
   listToolNames: () => string[];
-  generateText: (input: LlmGenerateInput) => Promise<LlmGenerateResult>;
   stream: (
     messages: UIMessage[],
     input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
@@ -56,7 +52,6 @@ interface RuntimeChatServiceDeps {
   };
   enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<import("../ai").JobState>;
   manageJob?: (input: RuntimeJobControlRequest) => Promise<import("../ai").JobState>;
-  llm: LlmClient | null;
   logger?: RuntimeLogger;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
   workspaceRootDirectory?: string;
@@ -64,7 +59,6 @@ interface RuntimeChatServiceDeps {
 }
 
 interface RuntimeChatServiceOverrides {
-  resolveStreamingModel?: () => import("ai").LanguageModel | Promise<import("ai").LanguageModel>;
   convertToModelMessages?: typeof convertToModelMessages;
   streamText?: typeof streamText;
 }
@@ -347,17 +341,6 @@ export const createRuntimeChatService = (
 
   const listToolNames = (): string[] => deps.gateway.listToolNames("operator-chat");
 
-  const generateText = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
-    if (!deps.llm) {
-      return {
-        text: "LLM is not configured. Set provider credentials to enable live chat responses.",
-        finishReason: "llm-disabled",
-      };
-    }
-
-    return deps.llm.generate(input);
-  };
-
   const stream = async (
     messages: UIMessage[],
     input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
@@ -418,14 +401,14 @@ export const createRuntimeChatService = (
         });
       }
 
-      const model = overrides.resolveStreamingModel ? await overrides.resolveStreamingModel() : preparedExecution.model;
+      const model = preparedExecution.model;
       const systemPrompt = preparedExecution.systemPrompt;
       const enabledToolNames = new Set(preparedExecution.toolNames);
       const maxOutputTokens = preparedExecution.maxOutputTokens;
       const temperature = preparedExecution.temperature;
       const maxToolSteps = preparedExecution.maxToolSteps;
-      const provider = preparedExecution.provider ?? deps.llm?.provider ?? null;
-      const modelId = preparedExecution.modelId ?? deps.llm?.model ?? null;
+      const provider = preparedExecution.provider;
+      const modelId = preparedExecution.modelId;
 
       deps.logger?.info("chat:model_ready", {
         chatId,
@@ -573,7 +556,6 @@ export const createRuntimeChatService = (
 
   return {
     listToolNames,
-    generateText,
     stream,
   };
 };

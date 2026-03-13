@@ -1,8 +1,8 @@
 import { defineConfig } from "vite";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { readFileSync } from "node:fs";
+import process from "node:process";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const runtimeUrl =
   process.env.VITE_TRENCHCLAW_RUNTIME_URL ?? process.env.TRENCHCLAW_RUNTIME_URL ?? "http://127.0.0.1:4020";
@@ -22,19 +22,26 @@ const queuePanelEnabled = new Set(["1", "true", "yes", "on"]).has(
   process.env.TRENCHCLAW_GUI_ENABLE_QUEUE_PANEL?.trim().toLowerCase() ?? "",
 );
 
-export default defineConfig({
-  plugins: [svelte()],
-  define: {
-    __TRENCHCLAW_APP_VERSION__: JSON.stringify(appVersion),
-    __TRENCHCLAW_APP_COMMIT__: JSON.stringify(appCommit),
-    __TRENCHCLAW_GUI_ENABLE_QUEUE_PANEL__: JSON.stringify(queuePanelEnabled),
-  },
-  server: {
-    proxy: {
-      "/api": {
-        target: runtimeUrl,
-        changeOrigin: true,
+export default defineConfig(async () => {
+  const rootSveltePluginModuleUrl = pathToFileURL(
+    path.resolve(process.cwd(), "../../..", "node_modules/@sveltejs/vite-plugin-svelte/src/index.js"),
+  ).href;
+  const { svelte } = (await import(rootSveltePluginModuleUrl)) as typeof import("@sveltejs/vite-plugin-svelte");
+
+  return {
+    plugins: [svelte()],
+    define: {
+      __TRENCHCLAW_APP_VERSION__: JSON.stringify(appVersion),
+      __TRENCHCLAW_APP_COMMIT__: JSON.stringify(appCommit),
+      __TRENCHCLAW_GUI_ENABLE_QUEUE_PANEL__: JSON.stringify(queuePanelEnabled),
+    },
+    server: {
+      proxy: {
+        "/api": {
+          target: runtimeUrl,
+          changeOrigin: true,
+        },
       },
     },
-  },
+  };
 });

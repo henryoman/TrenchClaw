@@ -211,7 +211,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
     if (request.method === "GET" && url.pathname === "/api/gui/vault") {
       try {
-        return Response.json(await getVault(), { headers: CORS_HEADERS });
+        return Response.json(await getVault(context), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
       }
@@ -274,7 +274,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
     if (request.method === "GET" && url.pathname === "/api/gui/secrets") {
       try {
-        return Response.json(await getSecrets(), { headers: CORS_HEADERS });
+        return Response.json(await getSecrets(context), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
       }

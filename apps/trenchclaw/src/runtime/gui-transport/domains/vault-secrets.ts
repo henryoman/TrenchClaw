@@ -102,8 +102,10 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
   };
 };
 
-const resolveManagedVaultTarget = async () => {
-  const resolved = resolveRequiredVaultFile();
+const resolveManagedVaultTarget = async (context?: RuntimeGuiDomainContext) => {
+  const resolved = resolveRequiredVaultFile({
+    activeInstanceId: context?.getActiveInstance()?.localInstanceId ?? undefined,
+  });
   if (!resolved.explicitVaultPath) {
     assertInstanceSystemWritePath(resolved.vaultPath, "access instance vault");
   }
@@ -119,8 +121,8 @@ const resolveManagedVaultTarget = async () => {
 
 const serializeVaultData = (vaultData: Record<string, unknown>): string => `${JSON.stringify(vaultData, null, 2)}\n`;
 
-const loadManagedVaultData = async () => {
-  const target = await resolveManagedVaultTarget();
+const loadManagedVaultData = async (context?: RuntimeGuiDomainContext) => {
+  const target = await resolveManagedVaultTarget(context);
   const content = await readFile(target.vaultPath, "utf8");
   const vaultData = parseVaultJsonText(content);
   const { changed } = sanitizeVaultData(vaultData);
@@ -133,8 +135,8 @@ const loadManagedVaultData = async () => {
   };
 };
 
-export const getVault = async (): Promise<GuiVaultResponse> => {
-  const { target, vaultData } = await loadManagedVaultData();
+export const getVault = async (context: RuntimeGuiDomainContext): Promise<GuiVaultResponse> => {
+  const { target, vaultData } = await loadManagedVaultData(context);
   return {
     filePath: target.vaultPath,
     templatePath: target.templatePath,
@@ -147,7 +149,7 @@ export const updateVault = async (
   context: RuntimeGuiDomainContext,
   payload: GuiUpdateVaultRequest,
 ): Promise<GuiUpdateVaultResponse> => {
-  const target = await resolveManagedVaultTarget();
+  const target = await resolveManagedVaultTarget(context);
   const parsed = parseVaultJsonText(payload.content);
   sanitizeVaultData(parsed);
   const serialized = serializeVaultData(parsed);
@@ -159,8 +161,8 @@ export const updateVault = async (
   };
 };
 
-export const getSecrets = async (): Promise<GuiSecretsResponse> => {
-  const { target, vaultData } = await loadManagedVaultData();
+export const getSecrets = async (context: RuntimeGuiDomainContext): Promise<GuiSecretsResponse> => {
+  const { target, vaultData } = await loadManagedVaultData(context);
   const entries = SECRET_OPTIONS_INTERNAL.map((option) => toSecretEntry(vaultData, option));
   return {
     filePath: target.vaultPath,
@@ -176,7 +178,7 @@ export const upsertSecret = async (
   context: RuntimeGuiDomainContext,
   payload: GuiUpsertSecretRequest,
 ): Promise<GuiUpsertSecretResponse> => {
-  const { target, vaultData } = await loadManagedVaultData();
+  const { target, vaultData } = await loadManagedVaultData(context);
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
   if (!option) {
@@ -217,7 +219,7 @@ export const deleteSecret = async (
   context: RuntimeGuiDomainContext,
   payload: GuiDeleteSecretRequest,
 ): Promise<GuiDeleteSecretResponse> => {
-  const { target, vaultData } = await loadManagedVaultData();
+  const { target, vaultData } = await loadManagedVaultData(context);
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
   if (!option) {

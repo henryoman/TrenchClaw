@@ -50,7 +50,6 @@
 
   interface AssistantMessageSegments {
     visibleTextParts: string[];
-    reasoningTextParts: string[];
     activityTextParts: string[];
     errorTexts: string[];
     toolActivity: ToolActivityLine[];
@@ -72,8 +71,6 @@
   };
 
   const isTextPart = (part: MessagePart): part is Extract<MessagePart, { type: "text" }> => part.type === "text";
-
-  const isReasoningPart = (part: MessagePart): part is Extract<MessagePart, { type: "reasoning" }> => part.type === "reasoning";
 
   const isErrorPart = (part: MessagePart): part is MessagePart & { errorText: string } =>
     "errorText" in part && typeof part.errorText === "string";
@@ -131,13 +128,12 @@
 
   const getAssistantMessageSegments = (message: UIMessage): AssistantMessageSegments => {
     const visibleTextParts: string[] = [];
-    const reasoningTextParts: string[] = [];
     const activityTextParts: string[] = [];
     const errorTexts: string[] = [];
     const toolActivity: ToolActivityLine[] = [];
 
     const activityIndexes = message.parts
-      .map((part, index) => (isToolUIPart(part) || isErrorPart(part) || isReasoningPart(part) ? index : -1))
+      .map((part, index) => (isToolUIPart(part) || isErrorPart(part) ? index : -1))
       .filter((index) => index >= 0);
 
     const lastActivityIndex = activityIndexes.length > 0 ? Math.max(...activityIndexes) : -1;
@@ -155,14 +151,6 @@
         }
 
         visibleTextParts.push(text);
-        return;
-      }
-
-      if (isReasoningPart(part)) {
-        const text = normalizeDisplayText(part.text ?? "");
-        if (text) {
-          reasoningTextParts.push(text);
-        }
         return;
       }
 
@@ -184,7 +172,6 @@
 
     return {
       visibleTextParts,
-      reasoningTextParts,
       activityTextParts,
       errorTexts,
       toolActivity,
@@ -192,13 +179,9 @@
   };
 
   const hasAssistantActivity = (segments: AssistantMessageSegments): boolean =>
-    segments.reasoningTextParts.length > 0
-    || segments.activityTextParts.length > 0
+    segments.activityTextParts.length > 0
     || segments.errorTexts.length > 0
     || segments.toolActivity.length > 0;
-
-  const getActivitySummaryLabel = (segments: AssistantMessageSegments): string =>
-    segments.reasoningTextParts.length > 0 ? "Thinking" : "Activity";
 
   const isNearBottom = (): boolean => {
     if (!messageViewport) {
@@ -298,7 +281,11 @@
         onclick={() => {
           onCreateConversation();
           showConversationModal = false;
-        }}><span class="plus-icon">+</span></button
+        }}
+      >
+        <svg class="plus-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M8 3.5v9M3.5 8h9" />
+        </svg></button
       >
       <button
         type="button"
@@ -366,14 +353,10 @@
           <div class="message-row assistant activity-row">
             <details class="activity-panel">
               <summary>
-                <span>{getActivitySummaryLabel(segments)}</span>
+                <span>Activity</span>
                 <span class="activity-summary-caret" aria-hidden="true">▼</span>
               </summary>
               <div class="activity-body">
-                {#each segments.reasoningTextParts as text, textIndex (`${message.id}:reasoning:${textIndex}`)}
-                  <p class="reasoning-text">{text}</p>
-                {/each}
-
                 {#each segments.activityTextParts as text, textIndex (`${message.id}:activity:${textIndex}`)}
                   <p>{text}</p>
                 {/each}
@@ -511,8 +494,13 @@
   }
 
   .plus-icon {
-    font-size: 0.82rem;
-    line-height: 1;
+    width: 10px;
+    height: 10px;
+    display: block;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: square;
+    fill: none;
   }
 
   .chat-header-actions {
@@ -710,10 +698,6 @@
 
   .tool-activity {
     color: var(--tc-color-gray-3);
-  }
-
-  .reasoning-text {
-    color: var(--tc-color-gray-1);
   }
 
   .bubble.system {

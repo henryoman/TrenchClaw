@@ -73,7 +73,7 @@
     color: var(--tc-color-turquoise);
   }
 
-  @media (max-width: var(--tc-layout-breakpoint)) {
+  @media (max-width: 980px) {
     .section-title-row {
       flex-direction: column;
       align-items: flex-start;

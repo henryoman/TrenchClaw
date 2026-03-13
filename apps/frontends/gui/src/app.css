@@ -1,10 +1,10 @@
 /* App-level layout helpers only. Primitive styling lives in modular components. */
 
-:global(main) {
+main {
   width: 100%;
 }
 
-:global(.gui-mount-error-shell) {
+.gui-mount-error-shell {
   min-height: 100vh;
   display: grid;
   place-items: center;
@@ -14,19 +14,19 @@
   padding: var(--tc-space-4);
 }
 
-:global(.gui-mount-error-card) {
+.gui-mount-error-card {
   max-width: 860px;
   border: 1px solid var(--tc-color-red);
   padding: var(--tc-space-4);
 }
 
-:global(.gui-mount-error-card h1) {
+.gui-mount-error-card h1 {
   margin: 0 0 var(--tc-space-3) 0;
   font-size: 1rem;
   text-transform: uppercase;
 }
 
-:global(.gui-mount-error-card p) {
+.gui-mount-error-card p {
   margin: 0;
   line-height: 1.4;
 }

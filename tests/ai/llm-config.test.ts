@@ -64,6 +64,7 @@ describe("resolveLlmProviderConfigFromEnv", () => {
 describe("resolveLlmProviderConfigFromVault", () => {
   test("uses the configured model from ai.json and the OpenRouter key from vault.json", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
+      provider: "openrouter",
       model: "anthropic/claude-sonnet-4.6",
       defaultMode: "primary",
       temperature: 0.2,
@@ -88,7 +89,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
   test("prefers gateway when both supported transports are configured", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
-      provider: "auto",
+      provider: "gateway",
       model: "anthropic/claude-sonnet-4.6",
       defaultMode: "primary",
       temperature: null,
@@ -137,9 +138,9 @@ describe("resolveLlmProviderConfigFromVault", () => {
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
-  test("falls back to OpenRouter when the selected model is OpenRouter-only", async () => {
+  test("uses OpenRouter when the selected model is OpenRouter-only", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
-      provider: "auto",
+      provider: "openrouter",
       model: "openrouter/hunter-alpha",
       defaultMode: "primary",
       temperature: null,

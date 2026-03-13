@@ -54,12 +54,11 @@ Built-in public presets:
 2. Open the secrets or vault panel.
 3. Set your RPC first.
 4. Add a Vercel AI Gateway key, an OpenRouter key, or both.
-5. Open AI settings and choose:
-6. `Provider: Auto` to stay provider-agnostic, or pin `Vercel AI Gateway` / `OpenRouter` when you want exact routing.
-7. Pick the model from the filtered list for that provider.
-8. Save.
-9. Run the AI check.
-10. Send a simple chat request.
+5. Open AI settings and choose `Vercel AI Gateway` or `OpenRouter`.
+6. Pick the model from the filtered list for that provider.
+7. Save.
+8. Run the AI check.
+9. Send a simple chat request.
 
 ## AI Check
 
@@ -85,7 +84,7 @@ The AI check depends on:
 ### AI request fails
 
 - the selected provider key
-- whether `provider` is `auto`, `gateway`, or `openrouter`
+- whether `provider` is `gateway` or `openrouter`
 - the model identifier
 - whether the provider account has access to that model
 

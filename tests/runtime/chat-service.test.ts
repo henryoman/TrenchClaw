@@ -302,7 +302,11 @@ const createConfiguredGateway = async (input?: {
       registry: input?.registry ?? new ActionRegistry(),
       eventBus,
       stateStore,
-      llm: null,
+      resolvedModel: {
+        provider: "test",
+        model: "test-model",
+        languageModel: {} as never,
+      },
       capabilitySnapshot: input?.capabilitySnapshot,
       createActionContext: (overrides) =>
         createActionContext({
@@ -312,25 +316,30 @@ const createConfiguredGateway = async (input?: {
           stateStore,
         }),
     },
-    {
-      resolveStreamingModel: () => ({}) as never,
-    },
   );
 };
 
 const createRuntimeChatService = (
   deps: Omit<Parameters<typeof createRuntimeChatServiceBase>[0], "gateway"> & {
     gateway?: RuntimeGateway;
+    llm?: LlmClient | null;
     workspaceToolsEnabled?: boolean;
   },
-  overrides?: Parameters<typeof createRuntimeChatServiceBase>[1],
+  overrides?: Parameters<typeof createRuntimeChatServiceBase>[1] & {
+    resolveStreamingModel?: () => unknown;
+  },
 ) =>
   createRuntimeChatServiceBase(
     {
-      ...deps,
+      ...(() => {
+        const { llm: _unusedLlm, ...rest } = deps;
+        return rest;
+      })(),
       gateway: deps.gateway ?? createGatewayStub(deps),
     },
-    overrides,
+    overrides
+      ? (({ resolveStreamingModel: _unusedResolveStreamingModel, ...rest }) => rest)(overrides)
+      : undefined,
   );
 
 afterEach(() => {
@@ -362,22 +371,53 @@ afterEach(() => {
 });
 
 describe("RuntimeChatService", () => {
-  test("returns fallback text when llm is not configured", async () => {
+  test("returns the gateway-configured disabled response when no model is available", async () => {
+    const settings = await loadRuntimeSettings("dangerous");
+    const endpoints = resolvePrimaryRuntimeEndpoints(settings);
     const registry = new ActionRegistry();
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
     const service = createRuntimeChatService({
       dispatcher: {
         dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
       } as unknown as ActionDispatcher,
       registry,
-      eventBus: new InMemoryRuntimeEventBus(),
-      stateStore: new InMemoryStateStore(),
-      llm: null,
+      eventBus,
+      stateStore,
       workspaceToolsEnabled: false,
+      gateway: createRuntimeGateway({
+        settings,
+        endpoints,
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus,
+        stateStore,
+        resolvedModel: {
+          provider: null,
+          model: null,
+          languageModel: null,
+        },
+        createActionContext: (overrides) =>
+          createActionContext({
+            actor: overrides?.actor ?? "agent",
+            eventBus,
+            rpcUrl: endpoints.rpcUrl,
+            stateStore,
+          }),
+      }),
     });
 
-    const result = await service.generateText({ prompt: "hello" });
-    expect(result.finishReason).toBe("llm-disabled");
-    expect(result.text).toContain("LLM is not configured");
+    const response = await service.stream([
+      {
+        id: "user-llm-disabled-1",
+        role: "user",
+        parts: [{ type: "text", text: "hello" }],
+      },
+    ]);
+
+    expect(await response.text()).toContain("LLM is not configured");
   });
 
   test("lists only registered actions that define input schemas", () => {
@@ -647,7 +687,11 @@ describe("RuntimeChatService", () => {
       registry: new ActionRegistry(),
       eventBus,
       stateStore,
-      llm: null,
+      resolvedModel: {
+        provider: "test",
+        model: "test-model",
+        languageModel: {} as never,
+      },
       createActionContext: (overrides) =>
         createActionContext({
           actor: overrides?.actor ?? "agent",
@@ -747,7 +791,11 @@ describe("RuntimeChatService", () => {
       registry: new ActionRegistry(),
       eventBus,
       stateStore,
-      llm: null,
+      resolvedModel: {
+        provider: "test",
+        model: "test-model",
+        languageModel: {} as never,
+      },
       capabilitySnapshot,
       createActionContext: (overrides) =>
         createActionContext({
@@ -772,6 +820,160 @@ describe("RuntimeChatService", () => {
     });
 
     expect(service.listToolNames()).toEqual(["queryRuntimeStore"]);
+  });
+
+  test("keeps the operator gateway prompt and tool budget compact", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "getManagedWalletContents",
+            description: "wallet contents",
+            purpose: "wallet contents",
+            routingHint: "wallet contents",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: {},
+            toolDescription: "wallet contents",
+          },
+          {
+            kind: "action",
+            name: "queryRuntimeStore",
+            description: "runtime store",
+            purpose: "runtime store",
+            routingHint: "runtime store",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: {},
+            toolDescription: "runtime store",
+          },
+          {
+            kind: "workspace-tool",
+            name: WORKSPACE_READ_FILE_TOOL_NAME,
+            description: "workspace read",
+            purpose: "workspace read",
+            routingHint: "workspace read",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { path: "README.md" },
+            toolDescription: "workspace read",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-budget-1",
+          role: "user",
+          parts: [{ type: "text", text: "ping runtime" }],
+        },
+      ],
+      userMessage: "ping runtime",
+      allowFastPath: false,
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+    expect(execution.systemPrompt.length).toBeLessThanOrEqual(8_000);
+    expect(execution.toolNames.length).toBeLessThanOrEqual(12);
+    expect(execution.maxToolSteps).toBe(4);
+    expect(execution.toolNames).toEqual(["getManagedWalletContents", "queryRuntimeStore"]);
+    expect(execution.toolNames).not.toContain(WORKSPACE_READ_FILE_TOOL_NAME);
+  });
+
+  test("includes Dexscreener discovery and market-data actions in the normal operator payload", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "getDexscreenerLatestTokenProfiles",
+            description: "latest token profiles",
+            purpose: "latest token profiles",
+            routingHint: "scan what is new or trending on Dexscreener",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: {},
+            toolDescription: "latest token profiles",
+          },
+          {
+            kind: "action",
+            name: "getDexscreenerTopTokenBoosts",
+            description: "top token boosts",
+            purpose: "top token boosts",
+            routingHint: "rank what is hottest or most promoted on Dexscreener",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: {},
+            toolDescription: "top token boosts",
+          },
+          {
+            kind: "action",
+            name: "getDexscreenerTokensByChain",
+            description: "tokens by chain",
+            purpose: "tokens by chain",
+            routingHint: "batch-load price and price-change data after token discovery",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { tokenAddresses: ["So11111111111111111111111111111111111111112"] },
+            toolDescription: "tokens by chain",
+          },
+          {
+            kind: "action",
+            name: "searchDexscreenerPairs",
+            description: "search pairs",
+            purpose: "search pairs",
+            routingHint: "search exact pair symbols or names",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { query: "BONK" },
+            toolDescription: "search pairs",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-meme-movers-1",
+          role: "user",
+          parts: [{ type: "text", text: "what meme coins ripped the hardest today" }],
+        },
+      ],
+      userMessage: "what meme coins ripped the hardest today",
+      allowFastPath: false,
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+    expect(execution.toolNames).toEqual([
+      "getDexscreenerLatestTokenProfiles",
+      "getDexscreenerTokensByChain",
+      "getDexscreenerTopTokenBoosts",
+      "searchDexscreenerPairs",
+    ]);
+    expect(execution.systemPrompt).toContain("discover candidates first, then use `getDexscreenerTokensByChain`");
   });
 
   test("includes a compact wallet summary in the system prompt", async () => {

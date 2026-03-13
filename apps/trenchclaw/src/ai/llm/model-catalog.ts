@@ -1,5 +1,4 @@
 export type AiModelProvider = "gateway" | "openrouter";
-export type AiProviderPreference = "auto" | AiModelProvider;
 
 export interface AiModelCatalogEntry {
   id: string;
@@ -8,7 +7,7 @@ export interface AiModelCatalogEntry {
 }
 
 export interface AiProviderOptionEntry {
-  id: AiProviderPreference;
+  id: AiModelProvider;
   label: string;
   description: string;
 }
@@ -18,36 +17,21 @@ const OPENROUTER_ONLY = ["openrouter"] as const satisfies readonly AiModelProvid
 
 export const AI_PROVIDER_OPTIONS = [
   {
-    id: "auto",
-    label: "Auto",
-    description: "Use the first configured provider that supports the selected model. Gateway is preferred, then OpenRouter.",
+    id: "openrouter",
+    label: "OpenRouter",
+    description: "Use your OpenRouter key and show OpenRouter-supported models.",
   },
   {
     id: "gateway",
     label: "Vercel AI Gateway",
-    description: "Pin requests to your Vercel AI Gateway key and only show Gateway-supported models.",
-  },
-  {
-    id: "openrouter",
-    label: "OpenRouter",
-    description: "Pin requests to your OpenRouter key and only show OpenRouter-supported models.",
+    description: "Use your Vercel AI Gateway key and show Gateway-supported models.",
   },
 ] as const satisfies readonly AiProviderOptionEntry[];
 
 export const AI_MODEL_CATALOG = [
   {
-    id: "anthropic/claude-haiku-4.5",
-    label: "Claude Haiku 4.5",
-    providers: BOTH_PROVIDERS,
-  },
-  {
     id: "anthropic/claude-sonnet-4.6",
     label: "Claude Sonnet 4.6",
-    providers: BOTH_PROVIDERS,
-  },
-  {
-    id: "anthropic/claude-opus-4.6",
-    label: "Claude Opus 4.6",
     providers: BOTH_PROVIDERS,
   },
   {
@@ -59,26 +43,6 @@ export const AI_MODEL_CATALOG = [
     id: "google/gemini-3.1-pro-preview",
     label: "Gemini 3.1 Pro Preview",
     providers: BOTH_PROVIDERS,
-  },
-  {
-    id: "google/gemini-3.1-flash-lite-preview",
-    label: "Gemini 3.1 Flash Lite Preview",
-    providers: BOTH_PROVIDERS,
-  },
-  {
-    id: "x-ai/grok-4.20-beta",
-    label: "Grok 4.20 Beta",
-    providers: OPENROUTER_ONLY,
-  },
-  {
-    id: "qwen/qwen3.5-flash-02-23",
-    label: "Qwen 3.5 Flash 02-23",
-    providers: OPENROUTER_ONLY,
-  },
-  {
-    id: "qwen/qwen3.5-122b-a10b",
-    label: "Qwen 3.5 122B A10B",
-    providers: OPENROUTER_ONLY,
   },
   {
     id: "moonshotai/kimi-k2.5",

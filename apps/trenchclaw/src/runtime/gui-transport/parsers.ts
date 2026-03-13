@@ -238,7 +238,7 @@ export const parseUpdateAiSettingsRequest = async (request: Request): Promise<Gu
 
     if (
       typeof provider !== "string"
-      || (provider !== "auto" && provider !== "gateway" && provider !== "openrouter")
+      || (provider !== "gateway" && provider !== "openrouter")
       || typeof model !== "string"
       || typeof defaultMode !== "string"
     ) {

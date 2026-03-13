@@ -3,8 +3,7 @@ import type { UIMessage } from "ai";
 import { loadDefaultSystemPrompt } from "../llm/prompt-loader";
 import { buildOperatorChatPrompt } from "./operator-prompt";
 import { maybeExecuteFastPath } from "./fast-paths";
-import { getGatewayLanePolicy, getGatewayToolNamesForLane } from "./lane-policy";
-import { buildGatewayLaneStatuses, resolveGatewayLanguageModel } from "./provider-registry";
+import { buildGatewayLaneStatuses, getGatewayLanePolicy, getGatewayToolNamesForLane } from "./lane-policy";
 import type {
   GatewayContext,
   GatewayPreparedDirectExecution,
@@ -26,17 +25,12 @@ const extractLatestUserText = (messages: UIMessage[]): string =>
     ?.parts.map((part) => (part.type === "text" ? part.text : "")).join("\n")
     .trim() ?? "";
 
-export interface RuntimeGatewayOverrides {
-  resolveStreamingModel?: () => Promise<import("ai").LanguageModel> | import("ai").LanguageModel;
-}
-
 export const createRuntimeGateway = (
   context: GatewayContext,
-  overrides: RuntimeGatewayOverrides = {},
 ): RuntimeGateway => {
   const laneStatuses = buildGatewayLaneStatuses({
-    provider: context.llm?.provider ?? null,
-    model: context.llm?.model ?? null,
+    provider: context.resolvedModel.provider,
+    model: context.resolvedModel.model,
     endpointsValid: true,
   });
 
@@ -87,13 +81,7 @@ export const createRuntimeGateway = (
           "Summarize completed work briefly and factually.",
         ].join("\n\n");
 
-    const resolvedModel = overrides.resolveStreamingModel
-      ? {
-          provider: context.llm?.provider ?? null,
-          model: context.llm?.model ?? null,
-          languageModel: await overrides.resolveStreamingModel(),
-        }
-      : await resolveGatewayLanguageModel(context.llm?.provider ?? null, context.llm?.model ?? null);
+    const resolvedModel = context.resolvedModel;
 
     if (!resolvedModel.languageModel) {
       return {

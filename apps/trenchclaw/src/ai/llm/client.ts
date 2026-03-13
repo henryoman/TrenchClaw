@@ -1,4 +1,4 @@
-import { generateText, streamText } from "ai";
+import { generateText, streamText, type LanguageModel } from "ai";
 import { loadAiSettings } from "./ai-settings-file";
 import { createLanguageModel, resolveLlmProviderConfig } from "./config";
 import { loadSystemPromptPayload } from "./prompt-loader";
@@ -51,6 +51,13 @@ const toStreamResult = (result: ReturnType<typeof streamText>): LlmStreamResult 
   },
 });
 
+export interface ResolvedLlmRuntimeBinding {
+  client: LlmClient | null;
+  provider: string | null;
+  model: string | null;
+  languageModel: LanguageModel | null;
+}
+
 export const createLlmClient = (config: LlmClientConfig): LlmClient => {
   const model = createLanguageModel(config);
   const resolveSystemPrompt = async (input: LlmGenerateInput | LlmStreamInput): Promise<string> => {
@@ -98,21 +105,31 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
   };
 };
 
-export const createLlmClientFromEnv = async (): Promise<LlmClient | null> => {
+export const resolveLlmRuntimeBinding = async (): Promise<ResolvedLlmRuntimeBinding> => {
   const providerConfig = await resolveLlmProviderConfig();
   if (!providerConfig) {
-    return null;
+    return {
+      client: null,
+      provider: null,
+      model: null,
+      languageModel: null,
+    };
   }
   const aiSettingsPayload = await loadAiSettings();
   const defaultPromptPayload = await loadSystemPromptPayload(
     process.env.TRENCHCLAW_AGENT_MODE ?? aiSettingsPayload.settings.defaultMode,
   );
 
-  return createLlmClient({
-    ...providerConfig,
-    defaultSystemPrompt: defaultPromptPayload.systemPrompt,
-    defaultMode: aiSettingsPayload.settings.defaultMode || defaultPromptPayload.mode,
-    defaultTemperature: aiSettingsPayload.settings.temperature,
-    defaultMaxOutputTokens: aiSettingsPayload.settings.maxOutputTokens,
-  });
+  return {
+    client: createLlmClient({
+      ...providerConfig,
+      defaultSystemPrompt: defaultPromptPayload.systemPrompt,
+      defaultMode: aiSettingsPayload.settings.defaultMode || defaultPromptPayload.mode,
+      defaultTemperature: aiSettingsPayload.settings.temperature,
+      defaultMaxOutputTokens: aiSettingsPayload.settings.maxOutputTokens,
+    }),
+    provider: providerConfig.provider,
+    model: providerConfig.model,
+    languageModel: createLanguageModel(providerConfig),
+  };
 };
