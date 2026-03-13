@@ -51,6 +51,7 @@ import {
   type ActiveSessionInfo,
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
+import { resolveCurrentActiveInstanceIdSync } from "./instance-state";
 import { CORE_APP_ROOT, RUNTIME_GENERATED_ROOT } from "./runtime-paths";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
@@ -209,6 +210,8 @@ const normalizeExecuteAtUnixMs = (value: number | undefined, now: number): numbe
   const normalized = Math.max(0, Math.trunc(value));
   return normalized > now ? normalized : now;
 };
+
+const formatRuntimeNoticeTimestamp = (unixMs: number): string => new Date(unixMs).toISOString();
 
 const isTradeActionName = (actionName: string): boolean => TRADE_ACTIONS.has(actionName);
 
@@ -624,6 +627,35 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       ...overrides,
     });
 
+  const persistRuntimeNotice = (content: string): void => {
+    const now = Date.now();
+    const activeInstanceId = resolveCurrentActiveInstanceIdSync() ?? undefined;
+    const recentConversation = stateStore
+      .listConversations(100)
+      .find((conversation) => (activeInstanceId ? conversation.sessionId === activeInstanceId : true));
+    const conversationId = recentConversation?.id ?? `runtime-${activeInstanceId ?? "global"}`;
+
+    stateStore.saveConversation({
+      id: conversationId,
+      sessionId: recentConversation?.sessionId ?? activeInstanceId,
+      title: recentConversation?.title ?? "Runtime notices",
+      summary: recentConversation?.summary,
+      createdAt: recentConversation?.createdAt ?? now,
+      updatedAt: now,
+    });
+    stateStore.saveChatMessage({
+      id: `msg-runtime-${crypto.randomUUID()}`,
+      conversationId,
+      role: "system",
+      content,
+      metadata: {
+        source: "runtime",
+        kind: "job-notice",
+      },
+      createdAt: now,
+    });
+  };
+
   const enqueueJob = async (input: {
     botId: string;
     routineName: string;
@@ -647,6 +679,11 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       nextRunAt: executeAtUnixMs,
     };
     stateStore.saveJob(job);
+    if (executeAtUnixMs > now) {
+      persistRuntimeNotice(
+        `Scheduled ${job.routineName} for ${job.botId} at ${formatRuntimeNoticeTimestamp(executeAtUnixMs)}.`,
+      );
+    }
     if (executeAtUnixMs <= now) {
       try {
         await scheduler.enqueue(job, now);
@@ -678,6 +715,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       stateStore.updateJobStatus(job.id, "paused", {
         nextRunAt: job.nextRunAt,
       });
+      persistRuntimeNotice(`Paused ${job.routineName} for ${job.botId}.`);
       eventBus.emit("bot:pause", {
         botId: job.botId,
         reason: "queue:pause",
@@ -695,6 +733,11 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       if (!resumedJob) {
         throw new Error(`Job "${job.id}" disappeared after resume`);
       }
+      persistRuntimeNotice(
+        nextRunAt <= Date.now()
+          ? `Resumed ${job.routineName} for ${job.botId} and returned it to the ready queue.`
+          : `Resumed ${job.routineName} for ${job.botId}; next run at ${formatRuntimeNoticeTimestamp(nextRunAt)}.`,
+      );
       if (nextRunAt <= Date.now()) {
         try {
           await scheduler.enqueue(resumedJob);
@@ -717,6 +760,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       stateStore.updateJobStatus(job.id, "stopped", {
         nextRunAt: undefined,
       });
+      persistRuntimeNotice(`Cancelled ${job.routineName} for ${job.botId}.`);
       eventBus.emit("bot:stop", {
         botId: job.botId,
         reason: "queue:cancel",

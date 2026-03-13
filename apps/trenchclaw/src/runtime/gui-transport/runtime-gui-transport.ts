@@ -24,30 +24,6 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
   constructor(public readonly runtime: RuntimeBootstrap) {
     this.activeInstance = readPersistedActiveInstanceSync();
     this.addActivity("runtime", "Runtime transport initialized");
-
-    this.unsubscribers.push(
-      this.runtime.eventBus.on("queue:enqueue", (event) => {
-        this.addActivity(
-          "queue",
-          `Queued ${event.payload.routineName} for ${event.payload.botId} (#${event.payload.queuePosition})`,
-        );
-      }),
-    );
-
-    this.unsubscribers.push(
-      this.runtime.eventBus.on("queue:dequeue", (event) => {
-        this.addActivity("queue", `Started ${event.payload.routineName} for ${event.payload.botId}`);
-      }),
-    );
-
-    this.unsubscribers.push(
-      this.runtime.eventBus.on("queue:complete", (event) => {
-        this.addActivity(
-          "queue",
-          `Confirmed ${event.payload.routineName} for ${event.payload.botId} (${event.payload.status})`,
-        );
-      }),
-    );
   }
 
   dispose(): void {
