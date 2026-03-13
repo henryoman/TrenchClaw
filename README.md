@@ -442,28 +442,28 @@ bun run gui:dev
 
 ## v1.0 Feature Checklist
 
-- [ ] Add simulation mode and paper trading mode.
-- [ ] Add metrics and tracing.
-- [ ] Make triggers actually run routines (time-based, price-based, and on-chain triggers).
-- [ ] Fully connect DCA, swing, percentage, and sniper routines to live execution.
-- [ ] Finish the non-Ultra RPC swap path to match Ultra features.
-- [ ] Make trigger processing stable for production (durable scheduling, cooldown/debounce, replay protection).
-- [ ] Ensure retries and restarts do not duplicate work.
-- [ ] Add full multi-wallet support with per-wallet limits.
-- [ ] Build full portfolio tracking (positions, cost basis, realized/unrealized PnL, exposure).
-- [ ] Expand risk controls (max size, slippage, drawdown, per-strategy limits).
-- [ ] Add alert delivery for runtime, strategy, and trade events.
-- [ ] Add operator control commands (pause, resume, kill switch, recovery).
-- [ ] Add external API controls with auth, rate limits, and typed contracts.
-- [ ] Improve production secrets/key handling (secure loading and rotation).
-- [ ] Add storage maintenance tools (prune, compact, export/import, backup/restore verification).
-- [ ] Add historical market data ingestion and backtest dataset workflows.
-- [ ] Add reproducible backtest/simulation runs with saved result snapshots.
-- [ ] Add clear performance reports (fill quality, slippage, strategy KPIs).
-- [ ] Add more Solana data sources with fallback priority.
-- [ ] Add failure recovery tools (stuck transaction cleanup, resumable jobs, dead-letter handling).
-- [ ] Complete broader testing (unit, integration, scenario, long-running soak).
-- [ ] Finalize release workflow (versioning, changelog, CI quality gates, reproducible builds).
+- [ ] Simulation and paper trading
+- [ ] Metrics and tracing
+- [ ] Trigger engine (time, price, on-chain)
+- [ ] Live routine execution (DCA, swing, % buy/sell, sniper)
+- [ ] Non-Ultra RPC swap parity
+- [ ] Production-safe trigger scheduling
+- [ ] Retry/restart idempotency
+- [ ] Multi-wallet support with limits
+- [ ] Portfolio and PnL tracking
+- [ ] Risk controls (size, slippage, drawdown)
+- [ ] Runtime and trade alerts
+- [ ] Operator controls (pause, resume, kill switch)
+- [ ] External API controls (auth, rate limits, typed contracts)
+- [ ] Production key management and rotation
+- [ ] Storage maintenance and backup/restore
+- [ ] Historical market data ingestion
+- [ ] Reproducible backtests and simulations
+- [ ] Performance and execution reporting
+- [ ] Solana data source redundancy
+- [ ] Failure recovery and dead-letter handling
+- [ ] Full test coverage (unit/integration/scenario/soak)
+- [ ] Release workflow and CI quality gates
 
 ---
 
