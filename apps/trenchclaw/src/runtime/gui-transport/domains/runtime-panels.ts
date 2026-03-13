@@ -7,7 +7,6 @@ import type {
   GuiQueueResponse,
 } from "@trenchclaw/types";
 import type { RuntimeEventName } from "../../../ai/runtime/types/events";
-import { resolveLlmProviderConfig } from "../../../ai/llm/config";
 import { ACTIVE_JOB_STATUSES, GUI_QUEUE_INCLUDE_HISTORY } from "../constants";
 import { CORS_HEADERS } from "../constants";
 import type { RuntimeGuiDomainContext } from "../contracts";
@@ -112,12 +111,12 @@ const compareScheduleJobsChronologically = (
 };
 
 export const getBootstrap = async (context: RuntimeGuiDomainContext): Promise<GuiBootstrapResponse> => {
-  const llmConfig = await resolveLlmProviderConfig();
+  const runtimeDescription = context.runtime.describe();
   return {
     profile: context.runtime.settings.profile,
-    llmEnabled: llmConfig !== null,
+    llmEnabled: runtimeDescription.llmEnabled,
     activeInstance: context.getActiveInstance(),
-    runtime: context.runtime.describe(),
+    runtime: runtimeDescription,
   };
 };
 

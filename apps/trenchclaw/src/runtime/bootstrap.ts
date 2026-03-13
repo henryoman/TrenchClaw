@@ -5,8 +5,8 @@ import {
   ActionDispatcher,
   ActionRegistry,
   createRuntimeGateway,
-  createLlmClientFromEnv,
   createActionContext,
+  resolveLlmRuntimeBinding,
   type CreateActionContextConfig,
   InMemoryRuntimeEventBus,
   InMemoryStateStore,
@@ -592,8 +592,8 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     });
   }
   const capabilitySnapshot: RuntimeCapabilitySnapshot = await getRuntimeCapabilitySnapshot(settings);
-  const baseLlm = await createLlmClientFromEnv();
-  const llm = baseLlm ? instrumentLlmClient(baseLlm, logger) : null;
+  const llmBinding = await resolveLlmRuntimeBinding();
+  const llm = llmBinding.client ? instrumentLlmClient(llmBinding.client, logger) : null;
   const registry = new ActionRegistry();
   const actions = await buildActionCatalog(settings);
   const supportedActionMap = toSupportedActionMap(actions);
@@ -842,7 +842,11 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     registry,
     eventBus,
     stateStore,
-    llm,
+    resolvedModel: {
+      provider: llmBinding.provider,
+      model: llmBinding.model,
+      languageModel: llmBinding.languageModel,
+    },
     logger,
     capabilitySnapshot,
     createActionContext: createRuntimeActionContext,
@@ -877,7 +881,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       ultraSigner,
       enqueueJob,
       manageJob,
-      llm,
       logger,
       capabilitySnapshot,
       gateway,

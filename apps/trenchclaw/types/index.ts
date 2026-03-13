@@ -243,7 +243,7 @@ export interface GuiUpdateVaultResponse {
 }
 
 export interface GuiAiSettingsView {
-  provider: "auto" | "gateway" | "openrouter";
+  provider: "gateway" | "openrouter";
   model: string;
   defaultMode: string;
   temperature: number | null;
@@ -251,7 +251,7 @@ export interface GuiAiSettingsView {
 }
 
 export interface GuiAiProviderOptionView {
-  id: "auto" | "gateway" | "openrouter";
+  id: "gateway" | "openrouter";
   label: string;
   description: string;
 }

@@ -41,6 +41,9 @@ const readVaultStringByPath = (vaultData: unknown, refPath: string): string | un
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 };
 
+const isUnresolvedVaultRef = (value: unknown): value is string =>
+  typeof value === "string" && value.trim().startsWith("vault://");
+
 const isLikelyRelativeConfigRef = (value: string): boolean => {
   if (!value || value.startsWith("vault://")) {
     return false;
@@ -168,16 +171,25 @@ const applyResolvedRpcFallbacks = (
   }
 
   const provider = providers[primaryRpc] as Record<string, unknown>;
-  const endpointRef =
+  const requestedEndpointRef =
     typeof provider.endpointRef === "string" && provider.endpointRef.trim().length > 0
       ? provider.endpointRef.trim()
-      : readVaultStringByPath(vaultData, "rpc/default/http-url");
-  const wsEndpointRef =
+      : undefined;
+  const requestedWsEndpointRef =
     typeof provider.wsEndpointRef === "string" && provider.wsEndpointRef.trim().length > 0
       ? provider.wsEndpointRef.trim()
-      : endpointRef
+      : undefined;
+  const defaultHttpUrl = readVaultStringByPath(vaultData, "rpc/default/http-url");
+  const endpointRef =
+    !requestedEndpointRef || isUnresolvedVaultRef(requestedEndpointRef)
+      ? defaultHttpUrl
+      : requestedEndpointRef;
+  const wsEndpointRef =
+    !requestedWsEndpointRef || isUnresolvedVaultRef(requestedWsEndpointRef)
+      ? endpointRef
         ? endpointRef.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:")
-        : undefined;
+        : undefined
+      : requestedWsEndpointRef;
 
   return {
     ...settings,

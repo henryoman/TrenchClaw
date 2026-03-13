@@ -36,9 +36,10 @@ const renderOperatorToolList = (
   snapshot: RuntimeCapabilitySnapshot | undefined,
   toolNames: string[],
 ): string => {
+  type ToolEntry = RuntimeCapabilitySnapshot["modelTools"][number];
   const toolEntries = toolNames
     .map((toolName) => snapshot?.modelTools.find((toolEntry) => toolEntry.name === toolName))
-    .filter((toolEntry): toolEntry is NonNullable<typeof toolEntries[number]> => toolEntry !== undefined);
+    .filter((toolEntry): toolEntry is ToolEntry => toolEntry !== undefined);
 
   return [
     "## Enabled Operator Tools",
@@ -46,6 +47,9 @@ const renderOperatorToolList = (
     ...toolEntries.map((toolEntry) => `- ${toolEntry.name}: ${toolEntry.routingHint}`),
     "- for wallet holdings and token balances, prefer `getManagedWalletContents` first",
     "- for SOL-only balance summaries, prefer `getManagedWalletSolBalances`",
+    "- for trending or promoted Dexscreener tokens, start with `getDexscreenerLatestTokenProfiles`, `getDexscreenerLatestTokenBoosts`, or `getDexscreenerTopTokenBoosts`",
+    "- for questions like what is ripping, top gainers, or meme movers today, discover candidates first, then use `getDexscreenerTokensByChain` to ground the answer in price-change, liquidity, and volume data",
+    "- for exact token or pair lookup after discovery, use `searchDexscreenerPairs`",
     "- do not use workspace tools in operator chat",
   ].join("\n");
 };
@@ -70,6 +74,7 @@ export const buildOperatorChatPrompt = async (input: {
     [
       "## Operator Routing",
       "- for direct runtime questions, answer from a single runtime action when possible",
+      "- for direct market questions about movers, gainers, or trends, use Dexscreener runtime actions first and keep the answer grounded in returned market data",
       "- skip greetings and capability preambles for direct asks",
       "- if one tool call answered the question, summarize the result and stop",
       "- if a runtime action fails, report the exact failure and the next corrective action",

@@ -157,6 +157,7 @@
         aiSettings={runtime.state.aiSettings}
         aiProviderOptions={runtime.state.aiProviderOptions}
         aiModelOptions={runtime.state.aiModelOptions}
+        secretEntries={runtime.state.secretEntries}
         aiSettingsBusy={runtime.state.aiSettingsBusy}
         aiSettingsError={runtime.state.aiSettingsError}
         tradingSettingsFilePath={runtime.state.tradingSettingsFilePath}
@@ -242,7 +243,7 @@
     margin: 0;
   }
 
-  @media (max-width: var(--tc-layout-breakpoint)) {
+  @media (max-width: 980px) {
     .right-column {
       grid-template-rows: auto minmax(280px, 1fr);
     }

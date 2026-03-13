@@ -448,7 +448,7 @@
     color: var(--tc-color-turquoise);
   }
 
-  @media (max-width: var(--tc-layout-breakpoint)) {
+  @media (max-width: 980px) {
     .secrets-header {
       flex-direction: column;
     }

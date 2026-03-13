@@ -34,3 +34,4 @@ website/build/
 
 # Release artifacts
 *.tgz
+.vercel

@@ -1,5 +1,4 @@
 import type { LanguageModel, UIMessage } from "ai";
-import type { LlmClient } from "../llm/types";
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
 import type { ResolvedRuntimeEndpoints } from "../../runtime/load";
@@ -93,7 +92,11 @@ export interface GatewayContext {
   registry: ActionRegistry;
   eventBus: RuntimeEventBus;
   stateStore: StateStore;
-  llm: LlmClient | null;
+  resolvedModel: {
+    provider: string | null;
+    model: string | null;
+    languageModel: LanguageModel | null;
+  };
   logger?: RuntimeLogger;
   workspaceRootDirectory?: string;
   createActionContext: (overrides?: CreateActionContextConfig) => ReturnType<typeof import("../runtime/types/context").createActionContext>;

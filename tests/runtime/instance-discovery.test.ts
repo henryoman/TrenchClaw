@@ -190,7 +190,7 @@ describe("instance discovery", () => {
     await writeFile(
       path.join(runtimeRoot, "runtime/ai.json"),
       `${JSON.stringify({
-        provider: "auto",
+        provider: "gateway",
         model: "test-model",
         defaultMode: "primary",
         temperature: null,

@@ -5,29 +5,29 @@
   "type": "module",
   "scripts": {
     "dev": "bun run --cwd ../../../ dev:bootstrap",
-    "dev:standalone": "bun --bun vite --host 127.0.0.1 --port 4173",
-    "dev:runtime": "VITE_TRENCHCLAW_RUNTIME_URL=http://127.0.0.1:4020 bun --bun vite --host 127.0.0.1 --port 4173",
-    "build": "bun --bun vite build",
-    "preview": "bun --bun vite preview",
+    "dev:standalone": "bun --bun ../../../node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4173",
+    "dev:runtime": "VITE_TRENCHCLAW_RUNTIME_URL=http://127.0.0.1:4020 bun --bun ../../../node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4173",
+    "build": "bun --bun ../../../node_modules/vite/bin/vite.js build",
+    "preview": "bun --bun ../../../node_modules/vite/bin/vite.js preview",
     "typecheck": "bun --bun svelte-check --tsconfig ./tsconfig.json",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix ."
   },
   "dependencies": {
     "@ai-sdk/svelte": "^4.0.116",
-    "@openrouter/ai-sdk-provider": "^2.3.0",
+    "@openrouter/ai-sdk-provider": "^2.3.1",
     "@trenchclaw/types": "workspace:*",
     "ai": "^6.0.116",
     "marked": "^17.0.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^6.2.4",
+    "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@types/json-schema": "^7.0.15",
-    "oxlint": "^1.54.0",
-    "svelte": "^5.53.10",
+    "oxlint": "^1.55.0",
+    "svelte": "^5.53.11",
     "svelte-check": "^4.4.5",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1"
+    "vite": "^8.0.0"
   }
 }

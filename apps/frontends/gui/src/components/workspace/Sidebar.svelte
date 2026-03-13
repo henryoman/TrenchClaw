@@ -173,7 +173,7 @@
     text-transform: uppercase;
   }
 
-  @media (max-width: var(--tc-layout-breakpoint)) {
+  @media (max-width: 980px) {
     .sidebar {
       min-width: 0;
     }

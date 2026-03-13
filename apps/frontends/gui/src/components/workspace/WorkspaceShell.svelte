@@ -34,7 +34,7 @@
     gap: var(--tc-space-2);
   }
 
-  @media (max-width: var(--tc-layout-breakpoint)) {
+  @media (max-width: 980px) {
     .layout {
       grid-template-columns: 1fr;
     }

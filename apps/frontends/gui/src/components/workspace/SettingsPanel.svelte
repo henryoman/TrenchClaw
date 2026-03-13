@@ -3,6 +3,7 @@
     GuiAiModelOptionView,
     GuiAiProviderOptionView,
     GuiAiSettingsView,
+    GuiSecretEntryView,
     GuiTradingSettingsView,
   } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
@@ -18,6 +19,7 @@
   export let aiSettings: GuiAiSettingsView | null = null;
   export let aiProviderOptions: GuiAiProviderOptionView[] = [];
   export let aiModelOptions: GuiAiModelOptionView[] = [];
+  export let secretEntries: GuiSecretEntryView[] = [];
   export let aiSettingsBusy = false;
   export let aiSettingsError = "";
   export let tradingSettingsFilePath = "";
@@ -30,12 +32,15 @@
   export let onSaveTradingSettings: (settings: GuiTradingSettingsView) => Promise<void> | void = () => {};
 
   const DEFAULT_AI_PROVIDER_OPTIONS: GuiAiProviderOptionView[] = [
-    { id: "auto", label: "Auto", description: "Use the first configured provider that supports the selected model." },
-    { id: "gateway", label: "Vercel AI Gateway", description: "Pin requests to Gateway and filter to Gateway-supported models." },
-    { id: "openrouter", label: "OpenRouter", description: "Pin requests to OpenRouter and filter to OpenRouter-supported models." },
+    { id: "openrouter", label: "OpenRouter", description: "Use OpenRouter and show OpenRouter-supported models." },
+    { id: "gateway", label: "Vercel AI Gateway", description: "Use Vercel AI Gateway and show Gateway-supported models." },
   ];
-  const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "auto";
+  const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "openrouter";
   const DEFAULT_AI_MODEL = "anthropic/claude-sonnet-4.6";
+  const PROVIDER_KEY_OPTION_BY_ID: Record<GuiAiSettingsView["provider"], string> = {
+    gateway: "vercel-ai-gateway-api-key",
+    openrouter: "openrouter-api-key",
+  };
 
   const createCustomAiModelOption = (model: string): GuiAiModelOptionView => ({
     id: model,
@@ -59,14 +64,25 @@
   const formatAiModelOptionLabel = (option: GuiAiModelOptionView): string =>
     `${option.label} (${describeAiModelProviders(option.providers)})`;
 
+  const providerHasKey = (provider: GuiAiSettingsView["provider"]): boolean => {
+    const optionId = PROVIDER_KEY_OPTION_BY_ID[provider];
+    const entry = secretEntries.find((candidate) => candidate.optionId === optionId);
+    return Boolean(entry?.value.trim());
+  };
+
+  const formatAiProviderOptionLabel = (option: GuiAiProviderOptionView): string =>
+    `${option.label}${providerHasKey(option.id) ? " | configured" : " | missing key"}`;
+
   const resolveAiProviderHint = (provider: GuiAiSettingsView["provider"]): string => {
+    if (!providerHasKey(provider)) {
+      return provider === "openrouter"
+        ? "Add an OpenRouter API key in Keys before saving this provider."
+        : "Add a Vercel AI Gateway key in Keys before saving this provider.";
+    }
     if (provider === "gateway") {
-      return "Pinned to Vercel AI Gateway. The model list is filtered to Gateway-supported IDs.";
+      return "Using Vercel AI Gateway. The model list is filtered to Gateway-supported IDs.";
     }
-    if (provider === "openrouter") {
-      return "Pinned to OpenRouter. The model list is filtered to OpenRouter-supported IDs.";
-    }
-    return "Auto is the best default. The runtime prefers Gateway first, then falls back to OpenRouter for models Gateway does not support.";
+    return "Using OpenRouter. The model list is filtered to OpenRouter-supported IDs.";
   };
 
   const DEFAULT_AI_SETTINGS: GuiAiSettingsView = {
@@ -115,7 +131,7 @@
   };
 
   const resolveCompatibleAiModels = (provider: GuiAiSettingsView["provider"]): GuiAiModelOptionView[] =>
-    provider === "auto" ? [...aiModelOptions] : aiModelOptions.filter((option) => option.providers.includes(provider));
+    aiModelOptions.filter((option) => option.providers.includes(provider));
 
   const handleAiProviderChange = (provider: GuiAiSettingsView["provider"]): void => {
     const compatibleModels = resolveCompatibleAiModels(provider);
@@ -231,8 +247,8 @@
     && !filteredAiModelOptions.some((option) => option.id === aiSettingsDraft.model.trim())
     ? [createCustomAiModelOption(aiSettingsDraft.model.trim()), ...filteredAiModelOptions]
     : [...filteredAiModelOptions];
-  $: selectedAiProviderOption = selectableAiProviderOptions.find((option) => option.id === aiSettingsDraft.provider) ?? null;
-  $: aiProviderHint = selectedAiProviderOption?.description ?? resolveAiProviderHint(aiSettingsDraft.provider);
+  $: selectedAiProviderHasKey = providerHasKey(aiSettingsDraft.provider);
+  $: aiProviderHint = resolveAiProviderHint(aiSettingsDraft.provider);
 </script>
 
 <section class="settings-panel" aria-label="Settings panel">
@@ -248,7 +264,7 @@
           <RetroButton variant="secondary" disabled={aiSettingsBusy} on:click={handleReloadAiSettings}>Reload</RetroButton>
           <RetroButton
             variant="primary"
-            disabled={aiSettingsBusy || !aiSettingsDraft.model.trim() || !aiSettingsDraft.defaultMode.trim()}
+            disabled={aiSettingsBusy || !selectedAiProviderHasKey || !aiSettingsDraft.model.trim() || !aiSettingsDraft.defaultMode.trim()}
             on:click={saveAiSettings}
           >
             Save
@@ -267,7 +283,12 @@
             }}
           >
             {#each selectableAiProviderOptions as providerOption}
-              <option value={providerOption.id}>{providerOption.label}</option>
+              <option
+                value={providerOption.id}
+                disabled={!providerHasKey(providerOption.id) && providerOption.id !== aiSettingsDraft.provider}
+              >
+                {formatAiProviderOptionLabel(providerOption)}
+              </option>
             {/each}
           </RetroSelect>
         </RetroField>
@@ -436,7 +457,7 @@
     line-height: 1.5;
   }
 
-  @media (max-width: var(--tc-layout-breakpoint)) {
+  @media (max-width: 980px) {
     .settings-header {
       flex-direction: column;
     }
