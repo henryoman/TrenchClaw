@@ -45,6 +45,14 @@ interface FilesystemManifest {
   rules: FilesystemRule[];
 }
 
+export interface FilesystemPolicySummary {
+  subject: FilesystemSubject;
+  defaultPermission: FilesystemPermission;
+  readPaths: string[];
+  writePaths: string[];
+  blockedPaths: string[];
+}
+
 const MANIFEST_PATH_FROM_MODULE = resolveCoreRelativePath("src/ai/config/filesystem-manifest.json");
 
 const DEFAULT_MANIFEST_CANDIDATE_PATHS = [
@@ -224,27 +232,44 @@ export const buildFilesystemPolicyPrompt = async (input: {
   actor?: RuntimeActor;
   maxPathsPerBucket?: number;
 } = {}): Promise<string> => {
+  const summary = await summarizeFilesystemPolicy({
+    actor: input.actor,
+    maxPathsPerBucket: input.maxPathsPerBucket,
+  });
+  return [
+    `Filesystem policy for ${summary.subject} (enforced by manifest):`,
+    `- default permission: ${summary.defaultPermission}`,
+    `- write paths: ${summary.writePaths.length > 0 ? summary.writePaths.join(", ") : "none"}`,
+    `- read-only paths: ${summary.readPaths.length > 0 ? summary.readPaths.join(", ") : "none"}`,
+    `- blocked paths: ${summary.blockedPaths.length > 0 ? summary.blockedPaths.join(", ") : "none"}`,
+    "- never assume access outside allowed paths; request user help if blocked.",
+  ].join("\n");
+};
+
+export const summarizeFilesystemPolicy = async (input: {
+  actor?: RuntimeActor;
+  maxPathsPerBucket?: number;
+} = {}): Promise<FilesystemPolicySummary> => {
   const subject = toSubject(input.actor);
   const maxPaths = Math.max(1, Math.trunc(input.maxPathsPerBucket ?? 8));
   const manifest = await loadManifest();
 
-  const writePaths = manifest.rules
-    .filter((rule) => rule[subject] === "write")
-    .map((rule) => toRelativePath(rule.absolutePath))
-    .slice(0, maxPaths);
-  const readPaths = manifest.rules
-    .filter((rule) => rule[subject] === "read")
-    .map((rule) => toRelativePath(rule.absolutePath))
-    .slice(0, maxPaths);
-
-  const defaultPermission = manifest.defaults[subject];
-  return [
-    `Filesystem policy for ${subject} (enforced by manifest):`,
-    `- default permission: ${defaultPermission}`,
-    `- write paths: ${writePaths.length > 0 ? writePaths.join(", ") : "none"}`,
-    `- read-only paths: ${readPaths.length > 0 ? readPaths.join(", ") : "none"}`,
-    "- never assume access outside allowed paths; request user help if blocked.",
-  ].join("\n");
+  return {
+    subject,
+    defaultPermission: manifest.defaults[subject],
+    writePaths: manifest.rules
+      .filter((rule) => rule[subject] === "write")
+      .map((rule) => toRelativePath(rule.absolutePath))
+      .slice(0, maxPaths),
+    readPaths: manifest.rules
+      .filter((rule) => rule[subject] === "read")
+      .map((rule) => toRelativePath(rule.absolutePath))
+      .slice(0, maxPaths),
+    blockedPaths: manifest.rules
+      .filter((rule) => rule[subject] === "none")
+      .map((rule) => toRelativePath(rule.absolutePath))
+      .slice(0, maxPaths),
+  };
 };
 
 export const resetFilesystemManifestCacheForTests = (): void => {

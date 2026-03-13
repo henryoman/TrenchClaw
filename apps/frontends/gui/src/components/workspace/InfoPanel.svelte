@@ -28,14 +28,14 @@
 <RetroPanel title="Info">
   <div class="info-root">
     <section class="warning-block">
-      <p class="eyebrow">Experimental Release</p>
+      <p class="eyebrow tc-kicker">Experimental Release</p>
       <h2 class="headline">This release is unsafe, limited in scope, and experimental.</h2>
-      <p class="body">Use small balances and expect rough edges.</p>
+      <p class="body tc-copy-sm">Use small balances and expect rough edges.</p>
     </section>
 
     <section class="section">
-      <h3 class="section-title">Why it is limited</h3>
-      <ul class="facts">
+      <h3 class="section-title tc-kicker">Why it is limited</h3>
+      <ul class="facts tc-copy-sm">
         <li>We are narrowing scope on purpose.</li>
         <li>The priority is getting keys, wallets, swaps, transfers, queueing, and runtime state stable first.</li>
         <li>Less surface area makes failures easier to isolate and fix.</li>
@@ -43,8 +43,8 @@
     </section>
 
     <section class="section">
-      <h3 class="section-title">What to assume</h3>
-      <ul class="facts">
+      <h3 class="section-title tc-kicker">What to assume</h3>
+      <ul class="facts tc-copy-sm">
         <li>This is not a polished production trading terminal.</li>
         <li>Some flows still need manual verification.</li>
         <li>Prefer explicit confirmations and isolated testing.</li>
@@ -53,14 +53,14 @@
 
     <section class="section">
       <div class="links-head">
-        <h3 class="section-title">Docs</h3>
-        <a class="docs-home" href="/docs" target="_blank" rel="noreferrer">All docs</a>
+        <h3 class="section-title tc-kicker">Docs</h3>
+        <a class="docs-home tc-kicker" href="/docs" target="_blank" rel="noreferrer">All docs</a>
       </div>
       <div class="links-grid">
         {#each docsLinks as link}
-          <a class="link-card" href={link.href} target="_blank" rel="noreferrer">
-            <span class="link-label">{link.label}</span>
-            <span class="link-copy">{link.description}</span>
+          <a class="link-card tc-link-card" href={link.href} target="_blank" rel="noreferrer">
+            <span class="link-label tc-kicker">{link.label}</span>
+            <span class="link-copy tc-copy-sm">{link.description}</span>
           </a>
         {/each}
       </div>
@@ -85,8 +85,6 @@
   .eyebrow {
     margin: 0;
     color: var(--tc-color-red);
-    font-size: var(--tc-type-xs);
-    text-transform: uppercase;
     letter-spacing: var(--tc-track-wide);
   }
 
@@ -106,16 +104,11 @@
   .section-title {
     margin: 0;
     color: var(--tc-color-gray-3);
-    font-size: var(--tc-type-xs);
-    text-transform: uppercase;
-    letter-spacing: var(--tc-track-normal);
   }
 
   .body {
     margin: 0;
     color: var(--tc-color-gray-3);
-    font-size: var(--tc-type-sm);
-    line-height: 1.45;
   }
 
   .facts {
@@ -124,8 +117,6 @@
     color: var(--tc-color-gray-3);
     display: grid;
     gap: 6px;
-    font-size: var(--tc-type-sm);
-    line-height: 1.4;
   }
 
   .links-head {
@@ -137,9 +128,6 @@
 
   .docs-home {
     color: var(--tc-color-gray-3);
-    font-size: var(--tc-type-xs);
-    text-transform: uppercase;
-    letter-spacing: var(--tc-track-wide);
     text-decoration: none;
   }
 
@@ -153,30 +141,12 @@
     gap: var(--tc-space-2);
   }
 
-  .link-card {
-    display: grid;
-    gap: 6px;
-    padding: var(--tc-space-3);
-    border: var(--tc-border);
-    background: var(--tc-color-black);
-    text-decoration: none;
-  }
-
-  .link-card:hover {
-    border-color: var(--tc-color-gray-1);
-  }
-
   .link-label {
     color: var(--tc-color-cream);
-    font-size: var(--tc-type-xs);
-    text-transform: uppercase;
-    letter-spacing: var(--tc-track-normal);
   }
 
   .link-copy {
     color: var(--tc-color-gray-3);
-    font-size: var(--tc-type-sm);
-    line-height: 1.4;
   }
 
   @media (max-width: 760px) {

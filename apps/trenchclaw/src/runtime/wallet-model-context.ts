@@ -227,3 +227,57 @@ Do not ask follow-up questions before giving that direct answer unless the user 
 
   return lines.join("\n");
 };
+
+export const renderRuntimeWalletPromptSummary = async (
+  input: RenderRuntimeWalletPromptContextInput = {},
+): Promise<string> => {
+  const activeInstanceId = input.activeInstanceId ?? resolveCurrentActiveInstanceIdSync();
+  if (!activeInstanceId) {
+    return [
+      "- active instance wallet scope: none",
+      "- managed wallet status: no active instance selected",
+      "- prefer `queryRuntimeStore`, `getManagedWalletContents`, or `getManagedWalletSolBalances` for wallet state questions",
+    ].join("\n");
+  }
+
+  const walletLibraryFilePath = input.walletLibraryFilePath ?? resolveWalletLibraryFilePath();
+  const walletLibraryContractPath = toRuntimeContractRelativePath(walletLibraryFilePath);
+  const walletLibraryFile = Bun.file(walletLibraryFilePath);
+  if (!(await walletLibraryFile.exists())) {
+    const inferredEntries = await inferManagedWalletLibraryEntriesFromFilesystem({
+      keypairRootPath: path.dirname(walletLibraryFilePath),
+    });
+    return [
+      `- active instance wallet scope: ${activeInstanceId}`,
+      `- wallet library file: ${walletLibraryContractPath}`,
+      `- managed wallet status: missing library file (${DEFAULT_WALLET_LIBRARY_FILE_NAME})`,
+      `- discovered managed wallets from labels: ${inferredEntries.length}`,
+      "- use `getManagedWalletContents` for holdings and token balances",
+      "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
+      "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
+    ].join("\n");
+  }
+
+  const { entries, invalidLineCount } = await readManagedWalletLibraryEntries({
+    filePath: walletLibraryFilePath,
+    inferFromFilesystem: true,
+  });
+  const groups = [...new Set(entries.map((entry) => entry.walletGroup))];
+  const previewWallets = [...entries]
+    .toSorted((left, right) => `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`))
+    .slice(0, 5)
+    .map((entry) => `${entry.walletGroup}/${entry.walletName}=${entry.address}`);
+
+  return [
+    `- active instance wallet scope: ${activeInstanceId}`,
+    `- wallet library file: ${walletLibraryContractPath}`,
+    `- managed wallet count: ${entries.length}`,
+    `- wallet groups: ${groups.join(", ") || "(none)"}`,
+    `- invalid library lines: ${invalidLineCount}`,
+    `- wallet preview: ${previewWallets.join("; ") || "none"}`,
+    "- use `createWallets` for wallet creation and `renameWallets` for label changes",
+    "- use `getManagedWalletContents` for holdings and token balances",
+    "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
+    "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
+  ].join("\n");
+};

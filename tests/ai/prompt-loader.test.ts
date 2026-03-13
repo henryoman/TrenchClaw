@@ -28,7 +28,7 @@ afterEach(() => {
 });
 
 describe("loadSystemPromptPayload", () => {
-  test("builds the default primary payload from the manifest", async () => {
+  test("builds the default primary runtime contract", async () => {
     process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = "apps/trenchclaw/.runtime-state/runtime/settings.json";
     process.env.TRENCHCLAW_VAULT_FILE = "apps/trenchclaw/.runtime-state/instances/01/vault.json";
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
@@ -36,36 +36,23 @@ describe("loadSystemPromptPayload", () => {
     const payload = await loadSystemPromptPayload();
 
     expect(payload.mode).toBe("primary");
-    expect(payload.title).toBe("Primary Mode");
-    expect(payload.sections.length).toBe(7);
-    expect(payload.systemPrompt).toContain("TrenchClaw System Prompt");
-    expect(payload.systemPrompt).toContain("# Primary Mode");
-    expect(payload.systemPrompt).toContain("## Prompt Assembly Order");
-    expect(payload.systemPrompt).toContain("Mode: `primary`");
-    expect(payload.systemPrompt).toContain("Core System Prompt");
-    expect(payload.systemPrompt).toContain("Primary Mode Instructions");
-    expect(payload.systemPrompt).toContain("Runtime Capability Appendix");
-    expect(payload.systemPrompt).toContain("Workspace Context Snapshot");
-    expect(payload.systemPrompt).toContain("Knowledge Manifest");
-    expect(payload.systemPrompt).toContain("Filesystem Policy");
-    expect(payload.systemPrompt).toContain("Runtime Settings (Resolved)");
-    expect(payload.systemPrompt).toContain("Live Callable Capability Appendix");
-    expect(payload.systemPrompt).toContain("Runtime Chat Tool Catalog");
-    expect(payload.systemPrompt).toContain("Exact Callable Tool Names");
+    expect(payload.title).toBe("Primary Runtime Contract");
+    expect(payload.sections.length).toBe(2);
+    expect(payload.systemPrompt).toContain("TrenchClaw System Kernel");
+    expect(payload.systemPrompt).toContain("## Runtime Contract");
+    expect(payload.systemPrompt).toContain("## Enabled Model Tools");
     expect(payload.systemPrompt).toContain("workspaceBash");
     expect(payload.systemPrompt).toContain("queryRuntimeStore");
     expect(payload.systemPrompt).toContain("queryInstanceMemory");
-    expect(payload.systemPrompt).toContain("src/ai/brain/knowledge/runtime-reference.md");
-    expect(payload.systemPrompt).toContain("Root: apps/trenchclaw/");
-    expect(payload.systemPrompt).toContain("Available Knowledge Manifest");
-    expect(payload.systemPrompt).toContain("runtime-reference.md");
-    expect(payload.systemPrompt).not.toContain("\"actionName\": \"checkSolBalance\"");
-    expect(payload.systemPrompt).not.toContain("When you produce a machine-readable plan");
-    expect(payload.systemPrompt).not.toContain("## Plan Shape");
-    expect(payload.systemPrompt).not.toContain("Example input:");
     expect(payload.systemPrompt).toContain("- active instance: 01");
-    expect(payload.systemPrompt).toContain("- vault: apps/trenchclaw/.runtime-state/instances/01/vault.json");
-    expect(payload.promptFiles.length).toBe(3);
+    expect(payload.systemPrompt).toContain(".runtime-state/instances/01/vault.json");
+    expect(payload.systemPrompt).toContain("workspaceReadFile");
+    expect(payload.systemPrompt).toContain(".runtime-state/generated/workspace-context.md");
+    expect(payload.systemPrompt).not.toContain("## Prompt Assembly Order");
+    expect(payload.systemPrompt).not.toContain("Source:");
+    expect(payload.systemPrompt).not.toContain("SQLite SQL Schema Snapshot");
+    expect(payload.systemPrompt).not.toContain("injected runtime capability appendix");
+    expect(payload.promptFiles.length).toBe(1);
   });
 
   test("resolves explicit primary mode", async () => {
@@ -76,9 +63,9 @@ describe("loadSystemPromptPayload", () => {
     const payload = await loadSystemPromptPayload("primary");
 
     expect(payload.mode).toBe("primary");
-    expect(payload.title).toBe("Primary Mode");
-    expect(payload.systemPrompt).toContain("Mode: `primary`");
-    expect(payload.systemPrompt).toContain("Root: apps/trenchclaw/");
+    expect(payload.title).toBe("Primary Runtime Contract");
+    expect(payload.systemPrompt).toContain("## Runtime Contract");
+    expect(payload.systemPrompt).not.toContain("## Knowledge Routing");
   });
 
   test("throws on unknown modes", async () => {

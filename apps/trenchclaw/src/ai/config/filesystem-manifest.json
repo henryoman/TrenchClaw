@@ -7,6 +7,10 @@
   },
   "rules": [
     {
+      "path": ".",
+      "model": "read"
+    },
+    {
       "path": ".runtime-state/db/events",
       "model": "read"
     },

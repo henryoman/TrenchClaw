@@ -141,7 +141,7 @@ const createSettingsPolicy = (settings: RuntimeSettings, supportedActions: Reado
       return { allowed: false, policyName: "runtime-settings-guard", reason: `Unknown action "${actionName}"` };
     }
 
-    if (!isRuntimeActionEnabledBySettings(settings, actionName)) {
+    if (!(await isRuntimeActionEnabledBySettings(settings, actionName))) {
       return {
         allowed: false,
         policyName: "runtime-settings-guard",
@@ -286,7 +286,7 @@ const instrumentLlmClient = (
   };
 };
 
-export const buildActionCatalog = (settings: RuntimeSettings): Action<any, any>[] => {
+export const buildActionCatalog = async (settings: RuntimeSettings): Promise<Action<any, any>[]> => {
   return getRuntimeActionCatalog(settings);
 };
 
@@ -588,11 +588,11 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       cache: pruneResult.cacheDeleted,
     });
   }
-  const capabilitySnapshot: RuntimeCapabilitySnapshot = getRuntimeCapabilitySnapshot(settings);
+  const capabilitySnapshot: RuntimeCapabilitySnapshot = await getRuntimeCapabilitySnapshot(settings);
   const baseLlm = await createLlmClientFromEnv();
   const llm = baseLlm ? instrumentLlmClient(baseLlm, logger) : null;
   const registry = new ActionRegistry();
-  const actions = buildActionCatalog(settings);
+  const actions = await buildActionCatalog(settings);
   const supportedActionMap = toSupportedActionMap(actions);
   const settingsPolicy = createSettingsPolicy(settings, new Set(supportedActionMap.keys()));
   const policyEngine = new PolicyEngine([settingsPolicy]);
@@ -864,7 +864,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       llm,
       logger,
       capabilitySnapshot,
-      workspaceToolsEnabled: workspaceToolsEnabledByRuntimeSettings({ settings }),
+      workspaceToolsEnabled: capabilitySnapshot.modelTools.some((entry) => entry.kind === "workspace-tool"),
     }),
     session,
     stop: async () => {

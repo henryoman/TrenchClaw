@@ -28,35 +28,34 @@ TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It'
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
+We recommend setting up the following prerequisites:
+- helius api key
+- jupiter ultra key 
+- openrouter api key
+
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 ## v0.0.1 Feature Checklist
 
-- [x] Bun runtime monorepo
-- [x] Core dependencies and skills
-- [x] Project file structure setup
+- [x] create Bun runtime monorepo
 - [x] SQLite storage
 - [x] Structured logging
 - [x] Raw file read/write
 - [x] Wallet creation and organization
-- [x] Blockchain data retrieval via RPC
-- [x] Dexscreener research setup
-- [x] Jupiter Ultra swaps
+- [x] RPC based data fetching
+- [x] Dexscreener data fetch setup
+- [x] Native Jupiter Ultra swaps
 - [x] Solana Kit tx builder
-- [x] Privacy transfer via Privacy Cash
+- [ ] Transfer tokens
 - [x] Bash tool and Solana CLI
 - [x] Secure vault system for keys and secrets
 - [x] Protected filesystem boundaries
-- [x] AI SDK runtime wiring
-- [x] Solana swap actions
-- [x] Runtime startup and health endpoints
 - [x] Test suite
-- [x] Model facing tool suite
+- [x] update model facing tool suite
 - [x] Marketing and docs website
 - [x] Svelte GUI
 - [x] Runner CLI
 - [x] Model-triggered routines
-- [x] Workspace command execution
 - [ ] CI and release flow
 - [x] Public docs rollout
 - [ ] Wallet and research validation
@@ -68,7 +67,7 @@ Quick links:
 - [Why Solana Kit](#why-solana-kit)
 - [TrenchClaw vs ElizaOS and Agent Kit](#trenchclaw-vs-elizaos-and-agent-kit)
 
-PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
+WE ARE LOOKING FOR SPONSORSHIP. PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 
 ### THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
 
@@ -162,7 +161,7 @@ This design treats the agent as a policy-constrained orchestrator over explicit 
 
 ## Why TypeScript?
 
-The TypeScript repo is heavier than minimalist alternatives. It is currently the best and most accurate agent orchestrator for this stack. Here is why.
+The TypeScript repo is heavier than minimalist alternatives. But it is currently the best and most accurate agent orchestrator for this stack. Here is why.
 
 ### What advanced agents actually require
 
@@ -297,22 +296,6 @@ const signed = await signTransactionMessageWithSigners(tx);
 
 **No more hand-rolled instruction builders.** Program interactions use generated clients from [Codama](https://github.com/codama-idl/codama) IDL files. Drop an IDL JSON in `lib/client/idl/`, run codegen, get typed instruction builders, account decoders, PDA helpers, and error enums. TrenchClaw imports from these generated clients — never constructs instructions manually.
 
-**Incremental migration path.** Kit provides [`@solana/compat`](https://solana.com/docs/frontend/web3-compat) for converting between legacy and Kit types (`fromLegacyPublicKey`, `fromVersionedTransaction`, etc.), so existing code can be migrated progressively.
-
-### Modular imports
-
-TrenchClaw imports from Kit sub-packages directly:
-
-- [`@solana/rpc`](https://www.npmjs.com/package/@solana/rpc) — RPC client creation and request building
-- [`@solana/signers`](https://www.npmjs.com/package/@solana/signers) — Transaction and message signing abstractions
-- [`@solana/transactions`](https://www.npmjs.com/package/@solana/transactions) — Transaction compilation and serialization
-- [`@solana/addresses`](https://www.npmjs.com/package/@solana/addresses) — Address creation and validation
-- [`@solana/codecs`](https://www.npmjs.com/package/@solana/codecs) — Composable serialization for account data
-- [`@solana/accounts`](https://www.npmjs.com/package/@solana/accounts) — Account fetching and decoding helpers
-- [`@solana/errors`](https://www.npmjs.com/package/@solana/errors) — Typed error handling
-
-This means TrenchClaw only ships the Kit code it actually uses. No dead code. No bloat.
-
 ---
 
 ## TrenchClaw vs ElizaOS and Agent Kit
@@ -326,14 +309,6 @@ If you are evaluating Solana agent stacks today, the practical split is this: Tr
 | Tree-shaking | Strong (modular Kit packages) | Often weaker due to `Connection`-style clients | Often weaker due to broad utility bundles |
 | Type guarantees around tx composition | Strong compile-time checks in Kit pipeline | Depends on plugin quality | Depends on toolkit layer |
 | Runtime focus | Terminal-first operator runtime | Multi-platform agent framework | General AI-agent developer UX |
-
-Why this matters:
-
-- `@solana/web3.js` v1 is in maintenance mode, while `@solana/kit` is the actively developed path forward from Anza.
-- Legacy web3.js-heavy integrations usually carry more historical baggage (polyfills, looser typing, larger utility surfaces).
-- TrenchClaw is optimized for production operator workflows (actions, routines, triggers, policies, and control-plane UX), not generic chatbot abstractions first.
-
-**Bottom line:** if you want a Solana-native operator runtime with modern SDK foundations, TrenchClaw is purpose-built for that. If you want a broad agent framework with Solana as one plugin among many, ElizaOS/Agent Kit can fit — but the Solana layer is frequently still tied to older web3.js assumptions.
 
 ### Cross-framework context (same benchmark source)
 
@@ -360,8 +335,6 @@ Runtime log/data layout is split by purpose under `src/ai/brain/db/`:
 - `summaries/`: compact per-session markdown summaries
 - `system/`: daily system/runtime logs
 - `memory/`: daily + long-term memory notes
-
-[Bun's SQLite docs](https://bun.com/docs/runtime/sqlite) show strong wins on many read/materialization workloads versus common JS drivers, but complex `JOIN`/aggregation workloads vary by query shape. So the rule is simple: use Bun SQLite by default, benchmark real production queries before making hard guarantees.
 
 ### Why this stack here
 
@@ -464,6 +437,7 @@ bun run gui:dev
 - [ ] Failure recovery and dead-letter handling
 - [ ] Full test coverage (unit/integration/scenario/soak)
 - [ ] Release workflow and CI quality gates
+- [] Privacy transfer via Privacy Cash
 
 ---
 

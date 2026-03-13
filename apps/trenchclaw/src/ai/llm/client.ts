@@ -58,12 +58,7 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
       return input.system;
     }
 
-    const requestedMode = input.mode?.trim();
-    if (!requestedMode || requestedMode === config.defaultMode) {
-      return config.defaultSystemPrompt;
-    }
-
-    const payload = await loadSystemPromptPayload(requestedMode);
+    const payload = await loadSystemPromptPayload(input.mode?.trim() || config.defaultMode);
     return payload.systemPrompt;
   };
 

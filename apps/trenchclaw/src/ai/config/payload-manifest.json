@@ -8,47 +8,17 @@
   },
   "modes": {
     "primary": {
-      "title": "Primary Mode",
+      "title": "Primary Runtime Contract",
       "sections": [
         {
           "kind": "file",
-          "title": "Core System Prompt",
+          "title": "System Kernel",
           "path": "system.md"
         },
         {
-          "kind": "file",
-          "title": "Primary Mode Instructions",
-          "path": "agent-modes/primary.md"
-        },
-        {
           "kind": "generated",
-          "title": "Runtime Capability Appendix",
-          "source": "runtimeCapabilityAppendix"
-        },
-        {
-          "kind": "file",
-          "title": "Workspace Context Snapshot",
-          "path": "../../../.runtime-state/generated/workspace-context.md"
-        },
-        {
-          "kind": "generated",
-          "title": "Knowledge Manifest",
-          "source": "knowledgeManifest"
-        },
-        {
-          "kind": "generated",
-          "title": "Workspace Directory Tree",
-          "source": "workspaceDirectoryTree"
-        },
-        {
-          "kind": "generated",
-          "title": "Filesystem Policy",
-          "source": "filesystemPolicy"
-        },
-        {
-          "kind": "generated",
-          "title": "Resolved Runtime Settings",
-          "source": "resolvedUserSettings"
+          "title": "Runtime Contract",
+          "source": "runtimeContract"
         }
       ]
     }
