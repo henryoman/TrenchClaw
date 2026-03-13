@@ -1,4 +1,4 @@
-import type { LlmProvider } from "./ai-settings-file";
+import type { LlmProvider } from "./config";
 
 export interface LlmGenerateInput {
   prompt: string;
@@ -38,7 +38,7 @@ export interface LlmClientConfig {
   provider: LlmProvider;
   apiKey: string;
   model: string;
-  baseURL?: string;
+  baseURL: string;
   defaultSystemPrompt: string;
   defaultMode?: string;
   defaultTemperature?: number | null;

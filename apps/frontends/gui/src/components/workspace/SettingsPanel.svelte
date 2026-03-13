@@ -22,15 +22,8 @@
   export let onReloadTradingSettings: () => void = () => {};
   export let onSaveTradingSettings: (settings: GuiTradingSettingsView) => Promise<void> | void = () => {};
 
-  const AI_PROVIDER_BASE_URLS: Record<Exclude<GuiAiSettingsView["provider"], "openai-compatible">, string> = {
-    openai: "https://api.openai.com/v1",
-    openrouter: "https://openrouter.ai/api/v1",
-  };
-
   const DEFAULT_AI_SETTINGS: GuiAiSettingsView = {
-    provider: "openrouter",
     model: "",
-    baseURL: "",
     defaultMode: "primary",
     temperature: null,
     maxOutputTokens: null,
@@ -66,17 +59,6 @@
     });
 
   const onAiSettingChange = <K extends keyof GuiAiSettingsView>(key: K, value: GuiAiSettingsView[K]): void => {
-    if (key === "provider") {
-      const provider = value as GuiAiSettingsView["provider"];
-      aiSettingsDraft = {
-        ...aiSettingsDraft,
-        provider,
-        baseURL: provider === "openai-compatible" ? aiSettingsDraft.baseURL : AI_PROVIDER_BASE_URLS[provider],
-      };
-      aiSettingsDirty = true;
-      return;
-    }
-
     aiSettingsDraft = {
       ...aiSettingsDraft,
       [key]: value,
@@ -115,16 +97,18 @@
   };
 
   const saveAiSettings = (): void => {
+    const temperature = typeof aiSettingsDraft.temperature === "number" && Number.isFinite(aiSettingsDraft.temperature)
+      ? aiSettingsDraft.temperature
+      : null;
+    const maxOutputTokens =
+      typeof aiSettingsDraft.maxOutputTokens === "number" && Number.isFinite(aiSettingsDraft.maxOutputTokens)
+        ? Math.trunc(aiSettingsDraft.maxOutputTokens)
+        : null;
     const normalized: GuiAiSettingsView = {
-      provider: aiSettingsDraft.provider,
       model: aiSettingsDraft.model.trim(),
-      baseURL:
-        aiSettingsDraft.provider === "openai-compatible"
-          ? aiSettingsDraft.baseURL.trim()
-          : AI_PROVIDER_BASE_URLS[aiSettingsDraft.provider],
       defaultMode: aiSettingsDraft.defaultMode.trim() || "primary",
-      temperature: aiSettingsDraft.temperature,
-      maxOutputTokens: aiSettingsDraft.maxOutputTokens,
+      temperature,
+      maxOutputTokens,
     };
     Promise.resolve(onSaveAiSettings(normalized))
       .then(() => {
@@ -186,6 +170,7 @@
         <div>
           <p class="section-label">AI settings</p>
           <p class="section-meta">{aiSettingsFilePath || "No AI settings file detected."}</p>
+          <p class="section-meta">Transport resolves automatically from your Gateway or OpenRouter key.</p>
         </div>
         <div class="actions">
           <RetroButton variant="secondary" disabled={aiSettingsBusy} on:click={handleReloadAiSettings}>Reload AI settings</RetroButton>
@@ -200,25 +185,10 @@
       </div>
 
       <div class="settings-grid">
-        <RetroField label="Provider">
-          <RetroSelect
-            value={aiSettingsDraft.provider}
-            disabled={aiSettingsBusy}
-            on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
-              onAiSettingChange("provider", target.value as GuiAiSettingsView["provider"]);
-            }}
-          >
-            <option value="openrouter">OpenRouter</option>
-            <option value="openai">OpenAI</option>
-            <option value="openai-compatible">OpenAI-compatible</option>
-          </RetroSelect>
-        </RetroField>
-
         <RetroField label="Model">
           <RetroInput
             value={aiSettingsDraft.model}
-            placeholder="stepfun/step-3.5-flash:free"
+            placeholder="anthropic/claude-sonnet-4.6"
             disabled={aiSettingsBusy}
             on:input={(event) => {
               const target = event.currentTarget as HTMLInputElement;

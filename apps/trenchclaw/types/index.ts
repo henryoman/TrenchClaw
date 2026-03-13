@@ -242,12 +242,8 @@ export interface GuiUpdateVaultResponse {
   savedAt: string;
 }
 
-export type GuiAiProvider = "openai" | "openrouter" | "openai-compatible";
-
 export interface GuiAiSettingsView {
-  provider: GuiAiProvider;
   model: string;
-  baseURL: string;
   defaultMode: string;
   temperature: number | null;
   maxOutputTokens: number | null;

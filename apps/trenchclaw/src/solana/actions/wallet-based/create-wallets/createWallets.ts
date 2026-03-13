@@ -155,9 +155,8 @@ const legacyCreateWalletsInputSchema = z.object({
   }
 });
 
-const createWalletsInputSchema = z.union([createWalletsBatchInputSchema, legacyCreateWalletsInputSchema]);
+const createWalletsExecutionInputSchema = z.union([createWalletsBatchInputSchema, legacyCreateWalletsInputSchema]);
 
-type CreateWalletsInput = z.output<typeof createWalletsInputSchema>;
 type LegacyCreateWalletsInput = z.output<typeof legacyCreateWalletsInputSchema>;
 type NormalizedCreateWalletsInput = z.output<typeof createWalletsBatchInputSchema>;
 
@@ -198,7 +197,7 @@ const normalizeLegacyWalletNames = (input: LegacyCreateWalletsInput): string[] =
 };
 
 const normalizeCreateWalletsInput = (rawInput: unknown): NormalizedCreateWalletsInput => {
-  const parsed = createWalletsInputSchema.parse(rawInput);
+  const parsed = createWalletsExecutionInputSchema.parse(rawInput);
   if ("groups" in parsed) {
     return {
       groups: parsed.groups.map((group) => ({
@@ -267,10 +266,10 @@ const resolveNextWalletFilePath = async (outputDirectory: string): Promise<strin
   throw new Error(`No wallet file slots remain in ${outputDirectory}`);
 };
 
-export const createWalletsAction: Action<CreateWalletsInput, CreateWalletsOutput> = {
+export const createWalletsAction: Action<unknown, CreateWalletsOutput> = {
   name: "createWallets",
   category: "wallet-based",
-  inputSchema: createWalletsInputSchema,
+  inputSchema: createWalletsBatchInputSchema,
   async execute(_ctx, rawInput) {
     const startedAt = Date.now();
     const idempotencyKey = crypto.randomUUID();

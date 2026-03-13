@@ -49,15 +49,13 @@ describe("renderRuntimeWalletPromptContext", () => {
 
     expect(prompt).toContain("### Allowed Wallet Organization Writes");
     expect(prompt).toContain("Use `createWallets` to create new wallets.");
-    expect(prompt).toContain('"groups": [');
-    expect(prompt).toContain('"walletGroup": "core-wallets"');
     expect(prompt).toContain("wallet_000");
     expect(prompt).toContain("Each wallet group can create at most 100 wallets per call.");
     expect(prompt).toContain("Use `renameWallets` to update wallet organization labels only.");
-    expect(prompt).toContain('"current": {');
-    expect(prompt).toContain('"next": {');
-    expect(prompt).toContain('"updateLabelFiles": true');
     expect(prompt).toContain("There is no wallet delete tool in chat.");
+    expect(prompt).not.toContain("#### createWallets JSON Shape");
+    expect(prompt).not.toContain("#### renameWallets JSON Shape");
+    expect(prompt).not.toContain('"groups": [');
   });
 
   test("falls back to wallet label files when the wallet library is missing", async () => {

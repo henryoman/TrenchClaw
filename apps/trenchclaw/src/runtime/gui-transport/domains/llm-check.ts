@@ -1,9 +1,9 @@
+import { createGateway } from "ai";
 import type { GuiLlmCheckResponse } from "@trenchclaw/types";
 import { resolveLlmProviderConfigFromVault } from "../../../ai/llm/config";
 import { loadVaultData } from "../../../ai/llm/vault-file";
 
 const OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
-const OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const DEFAULT_TIMEOUT_MS = 8000;
 
 const toKeyFingerprint = async (key: string): Promise<string | null> => {
@@ -13,6 +13,23 @@ const toKeyFingerprint = async (key: string): Promise<string | null> => {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
   const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
   return hex.slice(0, 16);
+};
+
+const withTimeout = async <T>(operation: Promise<T>, timeoutMs: number): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error(`Auth probe timed out after ${timeoutMs}ms`)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId);
+    }
+  }
 };
 
 const readProbeErrorMessage = async (response: Response): Promise<string> => {
@@ -35,62 +52,50 @@ const readProbeErrorMessage = async (response: Response): Promise<string> => {
 
 const probeProviderAuth = async (input: {
   provider: string;
-  baseURL: string | undefined;
+  baseURL: string;
   apiKey: string;
   timeoutMs?: number;
 }): Promise<{ ok: boolean; status: number | null; message: string }> => {
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const baseURL = (input.baseURL ?? "").trim().replace(/\/+$/u, "");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    if (input.provider === "openrouter") {
-      const probeUrl = `${baseURL || OPENROUTER_DEFAULT_BASE_URL}/credits`;
-      const response = await fetch(probeUrl, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${input.apiKey}` },
-        signal: controller.signal,
+    if (input.provider === "gateway") {
+      const gateway = createGateway({
+        apiKey: input.apiKey,
+        baseURL: input.baseURL,
       });
+      await withTimeout(gateway.getCredits(), timeoutMs);
+      return { ok: true, status: 200, message: "Gateway auth probe succeeded." };
+    }
+
+    if (input.provider === "openrouter") {
+      const response = await withTimeout(
+        fetch(`${OPENROUTER_DEFAULT_BASE_URL}/credits`, {
+          method: "GET",
+          headers: { Authorization: `Bearer ${input.apiKey}` },
+        }),
+        timeoutMs,
+      );
       if (response.ok) {
         return { ok: true, status: response.status, message: "OpenRouter auth probe succeeded." };
       }
       return { ok: false, status: response.status, message: await readProbeErrorMessage(response) };
     }
 
-    if (input.provider === "openai" || input.provider === "openai-compatible") {
-      const probeUrl = `${baseURL || OPENAI_DEFAULT_BASE_URL}/models`;
-      const response = await fetch(probeUrl, {
-        method: "GET",
-        headers: { Authorization: `Bearer ${input.apiKey}` },
-        signal: controller.signal,
-      });
-      if (response.ok) {
-        return { ok: true, status: response.status, message: "Provider auth probe succeeded." };
-      }
-      return { ok: false, status: response.status, message: await readProbeErrorMessage(response) };
-    }
-
     return { ok: false, status: null, message: `Unsupported provider for probe: ${input.provider}` };
   } catch (error) {
-    if (error instanceof Error && error.name === "AbortError") {
-      return { ok: false, status: null, message: `Auth probe timed out after ${timeoutMs}ms` };
-    }
     return {
       ok: false,
       status: null,
       message: error instanceof Error ? error.message : String(error),
     };
-  } finally {
-    clearTimeout(timeout);
   }
 };
 
 export const runLlmCheck = async (): Promise<GuiLlmCheckResponse> => {
   const vaultPayload = await loadVaultData();
-  const fromVault = await resolveLlmProviderConfigFromVault();
-  const active = fromVault;
-  const vaultKey = fromVault?.apiKey ?? "";
+  const active = await resolveLlmProviderConfigFromVault();
+  const vaultKey = active?.apiKey ?? "";
   const vaultKeyFingerprint = await toKeyFingerprint(vaultKey);
   const resolvedVaultFile = active ? vaultPayload.vaultPath : null;
 
@@ -126,7 +131,7 @@ export const runLlmCheck = async (): Promise<GuiLlmCheckResponse> => {
   return {
     provider: active.provider,
     model: active.model,
-    baseURL: active.baseURL ?? null,
+    baseURL: active.baseURL,
     resolvedVaultFile,
     keySource: "vault",
     keyConfigured: active.apiKey.length > 0,

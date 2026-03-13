@@ -35,20 +35,7 @@ export const DEFAULT_VAULT_JSON = {
     openrouter: {
       "api-key": "",
     },
-    openai: {
-      "api-key": "",
-    },
-    "openai-compatible": {
-      "api-key": "",
-    },
     gateway: {
-      "api-key": "",
-      model: "anthropic/claude-sonnet-4.5",
-    },
-    anthropic: {
-      "api-key": "",
-    },
-    google: {
       "api-key": "",
     },
   },

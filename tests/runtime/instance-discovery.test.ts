@@ -190,9 +190,7 @@ describe("instance discovery", () => {
     await writeFile(
       path.join(runtimeRoot, "runtime/ai.json"),
       `${JSON.stringify({
-        provider: "openrouter",
         model: "test-model",
-        baseURL: "https://openrouter.ai/api/v1",
         defaultMode: "primary",
         temperature: null,
         maxOutputTokens: null,

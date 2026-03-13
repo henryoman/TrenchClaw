@@ -30,7 +30,7 @@ export const updateAiSettings = async (
   await ensureAiSettingsFileExists();
   assertProtectedNoReadWritePath(AI_SETTINGS_FILE_PATH, "write AI settings file");
   const result = await writeAiSettings(normalizeAiSettingsInput(payload.settings));
-  context.addActivity("runtime", `AI settings updated: ${result.settings.provider} / ${result.settings.model}`);
+  context.addActivity("runtime", `AI settings updated: ${result.settings.model}`);
   return {
     filePath: result.filePath,
     savedAt: new Date().toISOString(),

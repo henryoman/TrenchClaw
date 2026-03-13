@@ -60,6 +60,9 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("Available Knowledge Manifest");
     expect(payload.systemPrompt).toContain("runtime-reference.md");
     expect(payload.systemPrompt).not.toContain("\"actionName\": \"checkSolBalance\"");
+    expect(payload.systemPrompt).not.toContain("When you produce a machine-readable plan");
+    expect(payload.systemPrompt).not.toContain("## Plan Shape");
+    expect(payload.systemPrompt).not.toContain("Example input:");
     expect(payload.systemPrompt).toContain("- active instance: 01");
     expect(payload.systemPrompt).toContain("- vault: apps/trenchclaw/.runtime-state/instances/01/vault.json");
     expect(payload.promptFiles.length).toBe(3);

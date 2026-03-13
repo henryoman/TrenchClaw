@@ -159,6 +159,102 @@ describe("Scheduler queue dispatch", () => {
     await scheduler.stop();
   });
 
+  test("honors bunqueue delay for future scheduled jobs", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "echoForDelayedQueueTest",
+      category: "data-based",
+      subcategory: "read-only",
+      inputSchema: z.object({
+        value: z.string().min(1),
+      }),
+      execute: async (_ctx, input) => ({
+        ok: true,
+        retryable: false,
+        data: {
+          echoed: input.value,
+        },
+        durationMs: 1,
+        timestamp: Date.now(),
+        idempotencyKey: crypto.randomUUID(),
+      }),
+    });
+
+    const stateStore = new InMemoryStateStore();
+    const eventBus = new InMemoryRuntimeEventBus();
+    const dispatcher = new ActionDispatcher({
+      registry,
+      policyEngine: new PolicyEngine([]),
+      stateStore,
+      eventBus,
+    });
+    const queueDbPath = createTestQueueDbPath();
+    queueDbPaths.push(queueDbPath);
+    const queueName = `scheduler-delay-test-${crypto.randomUUID()}`;
+    const scheduler = new Scheduler(
+      {
+        stateStore,
+        dispatcher,
+        eventBus,
+        createContext: (job) =>
+          createActionContext({
+            actor: "system",
+            jobMeta: {
+              jobId: job.id,
+            },
+          }),
+        resolveRoutine: () => actionSequenceRoutine,
+      },
+      1,
+      {
+        dataPath: queueDbPath,
+        queueName,
+      },
+    );
+    scheduler.start();
+
+    const now = Date.now();
+    const job: JobState = {
+      id: crypto.randomUUID(),
+      botId: "queue-delay-test",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {
+        steps: [
+          {
+            key: "echo",
+            actionName: "echoForDelayedQueueTest",
+            input: {
+              value: "delay-confirmed",
+            },
+          },
+        ],
+      },
+      cyclesCompleted: 0,
+      totalCycles: 1,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: now + 250,
+    };
+    stateStore.saveJob(job);
+
+    await scheduler.enqueue(job);
+    await Bun.sleep(75);
+    const beforeDue = stateStore.getJob(job.id);
+    expect(beforeDue?.status).toBe("pending");
+    expect(beforeDue?.lastResult).toBeUndefined();
+
+    const updatedJob = await waitForJobResult(stateStore, job.id);
+
+    expect(updatedJob).not.toBeNull();
+    expect(updatedJob?.status).toBe("stopped");
+    expect(updatedJob?.lastResult?.ok).toBe(true);
+    expect(updatedJob?.lastResult?.data).toEqual({
+      echoed: "delay-confirmed",
+    });
+    await scheduler.stop();
+  });
+
   test("tryStartJob claims the same pending cycle only once", () => {
     const stateStore = new InMemoryStateStore();
     const now = Date.now();

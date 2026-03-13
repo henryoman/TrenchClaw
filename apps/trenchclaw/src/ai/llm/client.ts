@@ -1,7 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
 import { loadAiSettings } from "./ai-settings-file";
-import { resolveLlmProviderConfig } from "./config";
+import { createLanguageModel, resolveLlmProviderConfig } from "./config";
 import { loadSystemPromptPayload } from "./prompt-loader";
 import type {
   LlmClient,
@@ -53,13 +52,7 @@ const toStreamResult = (result: ReturnType<typeof streamText>): LlmStreamResult 
 });
 
 export const createLlmClient = (config: LlmClientConfig): LlmClient => {
-  const openai = createOpenAI({
-    apiKey: config.apiKey,
-    baseURL: config.baseURL,
-  });
-  const baseURL = config.baseURL?.toLowerCase() ?? "";
-  const useChatApi = config.provider === "openrouter" || baseURL.includes("openrouter.ai");
-  const model = useChatApi ? openai.chat(config.model) : openai.responses(config.model);
+  const model = createLanguageModel(config);
   const resolveSystemPrompt = async (input: LlmGenerateInput | LlmStreamInput): Promise<string> => {
     if (input.system) {
       return input.system;
