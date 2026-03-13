@@ -1,1 +1,0 @@
-Helius api key signup: https://dashboard.helius.dev/agents.md 
