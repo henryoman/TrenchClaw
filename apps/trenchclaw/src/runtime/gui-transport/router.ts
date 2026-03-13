@@ -6,6 +6,7 @@ import {
   parseDeleteSecretRequest,
   parseDispatcherTestRequest,
   parseSignInRequest,
+  parseUpdateTradingSettingsRequest,
   parseUiChatRequest,
   parseUpdateVaultRequest,
   parseUpsertSecretRequest,
@@ -15,6 +16,7 @@ import { streamChat, getConversationMessages, getConversations } from "./domains
 import { createInstance, listInstances, signInInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
+import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
 import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
@@ -231,6 +233,27 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
       try {
         return Response.json(await updateAiSettings(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/trading-settings") {
+      try {
+        return Response.json(await getTradingSettings(context), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/gui/trading-settings") {
+      const payload = await parseUpdateTradingSettingsRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid trading settings payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      try {
+        return Response.json(await updateTradingSettings(context, payload), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
       }

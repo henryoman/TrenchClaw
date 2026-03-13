@@ -1,6 +1,5 @@
 <script lang="ts">
   import type {
-    GuiAiSettingsView,
     GuiPublicRpcOptionView,
     GuiSecretCategory,
     GuiSecretEntryView,
@@ -8,19 +7,11 @@
   } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroDivider from "../ui/RetroDivider.svelte";
-  import RetroField from "../ui/RetroField.svelte";
-  import RetroInput from "../ui/RetroInput.svelte";
-  import RetroSelect from "../ui/RetroSelect.svelte";
   import RetroSectionHeader from "../ui/RetroSectionHeader.svelte";
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
   import SecretCategorySection from "./secrets/SecretCategorySection.svelte";
   import type { SecretDraftRow } from "./secrets/secret-editor-types";
 
-  export let aiSettingsFilePath = "";
-  export let aiSettingsTemplatePath = "";
-  export let aiSettings: GuiAiSettingsView | null = null;
-  export let aiSettingsBusy = false;
-  export let aiSettingsError = "";
   export let options: GuiSecretOptionView[] = [];
   export let entries: GuiSecretEntryView[] = [];
   export let publicRpcOptions: GuiPublicRpcOptionView[] = [];
@@ -29,9 +20,7 @@
   export let llmCheckBusy = false;
   export let llmCheckMessage = "";
   export let onReload: () => void = () => {};
-  export let onReloadAiSettings: () => void = () => {};
   export let onCheckLlm: () => void = () => {};
-  export let onSaveAiSettings: (settings: GuiAiSettingsView) => Promise<void> | void = () => {};
   export let onSave: (input: {
     optionId: string;
     value: string;
@@ -45,16 +34,6 @@
   let rowCounter = 0;
   let hydrationSignature = "";
   let dirtyRowKeys = new Set<string>();
-  let aiSettingsDraft: GuiAiSettingsView = {
-    provider: "openrouter",
-    model: "",
-    baseURL: "",
-    defaultMode: "primary",
-    temperature: null,
-    maxOutputTokens: null,
-  };
-  let aiSettingsHydrationSignature = "";
-  let aiSettingsDirty = false;
   const DEFAULT_BLOCKCHAIN_OPTION_ID = "solana-rpc-url";
   const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
   const CORE_AI_OPTION_IDS = [
@@ -149,13 +128,6 @@
       optionIds: options.map((option) => option.id),
       entryValues: entries.map((entry) => [entry.optionId, entry.value, entry.source, entry.publicRpcId]),
       rpcIds: publicRpcOptions.map((rpc) => rpc.id),
-    });
-
-  const createAiSettingsHydrationSignature = (): string =>
-    JSON.stringify({
-      aiSettings,
-      aiSettingsFilePath,
-      aiSettingsTemplatePath,
     });
 
   const selectedOptionIds = (rows: SecretDraftRow[], exceptRowKey?: string): Set<string> =>
@@ -271,41 +243,6 @@
     onReload();
   };
 
-  const handleReloadAiSettings = (): void => {
-    if (aiSettingsDirty) {
-      const proceed = window.confirm("You have unsaved AI settings changes. Reload and discard them?");
-      if (!proceed) {
-        return;
-      }
-    }
-    aiSettingsDirty = false;
-    onReloadAiSettings();
-  };
-
-  const onAiSettingChange = <K extends keyof GuiAiSettingsView>(key: K, value: GuiAiSettingsView[K]): void => {
-    aiSettingsDraft = {
-      ...aiSettingsDraft,
-      [key]: value,
-    };
-    aiSettingsDirty = true;
-  };
-
-  const saveAiSettings = (): void => {
-    const normalized: GuiAiSettingsView = {
-      provider: aiSettingsDraft.provider,
-      model: aiSettingsDraft.model.trim(),
-      baseURL: aiSettingsDraft.baseURL.trim(),
-      defaultMode: aiSettingsDraft.defaultMode.trim() || "primary",
-      temperature: aiSettingsDraft.temperature,
-      maxOutputTokens: aiSettingsDraft.maxOutputTokens,
-    };
-    Promise.resolve(onSaveAiSettings(normalized))
-      .then(() => {
-        aiSettingsDirty = false;
-      })
-      .catch(() => {});
-  };
-
   const clearRow = (category: GuiSecretCategory, row: SecretDraftRow): void => {
     if (!row.optionId) {
       return;
@@ -342,136 +279,20 @@
     }
   }
 
-  $: {
-    const signature = createAiSettingsHydrationSignature();
-    if (signature !== aiSettingsHydrationSignature && aiSettings) {
-      aiSettingsDraft = { ...aiSettings };
-      aiSettingsHydrationSignature = signature;
-      aiSettingsDirty = false;
-    }
-  }
-
   $: statusErrorText = error.trim();
-  $: aiSettingsErrorText = aiSettingsError.trim();
   $: llmStatusText = llmCheckMessage.trim();
 </script>
 
-<section class="secrets-panel" aria-label="Config panel">
+<section class="secrets-panel" aria-label="Keys panel">
   <header class="secrets-header">
-    <RetroSectionHeader title="Config" />
+    <RetroSectionHeader title="Keys" />
     <div class="actions">
-      <RetroButton variant="secondary" disabled={busy} on:click={handleReload}>Reload</RetroButton>
+      <RetroButton variant="secondary" disabled={busy} on:click={handleReload}>Reload keys</RetroButton>
       <RetroButton variant="secondary" disabled={busy || llmCheckBusy} on:click={onCheckLlm}>Test AI connection</RetroButton>
     </div>
   </header>
 
   <div class="section-stack">
-    <section class="ai-settings-section" aria-label="AI settings">
-      <div class="section-heading">
-        <div>
-          <p class="section-label">AI settings</p>
-          <p class="section-meta">{aiSettingsFilePath || "No AI settings file detected."}</p>
-        </div>
-        <div class="actions">
-          <RetroButton variant="secondary" disabled={aiSettingsBusy} on:click={handleReloadAiSettings}>Reload AI settings</RetroButton>
-          <RetroButton
-            variant="primary"
-            disabled={aiSettingsBusy || !aiSettingsDraft.model.trim() || !aiSettingsDraft.defaultMode.trim()}
-            on:click={saveAiSettings}
-          >
-            Save AI settings
-          </RetroButton>
-        </div>
-      </div>
-
-      <div class="ai-settings-grid">
-        <RetroField label="Provider">
-          <RetroSelect
-            value={aiSettingsDraft.provider}
-            disabled={aiSettingsBusy}
-            on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
-              onAiSettingChange("provider", target.value as GuiAiSettingsView["provider"]);
-            }}
-          >
-            <option value="openrouter">OpenRouter</option>
-            <option value="openai">OpenAI</option>
-            <option value="openai-compatible">OpenAI-compatible</option>
-          </RetroSelect>
-        </RetroField>
-
-        <RetroField label="Model">
-          <RetroInput
-            value={aiSettingsDraft.model}
-            placeholder="stepfun/step-3.5-flash:free"
-            disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              onAiSettingChange("model", target.value);
-            }}
-          />
-        </RetroField>
-
-        <RetroField label="Base URL">
-          <RetroInput
-            value={aiSettingsDraft.baseURL}
-            placeholder="https://openrouter.ai/api/v1"
-            disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              onAiSettingChange("baseURL", target.value);
-            }}
-          />
-        </RetroField>
-
-        <RetroField label="Default mode">
-          <RetroInput
-            value={aiSettingsDraft.defaultMode}
-            placeholder="primary"
-            disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              onAiSettingChange("defaultMode", target.value);
-            }}
-          />
-        </RetroField>
-
-        <RetroField label="Temperature">
-          <RetroInput
-            value={aiSettingsDraft.temperature === null ? "" : String(aiSettingsDraft.temperature)}
-            placeholder="blank = provider default"
-            disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              const next = target.value.trim();
-              onAiSettingChange("temperature", next.length === 0 ? null : Number(next));
-            }}
-          />
-        </RetroField>
-
-        <RetroField label="Max output tokens">
-          <RetroInput
-            value={aiSettingsDraft.maxOutputTokens === null ? "" : String(aiSettingsDraft.maxOutputTokens)}
-            placeholder="blank = runtime default"
-            disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              const next = target.value.trim();
-              onAiSettingChange("maxOutputTokens", next.length === 0 ? null : Number(next));
-            }}
-          />
-        </RetroField>
-      </div>
-
-      {#if aiSettingsTemplatePath}
-        <p class="section-meta">Template: {aiSettingsTemplatePath}</p>
-      {/if}
-    </section>
-
-    <RetroStatusMessage tone="error" text={aiSettingsErrorText} />
-
-    <RetroDivider />
-
     <SecretCategorySection
       title="AI"
       category="ai"
@@ -544,53 +365,9 @@
     min-width: 0;
   }
 
-  .ai-settings-section {
-    display: grid;
-    gap: var(--tc-space-3);
-    min-width: 0;
-  }
-
-  .section-heading {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: var(--tc-space-3);
-    flex-wrap: wrap;
-  }
-
-  .section-label {
-    margin: 0;
-    color: var(--tc-color-gray-3);
-    font-size: var(--tc-field-label-size);
-    letter-spacing: var(--tc-field-label-letter-spacing);
-    text-transform: uppercase;
-  }
-
-  .section-meta {
-    margin: 0.35rem 0 0;
-    color: var(--tc-color-gray-1);
-    font-size: 0.8rem;
-    word-break: break-all;
-  }
-
-  .ai-settings-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--tc-space-3);
-    min-width: 0;
-  }
-
   @media (max-width: var(--tc-layout-breakpoint)) {
     .secrets-header {
       flex-direction: column;
-    }
-
-    .section-heading {
-      flex-direction: column;
-    }
-
-    .ai-settings-grid {
-      grid-template-columns: 1fr;
     }
   }
 </style>

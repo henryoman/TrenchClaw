@@ -12,6 +12,7 @@
     QueuePanel,
     SchedulePanel,
     SecretsPanel,
+    SettingsPanel,
     SolPriceStrip,
     SummaryPanel,
     WalletsPanel,
@@ -26,7 +27,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
-  let activeTab: "chat" | "config" | "wallets" | "schedule" = $state("chat");
+  let activeTab: "chat" | "keys" | "settings" | "wallets" | "schedule" = $state("chat");
   const appVersionLabel = APP_BUILD_COMMIT === "local" ? APP_BUILD_VERSION : `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
 
   const ensureChatController = async (): Promise<void> => {
@@ -126,24 +127,13 @@
           <p>{chatInitError || "Loading chat..."}</p>
         </section>
       {/if}
-    {:else if activeTab === "config"}
+    {:else if activeTab === "keys"}
       <SecretsPanel
-        aiSettingsFilePath={runtime.state.aiSettingsFilePath}
-        aiSettingsTemplatePath={runtime.state.aiSettingsTemplatePath}
-        aiSettings={runtime.state.aiSettings}
-        aiSettingsBusy={runtime.state.aiSettingsBusy}
-        aiSettingsError={runtime.state.aiSettingsError}
         options={runtime.state.secretsOptions}
         entries={runtime.state.secretEntries}
         publicRpcOptions={runtime.state.publicRpcOptions}
         busy={runtime.state.secretsBusy}
         error={runtime.state.secretsError}
-        onReloadAiSettings={() => {
-          void runtime.loadAiSettings();
-        }}
-        onSaveAiSettings={(settings) => {
-          void runtime.saveAiSettings(settings);
-        }}
         llmCheckBusy={runtime.state.llmCheckBusy}
         llmCheckMessage={runtime.state.llmCheckMessage}
         onReload={() => {
@@ -157,6 +147,30 @@
         }}
         onClear={(optionId) => {
           void runtime.clearSecret(optionId);
+        }}
+      />
+    {:else if activeTab === "settings"}
+      <SettingsPanel
+        aiSettingsFilePath={runtime.state.aiSettingsFilePath}
+        aiSettingsTemplatePath={runtime.state.aiSettingsTemplatePath}
+        aiSettings={runtime.state.aiSettings}
+        aiSettingsBusy={runtime.state.aiSettingsBusy}
+        aiSettingsError={runtime.state.aiSettingsError}
+        tradingSettingsFilePath={runtime.state.tradingSettingsFilePath}
+        tradingSettings={runtime.state.tradingSettings}
+        tradingSettingsBusy={runtime.state.tradingSettingsBusy}
+        tradingSettingsError={runtime.state.tradingSettingsError}
+        onReloadAiSettings={() => {
+          void runtime.loadAiSettings();
+        }}
+        onSaveAiSettings={(settings) => {
+          void runtime.saveAiSettings(settings);
+        }}
+        onReloadTradingSettings={() => {
+          void runtime.loadTradingSettings();
+        }}
+        onSaveTradingSettings={(settings) => {
+          void runtime.saveTradingSettings(settings);
         }}
       />
     {:else if activeTab === "wallets"}

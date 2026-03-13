@@ -4,6 +4,9 @@ import type {
   GuiUpdateAiSettingsResponse,
   GuiActivityResponse,
   GuiBootstrapResponse,
+  GuiTradingSettingsResponse,
+  GuiUpdateTradingSettingsRequest,
+  GuiUpdateTradingSettingsResponse,
   GuiScheduleResponse,
   GuiConversationMessagesResponse,
   GuiConversationsResponse,
@@ -101,6 +104,14 @@ export const runtimeApi = {
   aiSettings: (): Promise<GuiAiSettingsResponse> => fetchJson<GuiAiSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/ai-settings`)),
   updateAiSettings: (input: GuiUpdateAiSettingsRequest): Promise<GuiUpdateAiSettingsResponse> =>
     fetchJson<GuiUpdateAiSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/ai-settings`), {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  tradingSettings: (): Promise<GuiTradingSettingsResponse> =>
+    fetchJson<GuiTradingSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/trading-settings`)),
+  updateTradingSettings: (input: GuiUpdateTradingSettingsRequest): Promise<GuiUpdateTradingSettingsResponse> =>
+    fetchJson<GuiUpdateTradingSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/trading-settings`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),

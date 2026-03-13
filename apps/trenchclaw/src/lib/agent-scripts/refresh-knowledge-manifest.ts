@@ -1,11 +1,10 @@
 import { mkdir, writeFile } from "node:fs/promises";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { renderDirectoryTree } from "../../ai/brain/knowledge/knowledge-tree";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import { RUNTIME_GENERATED_ROOT } from "../../runtime/runtime-paths";
+import { CORE_APP_ROOT, RUNTIME_GENERATED_ROOT } from "../../runtime/runtime-paths";
 
-const KNOWLEDGE_DIR = fileURLToPath(new URL("../../ai/brain/knowledge/", import.meta.url));
+const KNOWLEDGE_DIR = process.env.TRENCHCLAW_KNOWLEDGE_DIR || join(CORE_APP_ROOT, "src/ai/brain/knowledge");
 const MANIFEST_PATH = `${RUNTIME_GENERATED_ROOT}/knowledge-manifest.md`;
 
 export const refreshKnowledgeManifest = async (): Promise<string[]> => {

@@ -3,10 +3,12 @@ import type {
   GuiCreateInstanceRequest,
   GuiDeleteSecretRequest,
   GuiSignInInstanceRequest,
+  GuiUpdateTradingSettingsRequest,
   GuiUpdateVaultRequest,
   GuiUpsertSecretRequest,
 } from "@trenchclaw/types";
 import { safeValidateUIMessages, type UIMessage } from "ai";
+import { tradingPreferencesSchema } from "../load/trading-settings";
 import { DISPATCH_TEST_DEFAULT_WAIT_MS, DISPATCH_TEST_MAX_WAIT_MS } from "./constants";
 
 export interface DispatcherTestRequest {
@@ -274,6 +276,26 @@ export const parseUpdateAiSettingsRequest = async (request: Request): Promise<Gu
         temperature,
         maxOutputTokens,
       },
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateTradingSettingsRequest = async (request: Request): Promise<GuiUpdateTradingSettingsRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.settings)) {
+      return null;
+    }
+
+    const parsed = tradingPreferencesSchema.safeParse(payload.settings);
+    if (!parsed.success) {
+      return null;
+    }
+
+    return {
+      settings: parsed.data,
     };
   } catch {
     return null;

@@ -3,6 +3,7 @@
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { shouldBundleBrainFile } from "./lib/release-bundle-filter";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const OUTPUT_ROOT = path.join(REPO_ROOT, "dist", "app");
@@ -69,44 +70,6 @@ const resolveBuildMetadata = async (): Promise<{
   };
 };
 
-const shouldBundleBrainFile = (trackedFile: string): boolean => {
-  const relativeToBrain = path.posix.relative(
-    "apps/trenchclaw/src/ai/brain",
-    trackedFile.split(path.sep).join("/"),
-  );
-  if (!relativeToBrain || relativeToBrain.startsWith("..")) {
-    return false;
-  }
-
-  const fileName = path.posix.basename(relativeToBrain).toLowerCase();
-  if (relativeToBrain === "protected/no-read/vault.json") {
-    return false;
-  }
-  if (relativeToBrain === "protected/wallet-library.jsonl") {
-    return false;
-  }
-  if (relativeToBrain.startsWith("db/")) {
-    return false;
-  }
-  if (fileName.startsWith(".env") && fileName !== ".env.example") {
-    return false;
-  }
-  if (fileName.endsWith(".pem") || fileName.endsWith(".key") || fileName.endsWith(".p12")) {
-    return false;
-  }
-  if (relativeToBrain.startsWith("protected/keypairs/")) {
-    return fileName === ".keep" || fileName === ".gitkeep";
-  }
-  if (relativeToBrain.startsWith("protected/instance/")) {
-    return fileName === ".gitkeep";
-  }
-  if (relativeToBrain.startsWith("protected/no-read/")) {
-    return false;
-  }
-
-  return true;
-};
-
 const copyReleaseBrainAssets = async (): Promise<void> => {
   const raw = await runCapture([
     "git",
@@ -143,6 +106,13 @@ const copyReleaseConfigAssets = async (): Promise<void> => {
   });
 };
 
+const copyReleaseRuntimeAssets = async (): Promise<void> => {
+  const routerSource = path.join(REPO_ROOT, "apps/trenchclaw/src/runtime/gui-transport/router.ts");
+  const routerTarget = path.join(CORE_OUTPUT_ROOT, "src/runtime/gui-transport/router.ts");
+  await mkdir(path.dirname(routerTarget), { recursive: true });
+  await cp(routerSource, routerTarget);
+};
+
 const ensurePlaceholderFile = async (filePath: string, contents = ""): Promise<void> => {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, contents, "utf8");
@@ -165,6 +135,7 @@ const main = async (): Promise<void> => {
   await cp(path.join(REPO_ROOT, "apps/frontends/gui/dist"), GUI_OUTPUT_ROOT, { recursive: true });
   await copyReleaseBrainAssets();
   await copyReleaseConfigAssets();
+  await copyReleaseRuntimeAssets();
   await ensurePlaceholderFile(path.join(CORE_OUTPUT_ROOT, "src/ai/brain/protected/keypairs/.keep"));
 
   const metadata = {
@@ -185,12 +156,14 @@ This staging directory contains the readonly assets required for standalone desk
 Included:
 - GUI build output in \`gui/\`
 - readonly TrenchClaw brain/config assets in \`core/\`
+- release-only runtime source needed for generated context artifacts in \`core/src/runtime/\`
 
 Excluded intentionally:
 - Bun runtime
 - runtime databases, sessions, logs, and memory files
 - local vault contents and wallet library data
 - wallet keypairs beyond placeholder files
+- skill installer shell scripts under knowledge/skills
 `;
   await writeFile(path.join(OUTPUT_ROOT, "README.md"), notes, "utf8");
 

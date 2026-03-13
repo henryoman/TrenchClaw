@@ -4,7 +4,7 @@ import type {
   GuiUpdateAiSettingsRequest,
   GuiUpdateAiSettingsResponse,
 } from "@trenchclaw/types";
-import { aiSettingsSchema, ensureAiSettingsFileExists, loadAiSettings, writeAiSettings } from "../../../ai/llm/ai-settings-file";
+import { ensureAiSettingsFileExists, loadAiSettings, normalizeAiSettingsInput, writeAiSettings } from "../../../ai/llm/ai-settings-file";
 import { assertProtectedNoReadWritePath } from "../../security/write-scope";
 import { AI_SETTINGS_FILE_PATH, NO_READ_DIRECTORY } from "../constants";
 import type { RuntimeGuiDomainContext } from "../contracts";
@@ -29,7 +29,7 @@ export const updateAiSettings = async (
   await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
   await ensureAiSettingsFileExists();
   assertProtectedNoReadWritePath(AI_SETTINGS_FILE_PATH, "write AI settings file");
-  const result = await writeAiSettings(aiSettingsSchema.parse(payload.settings));
+  const result = await writeAiSettings(normalizeAiSettingsInput(payload.settings));
   context.addActivity("runtime", `AI settings updated: ${result.settings.provider} / ${result.settings.model}`);
   return {
     filePath: result.filePath,

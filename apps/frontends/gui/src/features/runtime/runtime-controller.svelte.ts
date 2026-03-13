@@ -7,6 +7,7 @@ import type {
   GuiScheduleJobView,
   GuiSecretEntryView,
   GuiSecretOptionView,
+  GuiTradingSettingsView,
   GuiWalletNodeView,
 } from "@trenchclaw/types";
 import {
@@ -53,6 +54,10 @@ interface RuntimeUiState {
   aiSettings: GuiAiSettingsView | null;
   aiSettingsBusy: boolean;
   aiSettingsError: string;
+  tradingSettingsFilePath: string;
+  tradingSettings: GuiTradingSettingsView | null;
+  tradingSettingsBusy: boolean;
+  tradingSettingsError: string;
   vaultFilePath: string;
   vaultTemplatePath: string;
   secretsOptions: GuiSecretOptionView[];
@@ -114,6 +119,10 @@ export const createRuntimeController = () => {
     aiSettings: null,
     aiSettingsBusy: false,
     aiSettingsError: "",
+    tradingSettingsFilePath: "",
+    tradingSettings: null,
+    tradingSettingsBusy: false,
+    tradingSettingsError: "",
     vaultFilePath: "",
     vaultTemplatePath: "",
     secretsOptions: [],
@@ -268,6 +277,7 @@ export const createRuntimeController = () => {
         state.phase = "app";
         await loadAppData();
         await loadAiSettings();
+        await loadTradingSettings();
         await loadSecrets();
         await checkLlm();
         await loadWallets();
@@ -340,6 +350,7 @@ export const createRuntimeController = () => {
       state.phase = nextState.phase;
       await loadAppData();
       await loadAiSettings();
+      await loadTradingSettings();
       await loadSecrets();
       await checkLlm();
       await loadWallets();
@@ -373,6 +384,7 @@ export const createRuntimeController = () => {
       state.phase = "app";
       await loadAppData();
       await loadAiSettings();
+      await loadTradingSettings();
       await loadSecrets();
       await checkLlm();
       await loadWallets();
@@ -447,6 +459,35 @@ export const createRuntimeController = () => {
       state.aiSettingsError = error instanceof Error ? error.message : "Failed to save AI settings.";
     } finally {
       state.aiSettingsBusy = false;
+    }
+  };
+
+  const loadTradingSettings = async (): Promise<void> => {
+    state.tradingSettingsBusy = true;
+    state.tradingSettingsError = "";
+    try {
+      const payload = await runtimeApi.tradingSettings();
+      state.tradingSettingsFilePath = payload.filePath ?? "";
+      state.tradingSettings = payload.settings;
+    } catch (error) {
+      state.tradingSettings = null;
+      state.tradingSettingsError = error instanceof Error ? error.message : "Failed to load trading settings.";
+    } finally {
+      state.tradingSettingsBusy = false;
+    }
+  };
+
+  const saveTradingSettings = async (settings: GuiTradingSettingsView): Promise<void> => {
+    state.tradingSettingsBusy = true;
+    state.tradingSettingsError = "";
+    try {
+      const result = await runtimeApi.updateTradingSettings({ settings });
+      state.tradingSettingsFilePath = result.filePath;
+      state.tradingSettings = result.settings;
+    } catch (error) {
+      state.tradingSettingsError = error instanceof Error ? error.message : "Failed to save trading settings.";
+    } finally {
+      state.tradingSettingsBusy = false;
     }
   };
 
@@ -547,8 +588,10 @@ export const createRuntimeController = () => {
     submitSignIn,
     loadSecrets,
     loadAiSettings,
+    loadTradingSettings,
     loadWallets,
     saveAiSettings,
+    saveTradingSettings,
     upsertSecret,
     clearSecret,
     checkLlm,

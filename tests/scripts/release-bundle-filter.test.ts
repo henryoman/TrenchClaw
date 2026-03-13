@@ -1,0 +1,25 @@
+import { describe, expect, test } from "bun:test";
+
+import { hasBlockedBundlePath, shouldBundleBrainFile } from "../../scripts/lib/release-bundle-filter";
+
+describe("release-bundle-filter", () => {
+  test("excludes runtime and secrets from brain bundle", () => {
+    expect(shouldBundleBrainFile("apps/trenchclaw/src/ai/brain/protected/wallet-library.jsonl")).toBe(false);
+    expect(shouldBundleBrainFile("apps/trenchclaw/src/ai/brain/db/runtime.sqlite")).toBe(false);
+    expect(shouldBundleBrainFile("apps/trenchclaw/src/ai/brain/protected/keypairs/id.json")).toBe(false);
+    expect(shouldBundleBrainFile("apps/trenchclaw/src/ai/brain/protected/keypairs/.keep")).toBe(true);
+  });
+
+  test("excludes skill installer shell scripts but keeps docs", () => {
+    expect(shouldBundleBrainFile("apps/trenchclaw/src/ai/brain/knowledge/skills/helius/install.sh")).toBe(false);
+    expect(shouldBundleBrainFile("apps/trenchclaw/src/ai/brain/knowledge/skills/helius/SKILL.md")).toBe(true);
+  });
+
+  test("flags blocked files in assembled bundle", () => {
+    expect(hasBlockedBundlePath("core/src/ai/brain/knowledge/skills/helius/install.sh")).toContain(
+      "skill installer scripts should not be bundled",
+    );
+    expect(hasBlockedBundlePath("core/src/ai/brain/db/runtime.sqlite")).toContain("runtime db/state file present");
+    expect(hasBlockedBundlePath("core/src/ai/brain/knowledge/runtime-reference.md")).toBeNull();
+  });
+});
