@@ -157,6 +157,7 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
+  "TRENCHCLAW_ACTIVE_INSTANCE_ID",
 ] as const;
 
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -311,6 +312,38 @@ wallet:
 
       expect(result.results[0]?.ok).toBe(false);
       expect(result.results[0]?.error).toContain("disabled by runtime settings");
+    } finally {
+      runtime.stop();
+    }
+  });
+
+  test("persists future schedule notices into the shared conversation store", async () => {
+    await applyDefaultEnv();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+
+    const runtime = await bootstrapRuntime();
+    try {
+      const now = Date.now();
+      runtime.stateStore.saveConversation({
+        id: "chat-existing",
+        sessionId: "01",
+        title: "Operator chat",
+        createdAt: now - 1_000,
+        updatedAt: now - 1_000,
+      });
+
+      await runtime.enqueueJob({
+        botId: "bot-scheduled",
+        routineName: "actionSequence",
+        executeAtUnixMs: now + 60_000,
+        config: {},
+      });
+
+      const persisted = runtime.stateStore.listChatMessages("chat-existing", 20);
+      const notice = persisted.find((message) => message.role === "system");
+
+      expect(notice?.content).toContain("Scheduled actionSequence for bot-scheduled");
+      expect(notice?.content).toContain("T");
     } finally {
       runtime.stop();
     }
