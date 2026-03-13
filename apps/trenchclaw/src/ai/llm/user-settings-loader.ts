@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isRecord, parseStructuredFile, resolvePreferredPathFromModule } from "./shared";
+import { isRecord, parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
 import { loadVaultData } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
@@ -34,6 +34,11 @@ const getByPath = (root: unknown, segments: string[]): unknown => {
     current = current[segment];
   }
   return current;
+};
+
+const readVaultStringByPath = (vaultData: unknown, refPath: string): string | undefined => {
+  const value = getByPath(vaultData, refPath.split("/").map((segment) => segment.trim()).filter(Boolean));
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 };
 
 const isLikelyRelativeConfigRef = (value: string): boolean => {
@@ -129,6 +134,7 @@ export interface ResolvedUserSettingsPayload {
   resolvedSettings: unknown;
   warnings: string[];
   compatibilitySettingsPath: string;
+  legacyCompatibilitySettingsPath: string | null;
   instanceTradingSettingsPath: string | null;
   activeInstanceId: string | null;
 }
@@ -144,29 +150,117 @@ const ensureStructuredSettingsFileExists = async (filePath: string): Promise<voi
   await writeFile(targetPath, "{}\n", { encoding: "utf8", mode: 0o600 });
 };
 
+const applyResolvedRpcFallbacks = (
+  settings: unknown,
+  vaultData: unknown,
+): unknown => {
+  if (!isRecord(settings) || !isRecord(settings.rpc) || !isRecord(settings.rpc.providers)) {
+    return settings;
+  }
+
+  const rpcSettings = settings.rpc as Record<string, unknown>;
+  const providers = rpcSettings.providers as Record<string, unknown>;
+  const primaryRpc = typeof rpcSettings.primaryRpc === "string" && rpcSettings.primaryRpc.trim().length > 0
+    ? rpcSettings.primaryRpc.trim()
+    : null;
+  if (!primaryRpc || !isRecord(providers[primaryRpc])) {
+    return settings;
+  }
+
+  const provider = providers[primaryRpc] as Record<string, unknown>;
+  const endpointRef =
+    typeof provider.endpointRef === "string" && provider.endpointRef.trim().length > 0
+      ? provider.endpointRef.trim()
+      : readVaultStringByPath(vaultData, "rpc/default/http-url");
+  const wsEndpointRef =
+    typeof provider.wsEndpointRef === "string" && provider.wsEndpointRef.trim().length > 0
+      ? provider.wsEndpointRef.trim()
+      : endpointRef
+        ? endpointRef.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:")
+        : undefined;
+
+  return {
+    ...settings,
+    rpc: {
+      ...rpcSettings,
+      providers: {
+        ...providers,
+        [primaryRpc]: {
+          ...provider,
+          ...(endpointRef ? { endpointRef } : {}),
+          ...(wsEndpointRef ? { wsEndpointRef } : {}),
+        },
+      },
+    },
+  };
+};
+
+const loadOptionalStructuredSettingsLayer = async (filePath: string | null): Promise<unknown> => {
+  if (!filePath) {
+    return {};
+  }
+
+  const file = Bun.file(filePath);
+  if (!(await file.exists())) {
+    return {};
+  }
+
+  return parseStructuredFile(filePath);
+};
+
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
+  const explicitLegacySettingsPath = process.env[LEGACY_USER_SETTINGS_FILE_ENV]?.trim();
   const compatibilitySettingsPath = await resolvePreferredPathFromModule({
     moduleUrl: import.meta.url,
     preferredRelativePath: DEFAULT_COMPATIBILITY_SETTINGS_FILE,
     envValues: [process.env[RUNTIME_SETTINGS_FILE_ENV], process.env[LEGACY_USER_SETTINGS_FILE_ENV]],
     legacyRelativePaths: [LEGACY_COMPATIBILITY_SETTINGS_FILE],
   });
+  const legacyCompatibilitySettingsPath = path.resolve(resolvePathFromModule(
+    import.meta.url,
+    LEGACY_COMPATIBILITY_SETTINGS_FILE,
+    explicitLegacySettingsPath,
+  ));
 
   await ensureStructuredSettingsFileExists(compatibilitySettingsPath);
   const vaultPayload = await loadVaultData();
+  const warnings: string[] = [];
+  const fileCache = new Map<string, unknown>();
 
-  const rawCompatibilitySettings = await parseStructuredFile(compatibilitySettingsPath);
-  const context: ResolveContext = {
+  const rawPreferredCompatibilitySettings = await loadOptionalStructuredSettingsLayer(compatibilitySettingsPath);
+  const rawLegacyCompatibilitySettings =
+    legacyCompatibilitySettingsPath && path.resolve(compatibilitySettingsPath) !== legacyCompatibilitySettingsPath
+      ? await loadOptionalStructuredSettingsLayer(legacyCompatibilitySettingsPath)
+      : {};
+  const rawCompatibilitySettings = deepMerge(rawLegacyCompatibilitySettings, rawPreferredCompatibilitySettings);
+
+  const preferredContext: ResolveContext = {
     vaultData: vaultPayload.vaultData,
-    warnings: [],
-    fileCache: new Map<string, unknown>(),
+    warnings,
+    fileCache,
   };
-
-  const resolvedCompatibilitySettings = await resolveValue(
-    rawCompatibilitySettings,
+  const resolvedPreferredCompatibilitySettings = await resolveValue(
+    rawPreferredCompatibilitySettings,
     path.dirname(compatibilitySettingsPath),
-    context,
+    preferredContext,
   );
+  const resolvedLegacyCompatibilitySettings =
+    legacyCompatibilitySettingsPath && path.resolve(compatibilitySettingsPath) !== legacyCompatibilitySettingsPath
+      ? await resolveValue(
+        rawLegacyCompatibilitySettings,
+        path.dirname(legacyCompatibilitySettingsPath),
+        {
+          vaultData: vaultPayload.vaultData,
+          warnings,
+          fileCache,
+        },
+      )
+      : {};
+
+  const resolvedCompatibilitySettings = applyResolvedRpcFallbacks(deepMerge(
+    resolvedLegacyCompatibilitySettings,
+    resolvedPreferredCompatibilitySettings,
+  ), vaultPayload.vaultData);
   const instanceTradingSettings = await loadInstanceTradingSettings();
   const rawSettings = {
     compatibility: rawCompatibilitySettings,
@@ -181,8 +275,12 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     vaultPath: vaultPayload.vaultPath,
     rawSettings,
     resolvedSettings,
-    warnings: context.warnings,
+    warnings,
     compatibilitySettingsPath,
+    legacyCompatibilitySettingsPath:
+      legacyCompatibilitySettingsPath && path.resolve(compatibilitySettingsPath) !== legacyCompatibilitySettingsPath
+        ? legacyCompatibilitySettingsPath
+        : null,
     instanceTradingSettingsPath: instanceTradingSettings.settingsPath,
     activeInstanceId: instanceTradingSettings.instanceId,
   };
@@ -199,6 +297,7 @@ export const renderResolvedUserSettingsSection = async (): Promise<string> => {
     return `## Runtime Settings (Resolved)
 Source:
 - compatibility settings: ${payload.compatibilitySettingsPath}
+- legacy compatibility settings: ${payload.legacyCompatibilitySettingsPath ?? "none"}
 - instance trading settings: ${payload.instanceTradingSettingsPath ?? "none"}
 - active instance: ${payload.activeInstanceId ?? "none"}
 - vault: ${payload.vaultPath ?? "none"}

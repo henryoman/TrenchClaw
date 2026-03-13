@@ -201,18 +201,6 @@ const resolveStorageRootDirectory = (settings: RuntimeSettings): string => {
   return path.basename(sqliteDir) === "runtime" ? path.dirname(sqliteDir) : sqliteDir;
 };
 
-const comparePendingJobs = (a: JobState, b: JobState): number => {
-  const nextRunA = typeof a.nextRunAt === "number" ? a.nextRunAt : Number.MAX_SAFE_INTEGER;
-  const nextRunB = typeof b.nextRunAt === "number" ? b.nextRunAt : Number.MAX_SAFE_INTEGER;
-  if (nextRunA !== nextRunB) {
-    return nextRunA - nextRunB;
-  }
-  if (a.createdAt !== b.createdAt) {
-    return a.createdAt - b.createdAt;
-  }
-  return a.id.localeCompare(b.id);
-};
-
 const normalizeExecuteAtUnixMs = (value: number | undefined, now: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
     return now;
@@ -636,20 +624,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       ...overrides,
     });
 
-  const emitQueuedJob = (job: JobState): void => {
-    const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
-    const queuePosition = pendingJobs.findIndex((entry) => entry.id === job.id) + 1;
-    eventBus.emit("queue:enqueue", {
-      jobId: job.id,
-      serialNumber: job.serialNumber,
-      botId: job.botId,
-      routineName: job.routineName,
-      queueSize: pendingJobs.length,
-      queuePosition: queuePosition > 0 ? queuePosition : pendingJobs.length,
-      nextRunAt: job.nextRunAt,
-    });
-  };
-
   const enqueueJob = async (input: {
     botId: string;
     routineName: string;
@@ -673,17 +647,18 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       nextRunAt: executeAtUnixMs,
     };
     stateStore.saveJob(job);
-    try {
-      await scheduler.enqueue(job);
-    } catch (error) {
-      stateStore.updateJobStatus(job.id, "failed", {
-        lastError: error instanceof Error ? error.message : String(error),
-        lastRunAt: Date.now(),
-        nextRunAt: undefined,
-      });
-      throw error;
+    if (executeAtUnixMs <= now) {
+      try {
+        await scheduler.enqueue(job, now);
+      } catch (error) {
+        stateStore.updateJobStatus(job.id, "failed", {
+          lastError: error instanceof Error ? error.message : String(error),
+          lastRunAt: Date.now(),
+          nextRunAt: undefined,
+        });
+        throw error;
+      }
     }
-    emitQueuedJob(job);
     return job;
   };
 
@@ -720,17 +695,18 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       if (!resumedJob) {
         throw new Error(`Job "${job.id}" disappeared after resume`);
       }
-      try {
-        await scheduler.enqueue(resumedJob);
-      } catch (error) {
-        stateStore.updateJobStatus(job.id, "failed", {
-          lastError: error instanceof Error ? error.message : String(error),
-          lastRunAt: Date.now(),
-          nextRunAt: undefined,
-        });
-        throw error;
+      if (nextRunAt <= Date.now()) {
+        try {
+          await scheduler.enqueue(resumedJob);
+        } catch (error) {
+          stateStore.updateJobStatus(job.id, "failed", {
+            lastError: error instanceof Error ? error.message : String(error),
+            lastRunAt: Date.now(),
+            nextRunAt: undefined,
+          });
+          throw error;
+        }
       }
-      emitQueuedJob(resumedJob);
     } else {
       if (job.status === "running") {
         throw new Error(`Job "${input.jobId}" is already running and cannot be cancelled safely`);
