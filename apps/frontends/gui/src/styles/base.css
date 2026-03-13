@@ -29,6 +29,12 @@ textarea {
   overflow: hidden;
 }
 
+.tc-console-copy {
+  color: var(--tc-console-text-color);
+  font-size: var(--tc-console-text-size);
+  line-height: var(--tc-console-line-height);
+}
+
 /* Keep scroll behavior while hiding scrollbar chrome across panels. */
 * {
   scrollbar-width: none;
