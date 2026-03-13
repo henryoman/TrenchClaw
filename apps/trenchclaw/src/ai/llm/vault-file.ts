@@ -2,7 +2,7 @@ import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { RUNTIME_INSTANCE_ROOT } from "../../runtime/runtime-paths";
-import { isRecord, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
+import { isRecord, resolvePathFromModule } from "./shared";
 
 export const DEFAULT_VAULT_JSON = {
   rpc: {
@@ -68,59 +68,21 @@ export const DEFAULT_VAULT_JSON = {
   },
 } as const;
 
-const DEFAULT_RUNTIME_VAULT_FILE = "../../../.runtime-state/runtime/vault.json";
-const LEGACY_VAULT_FILE = "../../../.runtime-state/user/vault.json";
 const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 const INSTANCE_VAULT_FILE_NAME = "vault.json";
-const INSTANCE_SCOPED_VAULT_PATH_PREFIXES = [
-  "wallet/ultra-signer",
-] as const;
+const NO_ACTIVE_INSTANCE_VAULT_MESSAGE =
+  "No active instance selected. Vaults are instance-scoped. Sign in before accessing secrets.";
 
-export interface ResolvedVaultPaths {
-  runtimeVaultPath: string;
-  instanceVaultPath: string | null;
+export interface ResolvedVaultFile {
+  vaultPath: string | null;
   templatePath: string;
   activeInstanceId: string | null;
   explicitVaultPath: string | null;
 }
 
-export interface LoadedVaultLayers extends ResolvedVaultPaths {
-  runtimeInitializedFromTemplate: boolean;
-  runtimeVaultData: Record<string, unknown>;
-  instanceVaultData: Record<string, unknown>;
-  mergedVaultData: Record<string, unknown>;
-}
-
-const deepMergeRecords = (
-  baseValue: Record<string, unknown>,
-  overlayValue: Record<string, unknown>,
-): Record<string, unknown> => {
-  const merged: Record<string, unknown> = { ...baseValue };
-  for (const [key, value] of Object.entries(overlayValue)) {
-    const currentValue = merged[key];
-    if (isRecord(currentValue) && isRecord(value)) {
-      merged[key] = deepMergeRecords(currentValue, value);
-      continue;
-    }
-    merged[key] = value;
-  }
-  return merged;
-};
-
 const toPathSegments = (refPath: string): string[] => refPath.split("/").map((segment) => segment.trim()).filter(Boolean);
-
-const hasPath = (root: unknown, segments: string[]): boolean => {
-  let current = root;
-  for (const segment of segments) {
-    if (!isRecord(current) || !(segment in current)) {
-      return false;
-    }
-    current = current[segment];
-  }
-  return true;
-};
 
 export const getByPath = (root: unknown, segments: string[]): unknown => {
   let current = root;
@@ -141,12 +103,9 @@ export const readVaultString = (root: unknown, refPath: string): string | undefi
 export const resolveInstanceVaultPath = (instanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, instanceId, INSTANCE_VAULT_FILE_NAME);
 
-export const isInstanceScopedVaultRef = (refPath: string): boolean =>
-  INSTANCE_SCOPED_VAULT_PATH_PREFIXES.some((prefix) => refPath === prefix || refPath.startsWith(`${prefix}/`));
-
-export const resolveVaultPaths = async (input?: {
+export const resolveVaultFile = (input?: {
   activeInstanceId?: string | null;
-}): Promise<ResolvedVaultPaths> => {
+}): ResolvedVaultFile => {
   const explicitVaultPath = process.env[VAULT_FILE_ENV]?.trim() || null;
   const activeInstanceId = input?.activeInstanceId ?? resolveCurrentActiveInstanceIdSync();
   const templatePath = resolvePathFromModule(
@@ -157,23 +116,15 @@ export const resolveVaultPaths = async (input?: {
 
   if (explicitVaultPath) {
     return {
-      runtimeVaultPath: explicitVaultPath,
-      instanceVaultPath: null,
+      vaultPath: explicitVaultPath,
       templatePath,
       activeInstanceId,
       explicitVaultPath,
     };
   }
 
-  const runtimeVaultPath = await resolvePreferredPathFromModule({
-    moduleUrl: import.meta.url,
-    preferredRelativePath: DEFAULT_RUNTIME_VAULT_FILE,
-    legacyRelativePaths: [LEGACY_VAULT_FILE],
-  });
-
   return {
-    runtimeVaultPath,
-    instanceVaultPath: activeInstanceId ? resolveInstanceVaultPath(activeInstanceId) : null,
+    vaultPath: activeInstanceId ? resolveInstanceVaultPath(activeInstanceId) : null,
     templatePath,
     activeInstanceId,
     explicitVaultPath: null,
@@ -182,17 +133,6 @@ export const resolveVaultPaths = async (input?: {
 
 const parseVaultFile = async (filePath: string): Promise<Record<string, unknown>> =>
   parseVaultJsonText(await readFile(filePath, "utf8"));
-
-const readOptionalVaultFile = async (filePath: string | null): Promise<Record<string, unknown>> => {
-  if (!filePath) {
-    return {};
-  }
-  const file = Bun.file(filePath);
-  if (!(await file.exists())) {
-    return {};
-  }
-  return parseVaultFile(filePath);
-};
 
 export const ensureVaultFileExists = async (input: {
   vaultPath: string;
@@ -235,23 +175,6 @@ export const ensureVaultFileExists = async (input: {
   return { initializedFromTemplate: true };
 };
 
-export const ensureVaultOverlayFileExists = async (vaultPath: string): Promise<{ created: boolean }> => {
-  const targetPath = path.resolve(vaultPath);
-  const file = Bun.file(targetPath);
-  if (await file.exists()) {
-    return { created: false };
-  }
-
-  await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
-  await writeFile(targetPath, "{}\n", { encoding: "utf8", mode: 0o600 });
-  try {
-    await chmod(targetPath, 0o600);
-  } catch {
-    // Best-effort only.
-  }
-  return { created: true };
-};
-
 export const parseVaultJsonText = (value: string): Record<string, unknown> => {
   const parsed = JSON.parse(value) as unknown;
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -260,29 +183,46 @@ export const parseVaultJsonText = (value: string): Record<string, unknown> => {
   return parsed as Record<string, unknown>;
 };
 
-export const loadVaultLayers = async (input?: {
+export const resolveRequiredVaultFile = (input?: {
   activeInstanceId?: string | null;
-}): Promise<LoadedVaultLayers> => {
-  const paths = await resolveVaultPaths(input);
-  const runtimeEnsured = await ensureVaultFileExists({
-    vaultPath: paths.runtimeVaultPath,
-    templatePath: paths.templatePath,
-  });
-  const runtimeVaultData = await parseVaultFile(paths.runtimeVaultPath);
-  const instanceVaultData = await readOptionalVaultFile(paths.instanceVaultPath);
-
-  return {
-    ...paths,
-    runtimeInitializedFromTemplate: runtimeEnsured.initializedFromTemplate,
-    runtimeVaultData,
-    instanceVaultData,
-    mergedVaultData: deepMergeRecords(runtimeVaultData, instanceVaultData),
-  };
+}): { vaultPath: string; templatePath: string; activeInstanceId: string | null; explicitVaultPath: string | null } => {
+  const resolved = resolveVaultFile(input);
+  if (resolved.vaultPath) {
+    return {
+      ...resolved,
+      vaultPath: resolved.vaultPath,
+    };
+  }
+  throw new Error(NO_ACTIVE_INSTANCE_VAULT_MESSAGE);
 };
 
-export const resolveVaultRefSourcePath = (layers: LoadedVaultLayers, refPath: string): string => {
-  if (layers.instanceVaultPath && hasPath(layers.instanceVaultData, toPathSegments(refPath))) {
-    return layers.instanceVaultPath;
+export const loadVaultData = async (input?: {
+  activeInstanceId?: string | null;
+}): Promise<{
+  vaultPath: string | null;
+  templatePath: string;
+  activeInstanceId: string | null;
+  explicitVaultPath: string | null;
+  initializedFromTemplate: boolean;
+  vaultData: Record<string, unknown>;
+}> => {
+  const resolved = resolveVaultFile(input);
+  if (!resolved.vaultPath) {
+    return {
+      ...resolved,
+      initializedFromTemplate: false,
+      vaultData: {},
+    };
   }
-  return layers.runtimeVaultPath;
+
+  const ensured = await ensureVaultFileExists({
+    vaultPath: resolved.vaultPath,
+    templatePath: resolved.templatePath,
+  });
+
+  return {
+    ...resolved,
+    initializedFromTemplate: ensured.initializedFromTemplate,
+    vaultData: await parseVaultFile(resolved.vaultPath),
+  };
 };

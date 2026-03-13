@@ -1,7 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { isRecord, parseStructuredFile, resolvePreferredPathFromModule } from "./shared";
-import { loadVaultLayers } from "./vault-file";
+import { loadVaultData } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
 const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/runtime/settings.json";
@@ -124,9 +124,7 @@ const resolveValue = async (
 };
 
 export interface ResolvedUserSettingsPayload {
-  userSettingsPath: string;
-  runtimeVaultPath: string;
-  instanceVaultPath: string | null;
+  vaultPath: string | null;
   rawSettings: unknown;
   resolvedSettings: unknown;
   warnings: string[];
@@ -155,11 +153,11 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
   });
 
   await ensureStructuredSettingsFileExists(compatibilitySettingsPath);
-  const vaultLayers = await loadVaultLayers();
+  const vaultPayload = await loadVaultData();
 
   const rawCompatibilitySettings = await parseStructuredFile(compatibilitySettingsPath);
   const context: ResolveContext = {
-    vaultData: vaultLayers.mergedVaultData,
+    vaultData: vaultPayload.vaultData,
     warnings: [],
     fileCache: new Map<string, unknown>(),
   };
@@ -180,9 +178,7 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
   );
 
   return {
-    userSettingsPath: compatibilitySettingsPath,
-    runtimeVaultPath: vaultLayers.runtimeVaultPath,
-    instanceVaultPath: vaultLayers.instanceVaultPath,
+    vaultPath: vaultPayload.vaultPath,
     rawSettings,
     resolvedSettings,
     warnings: context.warnings,
@@ -205,8 +201,7 @@ Source:
 - compatibility settings: ${payload.compatibilitySettingsPath}
 - instance trading settings: ${payload.instanceTradingSettingsPath ?? "none"}
 - active instance: ${payload.activeInstanceId ?? "none"}
-- runtime vault: ${payload.runtimeVaultPath}
-- instance vault: ${payload.instanceVaultPath ?? "none"}
+- vault: ${payload.vaultPath ?? "none"}
 ${warningLines}\`\`\`json
 ${JSON.stringify(payload.resolvedSettings, null, 2)}
 \`\`\``;

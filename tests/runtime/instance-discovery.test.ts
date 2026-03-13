@@ -54,6 +54,7 @@ const createPersistedInstance = async (
 const runScriptJson = async <T>(input: {
   script: string;
   runtimeRoot: string;
+  env?: Record<string, string>;
 }): Promise<T> => {
   const processHandle = Bun.spawn({
     cmd: [
@@ -66,6 +67,7 @@ const runScriptJson = async <T>(input: {
       ...process.env,
       TRENCHCLAW_APP_ROOT: CORE_APP_ROOT,
       TRENCHCLAW_RUNTIME_STATE_ROOT: input.runtimeRoot,
+      ...input.env,
     },
     stdout: "pipe",
     stderr: "pipe",
@@ -123,6 +125,7 @@ describe("instance discovery", () => {
     expect(result.listed.instances).toHaveLength(0);
     expect(result.created.instance.localInstanceId).toBe("01");
     expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
+    expect(await Bun.file(path.join(runtimeRoot, "instances/01/vault.json")).exists()).toBe(true);
     expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
   });
 
@@ -165,7 +168,60 @@ describe("instance discovery", () => {
     expect(result.signedIn.instance.name).toBe("test");
     expect(result.activeInstanceId).toBe("01");
     expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
+    expect(await Bun.file(path.join(runtimeRoot, "instances/01/vault.json")).exists()).toBe(true);
     expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
+  });
+
+  test("reads vault-backed LLM config from the active instance vault without a shared fallback", async () => {
+    const runtimeRoot = await createRuntimeRoot();
+    await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });
+    await writeFile(
+      path.join(runtimeRoot, "instances/01/vault.json"),
+      `${JSON.stringify({
+        llm: {
+          openrouter: {
+            "api-key": "instance-openrouter-key",
+          },
+        },
+      })}\n`,
+      "utf8",
+    );
+    await mkdir(path.join(runtimeRoot, "runtime"), { recursive: true });
+    await writeFile(
+      path.join(runtimeRoot, "runtime/ai.json"),
+      `${JSON.stringify({
+        provider: "openrouter",
+        model: "test-model",
+        baseURL: "https://openrouter.ai/api/v1",
+        defaultMode: "primary",
+        temperature: null,
+        maxOutputTokens: null,
+      })}\n`,
+      "utf8",
+    );
+
+    const result = await runScriptJson<{
+      provider: string | null;
+      apiKey: string | null;
+    }>({
+      runtimeRoot,
+      env: {
+        TRENCHCLAW_ACTIVE_INSTANCE_ID: "01",
+      },
+      script: `
+        const { resolveLlmProviderConfigFromVault } = await import(${JSON.stringify(
+          pathToFileURL(path.join(CORE_APP_ROOT, "src/ai/llm/config.ts")).href,
+        )});
+        const resolved = await resolveLlmProviderConfigFromVault();
+        process.stdout.write(JSON.stringify({
+          provider: resolved?.provider ?? null,
+          apiKey: resolved?.apiKey ?? null,
+        }));
+      `,
+    });
+
+    expect(result.provider).toBe("openrouter");
+    expect(result.apiKey).toBe("instance-openrouter-key");
   });
 
   test("does not sign into a directory-only instance", async () => {

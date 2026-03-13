@@ -156,6 +156,7 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE",
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
+  "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
 ] as const;
 
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -199,6 +200,14 @@ describe("bootstrapRuntime", () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
+`);
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeYaml(`
+rpc:
+  primaryRpc: helius
+  providers:
+    helius:
+      endpointRef: vault://rpc/helius/http-url
+      wsEndpointRef: vault://rpc/helius/ws-url
 `);
     process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
       rpc: {

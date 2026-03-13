@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 
+import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
 import { resolveInstanceTradingSettingsPath, writeInstanceTradingSettings } from "./load/trading-settings";
 import { resolveInstanceDirectoryPath } from "./instance-state";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
@@ -33,6 +34,13 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
   }
 
   const createdFiles: string[] = [];
+  const vaultPath = resolveInstanceVaultPath(instanceId);
+  assertInstanceSystemWritePath(vaultPath, "initialize instance vault");
+  const ensuredVault = await ensureVaultFileExists({ vaultPath });
+  if (ensuredVault.initializedFromTemplate) {
+    createdFiles.push(vaultPath);
+  }
+
   const tradingSettingsPath = resolveInstanceTradingSettingsPath(instanceId);
   if (!(await Bun.file(tradingSettingsPath).exists())) {
     createdFiles.push(await writeInstanceTradingSettings(instanceId, {}));

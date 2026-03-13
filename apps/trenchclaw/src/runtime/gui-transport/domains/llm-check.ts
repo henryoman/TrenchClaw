@@ -1,6 +1,6 @@
 import type { GuiLlmCheckResponse } from "@trenchclaw/types";
 import { resolveLlmProviderConfigFromVault } from "../../../ai/llm/config";
-import { loadVaultLayers, resolveVaultRefSourcePath } from "../../../ai/llm/vault-file";
+import { loadVaultData } from "../../../ai/llm/vault-file";
 
 const OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 const OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
@@ -87,21 +87,12 @@ const probeProviderAuth = async (input: {
 };
 
 export const runLlmCheck = async (): Promise<GuiLlmCheckResponse> => {
-  const vaultLayers = await loadVaultLayers();
+  const vaultPayload = await loadVaultData();
   const fromVault = await resolveLlmProviderConfigFromVault();
   const active = fromVault;
   const vaultKey = fromVault?.apiKey ?? "";
   const vaultKeyFingerprint = await toKeyFingerprint(vaultKey);
-  const resolvedVaultFile = active
-    ? resolveVaultRefSourcePath(
-        vaultLayers,
-        active.provider === "openrouter"
-          ? "llm/openrouter/api-key"
-          : active.provider === "openai"
-            ? "llm/openai/api-key"
-            : "llm/openai-compatible/api-key",
-      )
-    : vaultLayers.runtimeVaultPath;
+  const resolvedVaultFile = active ? vaultPayload.vaultPath : null;
 
   if (!active) {
     return {
