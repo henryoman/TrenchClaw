@@ -35,11 +35,18 @@ export const resolvePreferredPathFromModule = async (input: {
     return preferredPath;
   }
 
-  for (const legacyRelativePath of input.legacyRelativePaths ?? []) {
-    const legacyPath = fileURLToPath(new URL(legacyRelativePath, input.moduleUrl));
-    if (await Bun.file(legacyPath).exists()) {
-      return legacyPath;
-    }
+  const legacyPaths = await Promise.all(
+    (input.legacyRelativePaths ?? []).map(async (legacyRelativePath) => {
+      const legacyPath = fileURLToPath(new URL(legacyRelativePath, input.moduleUrl));
+      return {
+        legacyPath,
+        exists: await Bun.file(legacyPath).exists(),
+      };
+    }),
+  );
+  const matchingLegacyPath = legacyPaths.find((candidate) => candidate.exists)?.legacyPath;
+  if (matchingLegacyPath) {
+    return matchingLegacyPath;
   }
 
   return preferredPath;

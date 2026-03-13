@@ -1,6 +1,7 @@
 import { generateText, streamText, type LanguageModel } from "ai";
 import { loadAiSettings } from "./ai-settings-file";
 import { createLanguageModel, resolveLlmProviderConfig } from "./config";
+import { supportsOperatorChatModel } from "./model-catalog";
 import { loadSystemPromptPayload } from "./prompt-loader";
 import type {
   LlmClient,
@@ -112,6 +113,14 @@ export const resolveLlmRuntimeBinding = async (): Promise<ResolvedLlmRuntimeBind
       client: null,
       provider: null,
       model: null,
+      languageModel: null,
+    };
+  }
+  if (!supportsOperatorChatModel(providerConfig.model)) {
+    return {
+      client: null,
+      provider: providerConfig.provider,
+      model: providerConfig.model,
       languageModel: null,
     };
   }

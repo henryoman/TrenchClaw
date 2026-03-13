@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { shouldBundleBrainFile } from "./lib/release-bundle-filter";
@@ -12,6 +12,9 @@ const CORE_OUTPUT_ROOT = path.join(OUTPUT_ROOT, "core");
 
 const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
   const [bin, ...args] = command;
+  if (!bin) {
+    throw new Error("Cannot run an empty command");
+  }
   const proc = Bun.spawn([bin, ...args], {
     cwd,
     stdout: "inherit",
@@ -27,6 +30,9 @@ const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
 
 const runCapture = async (command: string[], cwd = REPO_ROOT): Promise<string> => {
   const [bin, ...args] = command;
+  if (!bin) {
+    throw new Error("Cannot run an empty command");
+  }
   const proc = Bun.spawn([bin, ...args], {
     cwd,
     stdout: "pipe",
@@ -55,14 +61,53 @@ const readRootPackageVersion = async (): Promise<string> => {
   return "0.0.0";
 };
 
+const toShortCommit = (value: string): string => value.trim().slice(0, 7);
+
+const resolveCommitFromEnv = (): string | null => {
+  const envCommit =
+    process.env.TRENCHCLAW_BUILD_COMMIT?.trim() ||
+    process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
+    process.env.GITHUB_SHA?.trim() ||
+    process.env.CI_COMMIT_SHA?.trim() ||
+    process.env.COMMIT_SHA?.trim();
+  if (!envCommit) {
+    return null;
+  }
+  return toShortCommit(envCommit);
+};
+
+const listFilesRecursive = async (directoryPath: string): Promise<string[]> => {
+  const entries = await readdir(directoryPath, { withFileTypes: true });
+  const nested = await Promise.all(
+    entries.map(async (entry) => {
+      const entryPath = path.join(directoryPath, entry.name);
+      if (entry.isDirectory()) {
+        return listFilesRecursive(entryPath);
+      }
+      if (entry.isFile()) {
+        return [entryPath];
+      }
+      return [];
+    }),
+  );
+  return nested.flat();
+};
+
 const resolveBuildMetadata = async (): Promise<{
   version: string;
   commit: string;
 }> => {
   const packageVersion = await readRootPackageVersion();
   const configuredVersion = process.env.TRENCHCLAW_BUILD_VERSION?.trim();
-  const configuredCommit = process.env.TRENCHCLAW_BUILD_COMMIT?.trim();
-  const gitShortSha = (await runCapture(["git", "-C", REPO_ROOT, "rev-parse", "--short", "HEAD"])).trim();
+  const configuredCommit = resolveCommitFromEnv();
+  let gitShortSha = "local";
+  if (!configuredCommit) {
+    try {
+      gitShortSha = (await runCapture(["git", "-C", REPO_ROOT, "rev-parse", "--short", "HEAD"])).trim();
+    } catch {
+      gitShortSha = "local";
+    }
+  }
 
   return {
     version: configuredVersion && configuredVersion.length > 0 ? configuredVersion : `v${packageVersion}`,
@@ -71,16 +116,23 @@ const resolveBuildMetadata = async (): Promise<{
 };
 
 const copyReleaseBrainAssets = async (): Promise<void> => {
-  const raw = await runCapture([
-    "git",
-    "-C",
-    REPO_ROOT,
-    "ls-files",
-    "-z",
-    "--",
-    "apps/trenchclaw/src/ai/brain",
-  ]);
-  const trackedFiles = raw.split("\u0000").filter((entry) => entry.length > 0);
+  let trackedFiles: string[] = [];
+  try {
+    const raw = await runCapture([
+      "git",
+      "-C",
+      REPO_ROOT,
+      "ls-files",
+      "-z",
+      "--",
+      "apps/trenchclaw/src/ai/brain",
+    ]);
+    trackedFiles = raw.split("\u0000").filter((entry) => entry.length > 0);
+  } catch {
+    const brainRoot = path.join(REPO_ROOT, "apps/trenchclaw/src/ai/brain");
+    const discoveredFiles = await listFilesRecursive(brainRoot);
+    trackedFiles = discoveredFiles.map((filePath) => path.relative(REPO_ROOT, filePath));
+  }
   if (trackedFiles.length === 0) {
     throw new Error("No tracked brain assets found under apps/trenchclaw/src/ai/brain");
   }

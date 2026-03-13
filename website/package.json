@@ -11,9 +11,9 @@
   "scripts": {
     "launch": "bun run --cwd .. launch",
     "content:sync": "bun run ./scripts/sync-shared-content.ts",
-    "dev": "bun run content:sync && bun --bun ./node_modules/vite/bin/vite.js dev",
-    "build": "bun run content:sync && bun --bun ./node_modules/vite/bin/vite.js build",
-    "preview": "bun run content:sync && bun --bun ./node_modules/vite/bin/vite.js preview",
+    "dev": "bun run content:sync && bunx --bun vite dev",
+    "build": "bun run content:sync && bunx --bun vite build",
+    "preview": "bun run content:sync && bunx --bun vite preview",
     "lint": "oxlint .",
     "test": "bun test ../tests/website",
     "svelte:check": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",

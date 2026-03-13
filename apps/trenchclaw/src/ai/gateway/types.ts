@@ -10,7 +10,6 @@ export type GatewayLane = "operator-chat" | "workspace-agent" | "background-summ
 
 export interface GatewayExecutionTrace {
   lane: GatewayLane;
-  fastPath: string | null;
   provider: string | null;
   model: string | null;
   promptChars: number;
@@ -26,23 +25,16 @@ export interface GatewayRequest {
   userMessage: string;
   sessionId?: string;
   instanceId?: string;
-  intentHints?: string[];
-  allowFastPath?: boolean;
   abortSignal?: AbortSignal;
 }
 
 export interface GatewayResponse {
   message: string;
   toolCalls: string[];
-  fastPathUsed: boolean;
   lane: GatewayLane;
   provider: string | null;
   model: string | null;
   executionTrace: GatewayExecutionTrace;
-}
-
-export interface GatewayFastPathResult extends GatewayResponse {
-  actionName: string;
 }
 
 export interface GatewayLanePolicy {
@@ -51,7 +43,6 @@ export interface GatewayLanePolicy {
   temperature?: number;
   maxToolSteps: number;
   promptKind: "operator" | "workspace" | "summary";
-  allowFastPath: boolean;
 }
 
 export interface GatewayLaneStatus {

@@ -27,7 +27,7 @@ const validateUrl = (
     parsed = new URL(normalized);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Runtime endpoint "${configPath}" is invalid: ${message}`);
+    throw new Error(`Runtime endpoint "${configPath}" is invalid: ${message}`, { cause: error });
   }
 
   if (!allowedProtocols.includes(parsed.protocol)) {

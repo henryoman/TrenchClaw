@@ -14,6 +14,7 @@ import {
   rewriteManagedWalletLibraryEntries,
 } from "../../../lib/wallet/wallet-manager";
 import {
+  type ManagedWalletLibraryEntry,
   toWalletId,
   walletGroupNameSchema,
 } from "../../../lib/wallet/wallet-types";
@@ -93,6 +94,17 @@ interface RenameWalletsOutput {
   }>;
 }
 
+interface PlannedWalletRename {
+  sourceIndex: number;
+  currentWalletId: string;
+  nextWalletId: string;
+  current: RenameWalletsInput["edits"][number]["current"];
+  next: RenameWalletsInput["edits"][number]["next"];
+  nextEntry: ManagedWalletLibraryEntry;
+  keypairFilePath?: string;
+  walletLabelFilePath?: string;
+}
+
 export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput> = {
   name: "renameWallets",
   category: "wallet-based",
@@ -166,8 +178,7 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
         }
       }
 
-      const updated: RenameWalletsOutput["updated"] = [];
-      for (const plan of editPlans) {
+      const plannedUpdates = editPlans.map((plan) => {
         const entry = entries[plan.sourceIndex];
         if (!entry) {
           throw new Error(`Wallet entry missing at library index ${plan.sourceIndex}`);
@@ -187,46 +198,63 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
           next.walletLabelFilePath = walletLabelFilePath;
         }
 
-        if (input.updateLabelFiles && walletLabelFilePath) {
-          const absoluteWalletLabelFilePath = resolveAbsolutePath(walletLabelFilePath);
-          assertWithinBrainProtectedDirectory(absoluteWalletLabelFilePath);
-          await assertProtectedWriteAllowed({
-            actor: _ctx.actor,
-            targetPath: absoluteWalletLabelFilePath,
-            operation: "rewrite wallet label metadata",
-          });
+        return {
+          sourceIndex: plan.sourceIndex,
+          currentWalletId: plan.currentWalletId,
+          nextWalletId: plan.nextWalletId,
+          current: plan.current,
+          next: plan.next,
+          nextEntry: next,
+          keypairFilePath,
+          walletLabelFilePath,
+        } satisfies PlannedWalletRename;
+      });
 
-          const walletLabelFile = Bun.file(absoluteWalletLabelFilePath);
-          const nextWalletLabel = await (async (): Promise<Record<string, unknown>> => {
-            if (!(await walletLabelFile.exists())) {
-              return {};
+      await Promise.all(
+        plannedUpdates
+          .filter((plan) => input.updateLabelFiles && plan.walletLabelFilePath)
+          .map(async (plan) => {
+            const absoluteWalletLabelFilePath = resolveAbsolutePath(plan.walletLabelFilePath!);
+            assertWithinBrainProtectedDirectory(absoluteWalletLabelFilePath);
+            await assertProtectedWriteAllowed({
+              actor: _ctx.actor,
+              targetPath: absoluteWalletLabelFilePath,
+              operation: "rewrite wallet label metadata",
+            });
+
+            const walletLabelFile = Bun.file(absoluteWalletLabelFilePath);
+            let nextWalletLabel: Record<string, unknown> = {};
+            if (await walletLabelFile.exists()) {
+              const walletLabelJson = await walletLabelFile.json();
+              if (walletLabelJson && typeof walletLabelJson === "object" && !Array.isArray(walletLabelJson)) {
+                nextWalletLabel = { ...(walletLabelJson as Record<string, unknown>) };
+              }
             }
-            const walletLabelJson = await walletLabelFile.json();
-            if (!walletLabelJson || typeof walletLabelJson !== "object" || Array.isArray(walletLabelJson)) {
-              return {};
+
+            nextWalletLabel.version = 1;
+            nextWalletLabel.walletId = plan.nextWalletId;
+            nextWalletLabel.walletGroup = plan.next.walletGroup;
+            nextWalletLabel.walletName = plan.next.walletName;
+            nextWalletLabel.address =
+              typeof plan.nextEntry.address === "string" ? plan.nextEntry.address : nextWalletLabel.address;
+            if (plan.keypairFilePath) {
+              nextWalletLabel.walletFileName = path.basename(plan.keypairFilePath);
             }
-            return { ...(walletLabelJson as Record<string, unknown>) };
-          })();
-          nextWalletLabel.version = 1;
-          nextWalletLabel.walletId = plan.nextWalletId;
-          nextWalletLabel.walletGroup = plan.next.walletGroup;
-          nextWalletLabel.walletName = plan.next.walletName;
-          nextWalletLabel.address = typeof next.address === "string" ? next.address : nextWalletLabel.address;
-          if (keypairFilePath) {
-            nextWalletLabel.walletFileName = path.basename(keypairFilePath);
-          }
-          nextWalletLabel.updatedAt = new Date().toISOString();
-          if (typeof nextWalletLabel.createdAt !== "string") {
-            nextWalletLabel.createdAt = typeof next.createdAt === "string" ? next.createdAt : nextWalletLabel.updatedAt;
-          }
-          await Bun.write(absoluteWalletLabelFilePath, `${JSON.stringify(nextWalletLabel, null, 2)}\n`);
-        }
+            nextWalletLabel.updatedAt = new Date().toISOString();
+            if (typeof nextWalletLabel.createdAt !== "string") {
+              nextWalletLabel.createdAt =
+                typeof plan.nextEntry.createdAt === "string" ? plan.nextEntry.createdAt : nextWalletLabel.updatedAt;
+            }
+            await Bun.write(absoluteWalletLabelFilePath, `${JSON.stringify(nextWalletLabel, null, 2)}\n`);
+          }),
+      );
 
-        entries[plan.sourceIndex] = next;
-        entryIndexByWalletId.delete(plan.currentWalletId);
-        entryIndexByWalletId.set(plan.nextWalletId, plan.sourceIndex);
+      const nextEntries = [...entries];
+      plannedUpdates.forEach((plan) => {
+        nextEntries[plan.sourceIndex] = plan.nextEntry;
+      });
 
-        updated.push({
+      const updated = plannedUpdates.map((plan) => ({
           current: {
             walletId: plan.currentWalletId,
             walletGroup: plan.current.walletGroup,
@@ -237,18 +265,17 @@ export const renameWalletsAction: Action<RenameWalletsInput, RenameWalletsOutput
             walletGroup: plan.next.walletGroup,
             walletName: plan.next.walletName,
           },
-          keypairFilePath,
-          walletLabelFilePath,
-          address: typeof next.address === "string" ? next.address : undefined,
-        });
-      }
+          keypairFilePath: plan.keypairFilePath,
+          walletLabelFilePath: plan.walletLabelFilePath,
+          address: typeof plan.nextEntry.address === "string" ? plan.nextEntry.address : undefined,
+        }));
 
       await assertProtectedWriteAllowed({
         actor: _ctx.actor,
         targetPath: walletLibraryFilePath,
         operation: "rewrite wallet library",
       });
-      await rewriteManagedWalletLibraryEntries(walletLibraryFilePath, entries);
+      await rewriteManagedWalletLibraryEntries(walletLibraryFilePath, nextEntries);
 
       return {
         ok: true,

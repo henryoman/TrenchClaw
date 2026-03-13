@@ -370,14 +370,12 @@ export const createRuntimeChatService = (
         messages,
         userMessage: extractUiMessageText(messages.at(-1) ?? { id: "", role: "user", parts: [] as UIMessage["parts"] } as UIMessage),
         sessionId: input?.sessionId,
-        allowFastPath: true,
         abortSignal: input?.abortSignal,
       });
       if (preparedExecution.kind === "direct") {
-        deps.logger?.info("chat:fast_path", {
+        deps.logger?.info("chat:direct_response", {
           chatId,
           lane: preparedExecution.lane,
-          fastPath: preparedExecution.response.executionTrace.fastPath,
           toolCalls: preparedExecution.response.toolCalls.join(",") || "none",
           durationMs: Date.now() - streamStartedAt,
         });
@@ -395,7 +393,6 @@ export const createRuntimeChatService = (
               chatId,
               durationMs: Date.now() - streamStartedAt,
               finalMessageCount: finalMessages.length,
-              fastPath: preparedExecution.response.executionTrace.fastPath,
             });
           },
         });

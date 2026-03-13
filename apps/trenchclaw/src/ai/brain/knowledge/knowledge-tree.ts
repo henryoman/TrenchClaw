@@ -14,7 +14,7 @@ const OMITTED_DIRECTORY_NAMES = new Set([
 ]);
 
 const sortEntries = (entries: Array<{ name: string; isDirectory: boolean }>) =>
-  [...entries].sort((a, b) => {
+  [...entries].toSorted((a, b) => {
     if (a.isDirectory !== b.isDirectory) {
       return a.isDirectory ? -1 : 1;
     }
@@ -378,17 +378,15 @@ const walkFiles = async (targetDir: string, relativeDir = ""): Promise<string[]>
     )),
   );
 
-  const files: string[] = [];
-  for (const entry of entries) {
-    const childRelativePath = path.join(relativeDir, entry.name);
-    if (entry.isDirectory) {
-      files.push(...(await walkFiles(targetDir, childRelativePath)));
-      continue;
-    }
-    files.push(childRelativePath);
-  }
-
-  return files;
+  return (await Promise.all(
+    entries.map(async (entry) => {
+      const childRelativePath = path.join(relativeDir, entry.name);
+      if (entry.isDirectory) {
+        return walkFiles(targetDir, childRelativePath);
+      }
+      return [childRelativePath];
+    }),
+  )).flat();
 };
 
 const compareDocEntries = (a: KnowledgeDocEntry, b: KnowledgeDocEntry): number => a.path.localeCompare(b.path);
@@ -441,12 +439,12 @@ export const buildKnowledgeInventory = async (targetDir: string): Promise<Knowle
   const coreDocs = docFiles
     .filter((relativePath) => !relativePath.startsWith("deep-knowledge/") && !relativePath.startsWith("skills/"))
     .map(toDocEntry)
-    .sort(compareDocEntries);
+    .toSorted(compareDocEntries);
 
   const deepDocs = docFiles
     .filter((relativePath) => relativePath.startsWith("deep-knowledge/"))
     .map(toDocEntry)
-    .sort(compareDocEntries);
+    .toSorted(compareDocEntries);
 
   const supportDocs = docFiles
     .filter(
@@ -456,7 +454,7 @@ export const buildKnowledgeInventory = async (targetDir: string): Promise<Knowle
         && !relativePath.includes(`${path.sep}references${path.sep}`),
     )
     .map(toDocEntry)
-    .sort(compareDocEntries);
+    .toSorted(compareDocEntries);
 
   const skillReferenceCounts = new Map<string, number>();
   for (const relativePath of relativeFiles) {
@@ -476,7 +474,7 @@ export const buildKnowledgeInventory = async (targetDir: string): Promise<Knowle
       const skillName = relativePath.split(path.sep)[1];
       return buildSkillPackSummary(skillName!, skillReferenceCounts.get(skillName!) ?? 0);
     })
-    .sort(compareSkillPacks);
+    .toSorted(compareSkillPacks);
 
   return {
     coreDocs,
@@ -620,23 +618,23 @@ const renderTree = async (
   );
 
   const rootLabel = rootName ?? path.basename(targetDir);
-  const lines: string[] = prefix ? [] : [`${rootLabel}/`];
+  const childLines = (await Promise.all(
+    normalized.map(async (entry, index) => {
+      const absolutePath = path.join(targetDir, entry.name);
+      const isLast = index === normalized.length - 1;
+      const branch = isLast ? "`-- " : "|-- ";
+      const lines = [`${prefix}${branch}${entry.name}${entry.isDirectory ? "/" : ""}`];
 
-  for (let index = 0; index < normalized.length; index += 1) {
-    const entry = normalized[index]!;
-    const absolutePath = path.join(targetDir, entry.name);
-    const isLast = index === normalized.length - 1;
-    const branch = isLast ? "`-- " : "|-- ";
-    lines.push(`${prefix}${branch}${entry.name}${entry.isDirectory ? "/" : ""}`);
+      if (entry.isDirectory) {
+        const nestedPrefix = `${prefix}${isLast ? "    " : "|   "}`;
+        lines.push(...(await renderTree(absolutePath, nestedPrefix)));
+      }
 
-    if (entry.isDirectory) {
-      const childPrefix = `${prefix}${isLast ? "    " : "|   "}`;
-      const childLines = await renderTree(absolutePath, childPrefix);
-      lines.push(...childLines);
-    }
-  }
+      return lines;
+    }),
+  )).flat();
 
-  return lines;
+  return prefix ? childLines : [`${rootLabel}/`, ...childLines];
 };
 
 export const renderDirectoryTree = async (targetDir: string): Promise<string> => {

@@ -10,6 +10,8 @@ const OPERATOR_ACTION_ALLOWLIST = [
   "getDexscreenerLatestTokenProfiles",
   "getDexscreenerLatestTokenBoosts",
   "getDexscreenerTopTokenBoosts",
+  "getDexscreenerPairByChainAndPairId",
+  "getDexscreenerTokenPairsByChain",
   "getDexscreenerTokensByChain",
   "searchDexscreenerPairs",
   "createWallets",
@@ -21,9 +23,8 @@ const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
     lane: "operator-chat",
     maxOutputTokens: 450,
     temperature: 0.1,
-    maxToolSteps: 4,
+    maxToolSteps: 6,
     promptKind: "operator",
-    allowFastPath: true,
   },
   "workspace-agent": {
     lane: "workspace-agent",
@@ -31,7 +32,6 @@ const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
     temperature: 0.1,
     maxToolSteps: 12,
     promptKind: "workspace",
-    allowFastPath: false,
   },
   "background-summary": {
     lane: "background-summary",
@@ -39,7 +39,6 @@ const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
     temperature: 0.1,
     maxToolSteps: 1,
     promptKind: "summary",
-    allowFastPath: false,
   },
 };
 
@@ -48,15 +47,23 @@ export const getGatewayLanePolicy = (lane: GatewayLane): GatewayLanePolicy => LA
 export const buildGatewayLaneStatuses = (input: {
   provider: string | null;
   model: string | null;
+  modelAvailable: boolean;
   endpointsValid: boolean;
 }): GatewayLaneStatus[] => {
   const baseStatus =
-    input.provider && input.model
+    input.provider && input.model && input.modelAvailable
       ? {
           enabled: true,
           provider: input.provider,
           model: input.model,
         }
+      : input.provider && input.model
+        ? {
+            enabled: false,
+            provider: input.provider,
+            model: input.model,
+            reason: "Selected model is not approved for operator chat",
+          }
       : {
           enabled: false,
           provider: input.provider,

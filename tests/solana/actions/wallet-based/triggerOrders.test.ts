@@ -200,4 +200,63 @@ describe("trigger order actions", () => {
     expect(result.data?.signatures).toEqual(["cancel-sig-1"]);
     expect(result.data?.statuses).toEqual(["Success"]);
   });
+
+  test("cancels multiple trigger orders concurrently while preserving result order", async () => {
+    const signedTransactions: string[] = [];
+    const executedTransactions: string[] = [];
+
+    const result = await triggerCancelOrdersAction.execute(
+      {
+        jupiterTrigger: {
+          async cancelOrders() {
+            return {
+              requestId: "cancel-req-batch",
+              transactions: ["unsigned-cancel-tx-1", "unsigned-cancel-tx-2"],
+              raw: {},
+            };
+          },
+          async executeOrder(request: Record<string, unknown>) {
+            const signedTransaction = String(request.signedTransaction);
+            executedTransactions.push(signedTransaction);
+            if (signedTransaction.endsWith("-1")) {
+              await new Promise((resolve) => setTimeout(resolve, 10));
+            }
+            return {
+              status: signedTransaction.endsWith("-1") ? "Queued" : "Success",
+              signature: signedTransaction.endsWith("-1") ? "cancel-sig-1" : "cancel-sig-2",
+              raw: {
+                signedTransaction,
+              },
+            };
+          },
+        },
+        ultraSigner: {
+          address: "maker-wallet",
+          async signBase64Transaction(base64Transaction: string) {
+            const signedTransaction = `signed:${base64Transaction}`;
+            signedTransactions.push(signedTransaction);
+            return signedTransaction;
+          },
+        },
+      } as never,
+      {
+        orders: ["order-1", "order-2"],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(signedTransactions).toEqual(["signed:unsigned-cancel-tx-1", "signed:unsigned-cancel-tx-2"]);
+    expect(executedTransactions).toHaveLength(2);
+    expect(result.data?.orders).toEqual(["order-1", "order-2"]);
+    expect(result.data?.signatures).toEqual(["cancel-sig-1", "cancel-sig-2"]);
+    expect(result.data?.statuses).toEqual(["Queued", "Success"]);
+    expect(result.data?.responses).toEqual([
+      { signedTransaction: "signed:unsigned-cancel-tx-1" },
+      { signedTransaction: "signed:unsigned-cancel-tx-2" },
+    ]);
+  });
 });

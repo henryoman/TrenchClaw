@@ -4,6 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
+import type { RuntimeActor } from "../../../../ai/runtime/types/context";
 import {
   assertProtectedWriteAllowed,
   assertWithinBrainProtectedDirectory,
@@ -182,6 +183,19 @@ interface CreateWalletsOutput {
   walletGroup?: string;
 }
 
+interface PlannedWalletCreation {
+  walletId: string;
+  walletName: string;
+  keypairFilePath: string;
+  walletLabelFilePath: string;
+}
+
+interface PlannedWalletGroup {
+  walletGroup: string;
+  outputDirectory: string;
+  walletPlans: PlannedWalletCreation[];
+}
+
 const toDefaultWalletName = (index: number): string => `${DEFAULT_WALLET_NAME_PREFIX}${String(index).padStart(3, "0")}`;
 
 const normalizeLegacyWalletNames = (input: LegacyCreateWalletsInput): string[] => {
@@ -237,7 +251,7 @@ const createFilesystemWalletKeypair = async (): Promise<{
   };
 };
 
-const resolveNextWalletFilePath = async (outputDirectory: string): Promise<string> => {
+const resolveNextWalletFilePaths = async (outputDirectory: string, count: number): Promise<string[]> => {
   const entries = await readdir(outputDirectory, { withFileTypes: true }).catch(() => []);
   const usedNumericIndexes = new Set<number>();
   let existingWalletFileCount = 0;
@@ -253,17 +267,84 @@ const resolveNextWalletFilePath = async (outputDirectory: string): Promise<strin
     }
   }
 
-  if (existingWalletFileCount >= MAX_WALLETS_PER_GROUP) {
+  if (existingWalletFileCount + count > MAX_WALLETS_PER_GROUP) {
     throw new Error(`Wallet group directory already contains the maximum of ${MAX_WALLETS_PER_GROUP} wallet files`);
   }
 
+  const plannedPaths: string[] = [];
   for (let index = 0; index < MAX_WALLETS_PER_GROUP; index += 1) {
     if (!usedNumericIndexes.has(index)) {
-      return path.join(outputDirectory, `wallet_${String(index).padStart(3, "0")}.json`);
+      plannedPaths.push(path.join(outputDirectory, `wallet_${String(index).padStart(3, "0")}.json`));
+      if (plannedPaths.length === count) {
+        return plannedPaths;
+      }
     }
   }
 
   throw new Error(`No wallet file slots remain in ${outputDirectory}`);
+};
+
+const planWalletGroup = async (
+  actor: RuntimeActor,
+  groupInput: NormalizedCreateWalletsInput["groups"][number],
+): Promise<PlannedWalletGroup> => {
+  const outputDirectory = resolveWalletGroupDirectoryPath(groupInput.walletGroup);
+  assertWithinBrainProtectedDirectory(outputDirectory);
+  await assertProtectedWriteAllowed({ actor, targetPath: outputDirectory, operation: "create wallets" });
+  await Bun.$`mkdir -p ${outputDirectory}`.quiet();
+
+  const walletNames = groupInput.walletNames ?? [];
+  if (walletNames.length > MAX_WALLETS_PER_GROUP) {
+    throw new Error(`Wallet group "${groupInput.walletGroup}" exceeds the maximum of ${MAX_WALLETS_PER_GROUP} wallets`);
+  }
+
+  const keypairFilePaths = await resolveNextWalletFilePaths(outputDirectory, walletNames.length);
+  const walletPlans = keypairFilePaths.map((keypairFilePath, index) => {
+    const walletName = walletNames[index]!;
+    return {
+      walletId: toWalletId(groupInput.walletGroup, walletName),
+      walletName,
+      keypairFilePath,
+      walletLabelFilePath: resolveWalletLabelFilePath(keypairFilePath),
+    };
+  });
+
+  const existingTargets = await Promise.all(
+    walletPlans.map(async (walletPlan) => ({
+      ...walletPlan,
+      keypairExists: await Bun.file(walletPlan.keypairFilePath).exists(),
+      walletLabelExists: await Bun.file(walletPlan.walletLabelFilePath).exists(),
+    })),
+  );
+  const existingKeypairPath = existingTargets.find((walletPlan) => walletPlan.keypairExists)?.keypairFilePath;
+  if (existingKeypairPath) {
+    throw new Error(`Refusing to overwrite existing wallet file: ${existingKeypairPath}`);
+  }
+  const existingWalletLabelPath = existingTargets.find((walletPlan) => walletPlan.walletLabelExists)?.walletLabelFilePath;
+  if (existingWalletLabelPath) {
+    throw new Error(`Refusing to overwrite existing wallet label file: ${existingWalletLabelPath}`);
+  }
+
+  await Promise.all(
+    walletPlans.flatMap((walletPlan) => [
+      assertProtectedWriteAllowed({
+        actor,
+        targetPath: walletPlan.keypairFilePath,
+        operation: "write keypair file",
+      }),
+      assertProtectedWriteAllowed({
+        actor,
+        targetPath: walletPlan.walletLabelFilePath,
+        operation: "write wallet label file",
+      }),
+    ]),
+  );
+
+  return {
+    walletGroup: groupInput.walletGroup,
+    outputDirectory,
+    walletPlans,
+  };
 };
 
 export const createWalletsAction: Action<unknown, CreateWalletsOutput> = {
@@ -276,6 +357,7 @@ export const createWalletsAction: Action<unknown, CreateWalletsOutput> = {
 
     try {
       const input = normalizeCreateWalletsInput(rawInput);
+      const actor = _ctx.actor ?? "system";
       const wallets: CreatedWallet[] = [];
       const files: string[] = [];
       const walletLibraryFilePath = resolveWalletLibraryFilePath();
@@ -286,96 +368,73 @@ export const createWalletsAction: Action<unknown, CreateWalletsOutput> = {
       assertWithinBrainProtectedDirectory(walletLibraryFilePath);
 
       await assertProtectedWriteAllowed({
-        actor: _ctx.actor,
+        actor,
         targetPath: keypairRootPath,
         operation: "prepare wallet keypair root directory",
       });
       await assertProtectedWriteAllowed({
-        actor: _ctx.actor,
+        actor,
         targetPath: walletLibraryFilePath,
         operation: "append wallet library",
       });
 
       await Bun.$`mkdir -p ${path.dirname(walletLibraryFilePath)}`.quiet();
-      const libraryEntries: ManagedWalletLibraryEntry[] = [];
-      for (const groupInput of input.groups) {
-        const outputDirectory = resolveWalletGroupDirectoryPath(groupInput.walletGroup);
-        assertWithinBrainProtectedDirectory(outputDirectory);
-        await assertProtectedWriteAllowed({ actor: _ctx.actor, targetPath: outputDirectory, operation: "create wallets" });
+      const groupPlans = await Promise.all(input.groups.map((groupInput) => planWalletGroup(actor, groupInput)));
+      groupDirectories.push(
+        ...groupPlans.map((groupPlan) => ({
+          walletGroup: groupPlan.walletGroup,
+          directoryPath: groupPlan.outputDirectory,
+        })),
+      );
 
-        await Bun.$`mkdir -p ${outputDirectory}`.quiet();
-        groupDirectories.push({
-          walletGroup: groupInput.walletGroup,
-          directoryPath: outputDirectory,
-        });
+      const createdWallets = await Promise.all(
+        groupPlans.flatMap((groupPlan) =>
+          groupPlan.walletPlans.map(async (walletPlan) => {
+            const generated = await createFilesystemWalletKeypair();
+            await Bun.write(walletPlan.keypairFilePath, `${JSON.stringify(generated.secretKeyBytes)}\n`);
 
-        const walletNames = groupInput.walletNames ?? [];
-        if (walletNames.length > MAX_WALLETS_PER_GROUP) {
-          throw new Error(`Wallet group "${groupInput.walletGroup}" exceeds the maximum of ${MAX_WALLETS_PER_GROUP} wallets`);
-        }
+            const createdAt = new Date().toISOString();
+            const walletLabel: WalletLabelFile = {
+              version: 1,
+              walletId: walletPlan.walletId,
+              walletGroup: groupPlan.walletGroup,
+              walletName: walletPlan.walletName,
+              address: generated.address,
+              walletFileName: path.basename(walletPlan.keypairFilePath),
+              createdAt,
+              updatedAt: createdAt,
+            };
+            await Bun.write(walletPlan.walletLabelFilePath, `${JSON.stringify(walletLabel, null, 2)}\n`);
 
-        for (const wallet of walletNames) {
-          const walletId = toWalletId(groupInput.walletGroup, wallet);
-          const keypairFilePath = await resolveNextWalletFilePath(outputDirectory);
-          const walletLabelFilePath = resolveWalletLabelFilePath(keypairFilePath);
+            return {
+              libraryEntry: {
+                walletId: walletPlan.walletId,
+                walletGroup: groupPlan.walletGroup,
+                walletName: walletPlan.walletName,
+                address: generated.address,
+                keypairFilePath: walletPlan.keypairFilePath,
+                walletLabelFilePath: walletPlan.walletLabelFilePath,
+                createdAt,
+                updatedAt: createdAt,
+              } satisfies ManagedWalletLibraryEntry,
+              filePath: walletPlan.keypairFilePath,
+              wallet: {
+                walletId: walletPlan.walletId,
+                walletGroup: groupPlan.walletGroup,
+                walletName: walletPlan.walletName,
+                address: generated.address,
+                publicKeyBytes: Array.from(generated.publicKeyBytes),
+                keypairFilePath: walletPlan.keypairFilePath,
+                walletLabelFilePath: walletPlan.walletLabelFilePath,
+              } satisfies CreatedWallet,
+            };
+          }),
+        ),
+      );
 
-          if (await Bun.file(keypairFilePath).exists()) {
-            throw new Error(`Refusing to overwrite existing wallet file: ${keypairFilePath}`);
-          }
-          if (await Bun.file(walletLabelFilePath).exists()) {
-            throw new Error(`Refusing to overwrite existing wallet label file: ${walletLabelFilePath}`);
-          }
-
-          await assertProtectedWriteAllowed({
-            actor: _ctx.actor,
-            targetPath: keypairFilePath,
-            operation: "write keypair file",
-          });
-          await assertProtectedWriteAllowed({
-            actor: _ctx.actor,
-            targetPath: walletLabelFilePath,
-            operation: "write wallet label file",
-          });
-
-          const generated = await createFilesystemWalletKeypair();
-          await Bun.write(keypairFilePath, `${JSON.stringify(generated.secretKeyBytes)}\n`);
-
-          const createdAt = new Date().toISOString();
-          const walletLabel: WalletLabelFile = {
-            version: 1,
-            walletId,
-            walletGroup: groupInput.walletGroup,
-            walletName: wallet,
-            address: generated.address,
-            walletFileName: path.basename(keypairFilePath),
-            createdAt,
-            updatedAt: createdAt,
-          };
-          await Bun.write(walletLabelFilePath, `${JSON.stringify(walletLabel, null, 2)}\n`);
-
-          libraryEntries.push({
-            walletId,
-            walletGroup: groupInput.walletGroup,
-            walletName: wallet,
-            address: generated.address,
-            keypairFilePath,
-            walletLabelFilePath,
-            createdAt,
-            updatedAt: createdAt,
-          });
-
-          files.push(keypairFilePath);
-          wallets.push({
-            walletId,
-            walletGroup: groupInput.walletGroup,
-            walletName: wallet,
-            address: generated.address,
-            publicKeyBytes: Array.from(generated.publicKeyBytes),
-            keypairFilePath,
-            walletLabelFilePath,
-          });
-        }
-      }
+      const libraryEntries = createdWallets.map((walletPlan) => walletPlan.libraryEntry);
+      files.push(...createdWallets.map((walletPlan) => walletPlan.filePath));
+      wallets.push(...createdWallets.map((walletPlan) => walletPlan.wallet));
 
       await appendManagedWalletLibraryEntries(walletLibraryFilePath, libraryEntries);
 
