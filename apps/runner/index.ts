@@ -452,8 +452,6 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE =
     process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE ||
     path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
-  process.env.TRENCHCLAW_VAULT_FILE =
-    process.env.TRENCHCLAW_VAULT_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/vault.json");
   process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
     process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/vault.template.json");
 };

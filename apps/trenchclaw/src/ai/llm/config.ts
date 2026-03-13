@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { loadAiSettings, LLM_PROVIDERS, type LlmProvider } from "./ai-settings-file";
-import { loadVaultLayers, readVaultString } from "./vault-file";
+import { loadVaultData, readVaultString } from "./vault-file";
 
 export interface LlmProviderConfig {
   provider: LlmProvider;
@@ -26,10 +26,10 @@ export const resolveLlmProviderConfigFromEnv = (): LlmProviderConfig | null => {
 
 export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderConfig | null> => {
   const aiSettingsPayload = await loadAiSettings();
-  const { mergedVaultData } = await loadVaultLayers();
+  const { vaultData } = await loadVaultData();
   const tryProvider = (provider: LlmProvider): LlmProviderConfig | null => {
     if (provider === "openai") {
-      const apiKey = readVaultString(mergedVaultData, "llm/openai/api-key");
+      const apiKey = readVaultString(vaultData, "llm/openai/api-key");
       if (!apiKey) {
         return null;
       }
@@ -42,7 +42,7 @@ export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderCo
     }
 
     if (provider === "openrouter") {
-      const apiKey = readVaultString(mergedVaultData, "llm/openrouter/api-key");
+      const apiKey = readVaultString(vaultData, "llm/openrouter/api-key");
       if (!apiKey) {
         return null;
       }
@@ -54,7 +54,7 @@ export const resolveLlmProviderConfigFromVault = async (): Promise<LlmProviderCo
       };
     }
 
-    const apiKey = readVaultString(mergedVaultData, "llm/openai-compatible/api-key");
+    const apiKey = readVaultString(vaultData, "llm/openai-compatible/api-key");
     const baseURL = aiSettingsPayload.settings.baseURL;
     if (!apiKey || !baseURL) {
       return null;
@@ -75,13 +75,13 @@ export const resolveLlmProviderConfig = async (): Promise<LlmProviderConfig | nu
 };
 
 export const resolveGatewayConfig = async (): Promise<{ apiKey: string; model: string } | null> => {
-  const { mergedVaultData } = await loadVaultLayers();
-  const apiKey = readVaultString(mergedVaultData, "llm/gateway/api-key");
+  const { vaultData } = await loadVaultData();
+  const apiKey = readVaultString(vaultData, "llm/gateway/api-key");
   if (!apiKey) {
     return null;
   }
   return {
     apiKey,
-    model: readVaultString(mergedVaultData, "llm/gateway/model") ?? "anthropic/claude-sonnet-4.5",
+    model: readVaultString(vaultData, "llm/gateway/model") ?? "anthropic/claude-sonnet-4.5",
   };
 };

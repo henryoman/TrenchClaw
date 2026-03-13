@@ -14,7 +14,7 @@ This file explains where runtime configuration comes from right now.
   - temperature
   - max output tokens
 
-- `.runtime-state/runtime/vault.json`
+- `.runtime-state/instances/<id>/vault.json`
   - secrets only
   - API keys
   - RPC URLs
@@ -40,7 +40,7 @@ The runtime resolves settings in this order:
 ## Ownership Rules
 
 - `ai.json` decides provider and model
-- `vault.json` supplies secrets for the chosen provider
+- the active instance vault supplies secrets for the chosen provider
 - runtime-owned protected settings win over agent overlays
 - instance trading settings only affect the active instance
 

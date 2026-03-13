@@ -1,6 +1,6 @@
 # Runtime State Audit
 
-This document explains which ignored/generated paths are part of the real TrenchClaw contract, which ones are cache or local noise, what must exist for a fresh install, and how to decide whether state belongs to the whole runtime or to a single instance.
+This document explains which ignored/generated paths are part of the TrenchClaw contract, which ones are cache or local noise, what must exist for a fresh install, and what is shared across all instances versus scoped to one instance.
 
 ## Ignore Audit
 
@@ -39,7 +39,6 @@ Files created eagerly or on first access:
 
 - `.runtime-state/runtime/settings.json`
 - `.runtime-state/runtime/ai.json`
-- `.runtime-state/runtime/vault.json`
 - `.runtime-state/generated/workspace-context.md`
 - `.runtime-state/generated/knowledge-manifest.md`
 
@@ -57,6 +56,7 @@ Files created lazily by normal use:
 For a newly created or first-signed-in instance `NN`, the runtime should ensure:
 
 - `.runtime-state/instances/NN/instance.json`
+- `.runtime-state/instances/NN/vault.json`
 - `.runtime-state/instances/NN/keypairs/`
 - `.runtime-state/instances/NN/settings/`
 - `.runtime-state/instances/NN/settings/trading.json`
@@ -65,31 +65,30 @@ Created lazily later:
 
 - `.runtime-state/instances/NN/keypairs/wallet-library.jsonl`
 - `.runtime-state/instances/NN/keypairs/<group>/...`
-- any future per-instance vault or workspace paths
+- any future per-instance workspace or notes paths
 
 ## Current Ownership Model
 
-### Runtime-global today
+### Runtime-global
 
 - `.runtime-state/db/`
 - `.runtime-state/generated/`
 - `.runtime-state/runtime/settings.json`
 - `.runtime-state/runtime/ai.json`
-- `.runtime-state/runtime/vault.json`
 - `.runtime-state/runtime/workspace/`
 
-### Per-instance today
+### Per-instance
 
 - `.runtime-state/instances/<id>/instance.json`
+- `.runtime-state/instances/<id>/vault.json`
 - `.runtime-state/instances/<id>/settings/trading.json`
 - `.runtime-state/instances/<id>/keypairs/`
 - wallet libraries and managed wallet files under the instance keypair root
 
-### Mixed behavior worth fixing over time
+### Mixed behavior worth revisiting later
 
 - The SQLite runtime DB is global, but many records are logically instance-scoped via `instanceId`.
-- Runtime workspace is global, even though user workflows often feel instance-specific.
-- Vault is global, even though some secrets are harmless to share and others clearly are not.
+- Runtime workspace is global, even though some workflows may later want per-instance workspaces.
 
 ## Rule Of Thumb
 
@@ -104,39 +103,63 @@ That means:
 
 - generated prompt/context artifacts
 - SQLite/system/session caches
-- provider defaults that are identical for every instance
-- read-only or low-risk infra credentials when all instances intentionally share them
+- knowledge manifests and default knowledge files
+- runtime-wide workspace artifacts that are intentionally shared across all instances
 
 ### Make per-instance
 
+- every vault secret
 - wallet private keys and signer material
 - trading preferences and execution defaults
-- strategy files that describe what this instance should do
-- long-lived notes or workspace outputs that are meant to belong to one bot/operator
-- any secret that can spend money, sign transactions, impersonate an operator, or materially change external side effects
+- strategy files that describe what one instance should do
+- long-lived notes or workspace outputs that belong to one bot/operator
+- any state that can spend money, sign transactions, impersonate an operator, or materially change external side effects
 
-## Vault Recommendation
+## Vault Rule
 
-Best default model:
+Vaults are per-instance only.
 
-1. Keep a shared runtime vault for infra defaults.
-2. Add an optional per-instance vault overlay at `.runtime-state/instances/<id>/vault.json`.
-3. Resolve secrets in this order: instance vault -> runtime vault -> checked-in template defaults.
+- Active/default vault path in workspace mode: `.runtime-state/instances/<id>/vault.json`
+- No shared runtime vault fallback
+- No shared secret overlay
+- `TRENCHCLAW_VAULT_FILE` remains an explicit override for tests and controlled manual runs only
 
-Practical split:
+Practical consequence:
 
-- Shared vault: LLM provider keys, default RPC provider keys, read-only analytics/API keys.
-- Per-instance vault: ultra signer keys, wallet export/import secrets, any trading identity that should not leak across instances, any key that can spend or commit.
+- LLM keys are per-instance
+- RPC provider keys are per-instance
+- Jupiter keys are per-instance
+- signer keys are per-instance
 
-If a key would be dangerous to reuse silently across instances, it should not live only in the shared vault.
+If you want many instances to share the same secret, duplicate it intentionally. The runtime should not do that implicitly.
 
-## Next Refactor Order
+## New Instance Contract
 
-Lowest-risk next steps:
+A fresh instance must be able to sign in and work without manual file scaffolding. The runtime now creates these automatically:
 
-1. Keep generated/context/db state global.
-2. Keep wallet storage per-instance.
-3. Introduce per-instance vault overlay without removing the shared runtime vault.
-4. Decide whether `runtime/workspace/` should become `instances/<id>/workspace/` or stay shared with explicit subfolders.
+- `instances/<id>/vault.json`
+- `instances/<id>/keypairs/`
+- `instances/<id>/settings/`
+- `instances/<id>/settings/trading.json`
 
-Do not flip everything to per-instance at once. Derived files and caches are cheaper to share. Spend authority and behavior are not.
+The remaining shared runtime bootstrap contract stays global:
+
+- generated prompt files
+- runtime DB roots
+- runtime settings
+- AI provider/model settings
+- shared knowledge manifests and shared default knowledge
+
+## Bloat To Remove Or Avoid
+
+Current avoidable overhead:
+
+- stale `dist/release*` output trees
+- compatibility code that tries to merge shared and per-instance vaults
+- docs/prompts that still describe `.runtime-state/runtime/vault.json`
+
+Do not add back:
+
+- shared secret fallback paths
+- overlay merge logic for vaults
+- duplicate vault parsing implementations in adapters or GUI domains

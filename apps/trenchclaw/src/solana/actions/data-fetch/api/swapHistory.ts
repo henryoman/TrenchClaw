@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import { createHelius } from "helius-sdk";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import { loadVaultLayers, readVaultString } from "../../../../ai/llm/vault-file";
+import { loadVaultData, readVaultString } from "../../../../ai/llm/vault-file";
 
 const HELIUS_SWAP_HISTORY_LIMIT = 20;
 const HELIUS_CONTINUATION_RETRY_LIMIT = 10;
@@ -147,8 +146,8 @@ const pacificDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 const resolveHeliusApiKey = async (): Promise<string> => {
-  const { mergedVaultData } = await loadVaultLayers();
-  const apiKey = readVaultString(mergedVaultData, "rpc/helius/api-key");
+  const { vaultData } = await loadVaultData();
+  const apiKey = readVaultString(vaultData, "rpc/helius/api-key");
   if (apiKey) {
     return apiKey;
   }

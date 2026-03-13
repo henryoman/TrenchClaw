@@ -39,11 +39,11 @@ Important directories:
 - `.runtime-state/runtime/`
   - `ai.json`
   - `settings.json`
-  - `vault.json`
   - `workspace/`
 
 - `.runtime-state/instances/<id>/`
   - `instance.json`
+  - `vault.json`
   - `settings/trading.json`
   - `keypairs/`
 

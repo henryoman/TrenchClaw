@@ -5,7 +5,7 @@ import {
   resolveRequestId,
   resolveSwapTransaction,
 } from "../ultra/parsing";
-import { loadVaultLayers, readVaultString } from "../../../ai/llm/vault-file";
+import { loadVaultData, readVaultString } from "../../../ai/llm/vault-file";
 
 const DEFAULT_JUPITER_ULTRA_BASE_URL = "https://api.jup.ag/ultra/v1";
 
@@ -173,8 +173,8 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
 };
 
 export const getJupiterUltraApiKeyFromVault = async (): Promise<string | undefined> => {
-  const { mergedVaultData } = await loadVaultLayers();
-  return readVaultString(mergedVaultData, "integrations/jupiter/api-key");
+  const { vaultData } = await loadVaultData();
+  return readVaultString(vaultData, "integrations/jupiter/api-key");
 };
 
 export const resolveJupiterUltraApiKey = async (): Promise<string | undefined> => {

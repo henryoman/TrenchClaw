@@ -10,9 +10,8 @@ import {
   type Transaction,
   type TransactionWithBlockhashLifetime,
 } from "@solana/transactions";
-import { loadVaultLayers, readVaultString } from "../../../ai/llm/vault-file";
+import { loadVaultData, readVaultString } from "../../../ai/llm/vault-file";
 import { resolveRequiredRpcUrl } from "../rpc/urls";
-import type { LoadedVaultLayers } from "../../../ai/llm/vault-file";
 
 export interface UltraSignerAdapter {
   address: string;
@@ -40,26 +39,26 @@ export const createUltraSignerAdapter = async (config: {
   };
 };
 
-const resolveUltraSignerConfigFromVault = (vaultLayers: LoadedVaultLayers): {
+const resolveUltraSignerConfigFromVault = (vaultData: Record<string, unknown>): {
   rawKey: string;
   encoding: string;
 } | null => {
-  const rawKey = readVaultString(vaultLayers.mergedVaultData, "wallet/ultra-signer/private-key");
+  const rawKey = readVaultString(vaultData, "wallet/ultra-signer/private-key");
   if (!rawKey) {
     return null;
   }
 
   return {
     rawKey,
-    encoding: readVaultString(vaultLayers.mergedVaultData, "wallet/ultra-signer/private-key-encoding") ?? "base64",
+    encoding: readVaultString(vaultData, "wallet/ultra-signer/private-key-encoding") ?? "base64",
   };
 };
 
 export const createUltraSignerAdapterFromVault = async (input: {
   rpcUrl?: string;
 } = {}): Promise<UltraSignerAdapter | undefined> => {
-  const vaultLayers = await loadVaultLayers();
-  const signerConfig = resolveUltraSignerConfigFromVault(vaultLayers);
+  const { vaultData } = await loadVaultData();
+  const signerConfig = resolveUltraSignerConfigFromVault(vaultData);
   if (!signerConfig) {
     return undefined;
   }

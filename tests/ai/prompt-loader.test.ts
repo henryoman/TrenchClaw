@@ -10,6 +10,7 @@ const ENV_KEYS = [
   "TRENCHCLAW_WORKSPACE_DIR",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
   "TRENCHCLAW_VAULT_FILE",
+  "TRENCHCLAW_ACTIVE_INSTANCE_ID",
 ] as const;
 
 const initialEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -28,8 +29,9 @@ afterEach(() => {
 
 describe("loadSystemPromptPayload", () => {
   test("builds the default primary payload from the manifest", async () => {
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = "apps/trenchclaw/.runtime-state/user/settings.json";
-    process.env.TRENCHCLAW_VAULT_FILE = "apps/trenchclaw/.runtime-state/user/vault.json";
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = "apps/trenchclaw/.runtime-state/runtime/settings.json";
+    process.env.TRENCHCLAW_VAULT_FILE = "apps/trenchclaw/.runtime-state/instances/01/vault.json";
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
 
     const payload = await loadSystemPromptPayload();
 
@@ -58,16 +60,15 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("Available Knowledge Manifest");
     expect(payload.systemPrompt).toContain("runtime-reference.md");
     expect(payload.systemPrompt).not.toContain("\"actionName\": \"checkSolBalance\"");
-    expect(
-      payload.systemPrompt.includes("\"primaryRpc\": \"helius\"") ||
-        payload.systemPrompt.includes("Runtime settings could not be loaded:"),
-    ).toBe(true);
+    expect(payload.systemPrompt).toContain("- active instance: 01");
+    expect(payload.systemPrompt).toContain("- vault: apps/trenchclaw/.runtime-state/instances/01/vault.json");
     expect(payload.promptFiles.length).toBe(3);
   });
 
   test("resolves explicit primary mode", async () => {
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = "apps/trenchclaw/.runtime-state/user/settings.json";
-    process.env.TRENCHCLAW_VAULT_FILE = "apps/trenchclaw/.runtime-state/user/vault.json";
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = "apps/trenchclaw/.runtime-state/runtime/settings.json";
+    process.env.TRENCHCLAW_VAULT_FILE = "apps/trenchclaw/.runtime-state/instances/01/vault.json";
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
 
     const payload = await loadSystemPromptPayload("primary");
 

@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import type {
   GuiDeleteSecretRequest,
   GuiDeleteSecretResponse,
@@ -11,9 +11,9 @@ import type {
   GuiUpsertSecretResponse,
   GuiVaultResponse,
 } from "@trenchclaw/types";
-import { ensureVaultFileExists, parseVaultJsonText } from "../../../ai/llm/vault-file";
-import { assertProtectedNoReadWritePath } from "../../security/write-scope";
-import { NO_READ_DIRECTORY, PUBLIC_RPC_OPTIONS, SECRET_OPTIONS, VAULT_FILE_PATH, VAULT_TEMPLATE_FILE_PATH } from "../constants";
+import { ensureVaultFileExists, parseVaultJsonText, resolveRequiredVaultFile } from "../../../ai/llm/vault-file";
+import { assertInstanceSystemWritePath } from "../../security/write-scope";
+import { PUBLIC_RPC_OPTIONS, SECRET_OPTIONS } from "../constants";
 import { isRecord } from "../parsers";
 import type { RuntimeGuiDomainContext } from "../contracts";
 
@@ -97,20 +97,29 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
   };
 };
 
-export const getVault = async (): Promise<GuiVaultResponse> => {
-  assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
-  await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
-  const created = await ensureVaultFileExists({
-    vaultPath: VAULT_FILE_PATH,
-    templatePath: VAULT_TEMPLATE_FILE_PATH,
+const resolveManagedVaultTarget = async () => {
+  const resolved = resolveRequiredVaultFile();
+  if (!resolved.explicitVaultPath) {
+    assertInstanceSystemWritePath(resolved.vaultPath, "access instance vault");
+  }
+  const ensured = await ensureVaultFileExists({
+    vaultPath: resolved.vaultPath,
+    templatePath: resolved.templatePath,
   });
-  assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
-  const content = await readFile(VAULT_FILE_PATH, "utf8");
+  return {
+    ...resolved,
+    initializedFromTemplate: ensured.initializedFromTemplate,
+  };
+};
+
+export const getVault = async (): Promise<GuiVaultResponse> => {
+  const target = await resolveManagedVaultTarget();
+  const content = await readFile(target.vaultPath, "utf8");
   parseVaultJsonText(content);
   return {
-    filePath: VAULT_FILE_PATH,
-    templatePath: VAULT_TEMPLATE_FILE_PATH,
-    initializedFromTemplate: created.initializedFromTemplate,
+    filePath: target.vaultPath,
+    templatePath: target.templatePath,
+    initializedFromTemplate: target.initializedFromTemplate,
     content,
   };
 };
@@ -119,38 +128,26 @@ export const updateVault = async (
   context: RuntimeGuiDomainContext,
   payload: GuiUpdateVaultRequest,
 ): Promise<GuiUpdateVaultResponse> => {
-  assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
-  await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
-  await ensureVaultFileExists({
-    vaultPath: VAULT_FILE_PATH,
-    templatePath: VAULT_TEMPLATE_FILE_PATH,
-  });
+  const target = await resolveManagedVaultTarget();
   const parsed = parseVaultJsonText(payload.content);
   const serialized = `${JSON.stringify(parsed, null, 2)}\n`;
-  assertProtectedNoReadWritePath(VAULT_FILE_PATH, "write vault file");
-  await writeFile(VAULT_FILE_PATH, serialized, { encoding: "utf8", mode: 0o600 });
+  await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
   context.addActivity("runtime", "Vault updated");
   return {
-    filePath: VAULT_FILE_PATH,
+    filePath: target.vaultPath,
     savedAt: new Date().toISOString(),
   };
 };
 
 export const getSecrets = async (): Promise<GuiSecretsResponse> => {
-  assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
-  await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
-  const created = await ensureVaultFileExists({
-    vaultPath: VAULT_FILE_PATH,
-    templatePath: VAULT_TEMPLATE_FILE_PATH,
-  });
-  assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
-  const content = await readFile(VAULT_FILE_PATH, "utf8");
+  const target = await resolveManagedVaultTarget();
+  const content = await readFile(target.vaultPath, "utf8");
   const vaultData = parseVaultJsonText(content);
   const entries = SECRET_OPTIONS_INTERNAL.map((option) => toSecretEntry(vaultData, option));
   return {
-    filePath: VAULT_FILE_PATH,
-    templatePath: VAULT_TEMPLATE_FILE_PATH,
-    initializedFromTemplate: created.initializedFromTemplate,
+    filePath: target.vaultPath,
+    templatePath: target.templatePath,
+    initializedFromTemplate: target.initializedFromTemplate,
     options: SECRET_OPTIONS,
     entries,
     publicRpcOptions: PUBLIC_RPC_OPTIONS,
@@ -161,20 +158,14 @@ export const upsertSecret = async (
   context: RuntimeGuiDomainContext,
   payload: GuiUpsertSecretRequest,
 ): Promise<GuiUpsertSecretResponse> => {
-  assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
-  await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
-  await ensureVaultFileExists({
-    vaultPath: VAULT_FILE_PATH,
-    templatePath: VAULT_TEMPLATE_FILE_PATH,
-  });
+  const target = await resolveManagedVaultTarget();
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
   if (!option) {
     throw new Error(`Unsupported secret option: ${payload.optionId}`);
   }
 
-  assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
-  const content = await readFile(VAULT_FILE_PATH, "utf8");
+  const content = await readFile(target.vaultPath, "utf8");
   const vaultData = parseVaultJsonText(content);
   const trimmedValue = payload.value.trim();
   setByPath(vaultData, option.pathSegments, trimmedValue);
@@ -195,13 +186,12 @@ export const upsertSecret = async (
   }
 
   const serialized = `${JSON.stringify(vaultData, null, 2)}\n`;
-  assertProtectedNoReadWritePath(VAULT_FILE_PATH, "write vault file");
-  await writeFile(VAULT_FILE_PATH, serialized, { encoding: "utf8", mode: 0o600 });
+  await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
 
   const entry = toSecretEntry(vaultData, option);
   context.addActivity("runtime", `Secret updated: ${entry.label}`);
   return {
-    filePath: VAULT_FILE_PATH,
+    filePath: target.vaultPath,
     savedAt: new Date().toISOString(),
     entry,
   };
@@ -211,20 +201,14 @@ export const deleteSecret = async (
   context: RuntimeGuiDomainContext,
   payload: GuiDeleteSecretRequest,
 ): Promise<GuiDeleteSecretResponse> => {
-  assertProtectedNoReadWritePath(NO_READ_DIRECTORY, "initialize vault directory");
-  await mkdir(NO_READ_DIRECTORY, { recursive: true, mode: 0o700 });
-  await ensureVaultFileExists({
-    vaultPath: VAULT_FILE_PATH,
-    templatePath: VAULT_TEMPLATE_FILE_PATH,
-  });
+  const target = await resolveManagedVaultTarget();
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
   if (!option) {
     throw new Error(`Unsupported secret option: ${payload.optionId}`);
   }
 
-  assertProtectedNoReadWritePath(VAULT_FILE_PATH, "read vault file");
-  const content = await readFile(VAULT_FILE_PATH, "utf8");
+  const content = await readFile(target.vaultPath, "utf8");
   const vaultData = parseVaultJsonText(content);
   setByPath(vaultData, option.pathSegments, "");
   if (option.supportsPublicRpc) {
@@ -233,11 +217,10 @@ export const deleteSecret = async (
   }
 
   const serialized = `${JSON.stringify(vaultData, null, 2)}\n`;
-  assertProtectedNoReadWritePath(VAULT_FILE_PATH, "write vault file");
-  await writeFile(VAULT_FILE_PATH, serialized, { encoding: "utf8", mode: 0o600 });
+  await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
   context.addActivity("runtime", `Secret cleared: ${option.label}`);
   return {
-    filePath: VAULT_FILE_PATH,
+    filePath: target.vaultPath,
     savedAt: new Date().toISOString(),
   };
 };
