@@ -4,25 +4,6 @@
       "http-url": "",
       "source": "custom",
       "public-id": ""
-    },
-    "helius": {
-      "http-url": "",
-      "ws-url": "",
-      "api-key": ""
-    },
-    "quicknode": {
-      "http-url": "",
-      "ws-url": "",
-      "api-key": ""
-    },
-    "solana-vibestation": {
-      "api-key": ""
-    },
-    "chainstack": {
-      "api-key": ""
-    },
-    "temporal": {
-      "api-key": ""
     }
   },
   "llm": {
@@ -39,12 +20,6 @@
     },
     "jupiter": {
       "api-key": ""
-    }
-  },
-  "wallet": {
-    "ultra-signer": {
-      "private-key": "",
-      "private-key-encoding": "base64"
     }
   }
 }

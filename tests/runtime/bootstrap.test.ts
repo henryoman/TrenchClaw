@@ -151,6 +151,7 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_PROFILE",
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_SETTINGS_USER_FILE",
+  "TRENCHCLAW_USER_SETTINGS_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
   "TRENCHCLAW_BOOT_REFRESH_CONTEXT",
   "TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE",
@@ -248,6 +249,8 @@ network:
   rpcUrl: \${RPC_URL}
   wsUrl: \${WS_URL}
 `);
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
 
     const settings = await loadRuntimeSettings("dangerous");
     expect(settings.network.rpc.endpoints[0]?.url).toBe("${RPC_URL}");

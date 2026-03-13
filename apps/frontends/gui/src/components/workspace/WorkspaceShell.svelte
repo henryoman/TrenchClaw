@@ -29,7 +29,7 @@
   .workspace {
     min-height: 0;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 7fr 3fr;
     grid-template-rows: 1fr;
     gap: var(--tc-space-2);
   }

@@ -77,7 +77,8 @@ No active wallet instance is selected, so no wallet variables are loaded for thi
         "- WALLET_LIBRARY_STATUS=missing",
         `- WALLET_LIBRARY_EXPECTED_FILE_NAME=${DEFAULT_WALLET_LIBRARY_FILE_NAME}`,
         `- WALLET_DISCOVERY_FALLBACK=label-files (${inferredEntries.length} wallets discovered)`,
-        "- For questions about SOL balance of each managed wallet, call `getManagedWalletSolBalances` instead of using workspaceBash.",
+        "- For questions about full holdings or token balances of managed wallets, call `getManagedWalletContents` instead of using workspaceBash.",
+        "- For SOL-only balance summaries of managed wallets, call `getManagedWalletSolBalances`.",
         "",
         "### Wallet Alias Variables",
         ...inferredEntries.flatMap((entry) => {
@@ -157,7 +158,8 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     `- WALLET_COUNT=${entries.length}`,
     `- WALLET_GROUPS=${groups.join(", ") || "(none)"}`,
     `- WALLET_INVALID_LIBRARY_LINES=${invalidLineCount}`,
-    "- For questions about SOL balance of each managed wallet, call `getManagedWalletSolBalances` instead of using workspaceBash.",
+    "- For questions about full holdings or token balances of managed wallets, call `getManagedWalletContents` instead of using workspaceBash.",
+    "- For SOL-only balance summaries of managed wallets, call `getManagedWalletSolBalances`.",
   ];
 
   lines.push(

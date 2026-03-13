@@ -14,6 +14,7 @@ import {
 import { getSwapHistoryAction } from "../../solana/actions/data-fetch/api/swapHistory";
 import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/mutateInstanceMemory";
 import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
+import { getManagedWalletContentsAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletContents";
 import { getManagedWalletSolBalancesAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
 import { manageRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/manageRuntimeJob";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
@@ -343,6 +344,19 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
         type: "getBundle",
         instanceId: "01",
       },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getManagedWalletContentsAction,
+    description: "Fetch full managed-wallet contents: SOL plus SPL and Token-2022 balances for each wallet.",
+    purpose: "Answer 'what other coins are in our managed wallets' directly without external explorers or shell commands.",
+    tags: ["wallets", "balances", "tokens", "read"],
+    exampleInput: {
+      walletGroup: "practice-wallets",
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,

@@ -2,7 +2,7 @@
   import { onDestroy } from "svelte";
   import { CREATE_NEW_OPTION } from "./config";
   import { APP_BUILD_COMMIT, APP_BUILD_VERSION } from "./config/build-info";
-  import { SAFETY_PROFILE_OPTIONS } from "./config/app-config";
+  import { GUI_QUEUE_PANEL_ENABLED, SAFETY_PROFILE_OPTIONS } from "./config/app-config";
   import {
     ChatPanel,
     CreateInstanceModal,
@@ -188,9 +188,11 @@
     {:else}
       <SchedulePanel jobs={runtime.state.scheduleJobs} />
     {/if}
-    <section class="right-column">
+    <section class={`right-column ${GUI_QUEUE_PANEL_ENABLED ? "queue-enabled" : "summary-expanded"}`}>
       <SolPriceStrip />
-      <QueuePanel jobs={runtime.state.queueJobs} />
+      {#if GUI_QUEUE_PANEL_ENABLED}
+        <QueuePanel jobs={runtime.state.queueJobs} />
+      {/if}
       <SummaryPanel entries={runtime.state.activityEntries} {formatTime} />
     </section>
   </WorkspaceShell>
@@ -214,8 +216,12 @@
   .right-column {
     min-height: 0;
     display: grid;
-    grid-template-rows: minmax(0, 10%) minmax(0, 45%) minmax(0, 45%);
+    grid-template-rows: minmax(0, 10%) minmax(0, 1fr);
     gap: var(--tc-space-2);
+  }
+
+  .right-column.queue-enabled {
+    grid-template-rows: minmax(0, 10%) minmax(0, 45%) minmax(0, 45%);
   }
 
   .chat-init-error {
@@ -233,6 +239,10 @@
 
   @media (max-width: var(--tc-layout-breakpoint)) {
     .right-column {
+      grid-template-rows: auto minmax(280px, 1fr);
+    }
+
+    .right-column.queue-enabled {
       grid-template-rows: auto minmax(280px, 1fr) minmax(280px, 1fr);
     }
   }

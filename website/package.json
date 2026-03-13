@@ -16,7 +16,7 @@
     "check": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check:watch": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
     "typecheck": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "ci": "bun run lint && bun run typecheck && bun run build"
+    "ci": "bun run lint && bun run test && bun run svelte:check && bun run typecheck && bun run build"
   },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",

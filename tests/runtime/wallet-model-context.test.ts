@@ -104,6 +104,7 @@ describe("renderRuntimeWalletPromptContext", () => {
 
     expect(prompt).toContain("WALLET_LIBRARY_STATUS=missing");
     expect(prompt).toContain("WALLET_DISCOVERY_FALLBACK=label-files (2 wallets discovered)");
+    expect(prompt).toContain("getManagedWalletContents");
     expect(prompt).toContain("getManagedWalletSolBalances");
     expect(prompt).toContain("practice-wallets");
     expect(prompt).toContain("DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");

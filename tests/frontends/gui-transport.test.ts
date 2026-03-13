@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { rm } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
@@ -331,6 +332,108 @@ describe("Runtime v1 API", () => {
       } else {
         process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = previous;
       }
+    }
+  });
+
+  test("GET /api/gui/secrets prunes legacy vault defaults while keeping intentional extra RPC providers", async () => {
+    const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+    const instanceId = "97";
+    const instancesRoot = runtimeStatePath("instances");
+    const instancePath = path.join(instancesRoot, instanceId);
+    const vaultPath = path.join(instancePath, "vault.json");
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    try {
+      await rm(instancePath, { recursive: true, force: true });
+      await mkdir(instancePath, { recursive: true });
+      await writeFile(vaultPath, `${JSON.stringify({
+        rpc: {
+          default: {
+            "http-url": "https://api.mainnet-beta.solana.com",
+            source: "public",
+            "public-id": "solana-mainnet-beta",
+          },
+          helius: {
+            "http-url": "https://kept-custom-rpc.example",
+            "ws-url": "wss://kept-custom-rpc.example",
+            "api-key": "custom-helius-key",
+          },
+          quicknode: {
+            "http-url": "",
+            "ws-url": "",
+            "api-key": "",
+          },
+        },
+        llm: {
+          openrouter: {
+            "api-key": "",
+          },
+          gateway: {
+            "api-key": "",
+          },
+        },
+        integrations: {
+          dexscreener: {
+            "api-key": "",
+          },
+          jupiter: {
+            "api-key": "",
+          },
+        },
+        wallet: {
+          "ultra-signer": {
+            "private-key": "remove-me",
+            "private-key-encoding": "base64",
+          },
+        },
+      }, null, 2)}\n`);
+
+      const runtime = buildRuntime();
+      const transport = new RuntimeGuiTransport(runtime);
+      transport.setActiveInstance({
+        fileName: "instance.json",
+        localInstanceId: instanceId,
+        name: "test-instance",
+        safetyProfile: "dangerous",
+        userPinRequired: false,
+        createdAt: "2026-03-12T00:00:00.000Z",
+        updatedAt: "2026-03-12T00:00:00.000Z",
+      });
+      const handler = transport.createApiHandler();
+
+      const response = await handler(new Request("http://localhost/api/gui/secrets", { method: "GET" }));
+      expect(response.status).toBe(200);
+
+      const payload = (await response.json()) as {
+        options: Array<{ id: string }>;
+        entries: Array<{ optionId: string }>;
+      };
+      expect(payload.options.map((option) => option.id)).toEqual([
+        "solana-rpc-url",
+        "jupiter-api-key",
+        "openrouter-api-key",
+        "vercel-ai-gateway-api-key",
+      ]);
+      expect(payload.entries.some((entry) => entry.optionId === "ultra-signer-private-key")).toBe(false);
+
+      const storedVault = JSON.parse(await readFile(vaultPath, "utf8")) as {
+        rpc?: { helius?: unknown; quicknode?: unknown };
+        wallet?: { "ultra-signer"?: unknown };
+      };
+      expect(storedVault.wallet?.["ultra-signer"]).toBeUndefined();
+      expect(storedVault.rpc?.quicknode).toBeUndefined();
+      expect(storedVault.rpc?.helius).toEqual({
+        "http-url": "https://kept-custom-rpc.example",
+        "ws-url": "wss://kept-custom-rpc.example",
+        "api-key": "custom-helius-key",
+      });
+    } finally {
+      if (previousActiveInstanceId === undefined) {
+        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+      } else {
+        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+      }
+      await rm(instancePath, { recursive: true, force: true });
     }
   });
 

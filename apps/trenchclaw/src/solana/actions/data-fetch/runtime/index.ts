@@ -1,5 +1,6 @@
 export * from "./mutateInstanceMemory";
 export * from "./queryInstanceMemory";
+export * from "./getManagedWalletContents";
 export * from "./getManagedWalletSolBalances";
 export * from "./queryRuntimeStore";
 export * from "./pingRuntime";

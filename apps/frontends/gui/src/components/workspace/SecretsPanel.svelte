@@ -10,6 +10,7 @@
   import RetroField from "../ui/RetroField.svelte";
   import RetroInput from "../ui/RetroInput.svelte";
   import RetroSectionHeader from "../ui/RetroSectionHeader.svelte";
+  import RetroSelect from "../ui/RetroSelect.svelte";
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
 
   export let options: GuiSecretOptionView[] = [];
@@ -36,26 +37,25 @@
     category: GuiSecretCategory;
     value: string;
     dirty: boolean;
+    supportsPublicRpc: boolean;
+    source: "custom" | "public";
+    publicRpcId: string | null;
   }
 
   const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
+  const CUSTOM_RPC_OPTION_ID = "__custom__";
   const AI_OPTION_IDS = [
     "openrouter-api-key",
     "vercel-ai-gateway-api-key",
   ];
   const BLOCKCHAIN_OPTION_IDS = [
     "solana-rpc-url",
-    "helius-api-key",
-    "quicknode-api-key",
-    "solana-vibestation-api-key",
-    "chainstack-api-key",
-    "temporal-api-key",
     "jupiter-api-key",
-    "ultra-signer-private-key",
-    "ultra-signer-private-key-encoding",
   ];
 
   let draftValues: Record<string, string> = {};
+  let draftSources: Record<string, "custom" | "public"> = {};
+  let draftPublicRpcIds: Record<string, string> = {};
   let hydrationSignature = "";
   let dirtyOptionIds = new Set<string>();
 
@@ -68,13 +68,35 @@
   const defaultPublicRpc = (): GuiPublicRpcOptionView | undefined =>
     publicRpcOptions.find((rpc) => rpc.id === DEFAULT_MAINNET_RPC_ID) ?? publicRpcOptions[0];
 
+  const publicRpcFor = (publicRpcId: string | null): GuiPublicRpcOptionView | undefined =>
+    publicRpcOptions.find((rpc) => rpc.id === publicRpcId) ?? defaultPublicRpc();
+
+  const initialSourceFor = (option: GuiSecretOptionView): "custom" | "public" => {
+    if (!option.supportsPublicRpc) {
+      return "custom";
+    }
+    const entry = entryFor(option.id);
+    if (entry?.source === "public") {
+      return "public";
+    }
+    return (entry?.value ?? "").trim().length > 0 ? "custom" : "public";
+  };
+
+  const initialPublicRpcIdFor = (option: GuiSecretOptionView): string | null => {
+    if (!option.supportsPublicRpc) {
+      return null;
+    }
+    const entry = entryFor(option.id);
+    return entry?.publicRpcId ?? defaultPublicRpc()?.id ?? null;
+  };
+
   const initialValueFor = (option: GuiSecretOptionView): string => {
     const entry = entryFor(option.id);
     if ((entry?.value ?? "").trim().length > 0) {
       return entry?.value ?? "";
     }
-    if (option.id === "solana-rpc-url") {
-      return defaultPublicRpc()?.url ?? "";
+    if (option.supportsPublicRpc) {
+      return publicRpcFor(initialPublicRpcIdFor(option))?.url ?? "";
     }
     return "";
   };
@@ -83,19 +105,61 @@
     optionIds.map((optionId) => optionFor(optionId)).filter((option): option is GuiSecretOptionView => Boolean(option));
 
   const buildFields = (category: GuiSecretCategory, optionIds: string[]): VisibleSecretField[] =>
-    visibleOptionsFor(optionIds).map((option) => ({
-      id: option.id,
-      label: option.label,
-      placeholder: option.placeholder,
-      category,
-      value: draftValues[option.id] ?? initialValueFor(option),
-      dirty: dirtyOptionIds.has(option.id),
-    }));
+    visibleOptionsFor(optionIds).map((option) => {
+      const source = option.supportsPublicRpc ? (draftSources[option.id] ?? initialSourceFor(option)) : "custom";
+      const publicRpcId = option.supportsPublicRpc
+        ? (draftPublicRpcIds[option.id] ?? initialPublicRpcIdFor(option))
+        : null;
+      return {
+        id: option.id,
+        label: option.label,
+        placeholder: option.placeholder,
+        category,
+        value:
+          source === "public" && option.supportsPublicRpc
+            ? (publicRpcFor(publicRpcId)?.url ?? "")
+            : (draftValues[option.id] ?? initialValueFor(option)),
+        dirty: dirtyOptionIds.has(option.id),
+        supportsPublicRpc: option.supportsPublicRpc,
+        source,
+        publicRpcId,
+      };
+    });
 
   const handleValueChange = (optionId: string, value: string): void => {
     draftValues = {
       ...draftValues,
       [optionId]: value,
+    };
+    dirtyOptionIds = new Set([...dirtyOptionIds, optionId]);
+  };
+
+  const handlePublicRpcChange = (optionId: string, selection: string): void => {
+    if (selection === CUSTOM_RPC_OPTION_ID) {
+      draftSources = {
+        ...draftSources,
+        [optionId]: "custom",
+      };
+      dirtyOptionIds = new Set([...dirtyOptionIds, optionId]);
+      return;
+    }
+
+    const rpc = publicRpcOptions.find((entry) => entry.id === selection);
+    if (!rpc) {
+      return;
+    }
+
+    draftSources = {
+      ...draftSources,
+      [optionId]: "public",
+    };
+    draftPublicRpcIds = {
+      ...draftPublicRpcIds,
+      [optionId]: rpc.id,
+    };
+    draftValues = {
+      ...draftValues,
+      [optionId]: rpc.url,
     };
     dirtyOptionIds = new Set([...dirtyOptionIds, optionId]);
   };
@@ -106,12 +170,14 @@
       return;
     }
 
+    const rpc = option.supportsPublicRpc ? publicRpcFor(field.publicRpcId) : undefined;
+
     Promise.resolve(
       onSave({
         optionId: field.id,
-        value: field.value.trim(),
-        source: option.supportsPublicRpc ? "custom" : undefined,
-        publicRpcId: option.supportsPublicRpc ? null : undefined,
+        value: option.supportsPublicRpc && field.source === "public" ? (rpc?.url ?? field.value.trim()) : field.value.trim(),
+        source: option.supportsPublicRpc ? field.source : undefined,
+        publicRpcId: option.supportsPublicRpc ? (field.source === "public" ? field.publicRpcId : null) : undefined,
       }),
     )
       .then(() => {
@@ -132,6 +198,14 @@
       if (!rpc) {
         return;
       }
+      draftSources = {
+        ...draftSources,
+        [field.id]: "public",
+      };
+      draftPublicRpcIds = {
+        ...draftPublicRpcIds,
+        [field.id]: rpc.id,
+      };
       draftValues = {
         ...draftValues,
         [field.id]: rpc.url,
@@ -182,11 +256,22 @@
   $: {
     const signature = createHydrationSignature();
     if (signature !== hydrationSignature) {
+      const visibleOptions = [...visibleOptionsFor(AI_OPTION_IDS), ...visibleOptionsFor(BLOCKCHAIN_OPTION_IDS)];
       draftValues = Object.fromEntries(
-        [...visibleOptionsFor(AI_OPTION_IDS), ...visibleOptionsFor(BLOCKCHAIN_OPTION_IDS)].map((option) => [
+        visibleOptions.map((option) => [
           option.id,
           initialValueFor(option),
         ]),
+      );
+      draftSources = Object.fromEntries(
+        visibleOptions
+          .filter((option) => option.supportsPublicRpc)
+          .map((option) => [option.id, initialSourceFor(option)]),
+      );
+      draftPublicRpcIds = Object.fromEntries(
+        visibleOptions
+          .filter((option) => option.supportsPublicRpc)
+          .map((option) => [option.id, initialPublicRpcIdFor(option) ?? ""]),
       );
       hydrationSignature = signature;
       dirtyOptionIds = new Set();
@@ -246,10 +331,28 @@
       <div class="field-list">
         {#each blockchainFields as field (field.id)}
           <article class="secret-card">
+            {#if field.supportsPublicRpc}
+              <RetroField label="RPC source">
+                <RetroSelect
+                  value={field.source === "public" ? (field.publicRpcId ?? "") : CUSTOM_RPC_OPTION_ID}
+                  disabled={busy}
+                  on:change={(event) => {
+                    const target = event.currentTarget as HTMLSelectElement;
+                    handlePublicRpcChange(field.id, target.value);
+                  }}
+                >
+                  <option value={CUSTOM_RPC_OPTION_ID}>Custom URL</option>
+                  {#each publicRpcOptions as rpc (rpc.id)}
+                    <option value={rpc.id}>{rpc.label}</option>
+                  {/each}
+                </RetroSelect>
+              </RetroField>
+            {/if}
+
             <RetroField label={field.label}>
               <RetroInput
                 value={field.value}
-                disabled={busy}
+                disabled={busy || (field.supportsPublicRpc && field.source === "public")}
                 placeholder={field.placeholder}
                 on:input={(event) => {
                   const target = event.currentTarget as HTMLInputElement;
@@ -273,7 +376,7 @@
   </div>
 
   <RetroStatusMessage tone="error" text={statusErrorText} />
-  <RetroStatusMessage tone={llmStatusText.includes("probe=ok") ? "ok" : "error"} text={llmStatusText} />
+  <RetroStatusMessage tone="error" text={llmStatusText} />
 </section>
 
 <style>
