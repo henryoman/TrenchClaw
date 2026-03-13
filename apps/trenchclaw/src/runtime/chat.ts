@@ -1,11 +1,12 @@
 import {
   consumeStream,
   convertToModelMessages,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   stepCountIs,
   streamText,
   tool,
   validateUIMessages,
-  type LanguageModel,
   type UIMessage,
 } from "ai";
 import { z } from "zod";
@@ -19,9 +20,7 @@ import type {
   LlmGenerateInput,
   LlmGenerateResult,
 } from "../ai";
-import { loadAiSettings } from "../ai/llm/ai-settings-file";
-import { createLanguageModel, resolveLlmProviderConfig } from "../ai/llm/config";
-import { loadDefaultSystemPrompt } from "../ai/llm/prompt-loader";
+import type { RuntimeGateway } from "../ai/gateway";
 import {
   createWorkspaceBashTools,
   DEFAULT_WORKSPACE_BASH_ROOT,
@@ -60,38 +59,21 @@ interface RuntimeChatServiceDeps {
   llm: LlmClient | null;
   logger?: RuntimeLogger;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
-  workspaceToolsEnabled?: boolean;
   workspaceRootDirectory?: string;
+  gateway: RuntimeGateway;
 }
 
 interface RuntimeChatServiceOverrides {
-  resolveStreamingModel?: () => LanguageModel | Promise<LanguageModel>;
+  resolveStreamingModel?: () => import("ai").LanguageModel | Promise<import("ai").LanguageModel>;
   convertToModelMessages?: typeof convertToModelMessages;
   streamText?: typeof streamText;
 }
-
-const resolveStreamingModel = async (): Promise<LanguageModel> => {
-  const llmConfig = await resolveLlmProviderConfig();
-  if (llmConfig) {
-    return createLanguageModel(llmConfig);
-  }
-
-  throw new Error("No model provider configured. Add an OpenRouter or Vercel AI Gateway key in Keys.");
-};
-
-const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> => {
-  if (!deps.llm) {
-    return "You are TrenchClaw's runtime assistant.";
-  }
-  return loadDefaultSystemPrompt();
-};
 
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
 const DEFAULT_WORKSPACE_ROOT_DIRECTORY = DEFAULT_WORKSPACE_BASH_ROOT;
 const DEFAULT_CHAT_ID_PREFIX = "chat";
-const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 1200;
 const RUNTIME_WORKSPACE_TOOL_NAMES = [
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
@@ -154,31 +136,6 @@ const sanitizeConversationTitle = (title: string | undefined, fallbackMessages: 
 const resolveChatId = (chatId: string | undefined): string =>
   trimOrUndefinedValue(chatId) ?? `${DEFAULT_CHAT_ID_PREFIX}-${crypto.randomUUID()}`;
 
-const resolveChatMaxOutputTokens = (): number => {
-  const raw = trimOrUndefinedValue(process.env.TRENCHCLAW_CHAT_MAX_OUTPUT_TOKENS);
-  if (!raw) {
-    return DEFAULT_CHAT_MAX_OUTPUT_TOKENS;
-  }
-  const parsed = Number(raw);
-  if (!Number.isFinite(parsed) || parsed <= 0 || !Number.isInteger(parsed)) {
-    return DEFAULT_CHAT_MAX_OUTPUT_TOKENS;
-  }
-  return parsed;
-};
-
-const resolveChatGenerationDefaults = async (): Promise<{ maxOutputTokens: number; temperature?: number }> => {
-  const envMaxOutputTokens = resolveChatMaxOutputTokens();
-  try {
-    const aiSettings = await loadAiSettings();
-    return {
-      maxOutputTokens: aiSettings.settings.maxOutputTokens ?? envMaxOutputTokens,
-      temperature: aiSettings.settings.temperature ?? undefined,
-    };
-  } catch {
-    return { maxOutputTokens: envMaxOutputTokens };
-  }
-};
-
 const withChatHeaders = (headers: HeadersInit | undefined, chatId: string): Headers => {
   const merged = new Headers(headers);
   merged.set("x-trenchclaw-chat-id", chatId);
@@ -210,22 +167,18 @@ const toRuntimeChatErrorMessage = (error: unknown): string => {
   return message;
 };
 
-const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
+const buildActionTools = (
+  deps: RuntimeChatServiceDeps,
+  enabledToolNames?: ReadonlySet<string> | null,
+): Record<string, any> => {
   const tools: Record<string, any> = {};
-  const enabledActionNames = deps.capabilitySnapshot
-    ? new Set(
-        deps.capabilitySnapshot.modelTools
-          .filter((toolEntry) => toolEntry.kind === "action")
-          .map((toolEntry) => toolEntry.name),
-      )
-    : null;
 
   for (const registered of deps.registry.list()) {
     const action = deps.registry.get(registered.name);
     if (!action || !action.inputSchema) {
       continue;
     }
-    if (enabledActionNames && !enabledActionNames.has(action.name)) {
+    if (enabledToolNames && !enabledToolNames.has(action.name)) {
       continue;
     }
 
@@ -312,27 +265,87 @@ const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => 
   return tools;
 };
 
+const persistFinishedMessages = (
+  deps: RuntimeChatServiceDeps,
+  chatId: string,
+  input: { sessionId?: string; conversationTitle?: string },
+  finalMessages: UIMessage[],
+): void => {
+  const updatedAt = Date.now();
+  const replayableMessages = filterPersistableMessages(finalMessages);
+  const conversation = deps.stateStore.getConversation(chatId);
+  const existingMessagesById = new Map(
+    deps.stateStore.listChatMessages(chatId, 10_000).map((message) => [message.id, message]),
+  );
+  deps.stateStore.saveConversation({
+    id: chatId,
+    sessionId: conversation?.sessionId ?? trimOrUndefinedValue(input.sessionId),
+    title: conversation?.title ?? sanitizeConversationTitle(input.conversationTitle, replayableMessages),
+    summary: conversation?.summary,
+    createdAt: conversation?.createdAt ?? updatedAt,
+    updatedAt,
+  });
+
+  for (const [index, message] of replayableMessages.entries()) {
+    const content = extractUiMessageText(message).trim();
+    const existingMessage = trimOrUndefinedValue(message.id) ? existingMessagesById.get(message.id) : undefined;
+
+    deps.stateStore.saveChatMessage({
+      id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
+      conversationId: chatId,
+      role: message.role,
+      content,
+      metadata:
+        message.metadata && typeof message.metadata === "object"
+          ? {
+              ...(message.metadata as Record<string, unknown>),
+              uiParts: message.parts,
+            }
+          : {
+              uiParts: message.parts,
+            },
+      createdAt: existingMessage?.createdAt ?? updatedAt + index,
+    });
+  }
+};
+
+const createDirectTextStreamResponse = (input: {
+  text: string;
+  headers?: HeadersInit;
+  chatId: string;
+  originalMessages: UIMessage[];
+  onFinish: (messages: UIMessage[]) => void;
+}): Response => {
+  const textId = `text-${crypto.randomUUID()}`;
+  const stream = createUIMessageStream({
+    originalMessages: input.originalMessages,
+    execute: ({ writer }) => {
+      writer.write({ type: "text-start", id: textId });
+      writer.write({ type: "text-delta", id: textId, delta: input.text });
+      writer.write({ type: "text-end", id: textId });
+    },
+    onFinish: async ({ messages: finishedMessages }) => {
+      input.onFinish(finishedMessages);
+    },
+  });
+
+  return createUIMessageStreamResponse({
+    headers: withChatHeaders(input.headers, input.chatId),
+    stream,
+    consumeSseStream: consumeStream,
+  });
+};
+
 export const createRuntimeChatService = (
   deps: RuntimeChatServiceDeps,
   overrides: RuntimeChatServiceOverrides = {},
 ): RuntimeChatService => {
-  const resolveModel = overrides.resolveStreamingModel ?? resolveStreamingModel;
   const convertMessages = overrides.convertToModelMessages ?? convertToModelMessages;
   const streamWithModel = overrides.streamText ?? streamText;
-  const workspaceToolsEnabled = deps.workspaceToolsEnabled ?? (process.env.TRENCHCLAW_ENABLE_WORKSPACE_BASH ?? "1") !== "0";
   const workspaceRootDirectory = deps.workspaceRootDirectory ?? DEFAULT_WORKSPACE_ROOT_DIRECTORY;
   let workspaceToolPromise: Promise<Record<string, unknown>> | null = null;
 
-  const listToolNames = (): string[] =>
-    deps.capabilitySnapshot
-      ? deps.capabilitySnapshot.modelTools.map((toolEntry) => toolEntry.name)
-      : [
-          ...deps.registry
-            .list()
-            .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
-            .map((entry) => entry.name),
-          ...(workspaceToolsEnabled ? [...RUNTIME_WORKSPACE_TOOL_NAMES] : []),
-        ].toSorted((leftToolName, rightToolName) => leftToolName.localeCompare(rightToolName));
+  const listToolNames = (): string[] => deps.gateway.listToolNames("operator-chat");
 
   const generateText = async (input: LlmGenerateInput): Promise<LlmGenerateResult> => {
     if (!deps.llm) {
@@ -356,15 +369,6 @@ export const createRuntimeChatService = (
       inputMessageCount: messages.length,
       sessionId: trimOrUndefinedValue(input?.sessionId) ?? null,
     });
-
-    const modelResolveStartedAt = Date.now();
-    const model = await resolveModel();
-    deps.logger?.info("chat:model_ready", {
-      chatId,
-      durationMs: Date.now() - modelResolveStartedAt,
-    });
-
-    const tools: Record<string, any> = buildActionTools(deps);
     const now = Date.now();
     const existingConversation = deps.stateStore.getConversation(chatId);
     deps.stateStore.saveConversation({
@@ -376,34 +380,82 @@ export const createRuntimeChatService = (
       updatedAt: now,
     });
 
-    if (workspaceToolsEnabled) {
-      const workspaceToolsStartedAt = Date.now();
-      workspaceToolPromise ??= createWorkspaceBashTools({
-        workspaceRootDirectory,
-        actor: "agent",
-      });
-      const loadedWorkspaceTools = await workspaceToolPromise;
-      const enabledWorkspaceToolNames = deps.capabilitySnapshot
-        ? new Set(
-            deps.capabilitySnapshot.modelTools
-              .filter((toolEntry) => toolEntry.kind === "workspace-tool")
-              .map((toolEntry) => toolEntry.name),
-          )
-        : null;
-      for (const [toolName, workspaceTool] of Object.entries(loadedWorkspaceTools)) {
-        if (enabledWorkspaceToolNames && !enabledWorkspaceToolNames.has(toolName)) {
-          continue;
-        }
-        tools[toolName] = workspaceTool;
-      }
-      deps.logger?.info("chat:workspace_tools_ready", {
-        chatId,
-        durationMs: Date.now() - workspaceToolsStartedAt,
-      });
-    }
     try {
       const prepareModelInputStartedAt = Date.now();
-      const systemPrompt = await buildSystemPrompt(deps);
+      const preparedExecution = await deps.gateway.prepareChatExecution({
+        lane: "operator-chat",
+        messages,
+        userMessage: extractUiMessageText(messages.at(-1) ?? { id: "", role: "user", parts: [] as UIMessage["parts"] } as UIMessage),
+        sessionId: input?.sessionId,
+        allowFastPath: true,
+        abortSignal: input?.abortSignal,
+      });
+      if (preparedExecution.kind === "direct") {
+        deps.logger?.info("chat:fast_path", {
+          chatId,
+          lane: preparedExecution.lane,
+          fastPath: preparedExecution.response.executionTrace.fastPath,
+          toolCalls: preparedExecution.response.toolCalls.join(",") || "none",
+          durationMs: Date.now() - streamStartedAt,
+        });
+        return createDirectTextStreamResponse({
+          text: preparedExecution.response.message,
+          headers: input?.headers,
+          chatId,
+          originalMessages: messages,
+          onFinish: (finalMessages) => {
+            persistFinishedMessages(deps, chatId, {
+              sessionId: input?.sessionId,
+              conversationTitle: input?.conversationTitle,
+            }, finalMessages);
+            deps.logger?.info("chat:stream_finish", {
+              chatId,
+              durationMs: Date.now() - streamStartedAt,
+              finalMessageCount: finalMessages.length,
+              fastPath: preparedExecution.response.executionTrace.fastPath,
+            });
+          },
+        });
+      }
+
+      const model = overrides.resolveStreamingModel ? await overrides.resolveStreamingModel() : preparedExecution.model;
+      const systemPrompt = preparedExecution.systemPrompt;
+      const enabledToolNames = new Set(preparedExecution.toolNames);
+      const maxOutputTokens = preparedExecution.maxOutputTokens;
+      const temperature = preparedExecution.temperature;
+      const maxToolSteps = preparedExecution.maxToolSteps;
+      const provider = preparedExecution.provider ?? deps.llm?.provider ?? null;
+      const modelId = preparedExecution.modelId ?? deps.llm?.model ?? null;
+
+      deps.logger?.info("chat:model_ready", {
+        chatId,
+        provider,
+        model: modelId,
+      });
+
+      const tools: Record<string, any> = buildActionTools(deps, enabledToolNames);
+      const needsWorkspaceTools = preparedExecution.toolNames.some((toolName) =>
+        RUNTIME_WORKSPACE_TOOL_NAMES.includes(toolName as (typeof RUNTIME_WORKSPACE_TOOL_NAMES)[number]),
+      );
+      if (needsWorkspaceTools) {
+        const workspaceToolsStartedAt = Date.now();
+        workspaceToolPromise ??= createWorkspaceBashTools({
+          workspaceRootDirectory,
+          actor: "agent",
+        });
+        const loadedWorkspaceTools = await workspaceToolPromise;
+        for (const [toolName, workspaceTool] of Object.entries(loadedWorkspaceTools)) {
+          if (enabledToolNames && !enabledToolNames.has(toolName)) {
+            continue;
+          }
+          tools[toolName] = workspaceTool;
+        }
+        deps.logger?.info("chat:workspace_tools_ready", {
+          chatId,
+          durationMs: Date.now() - workspaceToolsStartedAt,
+        });
+      }
+
       const validatedMessages =
         messages.length === 0
           ? []
@@ -424,22 +476,24 @@ export const createRuntimeChatService = (
       });
 
       const streamBuildStartedAt = Date.now();
-      const generationDefaults = await resolveChatGenerationDefaults();
       const result = streamWithModel({
         model,
         system: systemPrompt,
         messages: modelMessages,
         abortSignal: input?.abortSignal,
-        maxOutputTokens: generationDefaults.maxOutputTokens,
-        temperature: generationDefaults.temperature,
-        stopWhen: stepCountIs(12),
+        maxOutputTokens,
+        temperature,
+        stopWhen: stepCountIs(maxToolSteps),
         tools,
       });
       deps.logger?.info("chat:model_stream_initialized", {
         chatId,
         durationMs: Date.now() - streamBuildStartedAt,
-        maxOutputTokens: generationDefaults.maxOutputTokens,
-        temperature: generationDefaults.temperature ?? null,
+        maxOutputTokens,
+        temperature: temperature ?? null,
+        lane: preparedExecution.lane,
+        provider,
+        model: modelId,
       });
 
       const response = result.toUIMessageStreamResponse({
@@ -449,47 +503,17 @@ export const createRuntimeChatService = (
         consumeSseStream: consumeStream,
         onError: (error) => toRuntimeChatErrorMessage(error),
         onFinish: ({ messages: finalMessages }) => {
-          const updatedAt = Date.now();
-          const replayableMessages = filterPersistableMessages(finalMessages);
-          const conversation = deps.stateStore.getConversation(chatId);
-          const existingMessagesById = new Map(
-            deps.stateStore.listChatMessages(chatId, 10_000).map((message) => [message.id, message]),
-          );
-          deps.stateStore.saveConversation({
-            id: chatId,
-            sessionId: conversation?.sessionId ?? trimOrUndefinedValue(input?.sessionId),
-            title: conversation?.title ?? sanitizeConversationTitle(input?.conversationTitle, replayableMessages),
-            summary: conversation?.summary,
-            createdAt: conversation?.createdAt ?? updatedAt,
-            updatedAt,
-          });
-
-          for (const [index, message] of replayableMessages.entries()) {
-            const content = extractUiMessageText(message).trim();
-            const existingMessage = trimOrUndefinedValue(message.id) ? existingMessagesById.get(message.id) : undefined;
-
-            deps.stateStore.saveChatMessage({
-              id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
-              conversationId: chatId,
-              role: message.role,
-              content,
-              metadata:
-                message.metadata && typeof message.metadata === "object"
-                  ? {
-                      ...(message.metadata as Record<string, unknown>),
-                      uiParts: message.parts,
-                    }
-                  : {
-                      uiParts: message.parts,
-                    },
-              createdAt: existingMessage?.createdAt ?? updatedAt + index,
-            });
-          }
-
+          persistFinishedMessages(deps, chatId, {
+            sessionId: input?.sessionId,
+            conversationTitle: input?.conversationTitle,
+          }, finalMessages);
           deps.logger?.info("chat:stream_finish", {
             chatId,
             durationMs: Date.now() - streamStartedAt,
-            finalMessageCount: replayableMessages.length,
+            finalMessageCount: finalMessages.length,
+            lane: preparedExecution.lane,
+            provider,
+            model: modelId,
           });
         },
       });

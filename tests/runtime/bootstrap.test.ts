@@ -180,6 +180,12 @@ const writeJson = async (content: unknown): Promise<string> => {
 
 const applyDefaultEnv = async (): Promise<void> => {
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(BASE_SETTINGS_YAML);
+  process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+  process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
+  delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
+  delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
+  delete process.env.TRENCHCLAW_VAULT_FILE;
+  delete process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE;
 };
 
 afterEach(async () => {
@@ -234,6 +240,7 @@ rpc:
         },
       },
     });
+    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
 
     const settings = await loadRuntimeSettings("dangerous");
     expect(settings.network.rpc.endpoints[0]?.url).toBe("https://vault-helius-rpc.example");
@@ -241,7 +248,58 @@ rpc:
     expect(settings.trading.jupiter.ultra.enabled).toBe(true);
   });
 
-  test("keeps settings values literal and does not resolve env placeholders", async () => {
+  test("fails closed when runtime RPC endpoints remain unresolved vault refs", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
+configVersion: 1
+profile: dangerous
+`);
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeYaml(`
+rpc:
+  primaryRpc: helius
+  providers:
+    helius:
+      endpointRef: vault://rpc/helius/http-url
+      wsEndpointRef: vault://rpc/helius/ws-url
+`);
+    process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+      integrations: {
+        dexscreener: {
+          "api-key": "",
+        },
+        jupiter: {
+          "api-key": "vault-jupiter-key",
+        },
+      },
+      wallet: {
+        "ultra-signer": {
+          "private-key": "",
+          "private-key-encoding": "base64",
+        },
+      },
+    });
+    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
+
+    await expect(loadRuntimeSettings("dangerous")).rejects.toThrow(
+      "must be resolved to a concrete URL before bootstrap",
+    );
+  });
+
+  test("fails closed when runtime endpoints use an invalid protocol", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
+configVersion: 1
+profile: dangerous
+network:
+  rpcUrl: ftp://rpc.example
+  wsUrl: wss://ws.example
+`);
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
+    delete process.env.TRENCHCLAW_VAULT_FILE;
+
+    await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("must use one of http:, https:");
+  });
+
+  test("fails closed on unresolved env-style endpoint placeholders", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
@@ -252,9 +310,7 @@ network:
     process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
     process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
 
-    const settings = await loadRuntimeSettings("dangerous");
-    expect(settings.network.rpc.endpoints[0]?.url).toBe("${RPC_URL}");
-    expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("${WS_URL}");
+    await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("cannot be parsed as a URL");
   });
 
   test("applies capability-only agent allowlist while preserving user authority for protected keys", async () => {
@@ -462,6 +518,19 @@ wallet:
     try {
       expect(await Bun.file(runtimeStatePath("generated/workspace-context.md")).exists()).toBe(true);
       expect(await Bun.file(runtimeStatePath("generated/knowledge-manifest.md")).exists()).toBe(true);
+    } finally {
+      runtime.stop();
+    }
+  });
+
+  test("exposes gateway lane health through runtime.describe()", async () => {
+    await applyDefaultEnv();
+
+    const runtime = await bootstrapRuntime();
+    try {
+      const description = runtime.describe();
+      expect(Array.isArray(description.gatewayLanes)).toBe(true);
+      expect(description.gatewayLanes?.some((lane) => lane.lane === "operator-chat")).toBe(true);
     } finally {
       runtime.stop();
     }

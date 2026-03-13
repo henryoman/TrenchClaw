@@ -1,4 +1,6 @@
 import type {
+  GuiAiModelOptionView,
+  GuiAiProviderOptionView,
   GuiAiSettingsView,
   GuiActivityEntry,
   GuiInstanceProfileView,
@@ -52,6 +54,8 @@ interface RuntimeUiState {
   aiSettingsFilePath: string;
   aiSettingsTemplatePath: string;
   aiSettings: GuiAiSettingsView | null;
+  aiProviderOptions: GuiAiProviderOptionView[];
+  aiModelOptions: GuiAiModelOptionView[];
   aiSettingsBusy: boolean;
   aiSettingsError: string;
   tradingSettingsFilePath: string;
@@ -117,6 +121,8 @@ export const createRuntimeController = () => {
     aiSettingsFilePath: "",
     aiSettingsTemplatePath: "",
     aiSettings: null,
+    aiProviderOptions: [],
+    aiModelOptions: [],
     aiSettingsBusy: false,
     aiSettingsError: "",
     tradingSettingsFilePath: "",
@@ -438,6 +444,8 @@ export const createRuntimeController = () => {
       state.aiSettingsFilePath = payload.filePath;
       state.aiSettingsTemplatePath = payload.templatePath;
       state.aiSettings = payload.settings;
+      state.aiProviderOptions = payload.providerOptions;
+      state.aiModelOptions = payload.options;
     } catch (error) {
       state.aiSettingsError = error instanceof Error ? error.message : "Failed to load AI settings.";
     } finally {
@@ -452,6 +460,8 @@ export const createRuntimeController = () => {
       const result = await runtimeApi.updateAiSettings({ settings });
       state.aiSettingsFilePath = result.filePath;
       state.aiSettings = result.settings;
+      state.aiProviderOptions = result.providerOptions;
+      state.aiModelOptions = result.options;
       const bootstrap = await runtimeApi.bootstrap();
       state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
       await checkLlm();

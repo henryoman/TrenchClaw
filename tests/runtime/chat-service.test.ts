@@ -1,15 +1,16 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { UIMessage } from "ai";
 import { z } from "zod";
 
-import type { ActionDispatcher, ActionResult, LlmClient } from "../../apps/trenchclaw/src/ai";
+import type { ActionDispatcher, ActionResult, LlmClient, RuntimeGateway } from "../../apps/trenchclaw/src/ai";
 import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/runtime/types";
-import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
+import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore, createActionContext, createRuntimeGateway } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
-import { createRuntimeChatService } from "../../apps/trenchclaw/src/runtime/chat";
+import { createRuntimeChatService as createRuntimeChatServiceBase } from "../../apps/trenchclaw/src/runtime/chat";
+import { loadRuntimeSettings, resolvePrimaryRuntimeEndpoints } from "../../apps/trenchclaw/src/runtime/load";
 import { SqliteStateStore } from "../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import {
   WORKSPACE_BASH_TOOL_NAME,
@@ -40,6 +41,297 @@ const createTestDbPath = (): string =>
   path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-chat-runtime-${crypto.randomUUID()}.db`);
 const tempInstanceDirectories: string[] = [];
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+const TEST_ENV_KEYS = [
+  "TRENCHCLAW_SETTINGS_BASE_FILE",
+  "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
+  "TRENCHCLAW_USER_SETTINGS_FILE",
+  "TRENCHCLAW_SETTINGS_USER_FILE",
+  "TRENCHCLAW_SETTINGS_AGENT_FILE",
+  "TRENCHCLAW_VAULT_FILE",
+  "TRENCHCLAW_VAULT_TEMPLATE_FILE",
+  "TRENCHCLAW_PROFILE",
+  "TRENCHCLAW_ACTIVE_INSTANCE_ID",
+] as const;
+const initialEnv = Object.fromEntries(TEST_ENV_KEYS.map((key) => [key, process.env[key]]));
+const createdConfigFiles: string[] = [];
+const TEST_BASE_SETTINGS_YAML = `
+configVersion: 1
+profile: dangerous
+network:
+  chain: solana
+  cluster: mainnet-beta
+  commitment: confirmed
+  websocketEnabled: true
+  requestTimeoutMs: 10000
+  transactionTimeoutMs: 45000
+  retry:
+    readsMaxAttempts: 3
+    writesMaxAttempts: 3
+    backoffMs: 500
+    backoffMultiplier: 1.5
+  rpc:
+    strategy: failover
+    endpoints:
+      - name: primary
+        url: https://rpc.example
+        wsUrl: wss://ws.example
+        enabled: true
+wallet:
+  custodyMode: local-encrypted
+  defaults:
+    keyEncoding: base64
+    createWalletCountLimit: 100
+    exportFormat: base58
+  dangerously:
+    allowPrivateKeyAccess: true
+    allowWalletSigning: true
+    allowCreatingWallets: true
+    allowDeletingWallets: false
+    allowExportingWallets: true
+    allowImportingWallets: true
+    allowListingWallets: true
+    allowShowingWallets: true
+    allowUpdatingWallets: true
+trading:
+  enabled: true
+  mode:
+    simulation: false
+    paperTrading: false
+  confirmations:
+    requireUserConfirmationForDangerousActions: true
+    userConfirmationToken: I_CONFIRM
+  limits:
+    maxSwapNotionalSol: 100
+    maxSingleTransferSol: 10
+    maxPriorityFeeLamports: 1000000
+    maxSlippageBps: 500
+  jupiter:
+    ultra:
+      enabled: true
+      allowQuotes: true
+      allowExecutions: true
+      allowCancellations: false
+    standard:
+      enabled: false
+      allowQuotes: false
+      allowExecutions: false
+  dexscreener:
+    enabled: true
+  programId: null
+agent:
+  enabled: true
+  dangerously:
+    allowFilesystemWrites: true
+    allowNetworkAccess: true
+    allowSystemAccess: false
+    allowHardwareAccess: false
+  internetAccess:
+    trustedSitesOnly: true
+    allowFullAccess: false
+    trustedSites: []
+    blockedSites: []
+    allowedProtocols: [https]
+    blockedProtocols: []
+    allowedPorts: [443, 80]
+    blockedPorts: []
+runtime:
+  scheduler:
+    tickMs: 1000
+    maxConcurrentJobs: 4
+  dispatcher:
+    maxActionAttempts: 3
+    defaultActionTimeoutMs: 20000
+    defaultBackoffMs: 500
+  idempotency:
+    enabled: true
+    ttlHours: 24
+storage:
+  sqlite:
+    enabled: false
+    path: /tmp/trenchclaw-chat-tests.db
+    walMode: true
+    busyTimeoutMs: 5000
+  sessions:
+    enabled: false
+    directory: /tmp/trenchclaw-sessions
+    agentId: test-agent
+    source: tests
+  memory:
+    enabled: false
+    directory: /tmp/trenchclaw-memory
+    longTermFile: memory.md
+  retention:
+    receiptsDays: 7
+ui:
+  cli:
+    enabled: true
+  webGui:
+    enabled: false
+    host: 127.0.0.1
+    port: 3000
+  tui:
+    enabled: false
+    overviewView: true
+    botsView: true
+    actionFeedView: true
+    controlsView: true
+observability:
+  logging:
+    level: info
+    style: human
+    pretty: false
+    includeDecisionTrace: false
+  metrics:
+    enabled: false
+  tracing:
+    enabled: false
+`;
+const DEFAULT_TEST_SYSTEM_PROMPT = [
+  "TrenchClaw System Kernel",
+  "## Runtime Contract",
+  "## Wallet Summary",
+].join("\n\n");
+const TEST_WORKSPACE_TOOL_NAMES = [
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
+] as const;
+
+const writeTempStructuredFile = async (extension: "yaml" | "json", content: string): Promise<string> => {
+  const target = `/tmp/trenchclaw-chat-service-${crypto.randomUUID()}.${extension}`;
+  await Bun.write(target, content);
+  createdConfigFiles.push(target);
+  return target;
+};
+
+beforeEach(async () => {
+  process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempStructuredFile("yaml", TEST_BASE_SETTINGS_YAML);
+  process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempStructuredFile("json", "{}");
+  process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeTempStructuredFile("json", "{}");
+  delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
+  delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
+  delete process.env.TRENCHCLAW_VAULT_FILE;
+  delete process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE;
+  process.env.TRENCHCLAW_PROFILE = "dangerous";
+});
+
+const resolveDefaultToolNames = (deps: {
+  registry: ActionRegistry;
+  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  workspaceToolsEnabled?: boolean;
+}): string[] => {
+  if (deps.capabilitySnapshot) {
+    return deps.capabilitySnapshot.modelTools
+      .filter((toolEntry) => toolEntry.kind === "action" || (deps.workspaceToolsEnabled && toolEntry.kind === "workspace-tool"))
+      .map((toolEntry) => toolEntry.name)
+      .toSorted((left, right) => left.localeCompare(right));
+  }
+
+  return [
+    ...deps.registry
+      .list()
+      .filter((entry) => Boolean(deps.registry.get(entry.name)?.inputSchema))
+      .map((entry) => entry.name),
+    ...(deps.workspaceToolsEnabled ? [...TEST_WORKSPACE_TOOL_NAMES] : []),
+  ].toSorted((left, right) => left.localeCompare(right));
+};
+
+const createGatewayStub = (deps: {
+  registry: ActionRegistry;
+  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  workspaceToolsEnabled?: boolean;
+}): RuntimeGateway => {
+  const toolNames = resolveDefaultToolNames(deps);
+  return {
+    prepareChatExecution: async () => ({
+      kind: "llm",
+      lane: "operator-chat",
+      provider: "test",
+      modelId: "test-model",
+      model: {} as never,
+      systemPrompt: DEFAULT_TEST_SYSTEM_PROMPT,
+      toolNames,
+      maxOutputTokens: 450,
+      temperature: 0.1,
+      maxToolSteps: 4,
+      executionTrace: {
+        lane: "operator-chat",
+        fastPath: null,
+        provider: "test",
+        model: "test-model",
+        promptChars: DEFAULT_TEST_SYSTEM_PROMPT.length,
+        toolCount: toolNames.length,
+        toolSteps: 0,
+        durationMs: 0,
+      },
+    }),
+    listToolNames: () => toolNames,
+    describe: () => ({
+      lanes: [
+        {
+          lane: "operator-chat",
+          enabled: true,
+          provider: "test",
+          model: "test-model",
+        },
+      ],
+    }),
+  };
+};
+
+const createConfiguredGateway = async (input?: {
+  dispatcher?: ActionDispatcher;
+  registry?: ActionRegistry;
+  eventBus?: InMemoryRuntimeEventBus;
+  stateStore?: InMemoryStateStore;
+  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+}): Promise<RuntimeGateway> => {
+  const settings = await loadRuntimeSettings("dangerous");
+  const endpoints = resolvePrimaryRuntimeEndpoints(settings);
+  const eventBus = input?.eventBus ?? new InMemoryRuntimeEventBus();
+  const stateStore = input?.stateStore ?? new InMemoryStateStore();
+  return createRuntimeGateway(
+    {
+      settings,
+      endpoints,
+      dispatcher:
+        input?.dispatcher ??
+        ({
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher),
+      registry: input?.registry ?? new ActionRegistry(),
+      eventBus,
+      stateStore,
+      llm: null,
+      capabilitySnapshot: input?.capabilitySnapshot,
+      createActionContext: (overrides) =>
+        createActionContext({
+          actor: overrides?.actor ?? "agent",
+          eventBus,
+          rpcUrl: endpoints.rpcUrl,
+          stateStore,
+        }),
+    },
+    {
+      resolveStreamingModel: () => ({}) as never,
+    },
+  );
+};
+
+const createRuntimeChatService = (
+  deps: Omit<Parameters<typeof createRuntimeChatServiceBase>[0], "gateway"> & {
+    gateway?: RuntimeGateway;
+    workspaceToolsEnabled?: boolean;
+  },
+  overrides?: Parameters<typeof createRuntimeChatServiceBase>[1],
+) =>
+  createRuntimeChatServiceBase(
+    {
+      ...deps,
+      gateway: deps.gateway ?? createGatewayStub(deps),
+    },
+    overrides,
+  );
 
 afterEach(() => {
   for (const dbPath of sqliteDbPaths.splice(0)) {
@@ -54,6 +346,18 @@ afterEach(() => {
     delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
   } else {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+  }
+
+  for (const key of TEST_ENV_KEYS) {
+    const initial = initialEnv[key];
+    if (initial === undefined) {
+      delete process.env[key];
+      continue;
+    }
+    process.env[key] = initial;
+  }
+  for (const filePath of createdConfigFiles.splice(0)) {
+    void Bun.file(filePath).delete().catch(() => {});
   }
 });
 
@@ -299,8 +603,181 @@ describe("RuntimeChatService", () => {
     expect(seenToolNames).toEqual(["enabledAction"]);
   });
 
+  test("uses the gateway fast path for wallet holdings instead of entering the LLM tool loop", async () => {
+    const settings = await loadRuntimeSettings("dangerous");
+    const endpoints = resolvePrimaryRuntimeEndpoints(settings);
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
+    const dispatchCalls: string[] = [];
+    const gateway = createRuntimeGateway({
+      settings,
+      endpoints,
+      dispatcher: {
+        dispatchStep: async (_ctx: ActionContext, step: ActionStep) => {
+          dispatchCalls.push(step.actionName);
+          return {
+            results: [
+              makeActionResult({
+                ok: true,
+                data: {
+                  walletCount: 2,
+                  totalBalanceSol: 1.5,
+                  wallets: [
+                    {
+                      walletGroup: "core-wallets",
+                      walletName: "wallet_000",
+                      balanceSol: 1.25,
+                      tokenBalances: [{ balanceUiString: "25", mintAddress: "USDC_MINT" }],
+                    },
+                    {
+                      walletGroup: "core-wallets",
+                      walletName: "wallet_001",
+                      balanceSol: 0.25,
+                      tokenBalances: [],
+                    },
+                  ],
+                  tokenTotals: [{ balanceUiString: "25", mintAddress: "USDC_MINT" }],
+                },
+              }),
+            ],
+            policyHits: [],
+          };
+        },
+      } as unknown as ActionDispatcher,
+      registry: new ActionRegistry(),
+      eventBus,
+      stateStore,
+      llm: null,
+      createActionContext: (overrides) =>
+        createActionContext({
+          actor: overrides?.actor ?? "agent",
+          eventBus,
+          rpcUrl: endpoints.rpcUrl,
+          stateStore,
+        }),
+    });
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry: new ActionRegistry(),
+        eventBus,
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+        gateway,
+      },
+      {
+        streamText: (() => {
+          throw new Error("streamText should not be called for wallet fast paths");
+        }) as never,
+      },
+    );
+
+    const response = await service.stream([
+      {
+        id: "user-wallet-fast-path-1",
+        role: "user",
+        parts: [{ type: "text", text: "what do we have in our wallets right now" }],
+      },
+    ]);
+
+    const payload = await response.text();
+    expect(dispatchCalls).toEqual(["getManagedWalletContents"]);
+    expect(payload).toContain("Managed wallets: 2. Total native SOL: 1.5.");
+    expect(payload).toContain("core-wallets/wallet_000: 1.25 SOL; 25 USDC_MINT");
+    expect(payload).toContain("Aggregate token balances:");
+  });
+
+  test("filters operator-chat tools through the gateway allowlist and excludes workspace tools", async () => {
+    const settings = await loadRuntimeSettings("dangerous");
+    const endpoints = resolvePrimaryRuntimeEndpoints(settings);
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
+    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+      actions: [],
+      workspaceTools: [],
+      modelTools: [
+        {
+          kind: "action",
+          name: "queryRuntimeStore",
+          description: "query runtime store",
+          purpose: "query runtime store",
+          routingHint: "query runtime store",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { query: "jobs" },
+          toolDescription: "query runtime store",
+        },
+        {
+          kind: "action",
+          name: "customActionOutsideAllowlist",
+          description: "custom action",
+          purpose: "custom action",
+          routingHint: "custom action",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: {},
+          toolDescription: "custom action",
+        },
+        {
+          kind: "workspace-tool",
+          name: WORKSPACE_READ_FILE_TOOL_NAME,
+          description: "workspace read",
+          purpose: "workspace read",
+          routingHint: "workspace read",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { path: "README.md" },
+          toolDescription: "workspace read",
+        },
+      ],
+    };
+    const gateway = createRuntimeGateway({
+      settings,
+      endpoints,
+      dispatcher: {
+        dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+      } as unknown as ActionDispatcher,
+      registry: new ActionRegistry(),
+      eventBus,
+      stateStore,
+      llm: null,
+      capabilitySnapshot,
+      createActionContext: (overrides) =>
+        createActionContext({
+          actor: overrides?.actor ?? "agent",
+          eventBus,
+          rpcUrl: endpoints.rpcUrl,
+          stateStore,
+        }),
+    });
+
+    const service = createRuntimeChatService({
+      dispatcher: {
+        dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+      } as unknown as ActionDispatcher,
+      registry: new ActionRegistry(),
+      eventBus,
+      stateStore,
+      llm: null,
+      capabilitySnapshot,
+      workspaceToolsEnabled: true,
+      gateway,
+    });
+
+    expect(service.listToolNames()).toEqual(["queryRuntimeStore"]);
+  });
+
   test("includes a compact wallet summary in the system prompt", async () => {
     const registry = new ActionRegistry();
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
     const instanceId = "97";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
     const keypairsDirectory = path.join(instanceDirectory, "keypairs");
@@ -319,6 +796,11 @@ describe("RuntimeChatService", () => {
       "utf8",
     );
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+    const gateway = await createConfiguredGateway({
+      registry,
+      eventBus,
+      stateStore,
+    });
 
     let capturedSystemPrompt = "";
     const service = createRuntimeChatService(
@@ -327,8 +809,8 @@ describe("RuntimeChatService", () => {
           dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
         } as unknown as ActionDispatcher,
         registry,
-        eventBus: new InMemoryRuntimeEventBus(),
-        stateStore: new InMemoryStateStore(),
+        eventBus,
+        stateStore,
         llm: {
           provider: "test",
           model: "test-model",
@@ -337,7 +819,7 @@ describe("RuntimeChatService", () => {
           generate: async () => ({ text: "ok", finishReason: "stop" }),
           stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
         } as unknown as LlmClient,
-        workspaceToolsEnabled: false,
+        gateway,
       },
       {
         resolveStreamingModel: () => ({}) as never,
@@ -361,11 +843,18 @@ describe("RuntimeChatService", () => {
 
   test("states missing managed wallet libraries directly in the wallet summary", async () => {
     const registry = new ActionRegistry();
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
     const instanceId = "98";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
     tempInstanceDirectories.push(instanceDirectory);
     await mkdir(instanceDirectory, { recursive: true });
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+    const gateway = await createConfiguredGateway({
+      registry,
+      eventBus,
+      stateStore,
+    });
 
     let capturedSystemPrompt = "";
     const service = createRuntimeChatService(
@@ -374,8 +863,8 @@ describe("RuntimeChatService", () => {
           dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
         } as unknown as ActionDispatcher,
         registry,
-        eventBus: new InMemoryRuntimeEventBus(),
-        stateStore: new InMemoryStateStore(),
+        eventBus,
+        stateStore,
         llm: {
           provider: "test",
           model: "test-model",
@@ -384,7 +873,7 @@ describe("RuntimeChatService", () => {
           generate: async () => ({ text: "ok", finishReason: "stop" }),
           stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
         } as unknown as LlmClient,
-        workspaceToolsEnabled: false,
+        gateway,
       },
       {
         resolveStreamingModel: () => ({}) as never,

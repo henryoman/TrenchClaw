@@ -155,6 +155,8 @@
         aiSettingsFilePath={runtime.state.aiSettingsFilePath}
         aiSettingsTemplatePath={runtime.state.aiSettingsTemplatePath}
         aiSettings={runtime.state.aiSettings}
+        aiProviderOptions={runtime.state.aiProviderOptions}
+        aiModelOptions={runtime.state.aiModelOptions}
         aiSettingsBusy={runtime.state.aiSettingsBusy}
         aiSettingsError={runtime.state.aiSettingsError}
         tradingSettingsFilePath={runtime.state.tradingSettingsFilePath}

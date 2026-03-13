@@ -53,7 +53,6 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - [x] Secure vault system for keys and secrets
 - [x] Protected filesystem boundaries
 - [x] Test suite
-- [x] update model facing tool suite
 - [x] Marketing and docs website
 - [x] Svelte GUI
 - [x] Runner CLI

@@ -450,16 +450,23 @@ describe("Runtime v1 API", () => {
       expect(initialResponse.status).toBe(200);
       const initialPayload = (await initialResponse.json()) as {
         filePath: string;
-        settings: { model: string };
+        providerOptions: Array<{ id: string }>;
+        options: Array<{ id: string; providers: string[] }>;
+        settings: { provider: string; model: string };
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
+      expect(initialPayload.settings.provider).toBe("auto");
       expect(initialPayload.settings.model).toBe("anthropic/claude-sonnet-4.6");
+      expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["auto", "gateway", "openrouter"]);
+      expect(initialPayload.options.some((option) => option.id === "openrouter/hunter-alpha")).toBe(true);
+      expect(initialPayload.options.find((option) => option.id === "openrouter/hunter-alpha")?.providers).toEqual(["openrouter"]);
 
       const updateResponse = await handler(new Request("http://localhost/api/gui/ai-settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           settings: {
+            provider: "gateway",
             model: "anthropic/claude-sonnet-4.6",
             defaultMode: "primary",
             temperature: 0.4,
@@ -469,10 +476,15 @@ describe("Runtime v1 API", () => {
       }));
       expect(updateResponse.status).toBe(200);
       const updatePayload = (await updateResponse.json()) as {
-        settings: { model: string; maxOutputTokens: number | null };
+        providerOptions: Array<{ id: string }>;
+        options: Array<{ id: string }>;
+        settings: { provider: string; model: string; maxOutputTokens: number | null };
       };
+      expect(updatePayload.settings.provider).toBe("gateway");
       expect(updatePayload.settings.model).toBe("anthropic/claude-sonnet-4.6");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
+      expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["auto", "gateway", "openrouter"]);
+      expect(updatePayload.options.some((option) => option.id === "openrouter/hunter-alpha")).toBe(true);
     } finally {
       if (previous === undefined) {
         delete process.env.TRENCHCLAW_AI_SETTINGS_FILE;

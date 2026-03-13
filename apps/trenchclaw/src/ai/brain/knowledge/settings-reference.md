@@ -7,9 +7,9 @@ This file explains where runtime configuration comes from right now.
 ## Main Settings Files
 
 - `.runtime-state/runtime/ai.json`
+  - provider preference: `auto`, `gateway`, or `openrouter`
   - selected LLM provider
   - selected model
-  - base URL
   - default mode
   - temperature
   - max output tokens

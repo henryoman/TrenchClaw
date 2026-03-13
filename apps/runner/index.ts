@@ -13,15 +13,19 @@ const GUI_IDLE_TIMEOUT_SECONDS = 255;
 
 const ANSI = {
   reset: "\u001b[0m",
+  bold: "\u001b[1m",
   neonTurquoise: "\u001b[38;2;0;245;212m",
   neonPurple: "\u001b[38;2;191;0;255m",
 } as const;
 
 const supportsColor = Boolean(process.stdout.isTTY) && !("NO_COLOR" in process.env);
-const colorize = (value: string, color: keyof typeof ANSI): string =>
-  supportsColor ? `${ANSI[color]}${value}${ANSI.reset}` : value;
+const applyAnsi = (value: string, ...styles: Array<keyof typeof ANSI>): string =>
+  supportsColor ? `${styles.map((style) => ANSI[style]).join("")}${value}${ANSI.reset}` : value;
+const colorize = (value: string, color: keyof typeof ANSI): string => applyAnsi(value, color);
 const RUNNER_LOG_PREFIX = colorize("@trenchclaw:", "neonPurple");
 const emphasize = (value: string): string => colorize(value, "neonTurquoise");
+const strong = (value: string): string => applyAnsi(value, "bold");
+const spotlight = (value: string): string => applyAnsi(value, "bold", "neonTurquoise");
 
 type LayoutKind = "workspace" | "release";
 
@@ -239,7 +243,15 @@ const shouldPromptForGuiLaunch = (): boolean => {
 
 type GuiLaunchDecision = "launch" | "skip" | "quit";
 
-const waitForGuiLaunchConfirmation = async (): Promise<GuiLaunchDecision> => {
+const showGuiLaunchWelcome = (guiUrl: string): void => {
+  console.log("");
+  console.log(strong("Welcome to TrenchClaw"));
+  console.log(spotlight("PRESS ENTER TO OPEN GUI"));
+  console.log(`${RUNNER_LOG_PREFIX} GUI: ${guiUrl}`);
+  console.log(`${RUNNER_LOG_PREFIX} Type "skip" to keep it in the terminal, or "quit" to stop.`);
+};
+
+const waitForGuiLaunchConfirmation = async (guiUrl: string): Promise<GuiLaunchDecision> => {
   if (process.env.TRENCHCLAW_RUNNER_SMOKE_TEST === "1") {
     return "skip";
   }
@@ -258,11 +270,9 @@ const waitForGuiLaunchConfirmation = async (): Promise<GuiLaunchDecision> => {
   });
 
   try {
-    const answer = (
-      await prompt.question(
-        `${RUNNER_LOG_PREFIX} launch GUI now? Enter=yes, "skip"=not now, "quit"=stop app: `,
-      )
-    )
+    showGuiLaunchWelcome(guiUrl);
+
+    const answer = (await prompt.question(`${RUNNER_LOG_PREFIX} > `))
       .trim()
       .toLowerCase();
 
@@ -496,10 +506,10 @@ const main = async (): Promise<void> => {
 
   await configureRuntimeEnvironment(runtimePort, guiUrl);
 
-  console.log(`${RUNNER_LOG_PREFIX} mode: ${emphasize(LAYOUT.kind)}`);
-  console.log(`${RUNNER_LOG_PREFIX} runtime state: ${emphasize(LAYOUT.runtimeStateRoot)}`);
-  console.log(`${RUNNER_LOG_PREFIX} runtime target: ${emphasize(runtimeUrl)}`);
-  console.log(`${RUNNER_LOG_PREFIX} gui target: ${emphasize(guiUrl)}`);
+  console.log(`${RUNNER_LOG_PREFIX} mode: ${LAYOUT.kind}`);
+  console.log(`${RUNNER_LOG_PREFIX} runtime state: ${LAYOUT.runtimeStateRoot}`);
+  console.log(`${RUNNER_LOG_PREFIX} runtime target: ${runtimeUrl}`);
+  console.log(`${RUNNER_LOG_PREFIX} gui target: ${guiUrl}`);
   logOptionalToolDiagnostics();
 
   const { bootstrapRuntime, startRuntimeServer } = await loadRuntimeImports();
@@ -545,7 +555,7 @@ const main = async (): Promise<void> => {
     }
   });
 
-  console.log(`${RUNNER_LOG_PREFIX} GUI serving from ${emphasize(guiUrl)}`);
+  console.log(`${RUNNER_LOG_PREFIX} GUI serving from ${guiUrl}`);
   if (process.env.TRENCHCLAW_RUNNER_SMOKE_TEST === "1") {
     const [runtimeHealth, guiResponse] = await Promise.all([
       fetch(new URL("/health", runtimeServerInfo.url)),
@@ -563,7 +573,7 @@ const main = async (): Promise<void> => {
     process.exit(0);
   }
 
-  const guiLaunchDecision = await waitForGuiLaunchConfirmation();
+  const guiLaunchDecision = await waitForGuiLaunchConfirmation(guiUrl);
   if (guiLaunchDecision === "quit") {
     console.log(`${RUNNER_LOG_PREFIX} shutdown requested before GUI launch.`);
     shutdown(0);
@@ -572,13 +582,13 @@ const main = async (): Promise<void> => {
   }
   if (guiLaunchDecision === "skip") {
     console.log(`${RUNNER_LOG_PREFIX} GUI auto-launch skipped. Runtime remains active.`);
-    console.log(`${RUNNER_LOG_PREFIX} Open manually when needed: ${emphasize(guiUrl)}`);
+    console.log(`${RUNNER_LOG_PREFIX} Open manually when needed: ${strong(guiUrl)}`);
   } else {
     await openBrowser(guiUrl);
   }
 
-  console.log(`${RUNNER_LOG_PREFIX} Runtime API listening at ${emphasize(runtimeServerInfo.url)}`);
-  console.log(`${RUNNER_LOG_PREFIX} Press ${emphasize("Ctrl+C")} to stop.`);
+  console.log(`${RUNNER_LOG_PREFIX} Runtime API listening at ${runtimeServerInfo.url}`);
+  console.log(`${RUNNER_LOG_PREFIX} Press ${strong("Ctrl+C")} to stop.`);
   await shutdownDone;
 };
 

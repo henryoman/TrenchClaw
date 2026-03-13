@@ -1,9 +1,11 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import type { AiProviderPreference } from "./model-catalog";
 import { parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
 
 export const DEFAULT_LLM_MODEL = "anthropic/claude-sonnet-4.6";
+export const DEFAULT_LLM_PROVIDER: AiProviderPreference = "auto";
 
 const DEFAULT_AI_SETTINGS_FILE = "../../../.runtime-state/runtime/ai.json";
 const LEGACY_AI_SETTINGS_FILE = "../../../.runtime-state/user/ai.json";
@@ -12,6 +14,7 @@ const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";
 const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
 
 export const aiSettingsSchema = z.object({
+  provider: z.enum(["auto", "gateway", "openrouter"]).default(DEFAULT_LLM_PROVIDER),
   model: z.string().trim().min(1).default(DEFAULT_LLM_MODEL),
   defaultMode: z.string().trim().min(1).default("primary"),
   temperature: z.number().min(0).max(2).nullable().default(null),

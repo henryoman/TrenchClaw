@@ -4,6 +4,7 @@ import type { Action } from "../ai/runtime/types/action";
 import {
   ActionDispatcher,
   ActionRegistry,
+  createRuntimeGateway,
   createLlmClientFromEnv,
   createActionContext,
   type CreateActionContextConfig,
@@ -26,7 +27,6 @@ import { createTokenAccountAdapter } from "../solana/lib/adapters/token-account"
 import { createUltraSignerAdapterFromVault } from "../solana/lib/adapters/ultra-signer";
 import { loadRoutinePlanner } from "../solana/routines/load";
 import {
-  workspaceToolsEnabledByRuntimeSettings,
   getRuntimeActionCatalog,
   getRuntimeActionsRequiringUserConfirmation,
   isRuntimeActionEnabledBySettings,
@@ -34,6 +34,7 @@ import {
 import { getRuntimeCapabilitySnapshot, type RuntimeCapabilitySnapshot } from "./capabilities";
 import {
   loadRuntimeSettings,
+  resolvePrimaryRuntimeEndpoints,
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
 } from "./load";
@@ -66,12 +67,6 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const trimOrUndefined = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const getPrimaryRpcUrlFromSettings = (settings: RuntimeSettings): string | undefined => {
-  const preferredEndpoint = settings.network.rpc.endpoints.find((endpoint) => endpoint.enabled);
-  const fallbackEndpoint = settings.network.rpc.endpoints[0];
-  return trimOrUndefined((preferredEndpoint ?? fallbackEndpoint)?.url);
 };
 
 const envFlagEnabled = (name: string, fallback: boolean): boolean => {
@@ -496,14 +491,22 @@ export interface RuntimeBootstrap {
     llmModel?: string;
     sessionId?: string;
     sessionKey?: string;
+    gatewayLanes?: Array<{
+      lane: "operator-chat" | "workspace-agent" | "background-summary";
+      enabled: boolean;
+      provider: string | null;
+      model: string | null;
+      reason?: string;
+    }>;
   };
 }
 
 export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
+  const endpoints = resolvePrimaryRuntimeEndpoints(settings);
   const logger = createRuntimeLogger(settings);
-  const runtimeRpcUrl = getPrimaryRpcUrlFromSettings(settings);
+  const runtimeRpcUrl = endpoints.rpcUrl;
   setLogIoWriteObserver((event) => {
     const details: Record<string, unknown> = {
       operation: event.operation,
@@ -832,6 +835,19 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   attachEventLogging(settings, logger, eventBus, sessionLogStore, memoryLogStore, summaryLogStore);
   scheduler.start();
 
+  const gateway = createRuntimeGateway({
+    settings,
+    endpoints,
+    dispatcher,
+    registry,
+    eventBus,
+    stateStore,
+    llm,
+    logger,
+    capabilitySnapshot,
+    createActionContext: createRuntimeActionContext,
+  });
+
   // Optional boot hook for validating the runtime path immediately.
   if ((process.env.TRENCHCLAW_BOOTSTRAP_CREATE_WALLETS ?? "").trim() === "1") {
     await enqueueJob({
@@ -864,7 +880,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       llm,
       logger,
       capabilitySnapshot,
-      workspaceToolsEnabled: capabilitySnapshot.modelTools.some((entry) => entry.kind === "workspace-tool"),
+      gateway,
     }),
     session,
     stop: async () => {
@@ -917,6 +933,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       llmModel: llm?.model,
       sessionId: session?.sessionId,
       sessionKey: session?.sessionKey,
+      gatewayLanes: gateway.describe().lanes,
     }),
   };
 };

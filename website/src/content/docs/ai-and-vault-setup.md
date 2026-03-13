@@ -53,10 +53,13 @@ Built-in public presets:
 1. Launch TrenchClaw and sign into an instance.
 2. Open the secrets or vault panel.
 3. Set your RPC first.
-4. Add credentials for one AI provider.
-5. Save.
-6. Run the AI check.
-7. Send a simple chat request.
+4. Add a Vercel AI Gateway key, an OpenRouter key, or both.
+5. Open AI settings and choose:
+6. `Provider: Auto` to stay provider-agnostic, or pin `Vercel AI Gateway` / `OpenRouter` when you want exact routing.
+7. Pick the model from the filtered list for that provider.
+8. Save.
+9. Run the AI check.
+10. Send a simple chat request.
 
 ## AI Check
 
@@ -65,12 +68,14 @@ The AI check depends on:
 - a valid provider key
 - a valid model or route
 - runtime secret resolution working correctly
+- the provider selection in `ai.json`
 
 ## Validation Checklist
 
 - vault file exists and is parseable JSON
 - default RPC path is set to the endpoint you actually want
 - AI provider key is saved without extra whitespace
+- the selected provider in AI settings is the one you intend to use
 - the model string matches the provider's expected identifier
 - the GUI AI test succeeds
 - a simple chat request succeeds after setup
@@ -80,6 +85,7 @@ The AI check depends on:
 ### AI request fails
 
 - the selected provider key
+- whether `provider` is `auto`, `gateway`, or `openrouter`
 - the model identifier
 - whether the provider account has access to that model
 

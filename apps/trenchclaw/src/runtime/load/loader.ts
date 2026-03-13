@@ -1,4 +1,5 @@
 import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
+import { assertResolvedRuntimeEndpoints } from "./resolved-runtime-endpoints";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
 import { resolveCoreRelativePath, resolveRuntimeStatePath } from "../runtime-paths";
 import { loadResolvedUserSettings } from "../../ai/llm/user-settings-loader";
@@ -381,5 +382,5 @@ export const loadRuntimeSettings = async (
     );
   }
 
-  return validated;
+  return assertResolvedRuntimeEndpoints(validated);
 };
