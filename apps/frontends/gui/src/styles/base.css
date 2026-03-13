@@ -35,6 +35,30 @@ textarea {
   line-height: var(--tc-console-line-height);
 }
 
+.tc-copy-sm {
+  font-size: var(--tc-type-sm);
+  line-height: 1.45;
+}
+
+.tc-kicker {
+  font-size: var(--tc-type-xs);
+  text-transform: uppercase;
+  letter-spacing: var(--tc-track-normal);
+}
+
+.tc-link-card {
+  display: grid;
+  gap: 6px;
+  padding: var(--tc-space-3);
+  border: var(--tc-border);
+  background: var(--tc-color-black);
+  text-decoration: none;
+}
+
+.tc-link-card:hover {
+  border-color: var(--tc-color-gray-1);
+}
+
 /* Keep scroll behavior while hiding scrollbar chrome across panels. */
 * {
   scrollbar-width: none;

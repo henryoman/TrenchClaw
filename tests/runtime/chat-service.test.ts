@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { ActionDispatcher, ActionResult, LlmClient } from "../../apps/trenchclaw/src/ai";
 import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/runtime/types";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
+import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
 import { createRuntimeChatService } from "../../apps/trenchclaw/src/runtime/chat";
 import { SqliteStateStore } from "../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import {
@@ -221,11 +222,84 @@ describe("RuntimeChatService", () => {
     });
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });
-    expect(capturedSystemPrompt).toContain("test system prompt");
-    expect(capturedSystemPrompt).toContain("## Wallet Runtime Variables");
+    expect(capturedSystemPrompt).toContain("TrenchClaw System Kernel");
+    expect(capturedSystemPrompt).toContain("## Runtime Contract");
+    expect(capturedSystemPrompt).toContain("## Wallet Summary");
   });
 
-  test("appends auto-loaded wallet variables to the system prompt", async () => {
+  test("registers only capability-snapshot model tools for chat", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "enabledAction",
+      category: "data-based",
+      inputSchema: z.object({ value: z.number() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+    registry.register({
+      name: "disabledAction",
+      category: "data-based",
+      inputSchema: z.object({ value: z.number() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+
+    let seenToolNames: string[] = [];
+    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+      actions: [],
+      workspaceTools: [],
+      modelTools: [
+        {
+          kind: "action",
+          name: "enabledAction",
+          description: "enabled action",
+          purpose: "enabled action",
+          routingHint: "enabled action",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { value: 1 },
+          toolDescription: "enabled action",
+        },
+      ],
+    };
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        capabilitySnapshot,
+        llm: {
+          provider: "test",
+          model: "test-model",
+          defaultSystemPrompt: "ignored",
+          defaultMode: "primary",
+          generate: async () => ({ text: "ok", finishReason: "stop" }),
+          stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
+        } as unknown as LlmClient,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: { tools: Record<string, { execute: (input: unknown) => Promise<unknown> }> }) => {
+          seenToolNames = Object.keys(args.tools).toSorted((left, right) => left.localeCompare(right));
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([]);
+
+    expect(service.listToolNames()).toEqual(["enabledAction"]);
+    expect(seenToolNames).toEqual(["enabledAction"]);
+  });
+
+  test("includes a compact wallet summary in the system prompt", async () => {
     const registry = new ActionRegistry();
     const instanceId = "97";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
@@ -279,13 +353,13 @@ describe("RuntimeChatService", () => {
 
     await service.stream([]);
 
-    expect(capturedSystemPrompt).toContain("## Wallet Runtime Variables");
-    expect(capturedSystemPrompt).toContain(`- ACTIVE_INSTANCE_ID=${instanceId}`);
-    expect(capturedSystemPrompt).toContain("WALLET__PRACTICE_WALLETS__PRACTICE001__ADDRESS=DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
-    expect(capturedSystemPrompt).toContain("\"walletId\": \"practice-wallets.practice001\"");
+    expect(capturedSystemPrompt).toContain("## Wallet Summary");
+    expect(capturedSystemPrompt).toContain(`- active instance wallet scope: ${instanceId}`);
+    expect(capturedSystemPrompt).toContain("managed wallet count: 1");
+    expect(capturedSystemPrompt).toContain("practice-wallets/practice001=DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
   });
 
-  test("tells the model to answer directly when no managed wallets exist", async () => {
+  test("states missing managed wallet libraries directly in the wallet summary", async () => {
     const registry = new ActionRegistry();
     const instanceId = "98";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
@@ -326,9 +400,10 @@ describe("RuntimeChatService", () => {
 
     await service.stream([]);
 
-    expect(capturedSystemPrompt).toContain("- WALLET_LIBRARY_STATUS=missing");
-    expect(capturedSystemPrompt).toContain("answer directly that no managed wallets are configured right now");
-    expect(capturedSystemPrompt).toContain("Do not ask follow-up questions before giving that direct answer");
+    expect(capturedSystemPrompt).toContain("## Wallet Summary");
+    expect(capturedSystemPrompt).toContain("managed wallet status: missing library file");
+    expect(capturedSystemPrompt).toContain("use `getManagedWalletContents` for holdings and token balances");
+    expect(capturedSystemPrompt).toContain("never read or edit vaults, keypairs, or wallet-library files directly with file tools");
   });
 
   test("preserves assistant role/history when preparing streaming messages", async () => {

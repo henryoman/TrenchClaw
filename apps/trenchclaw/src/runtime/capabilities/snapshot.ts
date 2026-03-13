@@ -1,4 +1,4 @@
-import type { RuntimeCapabilitySnapshot } from "./types";
+import type { RuntimeCapabilitySnapshot, RuntimeModelToolSnapshotEntry } from "./types";
 
 const toMarkdownTable = (headers: string[], rows: string[][]): string => {
   const headerLine = `| ${headers.join(" | ")} |`;
@@ -7,14 +7,21 @@ const toMarkdownTable = (headers: string[], rows: string[][]): string => {
   return [headerLine, dividerLine, body].filter((line) => line.length > 0).join("\n");
 };
 
+const renderToolList = (tools: RuntimeModelToolSnapshotEntry[]): string =>
+  tools.length === 0
+    ? "- none"
+    : tools
+      .map((toolEntry) =>
+        `- \`${toolEntry.name}\` (${toolEntry.kind}, ${toolEntry.sideEffectLevel}) - ${toolEntry.routingHint}`)
+      .join("\n");
+
 export const renderRuntimeActionCatalogTable = (snapshot: RuntimeCapabilitySnapshot): string =>
   toMarkdownTable(
     [
       "actionName",
       "category",
       "subcategory",
-      "enabledBySettings",
-      "chatExposed",
+      "enabledNow",
       "requiresConfirmation",
       "inputSchema",
       "outputSchema",
@@ -23,82 +30,29 @@ export const renderRuntimeActionCatalogTable = (snapshot: RuntimeCapabilitySnaps
       entry.name,
       entry.category,
       entry.subcategory ?? "",
-      entry.enabledBySettings ? "yes" : "no",
-      entry.chatExposed ? "yes" : "no",
-      entry.requiresUserConfirmation ? "yes" : "no",
+      entry.enabledNow ? "yes" : "no",
+      entry.requiresConfirmation ? "yes" : "no",
       entry.hasInputSchema ? "yes" : "no",
       entry.hasOutputSchema ? "yes" : "no",
     ]),
   );
 
-export const renderRuntimeChatToolCatalogTable = (snapshot: RuntimeCapabilitySnapshot): string =>
+export const renderRuntimeModelToolCatalogTable = (snapshot: RuntimeCapabilitySnapshot): string =>
   toMarkdownTable(
-    ["toolName", "kind", "enabledBySettings", "requiresConfirmation"],
-    snapshot.chatTools.map((entry) => [
+    ["toolName", "kind", "sideEffectLevel", "requiresConfirmation"],
+    snapshot.modelTools.map((entry) => [
       entry.name,
       entry.kind,
-      entry.enabledBySettings ? "yes" : "no",
-      entry.requiresUserConfirmation ? "yes" : "no",
+      entry.sideEffectLevel,
+      entry.requiresConfirmation ? "yes" : "no",
     ]),
   );
 
-export const renderPrimaryCapabilityAppendix = (snapshot: RuntimeCapabilitySnapshot): string => {
-  const actionBlocks = snapshot.actions
-    .map((entry) => {
-      const statusBits = [
-        `enabledBySettings=\`${entry.enabledBySettings ? "yes" : "no"}\``,
-        `chatExposed=\`${entry.chatExposed ? "yes" : "no"}\``,
-        `requiresConfirmation=\`${entry.requiresUserConfirmation ? "yes" : "no"}\``,
-      ].join(", ");
-      return `### \`${entry.name}\`
-Category: \`${entry.category}${entry.subcategory ? `/${entry.subcategory}` : ""}\`
-Status: ${statusBits}
-Purpose: ${entry.purpose}
-Description: ${entry.description}
-Tags: ${entry.tags.join(", ") || "none"}`;
-    })
-    .join("\n\n");
+export const renderRuntimeToolContractSection = (snapshot: RuntimeCapabilitySnapshot): string => `## Enabled Model Tools
+Only use tools listed here. Every listed tool is registered in chat for this request.
 
-  const workspaceBlocks = snapshot.workspaceTools
-    .filter((entry) => entry.enabledBySettings || entry.chatExposed)
-    .map((entry) => {
-      const statusBits = [
-        `enabledBySettings=\`${entry.enabledBySettings ? "yes" : "no"}\``,
-        `chatExposed=\`${entry.chatExposed ? "yes" : "no"}\``,
-      ].join(", ");
-      return `### \`${entry.name}\`
-Status: ${statusBits}
-Purpose: ${entry.purpose}
-Description: ${entry.description}
-Tags: ${entry.tags.join(", ") || "none"}`;
-    })
-    .join("\n\n");
+### Exact Tool Allowlist
+${snapshot.modelTools.map((entry) => `\`${entry.name}\``).join(", ") || "none"}
 
-  const callableToolNames = snapshot.chatTools.map((entry) => `\`${entry.name}\``).join(", ") || "none";
-
-  return `## Live Callable Capability Appendix
-This appendix is generated from the runtime capability registry. Treat it as the live capability metadata source for names, intent, and exposure.
-
-### How To Read This Appendix
-1. \`Runtime Chat Tool Catalog\` is the exact callable tool allowlist for this run.
-2. If a tool or action name appears elsewhere in the repo, docs, or workspace tree but does not appear in \`Runtime Chat Tool Catalog\`, treat it as unavailable.
-3. CLI access is available only through \`workspaceBash\`. Direct file access uses \`workspaceReadFile\` and \`workspaceWriteFile\`.
-4. Documentation/query surfaces come from the injected \`Knowledge Manifest\` and \`Workspace Context Snapshot\`.
-5. Treat \`ARCHITECTURE.md\`, \`src/ai/brain/rules.md\`, and \`src/ai/brain/knowledge/*.md\` as the primary model reference set.
-6. For structured runtime data, prefer JSON-style read actions such as \`queryRuntimeStore\` and \`queryInstanceMemory\` instead of shell commands.
-7. For docs and code, use \`workspaceBash\` to discover file paths and \`workspaceReadFile\` to open the exact files.
-
-### Exact Callable Tool Names
-${callableToolNames}
-
-### Runtime Action Catalog
-${renderRuntimeActionCatalogTable(snapshot)}
-
-${actionBlocks}
-
-### Runtime Chat Tool Catalog
-${renderRuntimeChatToolCatalogTable(snapshot)}
-
-### Workspace Tool Catalog
-${workspaceBlocks}`.trim();
-};
+### Tool Routing
+${renderToolList(snapshot.modelTools)}`.trim();

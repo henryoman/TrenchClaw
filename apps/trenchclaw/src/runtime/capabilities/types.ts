@@ -1,75 +1,87 @@
 import type { Action, ActionCategory, ActionSubcategory } from "../../ai/runtime/types/action";
 import type { RuntimeSettings } from "../load";
+import type { FilesystemPolicySummary } from "../security/filesystem-manifest";
+
+export type CapabilitySideEffectLevel = "read" | "write" | "execute";
 
 export interface RuntimeCapabilityPredicateContext {
   settings: RuntimeSettings;
+  filesystemPolicy: FilesystemPolicySummary;
 }
 
-export interface RuntimeActionCapabilityDefinition {
-  kind: "action";
-  action: Action<any, any>;
+export interface RuntimeCapabilityMetadata {
   description: string;
   purpose: string;
   tags: readonly string[];
   exampleInput?: unknown;
+  routingHint?: string;
+  sideEffectLevel?: CapabilitySideEffectLevel;
+}
+
+export interface RuntimeActionCapabilityDefinition extends RuntimeCapabilityMetadata {
+  kind: "action";
+  action: Action<any, any>;
   includeInCatalog: (context: RuntimeCapabilityPredicateContext) => boolean;
   enabledBySettings: (context: RuntimeCapabilityPredicateContext) => boolean;
   requiresUserConfirmation?: boolean;
   chatExposed?: boolean;
 }
 
-export interface WorkspaceToolCapabilityDefinition {
+export interface WorkspaceToolCapabilityDefinition extends RuntimeCapabilityMetadata {
   kind: "workspace-tool";
   name: string;
-  description: string;
-  purpose: string;
-  tags: readonly string[];
-  exampleInput?: unknown;
   enabledBySettings: (context: RuntimeCapabilityPredicateContext) => boolean;
   chatExposed?: boolean;
 }
 
-export interface RuntimeActionCapabilitySnapshotEntry {
+export interface RuntimeCapabilitySnapshotBase {
+  description: string;
+  purpose: string;
+  tags: readonly string[];
+  exampleInput?: unknown;
+  routingHint: string;
+  sideEffectLevel: CapabilitySideEffectLevel;
+  enabledNow: boolean;
+  exposedToModel: boolean;
+  toolDescription: string;
+}
+
+export interface RuntimeActionCapabilitySnapshotEntry extends RuntimeCapabilitySnapshotBase {
   kind: "action";
   name: string;
   category: ActionCategory;
   subcategory?: ActionSubcategory;
-  description: string;
-  purpose: string;
-  tags: readonly string[];
-  exampleInput?: unknown;
   hasInputSchema: boolean;
   hasOutputSchema: boolean;
   includedInCatalog: boolean;
   enabledBySettings: boolean;
-  requiresUserConfirmation: boolean;
+  requiresConfirmation: boolean;
   chatExposed: boolean;
   action: Action<any, any>;
 }
 
-export interface WorkspaceToolCapabilitySnapshotEntry {
+export interface WorkspaceToolCapabilitySnapshotEntry extends RuntimeCapabilitySnapshotBase {
   kind: "workspace-tool";
   name: string;
-  description: string;
-  purpose: string;
-  tags: readonly string[];
-  exampleInput?: unknown;
   enabledBySettings: boolean;
   chatExposed: boolean;
 }
 
-export interface RuntimeChatToolSnapshotEntry {
+export interface RuntimeModelToolSnapshotEntry {
   kind: "action" | "workspace-tool";
   name: string;
   description: string;
   purpose: string;
-  enabledBySettings: boolean;
-  requiresUserConfirmation: boolean;
+  routingHint: string;
+  sideEffectLevel: CapabilitySideEffectLevel;
+  enabledNow: boolean;
+  requiresConfirmation: boolean;
   exampleInput?: unknown;
+  toolDescription: string;
 }
 
 export interface RuntimeCapabilitySnapshot {
   actions: RuntimeActionCapabilitySnapshotEntry[];
   workspaceTools: WorkspaceToolCapabilitySnapshotEntry[];
-  chatTools: RuntimeChatToolSnapshotEntry[];
+  modelTools: RuntimeModelToolSnapshotEntry[];
 }

@@ -21,17 +21,17 @@ import type {
 } from "../ai";
 import { loadAiSettings } from "../ai/llm/ai-settings-file";
 import { createLanguageModel, resolveLlmProviderConfig } from "../ai/llm/config";
+import { loadDefaultSystemPrompt } from "../ai/llm/prompt-loader";
 import {
   createWorkspaceBashTools,
+  DEFAULT_WORKSPACE_BASH_ROOT,
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
 } from "./workspace-bash";
-import { renderRuntimeWalletPromptContext } from "./wallet-model-context";
 import type { RuntimeCapabilitySnapshot } from "./capabilities";
 import type { RuntimeLogger } from "./logging/runtime-logger";
 import type { RuntimeJobControlRequest, RuntimeJobEnqueueRequest } from "../ai/runtime/types/context";
-import { RUNTIME_WORKSPACE_ROOT } from "./runtime-paths";
 
 export interface RuntimeChatService {
   listToolNames: () => string[];
@@ -80,15 +80,16 @@ const resolveStreamingModel = async (): Promise<LanguageModel> => {
 };
 
 const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> => {
-  const basePrompt = deps.llm?.defaultSystemPrompt ?? "You are TrenchClaw's runtime assistant.";
-  const walletContext = await renderRuntimeWalletPromptContext();
-  return `${basePrompt.trim()}\n\n${walletContext}`.trim();
+  if (!deps.llm) {
+    return "You are TrenchClaw's runtime assistant.";
+  }
+  return loadDefaultSystemPrompt();
 };
 
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
-const DEFAULT_WORKSPACE_ROOT_DIRECTORY = RUNTIME_WORKSPACE_ROOT;
+const DEFAULT_WORKSPACE_ROOT_DIRECTORY = DEFAULT_WORKSPACE_BASH_ROOT;
 const DEFAULT_CHAT_ID_PREFIX = "chat";
 const DEFAULT_CHAT_MAX_OUTPUT_TOKENS = 1200;
 const RUNTIME_WORKSPACE_TOOL_NAMES = [
@@ -211,16 +212,26 @@ const toRuntimeChatErrorMessage = (error: unknown): string => {
 
 const buildActionTools = (deps: RuntimeChatServiceDeps): Record<string, any> => {
   const tools: Record<string, any> = {};
+  const enabledActionNames = deps.capabilitySnapshot
+    ? new Set(
+        deps.capabilitySnapshot.modelTools
+          .filter((toolEntry) => toolEntry.kind === "action")
+          .map((toolEntry) => toolEntry.name),
+      )
+    : null;
 
   for (const registered of deps.registry.list()) {
     const action = deps.registry.get(registered.name);
     if (!action || !action.inputSchema) {
       continue;
     }
+    if (enabledActionNames && !enabledActionNames.has(action.name)) {
+      continue;
+    }
 
     const capability = deps.capabilitySnapshot?.actions.find((entry) => entry.name === action.name);
     tools[action.name] = tool({
-      description: capability?.description ?? toToolDescription(action.name, action.category, action.subcategory),
+      description: capability?.toolDescription ?? toToolDescription(action.name, action.category, action.subcategory),
       inputSchema: action.inputSchema as z.ZodTypeAny,
       execute: async (rawInput: unknown) => {
         const dispatchStartedAt = Date.now();
@@ -314,7 +325,7 @@ export const createRuntimeChatService = (
 
   const listToolNames = (): string[] =>
     deps.capabilitySnapshot
-      ? deps.capabilitySnapshot.chatTools.map((toolEntry) => toolEntry.name)
+      ? deps.capabilitySnapshot.modelTools.map((toolEntry) => toolEntry.name)
       : [
           ...deps.registry
             .list()
@@ -371,7 +382,20 @@ export const createRuntimeChatService = (
         workspaceRootDirectory,
         actor: "agent",
       });
-      Object.assign(tools, await workspaceToolPromise);
+      const loadedWorkspaceTools = await workspaceToolPromise;
+      const enabledWorkspaceToolNames = deps.capabilitySnapshot
+        ? new Set(
+            deps.capabilitySnapshot.modelTools
+              .filter((toolEntry) => toolEntry.kind === "workspace-tool")
+              .map((toolEntry) => toolEntry.name),
+          )
+        : null;
+      for (const [toolName, workspaceTool] of Object.entries(loadedWorkspaceTools)) {
+        if (enabledWorkspaceToolNames && !enabledWorkspaceToolNames.has(toolName)) {
+          continue;
+        }
+        tools[toolName] = workspaceTool;
+      }
       deps.logger?.info("chat:workspace_tools_ready", {
         chatId,
         durationMs: Date.now() - workspaceToolsStartedAt,

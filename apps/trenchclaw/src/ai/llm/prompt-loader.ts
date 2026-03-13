@@ -1,33 +1,19 @@
-import path from "node:path";
-import { renderDirectoryTree } from "../brain/knowledge/knowledge-tree";
-import {
-  parsePromptManifest,
-  resolvePromptModeConfig,
-  type PromptGeneratedSectionConfig,
-  type PromptPayloadManifest,
-} from "./prompt-manifest";
-import { parseStructuredFile, resolvePathFromModule } from "./shared";
-import { renderWorkspaceMapSection } from "./workspace-map";
-import { renderResolvedUserSettingsSection } from "./user-settings-loader";
-import { getRuntimeCapabilitySnapshot, renderPrimaryCapabilityAppendix } from "../../runtime/capabilities";
+import { fileURLToPath } from "node:url";
+import { getRuntimeCapabilitySnapshot, renderRuntimeToolContractSection } from "../../runtime/capabilities";
+import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { loadRuntimeSettings } from "../../runtime/load";
-import { buildFilesystemPolicyPrompt } from "../../runtime/security/filesystem-manifest";
+import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
+import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
+import { resolveVaultFile } from "./vault-file";
 
-const DEFAULT_PROMPT_MANIFEST_FILE = "../config/payload-manifest.json";
-const DEFAULT_KNOWLEDGE_DIR = "../brain/knowledge/";
-const DEFAULT_KNOWLEDGE_MANIFEST_FILE = "../../../.runtime-state/generated/knowledge-manifest.md";
-const DEFAULT_WORKSPACE_DIR = "../../../";
+const SYSTEM_PROMPT_FILE = "../config/system.md";
+const AGENT_MODE_ENV = "TRENCHCLAW_AGENT_MODE";
+const SUPPORTED_MODE = "primary";
 
 const FALLBACK_SYSTEM_PROMPT = [
   "You are TrenchClaw, a safety-first Solana runtime assistant.",
   "Prioritize policy compliance, capital protection, and clear user communication.",
 ].join(" ");
-
-const PROMPT_MANIFEST_PATH_ENV = "TRENCHCLAW_PROMPT_MANIFEST_FILE";
-const AGENT_MODE_ENV = "TRENCHCLAW_AGENT_MODE";
-const KNOWLEDGE_DIR_ENV = "TRENCHCLAW_KNOWLEDGE_DIR";
-const KNOWLEDGE_MANIFEST_PATH_ENV = "TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE";
-const WORKSPACE_DIR_ENV = "TRENCHCLAW_WORKSPACE_DIR";
 
 export interface SystemPromptPayload {
   mode: string;
@@ -42,305 +28,129 @@ export interface SystemPromptPayload {
   }>;
 }
 
-let cachedManifest: PromptPayloadManifest | null = null;
-let cachedManifestPath: string | null = null;
-const cachedPromptByMode = new Map<string, SystemPromptPayload>();
+const cachedPromptFiles = new Map<string, string>();
 
-const injectKnowledgeDirectoryTree = async (basePrompt: string): Promise<string> => {
-  const knowledgeDir = resolvePathFromModule(import.meta.url, DEFAULT_KNOWLEDGE_DIR, process.env[KNOWLEDGE_DIR_ENV]);
+const resolvePromptFilePath = (relativePath: string): string => fileURLToPath(new URL(relativePath, import.meta.url));
 
-  try {
-    const tree = await renderDirectoryTree(knowledgeDir);
-    return `${basePrompt}
-
-## Available Knowledge Directory Tree
-Use this tree to decide what knowledge files exist before asking to read them.
-\`\`\`text
-${tree}
-\`\`\``;
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return `${basePrompt}
-
-## Available Knowledge Directory Tree
-Knowledge tree could not be generated from "${knowledgeDir}": ${detail}`;
-  }
-};
-
-const renderKnowledgeManifestSection = async (includeFallbackTree: boolean): Promise<string> => {
-  const manifestPath = resolvePathFromModule(
-    import.meta.url,
-    DEFAULT_KNOWLEDGE_MANIFEST_FILE,
-    process.env[KNOWLEDGE_MANIFEST_PATH_ENV],
-  );
-
-  try {
-    const manifestFile = Bun.file(manifestPath);
-    if (await manifestFile.exists()) {
-      const manifestText = (await manifestFile.text()).trim();
-      if (manifestText.length > 0) {
-        return `## Available Knowledge Manifest
-${manifestText}`;
-      }
-    }
-  } catch {
-    // Fall through to runtime tree generation.
+const loadPromptFile = async (
+  relativePath: string,
+  fallbackText?: string,
+): Promise<{ path: string; text: string }> => {
+  const filePath = resolvePromptFilePath(relativePath);
+  const cachedText = cachedPromptFiles.get(filePath);
+  if (cachedText) {
+    return { path: filePath, text: cachedText };
   }
 
-  if (!includeFallbackTree) {
-    return `## Available Knowledge Manifest
-Knowledge manifest could not be loaded from "${manifestPath}".`;
-  }
-
-  return injectKnowledgeDirectoryTree("");
-};
-
-const renderWorkspaceDirectoryTreeSection = async (): Promise<string> => {
-  const workspaceDir = resolvePathFromModule(import.meta.url, DEFAULT_WORKSPACE_DIR, process.env[WORKSPACE_DIR_ENV]);
-
-  try {
-    return await renderWorkspaceMapSection(workspaceDir);
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return `## Workspace Map
-Workspace map could not be generated from "${workspaceDir}": ${detail}`;
-  }
-};
-
-const renderResolvedUserSettingsPromptSection = async (): Promise<string> => renderResolvedUserSettingsSection();
-
-const loadPromptManifest = async (): Promise<{
-  manifest: PromptPayloadManifest | null;
-  manifestPath: string;
-}> => {
-  const manifestPath = resolvePathFromModule(
-    import.meta.url,
-    DEFAULT_PROMPT_MANIFEST_FILE,
-    process.env[PROMPT_MANIFEST_PATH_ENV],
-  );
-  if (cachedManifest && cachedManifestPath === manifestPath) {
-    return { manifest: cachedManifest, manifestPath };
-  }
-
-  try {
-    const parsed = parsePromptManifest(await parseStructuredFile(manifestPath), manifestPath);
-    cachedManifest = parsed;
-    cachedManifestPath = manifestPath;
-    cachedPromptByMode.clear();
-    return { manifest: parsed, manifestPath };
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("File does not exist")) {
-      cachedManifest = null;
-      cachedManifestPath = manifestPath;
-      cachedPromptByMode.clear();
-      return { manifest: null, manifestPath };
-    }
-    throw error;
-  }
-};
-
-const resolvePromptFilePath = (manifestPath: string, filePath: string): string => {
-  if (path.isAbsolute(filePath)) {
-    return filePath;
-  }
-
-  return path.resolve(path.dirname(manifestPath), filePath);
-};
-
-const loadPromptFileText = async (manifestPath: string, promptFilePath: string): Promise<string> => {
-  const resolvedPath = resolvePromptFilePath(manifestPath, promptFilePath);
-  const file = Bun.file(resolvedPath);
+  const file = Bun.file(filePath);
   if (!(await file.exists())) {
-    throw new Error(`Prompt file does not exist: "${resolvedPath}"`);
+    const text = fallbackText?.trim() || "";
+    cachedPromptFiles.set(filePath, text);
+    return { path: filePath, text };
   }
-  return (await file.text()).trim();
+
+  const text = ((await file.text()).trim() || fallbackText || "").trim();
+  cachedPromptFiles.set(filePath, text);
+  return { path: filePath, text };
 };
 
-const defaultGeneratedSectionTitle = (source: PromptGeneratedSectionConfig["source"]): string => {
-  switch (source) {
-    case "knowledgeManifest":
-      return "Knowledge Manifest";
-    case "knowledgeDirectoryTree":
-      return "Knowledge Directory Tree";
-    case "workspaceDirectoryTree":
-      return "Workspace Directory Tree";
-    case "resolvedUserSettings":
-      return "Resolved Runtime Settings";
-    case "runtimeCapabilityAppendix":
-      return "Runtime Capability Appendix";
-    case "filesystemPolicy":
-      return "Filesystem Policy";
+const resolveMode = (requestedMode: string | undefined): string => {
+  const normalized = requestedMode?.trim() || SUPPORTED_MODE;
+  if (normalized !== SUPPORTED_MODE) {
+    throw new Error(`Unknown agent mode "${normalized}". Only "${SUPPORTED_MODE}" is supported.`);
+  }
+  return normalized;
+};
+
+const renderProfileMeaning = (profile: string): string => {
+  switch (profile) {
+    case "safe":
+      return "read-first operation, no direct model file writes, and dangerous actions remain constrained.";
+    case "dangerous":
+      return "mutating runtime actions may be available, and dangerous actions can still require explicit confirmation.";
+    case "veryDangerous":
+      return "more execution paths are enabled, but runtime policy and confirmation checks still apply where configured.";
+    default:
+      return "follow the live runtime settings and do not assume looser access than what is stated here.";
   }
 };
 
-const renderRuntimeCapabilityAppendixSection = async (): Promise<string> => {
+const renderRuntimeContract = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  return renderPrimaryCapabilityAppendix(getRuntimeCapabilitySnapshot(settings));
-};
+  const [capabilitySnapshot, filesystemPolicy, walletSummary] = await Promise.all([
+    getRuntimeCapabilitySnapshot(settings),
+    summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
+    renderRuntimeWalletPromptSummary(),
+  ]);
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  const vault = resolveVaultFile({ activeInstanceId });
+  const confirmationEnabled = settings.trading.confirmations.requireUserConfirmationForDangerousActions;
 
-const renderFilesystemPolicySection = async (): Promise<string> => {
-  try {
-    return `## Filesystem Policy\n${await buildFilesystemPolicyPrompt({ actor: "agent" })}`;
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    return `## Filesystem Policy\nFilesystem policy could not be loaded: ${detail}`;
-  }
-};
-
-const renderGeneratedSection = async (
-  section: PromptGeneratedSectionConfig,
-  includeKnowledgeDirectoryTreeFallback: boolean,
-): Promise<string> => {
-  switch (section.source) {
-    case "knowledgeManifest":
-      return renderKnowledgeManifestSection(section.fallbackSource === "knowledgeDirectoryTree" || includeKnowledgeDirectoryTreeFallback);
-    case "knowledgeDirectoryTree":
-      return injectKnowledgeDirectoryTree("");
-    case "workspaceDirectoryTree":
-      return renderWorkspaceDirectoryTreeSection();
-    case "resolvedUserSettings":
-      return renderResolvedUserSettingsPromptSection();
-    case "runtimeCapabilityAppendix":
-      return renderRuntimeCapabilityAppendixSection();
-    case "filesystemPolicy":
-      return renderFilesystemPolicySection();
-  }
-};
-
-const formatPromptAssemblyHeader = (input: {
-  title: string;
-  mode: string;
-  sections: Array<{ order: number; title: string; kind: "file" | "generated"; source: string }>;
-}): string => {
-  const lines = [
-    `# ${input.title}`,
+  return [
+    "## Runtime Contract",
+    `- active profile: ${settings.profile}`,
+    `- profile meaning: ${renderProfileMeaning(settings.profile)}`,
+    `- active instance: ${activeInstanceId ?? "none"}`,
+    `- vault path: ${vault.vaultPath ?? "none"}`,
     "",
-    `Mode: \`${input.mode}\``,
+    "### Confirmation Policy",
+    confirmationEnabled
+      ? `- dangerous actions can require explicit confirmation using the runtime token \`${settings.trading.confirmations.userConfirmationToken}\` or an equivalent confirmed flag`
+      : "- no extra runtime confirmation token is required for dangerous actions in the current profile",
     "",
-    "## Prompt Assembly Order",
-  ];
-
-  for (const section of input.sections) {
-    lines.push(`${section.order}. ${section.title}`);
-    lines.push(`   - kind: \`${section.kind}\``);
-    lines.push(`   - source: \`${section.source}\``);
-  }
-
-  return lines.join("\n");
+    "### Filesystem Summary",
+    `- default permission: ${filesystemPolicy.defaultPermission}`,
+    `- readable roots: ${filesystemPolicy.readPaths.join(", ") || "none"}`,
+    `- writable roots: ${filesystemPolicy.writePaths.join(", ") || "none"}`,
+    `- blocked roots: ${filesystemPolicy.blockedPaths.join(", ") || "none"}`,
+    "",
+    renderRuntimeToolContractSection(capabilitySnapshot),
+    "",
+    "## Wallet Summary",
+    walletSummary,
+    "",
+    "## Key Paths",
+    "- `src/runtime/bootstrap.ts`",
+    "- `src/runtime/chat.ts`",
+    "- `src/runtime/capabilities/`",
+    "- `src/ai/config/system.md`",
+    "- `.runtime-state/generated/knowledge-manifest.md`",
+    "- `.runtime-state/generated/workspace-context.md`",
+    "",
+    "Use `workspaceReadFile` for exact source, config, doc, and generated-artifact reads when you know the path.",
+    "Use `queryRuntimeStore` and `queryInstanceMemory` for structured runtime state instead of reading files when a structured action exists.",
+  ].join("\n");
 };
 
 export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]): Promise<SystemPromptPayload> => {
-  const { manifest, manifestPath } = await loadPromptManifest();
-  const cacheKey = mode?.trim().length ? mode.trim() : "__default__";
+  const resolvedMode = resolveMode(mode);
+  const [kernel, runtimeContract] = await Promise.all([
+    loadPromptFile(SYSTEM_PROMPT_FILE, FALLBACK_SYSTEM_PROMPT),
+    renderRuntimeContract(),
+  ]);
 
-  if (cachedPromptByMode.has(cacheKey)) {
-    return cachedPromptByMode.get(cacheKey)!;
-  }
+  const systemPrompt = [kernel.text, runtimeContract].filter((value) => value.trim().length > 0).join("\n\n");
 
-  if (!manifest) {
-    const fallbackPrompt = `# Fallback Mode
-
-Mode: \`fallback\`
-
-${FALLBACK_SYSTEM_PROMPT}
-
-${(await renderKnowledgeManifestSection(true)).trim()}`.trim();
-    const payload: SystemPromptPayload = {
-      mode: "fallback",
-      title: "Fallback Mode",
-      systemPrompt: fallbackPrompt,
-      promptFiles: [],
-      sections: [],
-    };
-    cachedPromptByMode.set(cacheKey, payload);
-    return payload;
-  }
-
-  const { mode: resolvedMode, modeConfig } = resolvePromptModeConfig(manifest, mode);
-  const includeKnowledgeManifest = modeConfig.includeKnowledgeManifest ?? manifest.defaults?.includeKnowledgeManifest ?? true;
-  const includeKnowledgeDirectoryTreeFallback =
-    modeConfig.includeKnowledgeDirectoryTreeFallback ??
-    manifest.defaults?.includeKnowledgeDirectoryTreeFallback ??
-    true;
-  const includeWorkspaceDirectoryTree =
-    modeConfig.includeWorkspaceDirectoryTree ?? manifest.defaults?.includeWorkspaceDirectoryTree ?? false;
-
-  const manifestSections = modeConfig.sections.length > 0
-    ? modeConfig.sections
-    : modeConfig.promptFiles.map((filePath) => ({ kind: "file" as const, title: undefined, path: filePath }));
-  const payloadTitle = modeConfig.title?.trim() || `${resolvedMode[0]?.toUpperCase() ?? ""}${resolvedMode.slice(1)} Mode`;
-  const visibleSections = manifestSections.filter((section) => {
-    if (section.kind !== "generated") {
-      return true;
-    }
-    if (section.source === "knowledgeManifest" && !includeKnowledgeManifest) {
-      return false;
-    }
-    if (section.source === "workspaceDirectoryTree" && !includeWorkspaceDirectoryTree) {
-      return false;
-    }
-    return true;
-  });
-  const renderedSections = await Promise.all(
-    visibleSections.map(async (section, index) => {
-      if (section.kind === "file") {
-        const resolvedPath = resolvePromptFilePath(manifestPath, section.path);
-        const content = await loadPromptFileText(manifestPath, section.path);
-        return {
-          order: index + 1,
-          title: section.title?.trim() || path.basename(section.path),
-          kind: "file" as const,
-          source: resolvedPath,
-          content,
-        };
-      }
-
-      const content = await renderGeneratedSection(section, includeKnowledgeDirectoryTreeFallback);
-      return {
-        order: index + 1,
-        title: section.title?.trim() || defaultGeneratedSectionTitle(section.source),
-        kind: "generated" as const,
-        source: `generated:${section.source}`,
-        content: content.trim(),
-      };
-    }),
-  );
-  const promptFiles = renderedSections.filter((section) => section.kind === "file").map((section) => section.source);
-
-  const header = formatPromptAssemblyHeader({
-    title: payloadTitle,
+  return {
     mode: resolvedMode,
-    sections: renderedSections.map(({ order, title: sectionTitle, kind, source }) => ({
-      order,
-      title: sectionTitle,
-      kind,
-      source,
-    })),
-  });
-  const body = renderedSections
-    .map(
-      (section) => `## Section ${section.order}: ${section.title}
-Source: \`${section.source}\`
-
-${section.content}`.trim(),
-    )
-    .join("\n\n");
-  const systemPrompt = [header, body].filter((text) => text.trim().length > 0).join("\n\n");
-
-  const payload: SystemPromptPayload = {
-    mode: resolvedMode,
-    title: payloadTitle,
-    systemPrompt: systemPrompt.trim() || FALLBACK_SYSTEM_PROMPT,
-    promptFiles,
-    sections: renderedSections.map(({ order, title: sectionTitle, kind, source }) => ({
-      order,
-      title: sectionTitle,
-      kind,
-      source,
-    })),
+    title: "Primary Runtime Contract",
+    systemPrompt,
+    promptFiles: [kernel.path],
+    sections: [
+      {
+        order: 1,
+        title: "System Kernel",
+        kind: "file",
+        source: kernel.path,
+      },
+      {
+        order: 2,
+        title: "Runtime Contract",
+        kind: "generated",
+        source: "generated:runtimeContract",
+      },
+    ],
   };
-  cachedPromptByMode.set(cacheKey, payload);
-  return payload;
 };
 
 export const loadDefaultSystemPrompt = async (): Promise<string> => {
@@ -349,7 +159,5 @@ export const loadDefaultSystemPrompt = async (): Promise<string> => {
 };
 
 export const resetPromptLoaderCache = (): void => {
-  cachedManifest = null;
-  cachedManifestPath = null;
-  cachedPromptByMode.clear();
+  cachedPromptFiles.clear();
 };
