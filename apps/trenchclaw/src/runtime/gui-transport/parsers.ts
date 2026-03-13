@@ -234,9 +234,14 @@ export const parseUpdateAiSettingsRequest = async (request: Request): Promise<Gu
       return null;
     }
 
-    const { model, defaultMode, temperature, maxOutputTokens } = payload.settings;
+    const { provider, model, defaultMode, temperature, maxOutputTokens } = payload.settings;
 
-    if (typeof model !== "string" || typeof defaultMode !== "string") {
+    if (
+      typeof provider !== "string"
+      || (provider !== "auto" && provider !== "gateway" && provider !== "openrouter")
+      || typeof model !== "string"
+      || typeof defaultMode !== "string"
+    ) {
       return null;
     }
 
@@ -253,6 +258,7 @@ export const parseUpdateAiSettingsRequest = async (request: Request): Promise<Gu
 
     return {
       settings: {
+        provider,
         model,
         defaultMode,
         temperature,

@@ -88,6 +88,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
   test("prefers gateway when both supported transports are configured", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
+      provider: "auto",
       model: "anthropic/claude-sonnet-4.6",
       defaultMode: "primary",
       temperature: null,
@@ -108,5 +109,57 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
     expect(resolved?.provider).toBe("gateway");
     expect(resolved?.apiKey).toBe("gateway-key");
+  });
+
+  test("honors an explicit OpenRouter provider selection for a shared model", async () => {
+    process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
+      provider: "openrouter",
+      model: "anthropic/claude-sonnet-4.6",
+      defaultMode: "primary",
+      temperature: null,
+      maxOutputTokens: null,
+    });
+    process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+      llm: {
+        gateway: {
+          "api-key": "gateway-key",
+        },
+        openrouter: {
+          "api-key": "openrouter-key",
+        },
+      },
+    });
+
+    const resolved = await resolveLlmProviderConfigFromVault();
+
+    expect(resolved?.provider).toBe("openrouter");
+    expect(resolved?.model).toBe("anthropic/claude-sonnet-4.6");
+    expect(resolved?.apiKey).toBe("openrouter-key");
+  });
+
+  test("falls back to OpenRouter when the selected model is OpenRouter-only", async () => {
+    process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
+      provider: "auto",
+      model: "openrouter/hunter-alpha",
+      defaultMode: "primary",
+      temperature: null,
+      maxOutputTokens: null,
+    });
+    process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+      llm: {
+        gateway: {
+          "api-key": "gateway-key",
+        },
+        openrouter: {
+          "api-key": "openrouter-key",
+        },
+      },
+    });
+
+    const resolved = await resolveLlmProviderConfigFromVault();
+
+    expect(resolved?.provider).toBe("openrouter");
+    expect(resolved?.model).toBe("openrouter/hunter-alpha");
+    expect(resolved?.apiKey).toBe("openrouter-key");
   });
 });

@@ -243,10 +243,23 @@ export interface GuiUpdateVaultResponse {
 }
 
 export interface GuiAiSettingsView {
+  provider: "auto" | "gateway" | "openrouter";
   model: string;
   defaultMode: string;
   temperature: number | null;
   maxOutputTokens: number | null;
+}
+
+export interface GuiAiProviderOptionView {
+  id: "auto" | "gateway" | "openrouter";
+  label: string;
+  description: string;
+}
+
+export interface GuiAiModelOptionView {
+  id: string;
+  label: string;
+  providers: Array<"gateway" | "openrouter">;
 }
 
 export interface GuiAiSettingsResponse {
@@ -254,6 +267,8 @@ export interface GuiAiSettingsResponse {
   templatePath: string;
   initializedFromTemplate: boolean;
   settings: GuiAiSettingsView;
+  providerOptions: GuiAiProviderOptionView[];
+  options: GuiAiModelOptionView[];
 }
 
 export interface GuiUpdateAiSettingsRequest {
@@ -264,6 +279,8 @@ export interface GuiUpdateAiSettingsResponse {
   filePath: string;
   savedAt: string;
   settings: GuiAiSettingsView;
+  providerOptions: GuiAiProviderOptionView[];
+  options: GuiAiModelOptionView[];
 }
 
 export type GuiTradingSwapProvider = "ultra" | "standard";

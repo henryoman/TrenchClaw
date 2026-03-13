@@ -1,6 +1,8 @@
 import { createGateway, type LanguageModel } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { loadAiSettings } from "./ai-settings-file";
+import type { AiProviderPreference } from "./model-catalog";
+import { supportsAiModelProvider } from "./model-catalog";
 import { loadVaultData, readVaultString } from "./vault-file";
 
 export const LLM_PROVIDERS = ["gateway", "openrouter"] as const;
@@ -15,6 +17,9 @@ export interface LlmProviderConfig {
 
 const PROVIDER_PRIORITY: readonly LlmProvider[] = ["gateway", "openrouter"];
 
+const resolveProviderOrder = (preference: AiProviderPreference): readonly LlmProvider[] =>
+  preference === "auto" ? PROVIDER_PRIORITY : [preference];
+
 const defaultBaseUrlByProvider: Record<LlmProvider, string> = {
   gateway: "https://ai-gateway.vercel.sh/v3/ai",
   openrouter: "https://openrouter.ai/api/v1",
@@ -27,6 +32,10 @@ const resolveProviderConfig = (
 ): LlmProviderConfig | null => {
   const apiKey = readVaultString(vaultData, `llm/${provider}/api-key`);
   if (!apiKey) {
+    return null;
+  }
+
+  if (!supportsAiModelProvider(provider, model)) {
     return null;
   }
 
@@ -46,8 +55,9 @@ export const resolveLlmProviderConfigFromEnv = (): LlmProviderConfig | null => {
 export const listLlmProviderConfigsFromVault = async (): Promise<LlmProviderConfig[]> => {
   const [{ settings }, { vaultData }] = await Promise.all([loadAiSettings(), loadVaultData()]);
   const model = settings.model.trim();
+  const providerOrder = resolveProviderOrder(settings.provider);
 
-  return PROVIDER_PRIORITY
+  return providerOrder
     .map((provider) => resolveProviderConfig(provider, vaultData, model))
     .filter((provider): provider is LlmProviderConfig => provider !== null);
 };

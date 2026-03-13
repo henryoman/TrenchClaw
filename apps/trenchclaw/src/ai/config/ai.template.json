@@ -1,4 +1,5 @@
 {
+  "provider": "auto",
   "model": "anthropic/claude-sonnet-4.6",
   "defaultMode": "primary",
   "temperature": null,

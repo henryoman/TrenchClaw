@@ -1,5 +1,10 @@
 <script lang="ts">
-  import type { GuiAiSettingsView, GuiTradingSettingsView } from "@trenchclaw/types";
+  import type {
+    GuiAiModelOptionView,
+    GuiAiProviderOptionView,
+    GuiAiSettingsView,
+    GuiTradingSettingsView,
+  } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroDivider from "../ui/RetroDivider.svelte";
   import RetroField from "../ui/RetroField.svelte";
@@ -11,6 +16,8 @@
   export let aiSettingsFilePath = "";
   export let aiSettingsTemplatePath = "";
   export let aiSettings: GuiAiSettingsView | null = null;
+  export let aiProviderOptions: GuiAiProviderOptionView[] = [];
+  export let aiModelOptions: GuiAiModelOptionView[] = [];
   export let aiSettingsBusy = false;
   export let aiSettingsError = "";
   export let tradingSettingsFilePath = "";
@@ -22,23 +29,49 @@
   export let onReloadTradingSettings: () => void = () => {};
   export let onSaveTradingSettings: (settings: GuiTradingSettingsView) => Promise<void> | void = () => {};
 
-  const AI_MODEL_OPTIONS = [
-    "anthropic/claude-haiku-4.5",
-    "anthropic/claude-sonnet-4.6",
-    "anthropic/claude-opus-4.6",
-    "openai/gpt-5.4",
-    "google/gemini-3.1-pro-preview",
-    "google/gemini-3.1-flash-lite-preview",
-    "x-ai/grok-4.20-beta",
-    "qwen/qwen3.5-flash-02-23",
-    "qwen/qwen3.5-122b-a10b",
-    "moonshotai/kimi-k2.5",
-    "openrouter/free",
-    "stepfun/step-3.5-flash:free",
-  ] as const;
+  const DEFAULT_AI_PROVIDER_OPTIONS: GuiAiProviderOptionView[] = [
+    { id: "auto", label: "Auto", description: "Use the first configured provider that supports the selected model." },
+    { id: "gateway", label: "Vercel AI Gateway", description: "Pin requests to Gateway and filter to Gateway-supported models." },
+    { id: "openrouter", label: "OpenRouter", description: "Pin requests to OpenRouter and filter to OpenRouter-supported models." },
+  ];
+  const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "auto";
+  const DEFAULT_AI_MODEL = "anthropic/claude-sonnet-4.6";
+
+  const createCustomAiModelOption = (model: string): GuiAiModelOptionView => ({
+    id: model,
+    label: model,
+    providers: [],
+  });
+
+  const describeAiModelProviders = (providers: GuiAiModelOptionView["providers"]): string => {
+    if (providers.length === 2) {
+      return "Gateway + OpenRouter";
+    }
+    if (providers[0] === "openrouter") {
+      return "OpenRouter only";
+    }
+    if (providers[0] === "gateway") {
+      return "Gateway only";
+    }
+    return "Custom";
+  };
+
+  const formatAiModelOptionLabel = (option: GuiAiModelOptionView): string =>
+    `${option.label} (${describeAiModelProviders(option.providers)})`;
+
+  const resolveAiProviderHint = (provider: GuiAiSettingsView["provider"]): string => {
+    if (provider === "gateway") {
+      return "Pinned to Vercel AI Gateway. The model list is filtered to Gateway-supported IDs.";
+    }
+    if (provider === "openrouter") {
+      return "Pinned to OpenRouter. The model list is filtered to OpenRouter-supported IDs.";
+    }
+    return "Auto is the best default. The runtime prefers Gateway first, then falls back to OpenRouter for models Gateway does not support.";
+  };
 
   const DEFAULT_AI_SETTINGS: GuiAiSettingsView = {
-    model: AI_MODEL_OPTIONS[0],
+    provider: DEFAULT_AI_PROVIDER,
+    model: DEFAULT_AI_MODEL,
     defaultMode: "primary",
     temperature: null,
     maxOutputTokens: null,
@@ -77,6 +110,24 @@
     aiSettingsDraft = {
       ...aiSettingsDraft,
       [key]: value,
+    };
+    aiSettingsDirty = true;
+  };
+
+  const resolveCompatibleAiModels = (provider: GuiAiSettingsView["provider"]): GuiAiModelOptionView[] =>
+    provider === "auto" ? [...aiModelOptions] : aiModelOptions.filter((option) => option.providers.includes(provider));
+
+  const handleAiProviderChange = (provider: GuiAiSettingsView["provider"]): void => {
+    const compatibleModels = resolveCompatibleAiModels(provider);
+    const currentModel = aiSettingsDraft.model.trim();
+    const nextModel = compatibleModels.some((option) => option.id === currentModel)
+      ? currentModel
+      : compatibleModels[0]?.id ?? currentModel;
+
+    aiSettingsDraft = {
+      ...aiSettingsDraft,
+      provider,
+      model: nextModel,
     };
     aiSettingsDirty = true;
   };
@@ -120,6 +171,7 @@
         ? Math.trunc(aiSettingsDraft.maxOutputTokens)
         : null;
     const normalized: GuiAiSettingsView = {
+      provider: aiSettingsDraft.provider,
       model: aiSettingsDraft.model.trim(),
       defaultMode: aiSettingsDraft.defaultMode.trim() || "primary",
       temperature,
@@ -173,9 +225,14 @@
 
   $: aiSettingsErrorText = aiSettingsError.trim();
   $: tradingSettingsErrorText = tradingSettingsError.trim();
-  $: aiModelOptions = aiSettingsDraft.model.trim().length > 0 && !AI_MODEL_OPTIONS.includes(aiSettingsDraft.model.trim() as typeof AI_MODEL_OPTIONS[number])
-    ? [aiSettingsDraft.model.trim(), ...AI_MODEL_OPTIONS]
-    : [...AI_MODEL_OPTIONS];
+  $: selectableAiProviderOptions = aiProviderOptions.length > 0 ? [...aiProviderOptions] : [...DEFAULT_AI_PROVIDER_OPTIONS];
+  $: filteredAiModelOptions = resolveCompatibleAiModels(aiSettingsDraft.provider);
+  $: selectableAiModelOptions = aiSettingsDraft.model.trim().length > 0
+    && !filteredAiModelOptions.some((option) => option.id === aiSettingsDraft.model.trim())
+    ? [createCustomAiModelOption(aiSettingsDraft.model.trim()), ...filteredAiModelOptions]
+    : [...filteredAiModelOptions];
+  $: selectedAiProviderOption = selectableAiProviderOptions.find((option) => option.id === aiSettingsDraft.provider) ?? null;
+  $: aiProviderHint = selectedAiProviderOption?.description ?? resolveAiProviderHint(aiSettingsDraft.provider);
 </script>
 
 <section class="settings-panel" aria-label="Settings panel">
@@ -200,6 +257,21 @@
       </div>
 
       <div class="settings-grid">
+        <RetroField label="Provider">
+          <RetroSelect
+            value={aiSettingsDraft.provider}
+            disabled={aiSettingsBusy}
+            on:change={(event) => {
+              const target = event.currentTarget as HTMLSelectElement;
+              handleAiProviderChange(target.value as GuiAiSettingsView["provider"]);
+            }}
+          >
+            {#each selectableAiProviderOptions as providerOption}
+              <option value={providerOption.id}>{providerOption.label}</option>
+            {/each}
+          </RetroSelect>
+        </RetroField>
+
         <RetroField label="Model">
           <RetroSelect
             value={aiSettingsDraft.model}
@@ -209,8 +281,8 @@
               onAiSettingChange("model", target.value);
             }}
           >
-            {#each aiModelOptions as modelOption}
-              <option value={modelOption}>{modelOption}</option>
+            {#each selectableAiModelOptions as modelOption}
+              <option value={modelOption.id}>{formatAiModelOptionLabel(modelOption)}</option>
             {/each}
           </RetroSelect>
         </RetroField>
@@ -253,6 +325,8 @@
           />
         </RetroField>
       </div>
+
+      <p class="settings-hint">{aiProviderHint}</p>
 
     </section>
 
@@ -353,6 +427,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--tc-space-3);
     min-width: 0;
+  }
+
+  .settings-hint {
+    margin: 0;
+    color: var(--tc-color-gray-3);
+    font-size: var(--tc-copy-sm-size);
+    line-height: 1.5;
   }
 
   @media (max-width: var(--tc-layout-breakpoint)) {
