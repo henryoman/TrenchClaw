@@ -67,6 +67,9 @@
 
   --tc-status-font-size: var(--tc-type-xs);
   --tc-status-letter-spacing: var(--tc-track-normal);
+  --tc-console-text-size: 10px;
+  --tc-console-text-color: var(--tc-color-gray-3);
+  --tc-console-line-height: 1.35;
 
   --tc-row-box-padding: var(--tc-space-2);
   --tc-row-box-bg: var(--tc-color-black-light);

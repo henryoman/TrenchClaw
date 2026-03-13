@@ -6,6 +6,7 @@
   import {
     ChatPanel,
     CreateInstanceModal,
+    InfoPanel,
     LandingSplash,
     LoadingSplash,
     LoginSplash,
@@ -27,7 +28,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
-  let activeTab: "chat" | "keys" | "settings" | "wallets" | "schedule" = $state("chat");
+  let activeTab: "chat" | "keys" | "settings" | "info" | "wallets" | "schedule" = $state("chat");
   const appVersionLabel = APP_BUILD_COMMIT === "local" ? APP_BUILD_VERSION : `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
 
   const ensureChatController = async (): Promise<void> => {
@@ -173,6 +174,8 @@
           void runtime.saveTradingSettings(settings);
         }}
       />
+    {:else if activeTab === "info"}
+      <InfoPanel />
     {:else if activeTab === "wallets"}
       <WalletsPanel
         rootRelativePath={runtime.state.walletsRootRelativePath}

@@ -4,6 +4,7 @@ export { default as LoadingSplash } from "./splash/LoadingSplash.svelte";
 export { default as LoginSplash } from "./splash/LoginSplash.svelte";
 
 export { default as ChatPanel } from "./workspace/ChatPanel.svelte";
+export { default as InfoPanel } from "./workspace/InfoPanel.svelte";
 export { default as QueuePanel } from "./workspace/QueuePanel.svelte";
 export { default as SchedulePanel } from "./workspace/SchedulePanel.svelte";
 export { default as SecretsPanel } from "./workspace/SecretsPanel.svelte";
