@@ -1,6 +1,7 @@
 import { getFeaturedDocs } from '$lib/docs';
 
 export const githubUrl = 'https://github.com/henryoman/trenchclaw';
+export const xUrl = 'https://x.com/trenchclawagent';
 export const architectureHref = '/docs/architecture';
 
 export const installTargets = [
