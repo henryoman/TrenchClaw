@@ -20,6 +20,7 @@ const executeActionInputSchema = z.object({
   input: z.unknown().optional(),
   actor: runtimeActorSchema.default("agent"),
   idempotencyKey: z.string().trim().min(1).optional(),
+  confirm: z.boolean().default(false),
 });
 
 export type ExecuteActionInput = z.input<typeof executeActionInputSchema>;
@@ -31,6 +32,31 @@ export interface ExecutedActionReport {
   result: unknown;
   policyHits: unknown[];
 }
+
+const applyManualConfirmation = (payload: unknown): unknown => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return payload;
+  }
+
+  if ("toolName" in payload || "actionName" in payload) {
+    const envelope = payload as { input?: unknown };
+    if (!envelope.input || typeof envelope.input !== "object" || Array.isArray(envelope.input)) {
+      return payload;
+    }
+    return {
+      ...payload,
+      input: {
+        ...(envelope.input as Record<string, unknown>),
+        confirmedByUser: true,
+      },
+    };
+  }
+
+  return {
+    ...(payload as Record<string, unknown>),
+    confirmedByUser: true,
+  };
+};
 
 const normalizeActionInvocation = (
   explicitActionName: string | undefined,
@@ -146,7 +172,10 @@ export const executeAction = async (rawInput: ExecuteActionInput): Promise<Execu
   const runtime = await withSuppressedConsole(() => bootstrapRuntime());
 
   try {
-    const invocation = normalizeActionInvocation(input.actionName, input.input);
+    const invocation = normalizeActionInvocation(
+      input.actionName,
+      input.confirm ? applyManualConfirmation(input.input) : input.input,
+    );
     const dispatch = await withSuppressedConsole(() =>
       runtime.dispatcher.dispatchStep(
         runtime.createActionContext({ actor: input.actor }),
@@ -189,6 +218,9 @@ const start = async (): Promise<void> => {
       "idempotency-key": {
         type: "string",
       },
+      confirm: {
+        type: "boolean",
+      },
     },
   });
 
@@ -203,6 +235,7 @@ const start = async (): Promise<void> => {
     input: payload,
     actor: parsedArgs.values.actor ? runtimeActorSchema.parse(parsedArgs.values.actor) : undefined,
     idempotencyKey: parsedArgs.values["idempotency-key"],
+    confirm: parsedArgs.values.confirm ?? false,
   });
 
   console.log(JSON.stringify(result, null, 2));

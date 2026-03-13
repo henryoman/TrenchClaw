@@ -19,6 +19,8 @@ import {
 import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
 import type { ActionContext } from "../../../../ai/runtime/types/context";
 import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
+import { loadManagedWalletSigner } from "../../../lib/wallet/wallet-signer";
+import { walletGroupNameSchema, walletNameSchema } from "../../../lib/wallet/wallet-types";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
 
@@ -30,6 +32,8 @@ const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const transferInputSchema = z.object({
   destination: z.string().min(1),
   amount: z.number().positive(),
+  walletGroup: walletGroupNameSchema.optional(),
+  walletName: walletNameSchema.optional(),
   mintAddress: z.string().min(1).optional(),
   decimals: z.number().int().min(0).max(18).optional(),
   tokenProgram: z.enum(["spl-token", "token-2022"]).optional(),
@@ -38,12 +42,23 @@ const transferInputSchema = z.object({
   createDestinationAta: z.boolean().optional(),
   skipPreflight: z.boolean().optional(),
   maxRetries: z.number().int().min(0).max(10).optional(),
+}).superRefine((value, ctx) => {
+  const hasWalletGroup = typeof value.walletGroup === "string";
+  const hasWalletName = typeof value.walletName === "string";
+  if (hasWalletGroup !== hasWalletName) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide walletGroup and walletName together.",
+      path: hasWalletGroup ? ["walletName"] : ["walletGroup"],
+    });
+  }
 });
 
 export type TransferInput = z.output<typeof transferInputSchema>;
 
 export interface TransferOutput {
   transferType: "sol" | "spl";
+  sourceAddress: string;
   destination: string;
   mintAddress?: string;
   amountUi: number;
@@ -61,6 +76,27 @@ interface TransferContext extends ActionContext {
     signBase64Transaction: (base64Transaction: string) => Promise<string>;
   };
 }
+
+const resolveTransferSigner = async (
+  ctx: TransferContext,
+  input: TransferInput,
+): Promise<NonNullable<TransferContext["ultraSigner"]>> => {
+  if (ctx.ultraSigner?.address) {
+    return ctx.ultraSigner;
+  }
+
+  if (input.walletGroup && input.walletName) {
+    return loadManagedWalletSigner({
+      walletGroup: input.walletGroup,
+      walletName: input.walletName,
+      rpcUrl: ctx.rpcUrl,
+    });
+  }
+
+  throw new Error(
+    "Missing signer in action context. Provide ctx.ultraSigner or input.walletGroup and input.walletName.",
+  );
+};
 
 const createFailure = (
   idempotencyKey: string,
@@ -187,13 +223,10 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
     const idempotencyKey = crypto.randomUUID();
 
     try {
-      const signer = (ctx as TransferContext).ultraSigner;
-      if (!signer?.address) {
-        return createFailure(
-          idempotencyKey,
-          "Missing signer in action context. Expected ctx.ultraSigner.address and signBase64Transaction().",
-          "MISSING_SIGNER",
-        );
+      const signer = await resolveTransferSigner(ctx as TransferContext, input);
+      const signerAddress = signer.address;
+      if (!signerAddress) {
+        return createFailure(idempotencyKey, "Resolved signer is missing an address.", "MISSING_SIGNER");
       }
 
       const rpcUrl = resolveRequiredRpcUrl((ctx as TransferContext).rpcUrl);
@@ -209,10 +242,11 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
           return createFailure(idempotencyKey, "Amount is too small after conversion to lamports.", "INVALID_AMOUNT");
         }
 
-        instructions.push(createTransferSolInstruction(signer.address, input.destination, lamports));
+        instructions.push(createTransferSolInstruction(signerAddress, input.destination, lamports));
 
         transferOutput = {
           transferType: "sol",
+          sourceAddress: signerAddress,
           destination: input.destination,
           amountUi: input.amount,
           amountRaw: lamports.toString(10),
@@ -232,7 +266,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
 
         const sourceTokenAccount =
           input.sourceTokenAccount ??
-          (await deriveAssociatedTokenAccount(signer.address, input.mintAddress, tokenProgramId));
+          (await deriveAssociatedTokenAccount(signerAddress, input.mintAddress, tokenProgramId));
         const destinationTokenAccount =
           input.destinationTokenAccount ??
           (await deriveAssociatedTokenAccount(input.destination, input.mintAddress, tokenProgramId));
@@ -240,7 +274,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
         if (input.createDestinationAta ?? true) {
           instructions.push(
             createAssociatedTokenAccountInstruction(
-              signer.address,
+              signerAddress,
               input.destination,
               input.mintAddress,
               tokenProgramId,
@@ -253,7 +287,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
           createTransferTokenCheckedInstruction({
             sourceTokenAccount,
             destinationTokenAccount,
-            authority: signer.address,
+            authority: signerAddress,
             mintAddress: input.mintAddress,
             amount: amountRaw,
             decimals,
@@ -263,6 +297,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
 
         transferOutput = {
           transferType: "spl",
+          sourceAddress: signerAddress,
           destination: input.destination,
           mintAddress: input.mintAddress,
           amountUi: input.amount,
@@ -275,7 +310,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
 
       const message = pipe(
         createTransactionMessage({ version: 0 }),
-        (tx) => setTransactionMessageFeePayer(address(signer.address!), tx),
+        (tx) => setTransactionMessageFeePayer(address(signerAddress), tx),
         (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash.value, tx),
         (tx) => appendTransactionMessageInstructions(instructions, tx),
       );

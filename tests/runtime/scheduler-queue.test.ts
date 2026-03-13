@@ -159,7 +159,7 @@ describe("Scheduler queue dispatch", () => {
     await scheduler.stop();
   });
 
-  test("honors bunqueue delay for future scheduled jobs", async () => {
+  test("promotes scheduled jobs into the queue only after their run time", async () => {
     const registry = new ActionRegistry();
     registry.register({
       name: "echoForDelayedQueueTest",
@@ -238,12 +238,13 @@ describe("Scheduler queue dispatch", () => {
     };
     stateStore.saveJob(job);
 
-    await scheduler.enqueue(job);
+    await scheduler.tick(now);
     await Bun.sleep(75);
     const beforeDue = stateStore.getJob(job.id);
     expect(beforeDue?.status).toBe("pending");
     expect(beforeDue?.lastResult).toBeUndefined();
 
+    await scheduler.tick(now + 250);
     const updatedJob = await waitForJobResult(stateStore, job.id);
 
     expect(updatedJob).not.toBeNull();

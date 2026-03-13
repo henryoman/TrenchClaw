@@ -44,6 +44,8 @@ const BUNQUEUE_DATA_PATH_ENV = "DATA_PATH";
 export class Scheduler {
   private queue: Queue<QueueJobPayload> | null = null;
   private worker: Worker<QueueJobPayload> | null = null;
+  private tickInterval: ReturnType<typeof setInterval> | null = null;
+  private queuedCycles = new Map<string, number>();
   private started = false;
 
   constructor(
@@ -72,6 +74,14 @@ export class Scheduler {
         concurrency: Math.max(1, Math.trunc(this.options.maxConcurrentJobs ?? 1)),
       },
     );
+    void this.tick().catch((error) => {
+      console.error("scheduler:tick_failed", error);
+    });
+    this.tickInterval = setInterval(() => {
+      void this.tick().catch((error) => {
+        console.error("scheduler:tick_failed", error);
+      });
+    }, Math.max(1, Math.trunc(this.tickMs)));
   }
 
   async stop(): Promise<void> {
@@ -79,6 +89,11 @@ export class Scheduler {
       return;
     }
     this.started = false;
+    if (this.tickInterval) {
+      clearInterval(this.tickInterval);
+      this.tickInterval = null;
+    }
+    this.queuedCycles.clear();
     await Promise.all([closeBunqueueResource(this.worker), closeBunqueueResource(this.queue)]);
     this.worker = null;
     this.queue = null;
@@ -92,30 +107,39 @@ export class Scheduler {
       .stateStore
       .listJobs({ status: "pending" })
       .toSorted(comparePendingJobs)
-      .filter((job) => !job.nextRunAt || job.nextRunAt <= now);
+      .filter((job) => isJobDue(job, now));
 
-    await Promise.all(pendingJobs.map((job) => this.enqueue(job)));
+    await Promise.all(pendingJobs.map((job) => this.enqueue(job, now)));
   }
 
-  async enqueue(job: JobState): Promise<void> {
+  async enqueue(job: JobState, now = Date.now()): Promise<void> {
     if (!this.queue) {
       throw new Error("Scheduler queue is not initialized. Call start() before enqueue().");
     }
 
-    const delayMs = computeDelayMs(job, Date.now());
-    const addOptions = delayMs > 0 ? { delay: delayMs } : undefined;
+    if (!isJobDue(job, now)) {
+      return;
+    }
+
+    const expectedCycle = job.cyclesCompleted + 1;
+    if (this.queuedCycles.get(job.id) === expectedCycle) {
+      return;
+    }
+
     await this.queue.add(
       job.routineName,
       {
         jobId: job.id,
-        expectedCycle: job.cyclesCompleted + 1,
+        expectedCycle,
         enqueuedAt: Date.now(),
       },
-      addOptions,
     );
+    this.queuedCycles.set(job.id, expectedCycle);
+    this.emitQueueEnqueue(job, now);
   }
 
   private async processQueuedJob(payload: QueueJobPayload): Promise<DispatchResult | { skipped: true; reason: string }> {
+    this.queuedCycles.delete(payload.jobId);
     const pendingSnapshot = this.deps.stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
     const queuePosition = pendingSnapshot.findIndex((entry) => entry.id === payload.jobId) + 1;
     const job = this.deps.stateStore.tryStartJob({
@@ -181,14 +205,16 @@ export class Scheduler {
           throw new Error(`Job "${job.id}" disappeared after scheduling cycle completion`);
         }
 
-        try {
-          await this.enqueue(nextJobState);
-        } catch (error) {
-          finalStatus = "failed";
-          this.deps.stateStore.updateJobStatus(job.id, finalStatus, {
-            lastError: error instanceof Error ? error.message : String(error),
-            nextRunAt: undefined,
-          });
+        if (isJobDue(nextJobState, Date.now())) {
+          try {
+            await this.enqueue(nextJobState);
+          } catch (error) {
+            finalStatus = "failed";
+            this.deps.stateStore.updateJobStatus(job.id, finalStatus, {
+              lastError: error instanceof Error ? error.message : String(error),
+              nextRunAt: undefined,
+            });
+          }
         }
       }
 
@@ -232,6 +258,25 @@ export class Scheduler {
       });
       throw error;
     }
+  }
+
+  private emitQueueEnqueue(job: JobState, now: number): void {
+    const readyJobs = this.deps
+      .stateStore
+      .listJobs({ status: "pending" })
+      .toSorted(comparePendingJobs)
+      .filter((entry) => isJobDue(entry, now));
+    const queuePosition = readyJobs.findIndex((entry) => entry.id === job.id) + 1;
+
+    this.deps.eventBus.emit("queue:enqueue", {
+      jobId: job.id,
+      serialNumber: job.serialNumber,
+      botId: job.botId,
+      routineName: job.routineName,
+      queueSize: readyJobs.length,
+      queuePosition: queuePosition > 0 ? queuePosition : readyJobs.length,
+      nextRunAt: job.nextRunAt,
+    });
   }
 }
 
@@ -289,9 +334,6 @@ function computeNextRunAt(job: JobState, from: number): number | undefined {
   return undefined;
 }
 
-function computeDelayMs(job: JobState, from: number): number {
-  if (typeof job.nextRunAt !== "number") {
-    return 0;
-  }
-  return Math.max(0, job.nextRunAt - from);
+function isJobDue(job: JobState, now: number): boolean {
+  return typeof job.nextRunAt !== "number" || job.nextRunAt <= now;
 }

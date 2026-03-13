@@ -186,4 +186,64 @@ describe("trading settings layering", () => {
       },
     });
   });
+
+  test("merges legacy user compatibility settings under the new runtime compatibility file", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
+    process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({
+      rpc: {
+        primaryRpc: "helius",
+        providers: {
+          helius: {
+            endpointRef: "vault://rpc/helius/http-url",
+            wsEndpointRef: "vault://rpc/helius/ws-url",
+            apiKeyRef: "vault://rpc/helius/api-key",
+          },
+        },
+      },
+    });
+
+    const payload = await loadResolvedUserSettings();
+    const settings = await loadRuntimeSettings("dangerous");
+
+    expect(payload.legacyCompatibilitySettingsPath).toBe(process.env.TRENCHCLAW_USER_SETTINGS_FILE);
+    expect((payload.rawSettings as { compatibility?: { rpc?: { primaryRpc?: string } } }).compatibility?.rpc?.primaryRpc).toBe("helius");
+    expect(settings.network.rpc.endpoints[0]?.url).toBe("https://vault-helius-rpc.example");
+    expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("wss://vault-helius-rpc.example");
+  });
+
+  test("falls back to rpc.default when the selected provider has no configured endpoint", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
+    process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+      rpc: {
+        default: {
+          "http-url": "https://api.mainnet-beta.solana.com",
+        },
+        helius: {
+          "http-url": "",
+          "ws-url": "",
+          "api-key": "",
+        },
+      },
+      integrations: {},
+    });
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({
+      rpc: {
+        primaryRpc: "helius",
+        providers: {
+          helius: {
+            endpointRef: "vault://rpc/helius/http-url",
+            wsEndpointRef: "vault://rpc/helius/ws-url",
+          },
+        },
+      },
+    });
+
+    const settings = await loadRuntimeSettings("dangerous");
+
+    expect(settings.network.rpc.endpoints[0]?.url).toBe("https://api.mainnet-beta.solana.com");
+    expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("wss://api.mainnet-beta.solana.com");
+  });
 });

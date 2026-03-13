@@ -17,8 +17,18 @@ export const loadManagedWalletSigner = async (
     throw new Error(`Managed wallet keypair file is invalid: ${walletEntry.keypairFilePath}`);
   }
 
+  const privateKeyBytes =
+    parsed.length === 32
+      ? parsed
+      : parsed.length === 64
+        ? parsed.slice(0, 32)
+        : null;
+  if (!privateKeyBytes) {
+    throw new Error(`Managed wallet keypair file must contain 32 or 64 integers: ${walletEntry.keypairFilePath}`);
+  }
+
   return createUltraSignerAdapter({
-    privateKey: new Uint8Array(parsed as number[]),
+    privateKey: new Uint8Array(privateKeyBytes as number[]),
     rpcUrl: input.rpcUrl,
   });
 };
