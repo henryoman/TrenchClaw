@@ -16,13 +16,9 @@
     onTabChange,
   }: SidebarProps = $props();
 
-  const getSidebarLiveStatus = (status: string): string => {
+  const isRuntimeOnline = (status: string): boolean => {
     const normalized = status.trim().toLowerCase();
-    if (normalized.includes("offline")) {
-      return "Not connected";
-    }
-
-    return "Connected";
+    return normalized.length > 0 && !normalized.includes("offline") && !normalized.includes("checking");
   };
 </script>
 
@@ -76,7 +72,10 @@
     >
   </nav>
   <div class="status-stack">
-    <p class="status">Mode: {getSidebarLiveStatus(runtimeStatus)}</p>
+    <div class="status-row">
+      <p class="status">{isRuntimeOnline(runtimeStatus) ? "ONLINE" : "OFFLINE"}</p>
+      <span class:online={isRuntimeOnline(runtimeStatus)} class="status-indicator" aria-hidden="true"></span>
+    </div>
     <p class="brand">TRENCHCLAW</p>
   </div>
 </aside>
@@ -156,13 +155,34 @@
     padding: var(--tc-space-2) var(--tc-space-2) 0;
   }
 
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-indicator {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--tc-color-gray-2);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--tc-color-black) 60%, transparent);
+    flex: 0 0 auto;
+  }
+
+  .status-indicator.online {
+    background: var(--tc-color-lime);
+    box-shadow: 0 0 4px color-mix(in srgb, var(--tc-color-lime) 28%, transparent);
+  }
+
   .status {
     margin: 0;
     padding: 0;
     color: var(--tc-color-gray-1);
-    font-size: var(--tc-sidebar-label-size);
+    font-size: 9px;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
-    line-height: 1.35;
+    line-height: 1;
   }
 
   .brand {
@@ -173,7 +193,7 @@
     text-transform: uppercase;
   }
 
-  @media (max-width: 980px) {
+  @media (max-width: 600px) {
     .sidebar {
       min-width: 0;
     }

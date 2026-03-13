@@ -231,4 +231,35 @@ describe("createWalletsAction", () => {
     expect(result.data?.wallets).toHaveLength(1);
     expect(result.data?.outputDirectory).toContain(path.join("instances", TEST_INSTANCE_ID, "keypairs", walletGroup));
   });
+
+  test("allocates the next available wallet file slots when a group already contains wallets", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const walletGroup = `gapped-wallets-${crypto.randomUUID()}`;
+    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
+    const instanceRoot = path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID);
+    const walletGroupPath = path.join(instanceRoot, "keypairs", walletGroup);
+    createdPaths.add(instanceRoot);
+
+    await Bun.$`mkdir -p ${walletGroupPath}`.quiet();
+    await Bun.write(path.join(walletGroupPath, "wallet_000.json"), "[0]\n");
+    await Bun.write(path.join(walletGroupPath, "wallet_002.json"), "[2]\n");
+
+    const result = await createWalletsAction.execute({} as never, {
+      groups: [
+        {
+          walletGroup,
+          walletNames: ["alpha", "beta"],
+        },
+      ],
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data?.files.map((filePath) => path.basename(filePath))).toEqual(["wallet_001.json", "wallet_003.json"]);
+    expect(result.data?.wallets.map((wallet) => wallet.walletName)).toEqual(["alpha", "beta"]);
+  });
 });

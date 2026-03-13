@@ -253,10 +253,9 @@ const createGatewayStub = (deps: {
       toolNames,
       maxOutputTokens: 450,
       temperature: 0.1,
-      maxToolSteps: 4,
+      maxToolSteps: 6,
       executionTrace: {
         lane: "operator-chat",
-        fastPath: null,
         provider: "test",
         model: "test-model",
         promptChars: DEFAULT_TEST_SYSTEM_PROMPT.length,
@@ -418,6 +417,55 @@ describe("RuntimeChatService", () => {
     ]);
 
     expect(await response.text()).toContain("LLM is not configured");
+  });
+
+  test("returns a direct configuration error when the selected model is not approved for operator chat", async () => {
+    const settings = await loadRuntimeSettings("dangerous");
+    const endpoints = resolvePrimaryRuntimeEndpoints(settings);
+    const registry = new ActionRegistry();
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
+    const service = createRuntimeChatService({
+      dispatcher: {
+        dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+      } as unknown as ActionDispatcher,
+      registry,
+      eventBus,
+      stateStore,
+      workspaceToolsEnabled: false,
+      gateway: createRuntimeGateway({
+        settings,
+        endpoints,
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus,
+        stateStore,
+        resolvedModel: {
+          provider: "openrouter",
+          model: "stepfun/step-3.5-flash:free",
+          languageModel: null,
+        },
+        createActionContext: (overrides) =>
+          createActionContext({
+            actor: overrides?.actor ?? "agent",
+            eventBus,
+            rpcUrl: endpoints.rpcUrl,
+            stateStore,
+          }),
+      }),
+    });
+
+    const response = await service.stream([
+      {
+        id: "user-unsupported-model-1",
+        role: "user",
+        parts: [{ type: "text", text: "hello" }],
+      },
+    ]);
+
+    expect(await response.text()).toContain("not approved for operator chat");
   });
 
   test("lists only registered actions that define input schemas", () => {
@@ -643,98 +691,6 @@ describe("RuntimeChatService", () => {
     expect(seenToolNames).toEqual(["enabledAction"]);
   });
 
-  test("uses the gateway fast path for wallet holdings instead of entering the LLM tool loop", async () => {
-    const settings = await loadRuntimeSettings("dangerous");
-    const endpoints = resolvePrimaryRuntimeEndpoints(settings);
-    const eventBus = new InMemoryRuntimeEventBus();
-    const stateStore = new InMemoryStateStore();
-    const dispatchCalls: string[] = [];
-    const gateway = createRuntimeGateway({
-      settings,
-      endpoints,
-      dispatcher: {
-        dispatchStep: async (_ctx: ActionContext, step: ActionStep) => {
-          dispatchCalls.push(step.actionName);
-          return {
-            results: [
-              makeActionResult({
-                ok: true,
-                data: {
-                  walletCount: 2,
-                  totalBalanceSol: 1.5,
-                  wallets: [
-                    {
-                      walletGroup: "core-wallets",
-                      walletName: "wallet_000",
-                      balanceSol: 1.25,
-                      tokenBalances: [{ balanceUiString: "25", mintAddress: "USDC_MINT" }],
-                    },
-                    {
-                      walletGroup: "core-wallets",
-                      walletName: "wallet_001",
-                      balanceSol: 0.25,
-                      tokenBalances: [],
-                    },
-                  ],
-                  tokenTotals: [{ balanceUiString: "25", mintAddress: "USDC_MINT" }],
-                },
-              }),
-            ],
-            policyHits: [],
-          };
-        },
-      } as unknown as ActionDispatcher,
-      registry: new ActionRegistry(),
-      eventBus,
-      stateStore,
-      resolvedModel: {
-        provider: "test",
-        model: "test-model",
-        languageModel: {} as never,
-      },
-      createActionContext: (overrides) =>
-        createActionContext({
-          actor: overrides?.actor ?? "agent",
-          eventBus,
-          rpcUrl: endpoints.rpcUrl,
-          stateStore,
-        }),
-    });
-
-    const service = createRuntimeChatService(
-      {
-        dispatcher: {
-          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
-        } as unknown as ActionDispatcher,
-        registry: new ActionRegistry(),
-        eventBus,
-        stateStore,
-        llm: null,
-        workspaceToolsEnabled: false,
-        gateway,
-      },
-      {
-        streamText: (() => {
-          throw new Error("streamText should not be called for wallet fast paths");
-        }) as never,
-      },
-    );
-
-    const response = await service.stream([
-      {
-        id: "user-wallet-fast-path-1",
-        role: "user",
-        parts: [{ type: "text", text: "what do we have in our wallets right now" }],
-      },
-    ]);
-
-    const payload = await response.text();
-    expect(dispatchCalls).toEqual(["getManagedWalletContents"]);
-    expect(payload).toContain("Managed wallets: 2. Total native SOL: 1.5.");
-    expect(payload).toContain("core-wallets/wallet_000: 1.25 SOL; 25 USDC_MINT");
-    expect(payload).toContain("Aggregate token balances:");
-  });
-
   test("filters operator-chat tools through the gateway allowlist and excludes workspace tools", async () => {
     const settings = await loadRuntimeSettings("dangerous");
     const endpoints = resolvePrimaryRuntimeEndpoints(settings);
@@ -878,7 +834,6 @@ describe("RuntimeChatService", () => {
         },
       ],
       userMessage: "ping runtime",
-      allowFastPath: false,
     });
 
     expect(execution.kind).toBe("llm");
@@ -887,7 +842,7 @@ describe("RuntimeChatService", () => {
     }
     expect(execution.systemPrompt.length).toBeLessThanOrEqual(8_000);
     expect(execution.toolNames.length).toBeLessThanOrEqual(12);
-    expect(execution.maxToolSteps).toBe(4);
+    expect(execution.maxToolSteps).toBe(6);
     expect(execution.toolNames).toEqual(["getManagedWalletContents", "queryRuntimeStore"]);
     expect(execution.toolNames).not.toContain(WORKSPACE_READ_FILE_TOOL_NAME);
   });
@@ -936,6 +891,30 @@ describe("RuntimeChatService", () => {
           },
           {
             kind: "action",
+            name: "getDexscreenerPairByChainAndPairId",
+            description: "pair by pair address",
+            purpose: "pair by pair address",
+            routingHint: "load one exact pair when you already know the pool address",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { pairAddress: "pair111111111111111111111111111111111111111" },
+            toolDescription: "pair by pair address",
+          },
+          {
+            kind: "action",
+            name: "getDexscreenerTokenPairsByChain",
+            description: "token pairs by token address",
+            purpose: "token pairs by token address",
+            routingHint: "load pools for one token when you need volume, liquidity, and price-change detail",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { tokenAddress: "So11111111111111111111111111111111111111112" },
+            toolDescription: "token pairs by token address",
+          },
+          {
+            kind: "action",
             name: "searchDexscreenerPairs",
             description: "search pairs",
             purpose: "search pairs",
@@ -960,7 +939,6 @@ describe("RuntimeChatService", () => {
         },
       ],
       userMessage: "what meme coins ripped the hardest today",
-      allowFastPath: false,
     });
 
     expect(execution.kind).toBe("llm");
@@ -969,11 +947,15 @@ describe("RuntimeChatService", () => {
     }
     expect(execution.toolNames).toEqual([
       "getDexscreenerLatestTokenProfiles",
+      "getDexscreenerPairByChainAndPairId",
+      "getDexscreenerTokenPairsByChain",
       "getDexscreenerTokensByChain",
       "getDexscreenerTopTokenBoosts",
       "searchDexscreenerPairs",
     ]);
-    expect(execution.systemPrompt).toContain("discover candidates first, then use `getDexscreenerTokensByChain`");
+    expect(execution.systemPrompt).toContain(
+      "use `getDexscreenerPairByChainAndPairId`, `getDexscreenerTokenPairsByChain`, or `getDexscreenerTokensByChain`",
+    );
   });
 
   test("includes a compact wallet summary in the system prompt", async () => {

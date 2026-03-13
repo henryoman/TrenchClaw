@@ -54,25 +54,23 @@ export const triggerCancelOrdersAction: Action<TriggerCancelOrdersInput, Trigger
               computeUnitPrice: input.computeUnitPrice,
             });
 
-      const signatures: string[] = [];
-      const statuses: string[] = [];
-      const responses: Record<string, unknown>[] = [];
-
-      for (const transaction of cancelResponse.transactions) {
-        const signedTransaction = await signOrderTransactionIfNeeded(ctx, {
-          requestId: cancelResponse.requestId,
-          transaction,
-        });
-        const execute = await trigger.executeOrder({
-          requestId: cancelResponse.requestId,
-          signedTransaction,
-        });
-        if (typeof execute.signature === "string") {
-          signatures.push(execute.signature);
-        }
-        statuses.push(typeof execute.status === "string" ? execute.status : "Unknown");
-        responses.push(toRecord(execute.raw));
-      }
+      const executionResults = await Promise.all(
+        cancelResponse.transactions.map(async (transaction) => {
+          const signedTransaction = await signOrderTransactionIfNeeded(ctx, {
+            requestId: cancelResponse.requestId,
+            transaction,
+          });
+          return trigger.executeOrder({
+            requestId: cancelResponse.requestId,
+            signedTransaction,
+          });
+        }),
+      );
+      const signatures = executionResults
+        .map((execute) => execute.signature)
+        .filter((signature): signature is string => typeof signature === "string");
+      const statuses = executionResults.map((execute) => (typeof execute.status === "string" ? execute.status : "Unknown"));
+      const responses = executionResults.map((execute) => toRecord(execute.raw));
 
       const result = createActionSuccess(
         idempotencyKey,

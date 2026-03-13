@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
@@ -22,16 +22,23 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
   assertInstanceSystemWritePath(instanceRoot, "initialize instance root");
   await mkdir(instanceRoot, { recursive: true });
 
-  const createdDirectories: string[] = [];
-  for (const directoryName of INSTANCE_LAYOUT_DIRECTORIES) {
-    const directoryPath = path.join(instanceRoot, directoryName);
-    assertInstanceSystemWritePath(directoryPath, `initialize instance ${directoryName} directory`);
-    const existed = await Bun.file(directoryPath).exists();
-    await mkdir(directoryPath, { recursive: true });
-    if (!existed) {
-      createdDirectories.push(directoryPath);
+  const directoryExists = async (directoryPath: string): Promise<boolean> => {
+    try {
+      return (await stat(directoryPath)).isDirectory();
+    } catch {
+      return false;
     }
-  }
+  };
+
+  const createdDirectories = (await Promise.all(
+    INSTANCE_LAYOUT_DIRECTORIES.map(async (directoryName) => {
+      const directoryPath = path.join(instanceRoot, directoryName);
+      assertInstanceSystemWritePath(directoryPath, `initialize instance ${directoryName} directory`);
+      const existed = await directoryExists(directoryPath);
+      await mkdir(directoryPath, { recursive: true });
+      return existed ? null : directoryPath;
+    }),
+  )).filter((directoryPath): directoryPath is string => directoryPath != null);
 
   const createdFiles: string[] = [];
   const vaultPath = resolveInstanceVaultPath(instanceId);

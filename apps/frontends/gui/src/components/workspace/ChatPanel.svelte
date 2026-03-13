@@ -50,7 +50,6 @@
 
   interface AssistantMessageSegments {
     visibleTextParts: string[];
-    activityTextParts: string[];
     errorTexts: string[];
     toolActivity: ToolActivityLine[];
   }
@@ -128,25 +127,13 @@
 
   const getAssistantMessageSegments = (message: UIMessage): AssistantMessageSegments => {
     const visibleTextParts: string[] = [];
-    const activityTextParts: string[] = [];
     const errorTexts: string[] = [];
     const toolActivity: ToolActivityLine[] = [];
-
-    const activityIndexes = message.parts
-      .map((part, index) => (isToolUIPart(part) || isErrorPart(part) ? index : -1))
-      .filter((index) => index >= 0);
-
-    const lastActivityIndex = activityIndexes.length > 0 ? Math.max(...activityIndexes) : -1;
 
     message.parts.forEach((part, index) => {
       if (isTextPart(part)) {
         const text = normalizeDisplayText(part.text ?? "");
         if (!text) {
-          return;
-        }
-
-        if (lastActivityIndex >= 0 && index <= lastActivityIndex) {
-          activityTextParts.push(text);
           return;
         }
 
@@ -172,15 +159,13 @@
 
     return {
       visibleTextParts,
-      activityTextParts,
       errorTexts,
       toolActivity,
     };
   };
 
   const hasAssistantActivity = (segments: AssistantMessageSegments): boolean =>
-    segments.activityTextParts.length > 0
-    || segments.errorTexts.length > 0
+    segments.errorTexts.length > 0
     || segments.toolActivity.length > 0;
 
   const isNearBottom = (): boolean => {
@@ -357,10 +342,6 @@
                 <span class="activity-summary-caret" aria-hidden="true">▼</span>
               </summary>
               <div class="activity-body">
-                {#each segments.activityTextParts as text, textIndex (`${message.id}:activity:${textIndex}`)}
-                  <p>{text}</p>
-                {/each}
-
                 {#each segments.toolActivity as tool (`${message.id}:tool:${tool.key}`)}
                   <p class="tool-activity">{tool.label}</p>
                 {/each}

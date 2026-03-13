@@ -1,28 +1,20 @@
-import { fileURLToPath } from "node:url";
-
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
 
-const SYSTEM_PROMPT_FILE = "../config/system.md";
 const PROMPT_CHAR_LIMIT = 8_000;
 const WALLET_SUMMARY_CHAR_LIMIT = 1_200;
-
-let cachedKernelPrompt: string | null = null;
+const OPERATOR_KERNEL_PROMPT = [
+  "You are TrenchClaw's operator chat assistant.",
+  "Answer direct runtime and market questions with the smallest truthful tool sequence.",
+  "Never invent balances, prices, volume, transactions, or file contents.",
+  "Use only enabled operator tools.",
+  "Do not mention hidden capabilities or unavailable tools.",
+  "Keep answers short and concrete unless the user asks for more.",
+].join("\n");
 
 const truncate = (value: string, limit: number): string =>
   value.length > limit ? `${value.slice(0, Math.max(0, limit - 14))}\n...[truncated]` : value;
-
-const resolvePromptFilePath = (relativePath: string): string => fileURLToPath(new URL(relativePath, import.meta.url));
-
-const loadKernelPrompt = async (): Promise<string> => {
-  if (cachedKernelPrompt !== null) {
-    return cachedKernelPrompt;
-  }
-  const file = Bun.file(resolvePromptFilePath(SYSTEM_PROMPT_FILE));
-  cachedKernelPrompt = (await file.text()).trim();
-  return cachedKernelPrompt;
-};
 
 const renderOperatorProfileSummary = (settings: RuntimeSettings): string => [
   "## Operator Runtime Summary",
@@ -47,9 +39,9 @@ const renderOperatorToolList = (
     ...toolEntries.map((toolEntry) => `- ${toolEntry.name}: ${toolEntry.routingHint}`),
     "- for wallet holdings and token balances, prefer `getManagedWalletContents` first",
     "- for SOL-only balance summaries, prefer `getManagedWalletSolBalances`",
-    "- for trending or promoted Dexscreener tokens, start with `getDexscreenerLatestTokenProfiles`, `getDexscreenerLatestTokenBoosts`, or `getDexscreenerTopTokenBoosts`",
-    "- for questions like what is ripping, top gainers, or meme movers today, discover candidates first, then use `getDexscreenerTokensByChain` to ground the answer in price-change, liquidity, and volume data",
-    "- for exact token or pair lookup after discovery, use `searchDexscreenerPairs`",
+    "- for Dexscreener market questions, use the Dexscreener read actions directly",
+    "- start with discovery only when the user has not given a token or pair",
+    "- when you need concrete metrics, use `getDexscreenerPairByChainAndPairId`, `getDexscreenerTokenPairsByChain`, or `getDexscreenerTokensByChain` and answer from returned liquidity, volume, and price-change fields",
     "- do not use workspace tools in operator chat",
   ].join("\n");
 };
@@ -59,14 +51,11 @@ export const buildOperatorChatPrompt = async (input: {
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
   toolNames: string[];
 }): Promise<string> => {
-  const [kernelPrompt, rawWalletSummary] = await Promise.all([
-    loadKernelPrompt(),
-    renderRuntimeWalletPromptSummary(),
-  ]);
+  const rawWalletSummary = await renderRuntimeWalletPromptSummary();
   const walletSummary = truncate(rawWalletSummary, WALLET_SUMMARY_CHAR_LIMIT);
 
   const prompt = [
-    kernelPrompt,
+    OPERATOR_KERNEL_PROMPT,
     renderOperatorProfileSummary(input.settings),
     renderOperatorToolList(input.capabilitySnapshot, input.toolNames),
     "## Wallet Summary",
@@ -74,7 +63,7 @@ export const buildOperatorChatPrompt = async (input: {
     [
       "## Operator Routing",
       "- for direct runtime questions, answer from a single runtime action when possible",
-      "- for direct market questions about movers, gainers, or trends, use Dexscreener runtime actions first and keep the answer grounded in returned market data",
+      "- for direct market questions, use Dexscreener runtime actions first and ask a short clarification only if the token set or market scope is genuinely ambiguous",
       "- skip greetings and capability preambles for direct asks",
       "- if one tool call answered the question, summarize the result and stop",
       "- if a runtime action fails, report the exact failure and the next corrective action",

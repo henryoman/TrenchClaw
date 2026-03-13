@@ -1,29 +1,13 @@
-import type { UIMessage } from "ai";
-
 import { loadDefaultSystemPrompt } from "../llm/prompt-loader";
 import { buildOperatorChatPrompt } from "./operator-prompt";
-import { maybeExecuteFastPath } from "./fast-paths";
 import { buildGatewayLaneStatuses, getGatewayLanePolicy, getGatewayToolNamesForLane } from "./lane-policy";
 import type {
   GatewayContext,
-  GatewayPreparedDirectExecution,
   GatewayPreparedExecution,
   GatewayPreparedModelExecution,
   GatewayRequest,
   RuntimeGateway,
 } from "./types";
-
-const trimOrUndefined = (value: string | undefined): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const extractLatestUserText = (messages: UIMessage[]): string =>
-  messages
-    .toReversed()
-    .find((message) => message.role === "user")
-    ?.parts.map((part) => (part.type === "text" ? part.text : "")).join("\n")
-    .trim() ?? "";
 
 export const createRuntimeGateway = (
   context: GatewayContext,
@@ -31,6 +15,7 @@ export const createRuntimeGateway = (
   const laneStatuses = buildGatewayLaneStatuses({
     provider: context.resolvedModel.provider,
     model: context.resolvedModel.model,
+    modelAvailable: context.resolvedModel.languageModel !== null,
     endpointsValid: true,
   });
 
@@ -49,23 +34,6 @@ export const createRuntimeGateway = (
   const prepareChatExecution = async (request: GatewayRequest): Promise<GatewayPreparedExecution> => {
     const lane = request.lane ?? "operator-chat";
     const lanePolicy = getGatewayLanePolicy(lane);
-    const userMessage = trimOrUndefined(request.userMessage) ?? extractLatestUserText(request.messages);
-
-    if (lanePolicy.allowFastPath && request.allowFastPath !== false) {
-      const fastPath = await maybeExecuteFastPath({
-        requestMessages: request.messages,
-        context,
-        lane,
-        userMessage,
-      });
-      if (fastPath) {
-        return {
-          kind: "direct",
-          lane,
-          response: fastPath,
-        } satisfies GatewayPreparedDirectExecution;
-      }
-    }
 
     const toolNames = listToolNames(lane);
     const systemPrompt = lanePolicy.promptKind === "operator"
@@ -84,19 +52,20 @@ export const createRuntimeGateway = (
     const resolvedModel = context.resolvedModel;
 
     if (!resolvedModel.languageModel) {
+      const disabledMessage = resolvedModel.provider && resolvedModel.model
+        ? `Selected AI model "${resolvedModel.model}" is not approved for operator chat. Choose a stronger model in AI settings.`
+        : "LLM is not configured. Set provider credentials to enable live chat responses.";
       return {
         kind: "direct",
         lane,
         response: {
-          message: "LLM is not configured. Set provider credentials to enable live chat responses.",
+          message: disabledMessage,
           toolCalls: [],
-          fastPathUsed: false,
           lane,
           provider: resolvedModel.provider,
           model: resolvedModel.model,
           executionTrace: {
             lane,
-            fastPath: null,
             provider: resolvedModel.provider,
             model: resolvedModel.model,
             promptChars: systemPrompt.length,
@@ -122,7 +91,6 @@ export const createRuntimeGateway = (
       maxToolSteps: lanePolicy.maxToolSteps,
       executionTrace: {
         lane,
-        fastPath: null,
         provider: resolvedModel.provider,
         model: resolvedModel.model,
         promptChars: systemPrompt.length,

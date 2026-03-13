@@ -243,7 +243,7 @@
     margin: 0;
   }
 
-  @media (max-width: 980px) {
+  @media (max-width: 600px) {
     .right-column {
       grid-template-rows: auto minmax(280px, 1fr);
     }

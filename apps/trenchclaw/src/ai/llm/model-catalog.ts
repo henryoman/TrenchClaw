@@ -4,6 +4,7 @@ export interface AiModelCatalogEntry {
   id: string;
   label: string;
   providers: readonly AiModelProvider[];
+  operatorChatSupported?: boolean;
 }
 
 export interface AiProviderOptionEntry {
@@ -33,36 +34,43 @@ export const AI_MODEL_CATALOG = [
     id: "anthropic/claude-sonnet-4.6",
     label: "Claude Sonnet 4.6",
     providers: BOTH_PROVIDERS,
+    operatorChatSupported: true,
   },
   {
     id: "openai/gpt-5.4",
     label: "GPT-5.4",
     providers: BOTH_PROVIDERS,
+    operatorChatSupported: true,
   },
   {
     id: "google/gemini-3.1-pro-preview",
     label: "Gemini 3.1 Pro Preview",
     providers: BOTH_PROVIDERS,
+    operatorChatSupported: true,
   },
   {
     id: "moonshotai/kimi-k2.5",
     label: "Kimi K2.5",
     providers: BOTH_PROVIDERS,
+    operatorChatSupported: true,
   },
   {
     id: "openrouter/hunter-alpha",
     label: "Hunter Alpha",
     providers: OPENROUTER_ONLY,
+    operatorChatSupported: true,
   },
   {
     id: "openrouter/free",
     label: "OpenRouter Free",
     providers: OPENROUTER_ONLY,
+    operatorChatSupported: false,
   },
   {
     id: "stepfun/step-3.5-flash:free",
     label: "Step 3.5 Flash Free",
     providers: OPENROUTER_ONLY,
+    operatorChatSupported: false,
   },
 ] as const satisfies readonly AiModelCatalogEntry[];
 
@@ -75,4 +83,9 @@ export const findAiModelCatalogEntry = (model: string): AiModelCatalogEntry | nu
 export const supportsAiModelProvider = (provider: AiModelProvider, model: string): boolean => {
   const entry = findAiModelCatalogEntry(model);
   return entry ? entry.providers.includes(provider) : true;
+};
+
+export const supportsOperatorChatModel = (model: string): boolean => {
+  const entry = findAiModelCatalogEntry(model);
+  return entry ? entry.operatorChatSupported !== false : true;
 };

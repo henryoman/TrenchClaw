@@ -1,9 +1,11 @@
 ---
-title: Getting Started
+title: Docs Under Construction
 description: Install the standalone release, launch TrenchClaw, and know where the local runtime and state live.
 order: 1
 featured: true
 ---
+
+## Get Started
 
 ## Package Type
 

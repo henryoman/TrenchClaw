@@ -158,4 +158,77 @@ describe("renameWalletsAction", () => {
 
     expect(renameResult.error).toContain("target already exists");
   });
+
+  test("applies multiple rename edits in one batch and updates each label file", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const walletGroup = `batch-wallets-${crypto.randomUUID()}`;
+    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-rename-batch-wallet-library-${crypto.randomUUID()}.jsonl`);
+    process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
+    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
+
+    const createResult = await createWalletsAction.execute({} as never, {
+      groups: [
+        {
+          walletGroup,
+          walletNames: ["one", "two"],
+        },
+      ],
+    });
+
+    expect(createResult.ok).toBe(true);
+    if (!createResult.ok) {
+      return;
+    }
+
+    const renameResult = await renameWalletsAction.execute({} as never, {
+      edits: [
+        {
+          current: {
+            walletGroup,
+            walletName: "one",
+          },
+          next: {
+            walletGroup: "ops-wallets",
+            walletName: "main",
+          },
+        },
+        {
+          current: {
+            walletGroup,
+            walletName: "two",
+          },
+          next: {
+            walletGroup,
+            walletName: "reserve",
+          },
+        },
+      ],
+      updateLabelFiles: true,
+    });
+
+    expect(renameResult.ok).toBe(true);
+    if (!renameResult.ok) {
+      return;
+    }
+
+    expect(renameResult.data?.updated).toHaveLength(2);
+
+    const libraryLines = (await Bun.file(renameResult.data?.walletLibraryFilePath ?? "").text())
+      .trim()
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { walletId: string; walletName: string; walletGroup: string; walletLabelFilePath: string });
+
+    expect(libraryLines.map((entry) => entry.walletId).toSorted()).toEqual([
+      `${walletGroup}.reserve`,
+      "ops-wallets.main",
+    ].toSorted());
+
+    for (const updated of renameResult.data?.updated ?? []) {
+      const walletLabel = await Bun.file(updated.walletLabelFilePath ?? "").json();
+      expect(walletLabel.walletId).toBe(updated.next.walletId);
+      expect(walletLabel.walletGroup).toBe(updated.next.walletGroup);
+      expect(walletLabel.walletName).toBe(updated.next.walletName);
+    }
+  });
 });

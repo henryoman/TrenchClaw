@@ -73,18 +73,6 @@
   const formatAiProviderOptionLabel = (option: GuiAiProviderOptionView): string =>
     `${option.label}${providerHasKey(option.id) ? " | configured" : " | missing key"}`;
 
-  const resolveAiProviderHint = (provider: GuiAiSettingsView["provider"]): string => {
-    if (!providerHasKey(provider)) {
-      return provider === "openrouter"
-        ? "Add an OpenRouter API key in Keys before saving this provider."
-        : "Add a Vercel AI Gateway key in Keys before saving this provider.";
-    }
-    if (provider === "gateway") {
-      return "Using Vercel AI Gateway. The model list is filtered to Gateway-supported IDs.";
-    }
-    return "Using OpenRouter. The model list is filtered to OpenRouter-supported IDs.";
-  };
-
   const DEFAULT_AI_SETTINGS: GuiAiSettingsView = {
     provider: DEFAULT_AI_PROVIDER,
     model: DEFAULT_AI_MODEL,
@@ -248,7 +236,6 @@
     ? [createCustomAiModelOption(aiSettingsDraft.model.trim()), ...filteredAiModelOptions]
     : [...filteredAiModelOptions];
   $: selectedAiProviderHasKey = providerHasKey(aiSettingsDraft.provider);
-  $: aiProviderHint = resolveAiProviderHint(aiSettingsDraft.provider);
 </script>
 
 <section class="settings-panel" aria-label="Settings panel">
@@ -264,7 +251,7 @@
           <RetroButton variant="secondary" disabled={aiSettingsBusy} on:click={handleReloadAiSettings}>Reload</RetroButton>
           <RetroButton
             variant="primary"
-            disabled={aiSettingsBusy || !selectedAiProviderHasKey || !aiSettingsDraft.model.trim() || !aiSettingsDraft.defaultMode.trim()}
+            disabled={aiSettingsBusy || !selectedAiProviderHasKey || !aiSettingsDraft.model.trim()}
             on:click={saveAiSettings}
           >
             Save
@@ -276,6 +263,8 @@
         <RetroField label="Provider">
           <RetroSelect
             value={aiSettingsDraft.provider}
+            indicatorShape="triangle"
+            chevronColor="var(--tc-color-lime)"
             disabled={aiSettingsBusy}
             on:change={(event) => {
               const target = event.currentTarget as HTMLSelectElement;
@@ -296,6 +285,8 @@
         <RetroField label="Model">
           <RetroSelect
             value={aiSettingsDraft.model}
+            indicatorShape="triangle"
+            chevronColor="var(--tc-color-lime)"
             disabled={aiSettingsBusy}
             on:change={(event) => {
               const target = event.currentTarget as HTMLSelectElement;
@@ -306,18 +297,6 @@
               <option value={modelOption.id}>{formatAiModelOptionLabel(modelOption)}</option>
             {/each}
           </RetroSelect>
-        </RetroField>
-
-        <RetroField label="Default mode">
-          <RetroInput
-            value={aiSettingsDraft.defaultMode}
-            placeholder="primary"
-            disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              onAiSettingChange("defaultMode", target.value);
-            }}
-          />
         </RetroField>
 
         <RetroField label="Temperature">
@@ -347,8 +326,6 @@
         </RetroField>
       </div>
 
-      <p class="settings-hint">{aiProviderHint}</p>
-
     </section>
 
     <RetroStatusMessage tone="error" text={aiSettingsErrorText} />
@@ -368,6 +345,7 @@
         <RetroField label="Default swap settings">
           <RetroSelect
             value={tradingSettingsDraft.defaultSwapProvider}
+            indicatorShape="triangle"
             disabled={tradingSettingsBusy}
             on:change={(event) => {
               const target = event.currentTarget as HTMLSelectElement;
@@ -450,14 +428,7 @@
     min-width: 0;
   }
 
-  .settings-hint {
-    margin: 0;
-    color: var(--tc-color-gray-3);
-    font-size: var(--tc-copy-sm-size);
-    line-height: 1.5;
-  }
-
-  @media (max-width: 980px) {
+  @media (max-width: 600px) {
     .settings-header {
       flex-direction: column;
     }

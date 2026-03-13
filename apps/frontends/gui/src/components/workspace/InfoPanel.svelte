@@ -1,25 +1,26 @@
 <script lang="ts">
   import RetroPanel from "../ui/RetroPanel.svelte";
 
+  const docsBaseUrl = "https://trenchclaw.vercel.app";
   const docsLinks = [
     {
       label: "Get started",
-      href: "/docs/getting-started",
+      href: `${docsBaseUrl}/docs/getting-started`,
       description: "Boot the runtime, connect keys, and get the first safe path working.",
     },
     {
       label: "AI + vault setup",
-      href: "/docs/ai-and-vault-setup",
+      href: `${docsBaseUrl}/docs/ai-and-vault-setup`,
       description: "Set up OpenRouter or Gateway keys and the minimum runtime config.",
     },
     {
       label: "Current limitations",
-      href: "/docs/troubleshooting-and-current-limitations",
+      href: `${docsBaseUrl}/docs/troubleshooting-and-current-limitations`,
       description: "Read the rough edges before trusting this build with anything important.",
     },
     {
       label: "Instances + safety",
-      href: "/docs/instances-and-safety-profiles",
+      href: `${docsBaseUrl}/docs/instances-and-safety-profiles`,
       description: "Understand how instance state and safety profiles gate behavior.",
     },
   ] as const;
@@ -54,7 +55,9 @@
     <section class="section">
       <div class="links-head">
         <h3 class="section-title tc-kicker">Docs</h3>
-        <a class="docs-home tc-kicker" href="/docs" target="_blank" rel="noreferrer">All docs</a>
+        <a class="docs-home tc-kicker" href={`${docsBaseUrl}/docs`} target="_blank" rel="noreferrer">
+          All docs
+        </a>
       </div>
       <div class="links-grid">
         {#each docsLinks as link}

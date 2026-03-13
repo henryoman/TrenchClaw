@@ -159,7 +159,7 @@ export const listRegisteredActions = async (): Promise<string[]> => {
   const runtime = await withSuppressedConsole(() => bootstrapRuntime());
 
   try {
-    return runtime.registry.list().map((action) => action.name).sort();
+    return runtime.registry.list().map((action) => action.name).toSorted();
   } finally {
     await withSuppressedConsole(() => runtime.stop());
   }

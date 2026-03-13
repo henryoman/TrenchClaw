@@ -315,29 +315,26 @@ export const inferManagedWalletLibraryEntriesFromFilesystem = async (input?: {
     return [];
   }
 
-  const entries: ManagedWalletLibraryEntry[] = [];
-
-  const walk = async (directoryPath: string): Promise<void> => {
+  const walk = async (directoryPath: string): Promise<ManagedWalletLibraryEntry[]> => {
     const directoryEntries = await readdir(directoryPath, { withFileTypes: true });
-    for (const entry of directoryEntries) {
+    return (await Promise.all(directoryEntries.map(async (entry) => {
       const absoluteEntryPath = path.join(directoryPath, entry.name);
       ensureWithinWalletRoot(absoluteRootPath, absoluteEntryPath);
 
       if (entry.isDirectory()) {
-        await walk(absoluteEntryPath);
-        continue;
+        return walk(absoluteEntryPath);
       }
 
       if (!entry.isFile() || !entry.name.toLowerCase().endsWith(".json") || isWalletLabelFileName(entry.name)) {
-        continue;
+        return [];
       }
 
       const label = await readWalletLabelFile(absoluteEntryPath);
       if (!label) {
-        continue;
+        return [];
       }
 
-      entries.push({
+      return [{
         walletId: label.walletId,
         walletGroup: label.walletGroup,
         walletName: label.walletName,
@@ -346,11 +343,11 @@ export const inferManagedWalletLibraryEntriesFromFilesystem = async (input?: {
         walletLabelFilePath: resolveWalletLabelFilePath(absoluteEntryPath),
         createdAt: label.createdAt,
         updatedAt: label.updatedAt,
-      });
-    }
+      }];
+    }))).flat();
   };
 
-  await walk(absoluteRootPath);
+  const entries = await walk(absoluteRootPath);
 
   return entries
     .toSorted((left, right) => `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`))
