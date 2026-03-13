@@ -48,35 +48,6 @@ Use these first when you need documentation:
 - `workspaceWriteFile` for exact edits
 - `queryRuntimeStore` and `queryInstanceMemory` for structured runtime reads
 
-## Plan Shape
-
-When returning machine-readable steps, use:
-
-```json
-{
-  "key": "inspect_runtime",
-  "actionName": "queryRuntimeStore",
-  "input": {
-    "request": {
-      "type": "getRuntimeKnowledgeSurface"
-    }
-  },
-  "dependsOn": null,
-  "retryPolicy": {
-    "maxAttempts": 1,
-    "backoffMs": 0
-  },
-  "idempotencyKey": "job-001:inspect_runtime"
-}
-```
-
-Rules:
-
-- exact live action name only
-- exact input shape only
-- no fake wrapper fields
-- one responsibility per step
-
 ## Output Pattern
 
 Default response order:

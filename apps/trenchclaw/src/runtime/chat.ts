@@ -1,8 +1,6 @@
-import { createOpenAI } from "@ai-sdk/openai";
 import {
   consumeStream,
   convertToModelMessages,
-  createGateway,
   stepCountIs,
   streamText,
   tool,
@@ -22,7 +20,7 @@ import type {
   LlmGenerateResult,
 } from "../ai";
 import { loadAiSettings } from "../ai/llm/ai-settings-file";
-import { resolveGatewayConfig, resolveLlmProviderConfig } from "../ai/llm/config";
+import { createLanguageModel, resolveLlmProviderConfig } from "../ai/llm/config";
 import {
   createWorkspaceBashTools,
   WORKSPACE_BASH_TOOL_NAME,
@@ -75,22 +73,10 @@ interface RuntimeChatServiceOverrides {
 const resolveStreamingModel = async (): Promise<LanguageModel> => {
   const llmConfig = await resolveLlmProviderConfig();
   if (llmConfig) {
-    const openai = createOpenAI({
-      apiKey: llmConfig.apiKey,
-      baseURL: llmConfig.baseURL,
-    });
-    const baseURL = llmConfig.baseURL?.toLowerCase() ?? "";
-    const useChatApi = llmConfig.provider === "openrouter" || baseURL.includes("openrouter.ai");
-    return useChatApi ? openai.chat(llmConfig.model) : openai.responses(llmConfig.model);
+    return createLanguageModel(llmConfig);
   }
 
-  const gatewayConfig = await resolveGatewayConfig();
-  if (gatewayConfig) {
-    const gateway = createGateway({ apiKey: gatewayConfig.apiKey });
-    return gateway(gatewayConfig.model);
-  }
-
-  throw new Error("No model provider configured. Populate the vault LLM provider keys.");
+  throw new Error("No model provider configured. Add an OpenRouter or Vercel AI Gateway key in Keys.");
 };
 
 const buildSystemPrompt = async (deps: RuntimeChatServiceDeps): Promise<string> => {

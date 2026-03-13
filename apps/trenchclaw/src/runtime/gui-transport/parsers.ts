@@ -234,44 +234,26 @@ export const parseUpdateAiSettingsRequest = async (request: Request): Promise<Gu
       return null;
     }
 
-    const {
-      provider,
-      model,
-      baseURL,
-      defaultMode,
-      temperature,
-      maxOutputTokens,
-    } = payload.settings;
+    const { model, defaultMode, temperature, maxOutputTokens } = payload.settings;
 
-    if (
-      provider !== "openai"
-      && provider !== "openrouter"
-      && provider !== "openai-compatible"
-    ) {
+    if (typeof model !== "string" || typeof defaultMode !== "string") {
+      return null;
+    }
+
+    if (temperature !== null && (typeof temperature !== "number" || !Number.isFinite(temperature))) {
       return null;
     }
 
     if (
-      typeof model !== "string"
-      || typeof baseURL !== "string"
-      || typeof defaultMode !== "string"
+      maxOutputTokens !== null
+      && (typeof maxOutputTokens !== "number" || !Number.isFinite(maxOutputTokens))
     ) {
-      return null;
-    }
-
-    if (temperature !== null && typeof temperature !== "number") {
-      return null;
-    }
-
-    if (maxOutputTokens !== null && typeof maxOutputTokens !== "number") {
       return null;
     }
 
     return {
       settings: {
-        provider,
         model,
-        baseURL,
         defaultMode,
         temperature,
         maxOutputTokens,

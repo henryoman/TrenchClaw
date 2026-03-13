@@ -41,9 +41,14 @@ const isRecurringJob = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stat
   return job.totalCycles > 1;
 };
 
+const hasUpcomingRun = (
+  job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+  now = Date.now(),
+): boolean => typeof job.nextRunAt === "number" && job.nextRunAt > now;
+
 const isScheduledJob = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean =>
   ACTIVE_JOB_STATUSES.has(job.status)
-  && (job.status === "paused" || typeof job.nextRunAt === "number" || isRecurringJob(job));
+  && (job.status === "paused" || hasUpcomingRun(job));
 
 const mapJobToScheduleView = (
   job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
@@ -84,6 +89,28 @@ const compareQueueJobsChronologically = (
   return a.id.localeCompare(b.id);
 };
 
+const compareScheduleJobsChronologically = (
+  a: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+  b: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+): number => {
+  const nextRunA = typeof a.nextRunAt === "number" ? a.nextRunAt : Number.MAX_SAFE_INTEGER;
+  const nextRunB = typeof b.nextRunAt === "number" ? b.nextRunAt : Number.MAX_SAFE_INTEGER;
+
+  if (nextRunA !== nextRunB) {
+    return nextRunA - nextRunB;
+  }
+
+  if (a.createdAt !== b.createdAt) {
+    return a.createdAt - b.createdAt;
+  }
+
+  if (a.updatedAt !== b.updatedAt) {
+    return a.updatedAt - b.updatedAt;
+  }
+
+  return a.id.localeCompare(b.id);
+};
+
 export const getBootstrap = async (context: RuntimeGuiDomainContext): Promise<GuiBootstrapResponse> => {
   const llmConfig = await resolveLlmProviderConfig();
   return {
@@ -107,7 +134,7 @@ export const getSchedule = (context: RuntimeGuiDomainContext): GuiScheduleRespon
   const jobs = context.runtime.stateStore
     .listJobs()
     .filter((job) => isScheduledJob(job))
-    .toSorted(compareQueueJobsChronologically)
+    .toSorted(compareScheduleJobsChronologically)
     .map(mapJobToScheduleView);
   return { jobs };
 };

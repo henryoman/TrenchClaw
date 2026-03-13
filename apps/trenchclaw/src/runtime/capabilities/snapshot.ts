@@ -7,9 +7,6 @@ const toMarkdownTable = (headers: string[], rows: string[][]): string => {
   return [headerLine, dividerLine, body].filter((line) => line.length > 0).join("\n");
 };
 
-const formatJsonExample = (value: unknown): string =>
-  value === undefined ? "" : `\nExample input:\n\`\`\`json\n${JSON.stringify(value, null, 2)}\n\`\`\``;
-
 export const renderRuntimeActionCatalogTable = (snapshot: RuntimeCapabilitySnapshot): string =>
   toMarkdownTable(
     [
@@ -58,7 +55,7 @@ Category: \`${entry.category}${entry.subcategory ? `/${entry.subcategory}` : ""}
 Status: ${statusBits}
 Purpose: ${entry.purpose}
 Description: ${entry.description}
-Tags: ${entry.tags.join(", ") || "none"}${formatJsonExample(entry.exampleInput)}`;
+Tags: ${entry.tags.join(", ") || "none"}`;
     })
     .join("\n\n");
 
@@ -73,14 +70,14 @@ Tags: ${entry.tags.join(", ") || "none"}${formatJsonExample(entry.exampleInput)}
 Status: ${statusBits}
 Purpose: ${entry.purpose}
 Description: ${entry.description}
-Tags: ${entry.tags.join(", ") || "none"}${formatJsonExample(entry.exampleInput)}`;
+Tags: ${entry.tags.join(", ") || "none"}`;
     })
     .join("\n\n");
 
   const callableToolNames = snapshot.chatTools.map((entry) => `\`${entry.name}\``).join(", ") || "none";
 
   return `## Live Callable Capability Appendix
-This appendix is generated from the runtime capability registry. Treat it as the live capability metadata source for names, intent, exposure, and example input shapes.
+This appendix is generated from the runtime capability registry. Treat it as the live capability metadata source for names, intent, and exposure.
 
 ### How To Read This Appendix
 1. \`Runtime Chat Tool Catalog\` is the exact callable tool allowlist for this run.

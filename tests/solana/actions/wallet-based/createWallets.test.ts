@@ -28,6 +28,20 @@ afterEach(async () => {
 });
 
 describe("createWalletsAction", () => {
+  test("exposes only the batch wallet schema to chat tools", () => {
+    expect(createWalletsAction.inputSchema?.safeParse({
+      groups: [{ walletGroup: "core-wallets", count: 1 }],
+    }).success).toBe(true);
+
+    expect(createWalletsAction.inputSchema?.safeParse({
+      count: 1,
+      storage: {
+        walletGroup: "core-wallets",
+        createGroupIfMissing: true,
+      },
+    }).success).toBe(false);
+  });
+
   test("stores the wallet library under the instance keypairs root by default", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     delete process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;

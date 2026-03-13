@@ -3,19 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 import { parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
 
-export const LLM_PROVIDERS = ["openai", "openrouter", "openai-compatible"] as const;
-export type LlmProvider = (typeof LLM_PROVIDERS)[number];
-
-const defaultModelByProvider: Record<LlmProvider, string> = {
-  openai: "gpt-4.1-mini",
-  openrouter: "stepfun/step-3.5-flash:free",
-  "openai-compatible": "gpt-4.1-mini",
-};
-
-const defaultBaseUrlByProvider: Partial<Record<LlmProvider, string>> = {
-  openai: "https://api.openai.com/v1",
-  openrouter: "https://openrouter.ai/api/v1",
-};
+export const DEFAULT_LLM_MODEL = "anthropic/claude-sonnet-4.6";
 
 const DEFAULT_AI_SETTINGS_FILE = "../../../.runtime-state/runtime/ai.json";
 const LEGACY_AI_SETTINGS_FILE = "../../../.runtime-state/user/ai.json";
@@ -24,9 +12,7 @@ const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";
 const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
 
 export const aiSettingsSchema = z.object({
-  provider: z.enum(LLM_PROVIDERS).default("openrouter"),
-  model: z.string().trim().min(1).default(defaultModelByProvider.openrouter),
-  baseURL: z.string().trim().default("https://openrouter.ai/api/v1"),
+  model: z.string().trim().min(1).default(DEFAULT_LLM_MODEL),
   defaultMode: z.string().trim().min(1).default("primary"),
   temperature: z.number().min(0).max(2).nullable().default(null),
   maxOutputTokens: z.number().int().positive().max(64_000).nullable().default(null),
@@ -35,16 +21,7 @@ export const aiSettingsSchema = z.object({
 export type AiSettings = z.output<typeof aiSettingsSchema>;
 export type AiSettingsInput = z.input<typeof aiSettingsSchema>;
 
-export const resolveAutomaticAiBaseUrl = (provider: LlmProvider, fallback = ""): string =>
-  defaultBaseUrlByProvider[provider] ?? fallback;
-
-export const normalizeAiSettingsInput = (input: AiSettingsInput): AiSettings => {
-  const settings = aiSettingsSchema.parse(input);
-  return {
-    ...settings,
-    baseURL: resolveAutomaticAiBaseUrl(settings.provider, settings.baseURL),
-  };
-};
+export const normalizeAiSettingsInput = (input: AiSettingsInput): AiSettings => aiSettingsSchema.parse(input);
 
 export const DEFAULT_AI_SETTINGS: AiSettings = normalizeAiSettingsInput({});
 

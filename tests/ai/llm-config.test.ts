@@ -50,21 +50,10 @@ describe("resolveLlmProviderConfigFromEnv", () => {
     expect(resolved).toBeNull();
   });
 
-  test("ignores OpenAI env settings", () => {
-    process.env.TRENCHCLAW_AI_PROVIDER = "openai";
-    process.env.OPENAI_API_KEY = "oa-key";
-    process.env.TRENCHCLAW_AI_MODEL = "gpt-4.1-mini";
-
-    const resolved = resolveLlmProviderConfigFromEnv();
-
-    expect(resolved).toBeNull();
-  });
-
-  test("ignores OpenAI-compatible env settings", () => {
-    process.env.TRENCHCLAW_AI_PROVIDER = "openai-compatible";
-    process.env.TRENCHCLAW_AI_API_KEY = "custom-key";
-    process.env.TRENCHCLAW_AI_BASE_URL = "https://llm.example.com/v1";
-    process.env.TRENCHCLAW_AI_MODEL = "vendor/model";
+  test("ignores provider env overrides", () => {
+    process.env.TRENCHCLAW_AI_PROVIDER = "gateway";
+    process.env.TRENCHCLAW_AI_API_KEY = "gateway-key";
+    process.env.TRENCHCLAW_AI_MODEL = "anthropic/claude-sonnet-4.6";
 
     const resolved = resolveLlmProviderConfigFromEnv();
 
@@ -73,19 +62,17 @@ describe("resolveLlmProviderConfigFromEnv", () => {
 });
 
 describe("resolveLlmProviderConfigFromVault", () => {
-  test("uses provider, model, and base URL from ai.json while reading the API key from vault.json", async () => {
+  test("uses the configured model from ai.json and the OpenRouter key from vault.json", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
-      provider: "openai-compatible",
-      model: "vendor/model-1",
-      baseURL: "https://llm.example.com/v1",
+      model: "anthropic/claude-sonnet-4.6",
       defaultMode: "primary",
       temperature: 0.2,
       maxOutputTokens: 2048,
     });
     process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
       llm: {
-        "openai-compatible": {
-          "api-key": "compat-key",
+        openrouter: {
+          "api-key": "openrouter-key",
         },
       },
     });
@@ -93,31 +80,33 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved).not.toBeNull();
-    expect(resolved?.provider).toBe("openai-compatible");
-    expect(resolved?.model).toBe("vendor/model-1");
-    expect(resolved?.baseURL).toBe("https://llm.example.com/v1");
-    expect(resolved?.apiKey).toBe("compat-key");
+    expect(resolved?.provider).toBe("openrouter");
+    expect(resolved?.model).toBe("anthropic/claude-sonnet-4.6");
+    expect(resolved?.baseURL).toBe("https://openrouter.ai/api/v1");
+    expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
-  test("does not silently fall back to another provider when ai.json selects one without a key", async () => {
+  test("prefers gateway when both supported transports are configured", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
-      provider: "openai",
-      model: "gpt-4.1-mini",
-      baseURL: "",
+      model: "anthropic/claude-sonnet-4.6",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
     });
     process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
       llm: {
+        gateway: {
+          "api-key": "gateway-key",
+        },
         openrouter: {
-          "api-key": "or-key",
+          "api-key": "openrouter-key",
         },
       },
     });
 
     const resolved = await resolveLlmProviderConfigFromVault();
 
-    expect(resolved).toBeNull();
+    expect(resolved?.provider).toBe("gateway");
+    expect(resolved?.apiKey).toBe("gateway-key");
   });
 });

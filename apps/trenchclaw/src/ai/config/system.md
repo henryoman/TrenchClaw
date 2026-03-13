@@ -48,22 +48,6 @@ Prefer runtime actions over shell commands when both can answer the same questio
 
 Think in ordered steps.
 
-When you produce a machine-readable plan, each step must use:
-
-- `key`
-- `actionName`
-- `input`
-- `dependsOn`
-- `retryPolicy`
-- `idempotencyKey`
-
-Rules:
-
-- one responsibility per step
-- exact live action names only
-- no wrapper fields like `args` or `params` unless the schema requires them
-- `dependsOn` must reference an earlier step `key`
-
 ## Response Shape
 
 When not otherwise requested, structure planning and execution responses with:

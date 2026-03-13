@@ -7,10 +7,10 @@
   } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroDivider from "../ui/RetroDivider.svelte";
+  import RetroField from "../ui/RetroField.svelte";
+  import RetroInput from "../ui/RetroInput.svelte";
   import RetroSectionHeader from "../ui/RetroSectionHeader.svelte";
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
-  import SecretCategorySection from "./secrets/SecretCategorySection.svelte";
-  import type { SecretDraftRow } from "./secrets/secret-editor-types";
 
   export let options: GuiSecretOptionView[] = [];
   export let entries: GuiSecretEntryView[] = [];
@@ -29,35 +29,35 @@
   }) => Promise<void> | void = () => {};
   export let onClear: (optionId: string) => Promise<void> | void = () => {};
 
-  let aiRows: SecretDraftRow[] = [];
-  let blockchainRows: SecretDraftRow[] = [];
-  let rowCounter = 0;
-  let hydrationSignature = "";
-  let dirtyRowKeys = new Set<string>();
-  const DEFAULT_BLOCKCHAIN_OPTION_ID = "solana-rpc-url";
+  interface VisibleSecretField {
+    id: string;
+    label: string;
+    placeholder: string;
+    category: GuiSecretCategory;
+    value: string;
+    dirty: boolean;
+  }
+
   const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
-  const CORE_AI_OPTION_IDS = [
+  const AI_OPTION_IDS = [
     "openrouter-api-key",
     "vercel-ai-gateway-api-key",
-    "openai-api-key",
-    "anthropic-api-key",
-    "google-ai-api-key",
-    "openai-compatible-api-key",
   ];
-  const CORE_BLOCKCHAIN_OPTION_IDS = [
+  const BLOCKCHAIN_OPTION_IDS = [
     "solana-rpc-url",
-    "helius-http-url",
-    "helius-ws-url",
     "helius-api-key",
+    "quicknode-api-key",
+    "solana-vibestation-api-key",
+    "chainstack-api-key",
+    "temporal-api-key",
     "jupiter-api-key",
     "ultra-signer-private-key",
     "ultra-signer-private-key-encoding",
   ];
 
-  const nextRowKey = (): string => {
-    rowCounter += 1;
-    return `row-${rowCounter}`;
-  };
+  let draftValues: Record<string, string> = {};
+  let hydrationSignature = "";
+  let dirtyOptionIds = new Set<string>();
 
   const optionFor = (optionId: string): GuiSecretOptionView | undefined =>
     options.find((option) => option.id === optionId);
@@ -65,62 +65,111 @@
   const entryFor = (optionId: string): GuiSecretEntryView | undefined =>
     entries.find((entry) => entry.optionId === optionId);
 
-  const optionsForCategory = (category: GuiSecretCategory): GuiSecretOptionView[] =>
-    options.filter((option) => option.category === category);
+  const defaultPublicRpc = (): GuiPublicRpcOptionView | undefined =>
+    publicRpcOptions.find((rpc) => rpc.id === DEFAULT_MAINNET_RPC_ID) ?? publicRpcOptions[0];
 
-  const firstRpcId = (): string => publicRpcOptions[0]?.id ?? "";
-
-  const defaultPublicRpcId = (): string => {
-    const preferred = publicRpcOptions.find((rpc) => rpc.id === DEFAULT_MAINNET_RPC_ID);
-    return preferred?.id ?? firstRpcId();
+  const initialValueFor = (option: GuiSecretOptionView): string => {
+    const entry = entryFor(option.id);
+    if ((entry?.value ?? "").trim().length > 0) {
+      return entry?.value ?? "";
+    }
+    if (option.id === "solana-rpc-url") {
+      return defaultPublicRpc()?.url ?? "";
+    }
+    return "";
   };
 
-  const valueForPublicRpc = (rpcId: string): string =>
-    publicRpcOptions.find((rpc) => rpc.id === rpcId)?.url ?? "";
+  const visibleOptionsFor = (optionIds: string[]): GuiSecretOptionView[] =>
+    optionIds.map((optionId) => optionFor(optionId)).filter((option): option is GuiSecretOptionView => Boolean(option));
 
-  const createRowFromOptionId = (optionId = ""): SecretDraftRow => {
-    const entry = optionId ? entryFor(optionId) : undefined;
-    const option = optionId ? optionFor(optionId) : undefined;
-    const source = option?.supportsPublicRpc ? "public" : (entry?.source ?? "custom");
-    const publicRpcId = option?.supportsPublicRpc ? (entry?.publicRpcId ?? defaultPublicRpcId()) : firstRpcId();
-    const value = option?.supportsPublicRpc ? valueForPublicRpc(publicRpcId) : (entry?.value ?? "");
+  const buildFields = (category: GuiSecretCategory, optionIds: string[]): VisibleSecretField[] =>
+    visibleOptionsFor(optionIds).map((option) => ({
+      id: option.id,
+      label: option.label,
+      placeholder: option.placeholder,
+      category,
+      value: draftValues[option.id] ?? initialValueFor(option),
+      dirty: dirtyOptionIds.has(option.id),
+    }));
 
-    return {
-      rowKey: nextRowKey(),
-      optionId,
-      value,
-      source,
-      publicRpcId,
+  const handleValueChange = (optionId: string, value: string): void => {
+    draftValues = {
+      ...draftValues,
+      [optionId]: value,
     };
+    dirtyOptionIds = new Set([...dirtyOptionIds, optionId]);
   };
 
-  const rowsForCategoryFromEntries = (category: GuiSecretCategory): SecretDraftRow[] => {
-    const categoryOptions = optionsForCategory(category);
-    if (categoryOptions.length === 0) {
-      return [];
+  const saveField = (field: VisibleSecretField): void => {
+    const option = optionFor(field.id);
+    if (!option) {
+      return;
     }
 
-    const withValues = categoryOptions.filter((option) => {
-      const entry = entryFor(option.id);
-      return (entry?.value ?? "").trim().length > 0;
-    });
+    Promise.resolve(
+      onSave({
+        optionId: field.id,
+        value: field.value.trim(),
+        source: option.supportsPublicRpc ? "custom" : undefined,
+        publicRpcId: option.supportsPublicRpc ? null : undefined,
+      }),
+    )
+      .then(() => {
+        dirtyOptionIds.delete(field.id);
+        dirtyOptionIds = new Set(dirtyOptionIds);
+      })
+      .catch(() => {});
+  };
 
-    const coreOptionIds = category === "blockchain" ? CORE_BLOCKCHAIN_OPTION_IDS : CORE_AI_OPTION_IDS;
-    const coreOptions = coreOptionIds
-      .map((optionId) => categoryOptions.find((option) => option.id === optionId))
-      .filter((option): option is GuiSecretOptionView => Boolean(option));
-    const optionalSavedOptions = withValues.filter((option) => !coreOptionIds.includes(option.id));
-    const seed = [...coreOptions, ...optionalSavedOptions];
-
-    if (seed.length > 0) {
-      return seed.map((option) => createRowFromOptionId(option.id));
+  const clearField = (field: VisibleSecretField): void => {
+    const option = optionFor(field.id);
+    if (!option) {
+      return;
     }
 
-    const fallbackOption =
-      category === "blockchain"
-        ? categoryOptions.find((option) => option.id === DEFAULT_BLOCKCHAIN_OPTION_ID) ?? categoryOptions[0]
-        : categoryOptions[0];
-    return fallbackOption ? [createRowFromOptionId(fallbackOption.id)] : [];
+    if (field.id === "solana-rpc-url") {
+      const rpc = defaultPublicRpc();
+      if (!rpc) {
+        return;
+      }
+      draftValues = {
+        ...draftValues,
+        [field.id]: rpc.url,
+      };
+      Promise.resolve(
+        onSave({
+          optionId: field.id,
+          value: rpc.url,
+          source: "public",
+          publicRpcId: rpc.id,
+        }),
+      )
+        .then(() => {
+          dirtyOptionIds.delete(field.id);
+          dirtyOptionIds = new Set(dirtyOptionIds);
+        })
+        .catch(() => {});
+      return;
+    }
+
+    draftValues = {
+      ...draftValues,
+      [field.id]: "",
+    };
+    dirtyOptionIds.delete(field.id);
+    dirtyOptionIds = new Set(dirtyOptionIds);
+    void onClear(field.id);
+  };
+
+  const handleReload = (): void => {
+    if (dirtyOptionIds.size > 0) {
+      const proceed = window.confirm("You have unsaved key changes. Reload and discard them?");
+      if (!proceed) {
+        return;
+      }
+    }
+    dirtyOptionIds = new Set();
+    onReload();
   };
 
   const createHydrationSignature = (): string =>
@@ -130,155 +179,22 @@
       rpcIds: publicRpcOptions.map((rpc) => rpc.id),
     });
 
-  const selectedOptionIds = (rows: SecretDraftRow[], exceptRowKey?: string): Set<string> =>
-    new Set(rows.filter((row) => row.rowKey !== exceptRowKey && row.optionId).map((row) => row.optionId));
-
-  const firstUnselectedOptionId = (category: GuiSecretCategory, rows: SecretDraftRow[]): string => {
-    const selected = selectedOptionIds(rows);
-    const candidate = optionsForCategory(category).find((option) => !selected.has(option.id));
-    return candidate?.id ?? "";
-  };
-
-  const addRow = (category: GuiSecretCategory): void => {
-    if (category === "ai") {
-      aiRows = [...aiRows, createRowFromOptionId(firstUnselectedOptionId("ai", aiRows))];
-      return;
-    }
-    blockchainRows = [...blockchainRows, createRowFromOptionId(firstUnselectedOptionId("blockchain", blockchainRows))];
-  };
-
-  const removeRow = (category: GuiSecretCategory, rowKey: string): void => {
-    if (category === "ai") {
-      aiRows = aiRows.filter((row) => row.rowKey !== rowKey);
-      return;
-    }
-    blockchainRows = blockchainRows.filter((row) => row.rowKey !== rowKey);
-  };
-
-  const updateRow = (
-    category: GuiSecretCategory,
-    rowKey: string,
-    updater: (row: SecretDraftRow) => SecretDraftRow,
-  ): void => {
-    if (category === "ai") {
-      aiRows = aiRows.map((row) => (row.rowKey === rowKey ? updater(row) : row));
-      return;
-    }
-    blockchainRows = blockchainRows.map((row) => (row.rowKey === rowKey ? updater(row) : row));
-  };
-
-  const onOptionChange = (category: GuiSecretCategory, rowKey: string, optionId: string): void => {
-    const entry = entryFor(optionId);
-    const option = optionFor(optionId);
-    const source = option?.supportsPublicRpc ? "public" : (entry?.source ?? "custom");
-    const publicRpcId = option?.supportsPublicRpc ? (entry?.publicRpcId ?? defaultPublicRpcId()) : firstRpcId();
-    const value = option?.supportsPublicRpc ? valueForPublicRpc(publicRpcId) : (entry?.value ?? "");
-
-    updateRow(category, rowKey, (row) => ({
-      ...row,
-      optionId,
-      source,
-      publicRpcId,
-      value,
-    }));
-    dirtyRowKeys = new Set([...dirtyRowKeys, rowKey]);
-  };
-
-  const onValueChange = (category: GuiSecretCategory, rowKey: string, value: string): void => {
-    updateRow(category, rowKey, (row) => ({ ...row, value }));
-    dirtyRowKeys = new Set([...dirtyRowKeys, rowKey]);
-  };
-
-  const saveRow = (row: SecretDraftRow): void => {
-    const option = optionFor(row.optionId);
-    if (!option) {
-      return;
-    }
-
-    if (option.supportsPublicRpc) {
-      const rpcId = row.publicRpcId || defaultPublicRpcId();
-      const rpc = publicRpcOptions.find((candidate) => candidate.id === rpcId);
-      if (!rpc) {
-        return;
-      }
-      Promise.resolve(
-        onSave({
-          optionId: row.optionId,
-          value: rpc.url,
-          source: "public",
-          publicRpcId: rpc.id,
-        }),
-      )
-        .then(() => {
-          dirtyRowKeys.delete(row.rowKey);
-          dirtyRowKeys = new Set(dirtyRowKeys);
-        })
-        .catch(() => {});
-      return;
-    }
-
-    Promise.resolve(
-      onSave({
-        optionId: row.optionId,
-        value: row.value.trim(),
-        source: option.supportsPublicRpc ? "custom" : undefined,
-        publicRpcId: option.supportsPublicRpc ? null : undefined,
-      }),
-    )
-      .then(() => {
-        dirtyRowKeys.delete(row.rowKey);
-        dirtyRowKeys = new Set(dirtyRowKeys);
-      })
-      .catch(() => {});
-  };
-
-  const handleReload = (): void => {
-    if (dirtyRowKeys.size > 0) {
-      const proceed = window.confirm("You have unsaved key changes. Reload and discard them?");
-      if (!proceed) {
-        return;
-      }
-    }
-    dirtyRowKeys = new Set();
-    onReload();
-  };
-
-  const clearRow = (category: GuiSecretCategory, row: SecretDraftRow): void => {
-    if (!row.optionId) {
-      return;
-    }
-    const option = optionFor(row.optionId);
-    if (option?.supportsPublicRpc && category === "blockchain") {
-      const publicRpcId = defaultPublicRpcId();
-      updateRow(category, row.rowKey, (current) => ({
-        ...current,
-        source: "public",
-        publicRpcId,
-        value: valueForPublicRpc(publicRpcId),
-      }));
-      return;
-    }
-    updateRow(category, row.rowKey, (current) => ({
-      ...current,
-      value: "",
-      source: "custom",
-      publicRpcId: firstRpcId(),
-    }));
-    dirtyRowKeys.delete(row.rowKey);
-    dirtyRowKeys = new Set(dirtyRowKeys);
-    void onClear(row.optionId);
-  };
-
   $: {
     const signature = createHydrationSignature();
     if (signature !== hydrationSignature) {
-      aiRows = rowsForCategoryFromEntries("ai");
-      blockchainRows = rowsForCategoryFromEntries("blockchain");
+      draftValues = Object.fromEntries(
+        [...visibleOptionsFor(AI_OPTION_IDS), ...visibleOptionsFor(BLOCKCHAIN_OPTION_IDS)].map((option) => [
+          option.id,
+          initialValueFor(option),
+        ]),
+      );
       hydrationSignature = signature;
-      dirtyRowKeys = new Set();
+      dirtyOptionIds = new Set();
     }
   }
 
+  $: aiFields = buildFields("ai", AI_OPTION_IDS);
+  $: blockchainFields = buildFields("blockchain", BLOCKCHAIN_OPTION_IDS);
   $: statusErrorText = error.trim();
   $: llmStatusText = llmCheckMessage.trim();
 </script>
@@ -293,37 +209,67 @@
   </header>
 
   <div class="section-stack">
-    <SecretCategorySection
-      title="AI"
-      category="ai"
-      rows={aiRows}
-      options={optionsForCategory("ai")}
-      {busy}
-      {optionFor}
-      onAdd={addRow}
-      {onOptionChange}
-      {onValueChange}
-      onSave={saveRow}
-      onClear={clearRow}
-      onRemove={removeRow}
-    />
+    <section class="secret-section" aria-label="AI keys">
+      <h3>AI</h3>
+      <div class="field-list">
+        {#each aiFields as field (field.id)}
+          <article class="secret-card">
+            <RetroField label={field.label}>
+              <RetroInput
+                value={field.value}
+                disabled={busy}
+                placeholder={field.placeholder}
+                on:input={(event) => {
+                  const target = event.currentTarget as HTMLInputElement;
+                  handleValueChange(field.id, target.value);
+                }}
+              />
+            </RetroField>
+
+            <div class="row-actions">
+              <RetroButton disabled={busy || !field.value.trim() || !field.dirty} on:click={() => saveField(field)}>
+                Save
+              </RetroButton>
+              <RetroButton variant="secondary" disabled={busy || !field.value.trim()} on:click={() => clearField(field)}>
+                Clear
+              </RetroButton>
+            </div>
+          </article>
+        {/each}
+      </div>
+    </section>
 
     <RetroDivider />
 
-    <SecretCategorySection
-      title="Blockchain"
-      category="blockchain"
-      rows={blockchainRows}
-      options={optionsForCategory("blockchain")}
-      {busy}
-      {optionFor}
-      onAdd={addRow}
-      {onOptionChange}
-      {onValueChange}
-      onSave={saveRow}
-      onClear={clearRow}
-      onRemove={removeRow}
-    />
+    <section class="secret-section" aria-label="Blockchain keys">
+      <h3>Blockchain</h3>
+      <div class="field-list">
+        {#each blockchainFields as field (field.id)}
+          <article class="secret-card">
+            <RetroField label={field.label}>
+              <RetroInput
+                value={field.value}
+                disabled={busy}
+                placeholder={field.placeholder}
+                on:input={(event) => {
+                  const target = event.currentTarget as HTMLInputElement;
+                  handleValueChange(field.id, target.value);
+                }}
+              />
+            </RetroField>
+
+            <div class="row-actions">
+              <RetroButton disabled={busy || !field.value.trim() || !field.dirty} on:click={() => saveField(field)}>
+                Save
+              </RetroButton>
+              <RetroButton variant="secondary" disabled={busy || !field.value.trim()} on:click={() => clearField(field)}>
+                {field.id === "solana-rpc-url" ? "Reset" : "Clear"}
+              </RetroButton>
+            </div>
+          </article>
+        {/each}
+      </div>
+    </section>
   </div>
 
   <RetroStatusMessage tone="error" text={statusErrorText} />
@@ -363,6 +309,40 @@
     display: grid;
     gap: var(--tc-space-4);
     min-width: 0;
+  }
+
+  .secret-section {
+    display: grid;
+    gap: var(--tc-space-3);
+    min-width: 0;
+  }
+
+  .field-list {
+    display: grid;
+    gap: var(--tc-space-2);
+  }
+
+  .secret-card {
+    display: grid;
+    gap: var(--tc-space-2);
+    min-width: 0;
+    border: var(--tc-row-box-border);
+    background: var(--tc-row-box-bg);
+    padding: var(--tc-row-box-padding);
+  }
+
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--tc-space-2);
+  }
+
+  h3 {
+    margin: 0;
+    font-size: var(--tc-section-title-size);
+    text-transform: uppercase;
+    letter-spacing: var(--tc-section-title-letter-spacing);
+    color: var(--tc-color-turquoise);
   }
 
   @media (max-width: var(--tc-layout-breakpoint)) {

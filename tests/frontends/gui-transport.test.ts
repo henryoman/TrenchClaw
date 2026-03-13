@@ -62,6 +62,7 @@ const buildRuntime = (input?: {
         createdAt: Date.now(),
         updatedAt: Date.now(),
       }) as Awaited<ReturnType<RuntimeBootstrap["manageJob"]>>,
+    createActionContext: () => ({ actor: "agent" }),
     describe: () => ({
       profile: "dangerous",
       registeredActions: [],
@@ -226,6 +227,81 @@ describe("Runtime v1 API", () => {
     expect(payload.jobs[0]?.intervalMs).toBe(60_000);
   });
 
+  test("GET /api/gui/schedule returns future jobs in chronological order and excludes ready-now queue items", async () => {
+    const runtime = buildRuntime();
+    const now = Date.now();
+
+    runtime.stateStore.saveJob({
+      id: "job-ready-now",
+      serialNumber: 1,
+      botId: "bot-ready",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {},
+      cyclesCompleted: 0,
+      totalCycles: 1,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: now,
+    });
+
+    runtime.stateStore.saveJob({
+      id: "job-future-late",
+      serialNumber: 2,
+      botId: "bot-late",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {},
+      cyclesCompleted: 0,
+      totalCycles: 1,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: now + 120_000,
+    });
+
+    runtime.stateStore.saveJob({
+      id: "job-paused-no-time",
+      serialNumber: 3,
+      botId: "bot-paused",
+      routineName: "actionSequence",
+      status: "paused",
+      config: {},
+      cyclesCompleted: 0,
+      totalCycles: 1,
+      createdAt: now - 5_000,
+      updatedAt: now - 5_000,
+    });
+
+    runtime.stateStore.saveJob({
+      id: "job-future-early",
+      serialNumber: 4,
+      botId: "bot-early",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {},
+      cyclesCompleted: 0,
+      totalCycles: 1,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: now + 60_000,
+    });
+
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+    const response = await handler(new Request("http://localhost/api/gui/schedule", { method: "GET" }));
+
+    expect(response.status).toBe(200);
+    const payload = (await response.json()) as {
+      jobs: Array<{ id: string }>;
+    };
+
+    expect(payload.jobs.map((job) => job.id)).toEqual([
+      "job-future-early",
+      "job-future-late",
+      "job-paused-no-time",
+    ]);
+  });
+
   test("GET /api/gui/llm/check reports active key metadata", async () => {
     const previous = process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE;
     process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = "1";
@@ -271,19 +347,17 @@ describe("Runtime v1 API", () => {
       expect(initialResponse.status).toBe(200);
       const initialPayload = (await initialResponse.json()) as {
         filePath: string;
-        settings: { provider: string; model: string };
+        settings: { model: string };
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
-      expect(initialPayload.settings.provider).toBe("openrouter");
+      expect(initialPayload.settings.model).toBe("anthropic/claude-sonnet-4.6");
 
       const updateResponse = await handler(new Request("http://localhost/api/gui/ai-settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           settings: {
-            provider: "openai",
-            model: "gpt-4.1-mini",
-            baseURL: "https://should-be-ignored.example/v1",
+            model: "anthropic/claude-sonnet-4.6",
             defaultMode: "primary",
             temperature: 0.4,
             maxOutputTokens: 2048,
@@ -292,11 +366,9 @@ describe("Runtime v1 API", () => {
       }));
       expect(updateResponse.status).toBe(200);
       const updatePayload = (await updateResponse.json()) as {
-        settings: { provider: string; model: string; baseURL: string; maxOutputTokens: number | null };
+        settings: { model: string; maxOutputTokens: number | null };
       };
-      expect(updatePayload.settings.provider).toBe("openai");
-      expect(updatePayload.settings.model).toBe("gpt-4.1-mini");
-      expect(updatePayload.settings.baseURL).toBe("https://api.openai.com/v1");
+      expect(updatePayload.settings.model).toBe("anthropic/claude-sonnet-4.6");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
     } finally {
       if (previous === undefined) {

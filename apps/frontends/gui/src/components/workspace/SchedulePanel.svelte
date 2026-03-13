@@ -3,8 +3,10 @@
 
   export let jobs: GuiScheduleJobView[] = [];
 
-  const formatQueueTime = (unixMs: number): string =>
-    new Date(unixMs).toLocaleTimeString([], {
+  const formatScheduleTime = (unixMs: number): string =>
+    new Date(unixMs).toLocaleString([], {
+      month: "short",
+      day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -64,7 +66,7 @@
                 <small>{job.botId}</small>
               </div>
             </td>
-            <td>{job.nextRunAt ? formatQueueTime(job.nextRunAt) : "Ready"}</td>
+            <td>{job.nextRunAt ? formatScheduleTime(job.nextRunAt) : "Paused"}</td>
             <td>{formatInterval(job.intervalMs)}</td>
             <td>{formatCycle(job)}</td>
           </tr>

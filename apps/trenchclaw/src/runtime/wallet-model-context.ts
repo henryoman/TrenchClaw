@@ -150,7 +150,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
 
   const lines = [
     "## Wallet Runtime Variables",
-    "These wallet variables are auto-loaded from the active instance wallet library at request time. Treat them as prompt-time convenience variables and copy the literal values into tool inputs when needed.",
+    "These wallet variables are auto-loaded from the active instance wallet library at request time.",
     "",
     `- ACTIVE_INSTANCE_ID=${activeInstanceId}`,
     `- WALLET_LIBRARY_FILE=${walletLibraryContractPath}`,
@@ -170,50 +170,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     "- There is no wallet delete tool in chat.",
     "- Wallet groups must be flat single-level names only.",
     "- Each wallet group can create at most 100 wallets per call.",
-    "",
-    "#### createWallets JSON Shape",
-    "```json",
-    JSON.stringify(
-      {
-        groups: [
-          {
-            walletGroup: "core-wallets",
-            count: 3,
-          },
-          {
-            walletGroup: "snipers",
-            walletNames: ["wallet_alpha", "wallet_beta"],
-          },
-        ],
-      },
-      null,
-      2,
-    ),
-    "```",
-    "If `walletNames` is omitted for a group, names default to `wallet_000`, `wallet_001`, `wallet_002`, and so on.",
-    "",
-    "#### renameWallets JSON Shape",
-    "```json",
-    JSON.stringify(
-      {
-        edits: [
-          {
-            current: {
-              walletGroup: "old-group",
-              walletName: "old-name",
-            },
-            next: {
-              walletGroup: "new-group",
-              walletName: "new-name",
-            },
-          },
-        ],
-        updateLabelFiles: true,
-      },
-      null,
-      2,
-    ),
-    "```",
+    "- If `walletNames` is omitted for a group, names default to `wallet_000`, `wallet_001`, `wallet_002`, and so on.",
     "This updates protected wallet metadata only. It does not delete wallets and does not change secret key bytes.",
   );
 

@@ -6,6 +6,7 @@ import {
   ActionRegistry,
   createLlmClientFromEnv,
   createActionContext,
+  type CreateActionContextConfig,
   InMemoryRuntimeEventBus,
   InMemoryStateStore,
   PolicyEngine,
@@ -494,6 +495,7 @@ export interface RuntimeBootstrap {
     jobId: string;
     operation: "pause" | "cancel" | "resume";
   }) => Promise<JobState>;
+  createActionContext: (overrides?: CreateActionContextConfig) => ReturnType<typeof createActionContext>;
   describe: () => {
     profile: RuntimeSettings["profile"];
     registeredActions: string[];
@@ -619,6 +621,20 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const tokenAccounts = createTokenAccountAdapter({ rpcUrl: runtimeRpcUrl });
   const ultraSigner = await createUltraSignerAdapterFromVault({ rpcUrl: runtimeRpcUrl });
   let scheduler: Scheduler;
+  const createRuntimeActionContext = (overrides: CreateActionContextConfig = {}) =>
+    createActionContext({
+      actor: overrides.actor ?? "agent",
+      eventBus,
+      rpcUrl: runtimeRpcUrl,
+      jupiterUltra,
+      jupiterTrigger,
+      tokenAccounts,
+      ultraSigner,
+      stateStore,
+      enqueueJob,
+      manageJob,
+      ...overrides,
+    });
 
   const emitQueuedJob = (job: JobState): void => {
     const pendingJobs = stateStore.listJobs({ status: "pending" }).toSorted(comparePendingJobs);
@@ -744,22 +760,12 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       dispatcher,
       eventBus,
       createContext: (job) =>
-        createActionContext({
-          actor: "agent",
-          eventBus,
-          rpcUrl: runtimeRpcUrl,
+        createRuntimeActionContext({
           jobMeta: {
             jobId: job.id,
             botId: job.botId,
             cycle: job.cyclesCompleted + 1,
           },
-          jupiterUltra,
-          jupiterTrigger,
-          tokenAccounts,
-          ultraSigner,
-          stateStore,
-          enqueueJob,
-          manageJob,
         }),
       resolveRoutine: (routineName) => loadRoutinePlanner(routineName),
     },
@@ -881,6 +887,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     },
     enqueueJob,
     manageJob,
+    createActionContext: createRuntimeActionContext,
     describe: () => ({
       profile: settings.profile,
       registeredActions: registry.list().map((action) => action.name),
