@@ -6,6 +6,7 @@
     getHomepageQuickLinks,
     githubUrl,
     installTargets,
+    xUrl,
     principles,
     stack,
     terminalLines,
@@ -28,9 +29,31 @@
         <a href={resolve('/docs/[slug]', { slug: 'architecture' })} class="text-muted transition-colors hover:text-foreground">
           Architecture
         </a>
-        <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="rounded-full border border-border-strong px-4 py-2 text-foreground transition-colors hover:bg-white hover:text-black">
-          GitHub
-        </a>
+        <div class="flex items-center gap-3">
+          <a
+            href={githubUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="TrenchClaw on GitHub"
+            class="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border-strong text-foreground transition-colors hover:bg-white hover:text-black"
+          >
+            <svg viewBox="0 0 24 24" class="h-5 w-5 fill-current" aria-hidden="true">
+              <path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.12.82-.25.82-.57v-2.2c-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.1-.75.08-.74.08-.74 1.21.08 1.86 1.25 1.86 1.25 1.08 1.84 2.83 1.31 3.51 1 .1-.78.42-1.31.76-1.61-2.67-.3-5.48-1.33-5.48-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.17 0 0 1.01-.32 3.3 1.23a11.4 11.4 0 0 1 6.01 0c2.28-1.55 3.29-1.23 3.29-1.23.66 1.65.24 2.87.12 3.17.77.84 1.24 1.91 1.24 3.22 0 4.61-2.82 5.63-5.5 5.93.43.38.82 1.12.82 2.26v3.35c0 .32.22.7.83.57A12 12 0 0 0 12 .5Z"/>
+            </svg>
+          </a>
+          <a
+            href={xUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Follow TrenchClaw on X"
+            class="inline-flex items-center gap-2 rounded-full border border-border-strong px-4 py-2 text-foreground transition-colors hover:bg-white hover:text-black"
+          >
+            <svg viewBox="0 0 24 24" class="h-4 w-4 fill-current" aria-hidden="true">
+              <path d="M18.9 2H22l-6.77 7.74L23 22h-6.1l-4.78-6.77L6.2 22H3.1l7.24-8.28L1 2h6.26l4.31 6.14L18.9 2Zm-1.07 18h1.69L6.35 3.9H4.54L17.83 20Z"/>
+            </svg>
+            <span class="text-sm font-medium">Follow us on X</span>
+          </a>
+        </div>
       </div>
     </div>
   </nav>
