@@ -42,23 +42,11 @@ const inferWorkspaceSideEffectLevel = (
   return "read";
 };
 
-const toCompactJson = (value: unknown): string | null => {
-  if (value === undefined) {
-    return null;
-  }
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return null;
-  }
-};
-
 const buildToolDescription = (input: {
   description: string;
   routingHint: string;
   sideEffectLevel: CapabilitySideEffectLevel;
   requiresConfirmation: boolean;
-  exampleInput?: unknown;
 }): string => {
   const parts = [
     input.description.trim(),
@@ -67,10 +55,6 @@ const buildToolDescription = (input: {
   ];
   if (input.requiresConfirmation) {
     parts.push("This can require explicit user confirmation under the active runtime policy.");
-  }
-  const compactExample = toCompactJson(input.exampleInput);
-  if (compactExample) {
-    parts.push(`Example input: ${compactExample}`);
   }
   return parts.join(" ");
 };
@@ -112,7 +96,6 @@ const toActionSnapshotEntry = async (
       routingHint,
       sideEffectLevel,
       requiresConfirmation,
-      exampleInput: definition.exampleInput,
     }),
     action,
   };
@@ -145,7 +128,6 @@ const toWorkspaceToolSnapshotEntry = async (
       routingHint,
       sideEffectLevel,
       requiresConfirmation: false,
-      exampleInput: definition.exampleInput,
     }),
   };
 };

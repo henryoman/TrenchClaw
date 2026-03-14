@@ -12,7 +12,7 @@ import {
   parseUpsertSecretRequest,
 } from "./parsers";
 import { getAiSettings, updateAiSettings } from "./domains/ai-settings";
-import { streamChat, getConversationMessages, getConversations } from "./domains/chat";
+import { deleteConversation, streamChat, getConversationMessages, getConversations } from "./domains/chat";
 import { createInstance, listInstances, signInInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
@@ -158,6 +158,21 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       const limitParam = Number(url.searchParams.get("limit") ?? 100);
       const limit = Number.isFinite(limitParam) ? limitParam : 100;
       return Response.json(getConversations(context, limit), { headers: CORS_HEADERS });
+    }
+
+    if (request.method === "DELETE" && url.pathname.startsWith("/api/gui/conversations/")) {
+      const prefix = "/api/gui/conversations/";
+      const encodedConversationId = url.pathname.slice(prefix.length);
+      if (!encodedConversationId || encodedConversationId.endsWith("/messages")) {
+        return Response.json({ error: "Conversation id is required" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      const conversationId = decodeURIComponent(encodedConversationId);
+      try {
+        return Response.json(deleteConversation(context, conversationId), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 404, headers: CORS_HEADERS });
+      }
     }
 
     if (request.method === "GET" && url.pathname.startsWith("/api/gui/conversations/") && url.pathname.endsWith("/messages")) {

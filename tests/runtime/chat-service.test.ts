@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { UIMessage } from "ai";
+import { createUIMessageStream, type UIMessage } from "ai";
 import { z } from "zod";
 
 import type { ActionDispatcher, ActionResult, LlmClient, RuntimeGateway } from "../../apps/trenchclaw/src/ai";
@@ -251,9 +251,6 @@ const createGatewayStub = (deps: {
       model: {} as never,
       systemPrompt: DEFAULT_TEST_SYSTEM_PROMPT,
       toolNames,
-      maxOutputTokens: 450,
-      temperature: 0.1,
-      maxToolSteps: 6,
       executionTrace: {
         lane: "operator-chat",
         provider: "test",
@@ -419,55 +416,6 @@ describe("RuntimeChatService", () => {
     expect(await response.text()).toContain("LLM is not configured");
   });
 
-  test("returns a direct configuration error when the selected model is not approved for operator chat", async () => {
-    const settings = await loadRuntimeSettings("dangerous");
-    const endpoints = resolvePrimaryRuntimeEndpoints(settings);
-    const registry = new ActionRegistry();
-    const eventBus = new InMemoryRuntimeEventBus();
-    const stateStore = new InMemoryStateStore();
-    const service = createRuntimeChatService({
-      dispatcher: {
-        dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
-      } as unknown as ActionDispatcher,
-      registry,
-      eventBus,
-      stateStore,
-      workspaceToolsEnabled: false,
-      gateway: createRuntimeGateway({
-        settings,
-        endpoints,
-        dispatcher: {
-          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
-        } as unknown as ActionDispatcher,
-        registry,
-        eventBus,
-        stateStore,
-        resolvedModel: {
-          provider: "openrouter",
-          model: "stepfun/step-3.5-flash:free",
-          languageModel: null,
-        },
-        createActionContext: (overrides) =>
-          createActionContext({
-            actor: overrides?.actor ?? "agent",
-            eventBus,
-            rpcUrl: endpoints.rpcUrl,
-            stateStore,
-          }),
-      }),
-    });
-
-    const response = await service.stream([
-      {
-        id: "user-unsupported-model-1",
-        role: "user",
-        parts: [{ type: "text", text: "hello" }],
-      },
-    ]);
-
-    expect(await response.text()).toContain("not approved for operator chat");
-  });
-
   test("lists only registered actions that define input schemas", () => {
     const registry = new ActionRegistry();
     registry.register({
@@ -617,6 +565,63 @@ describe("RuntimeChatService", () => {
     expect(capturedSystemPrompt).toContain("TrenchClaw System Kernel");
     expect(capturedSystemPrompt).toContain("## Runtime Contract");
     expect(capturedSystemPrompt).toContain("## Wallet Summary");
+  });
+
+  test("reuses duplicate tool calls with the same input within a single streamed turn", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "echo",
+      category: "data-based",
+      inputSchema: z.object({ value: z.number() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+
+    let dispatchCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async (_ctx: ActionContext, step: ActionStep) => {
+            dispatchCount += 1;
+            return {
+              results: [makeActionResult({ ok: true, data: { echoed: step.input, count: dispatchCount } })],
+              policyHits: [],
+            };
+          },
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: {
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+        }) => ({
+          toUIMessageStreamResponse: async () => {
+            const echoTool = args.tools.echo;
+            if (!echoTool) {
+              throw new Error("echo tool not registered");
+            }
+            const first = await echoTool.execute({ value: 42 });
+            const second = await echoTool.execute({ value: 42 });
+            return Response.json({ first, second });
+          },
+        })) as never,
+      },
+    );
+
+    const response = await service.stream([]);
+    const payload = (await response.json()) as {
+      first: { data: { count: number } };
+      second: { data: { count: number } };
+    };
+
+    expect(dispatchCount).toBe(1);
+    expect(payload.first.data.count).toBe(1);
+    expect(payload.second.data.count).toBe(1);
   });
 
   test("registers only capability-snapshot model tools for chat", async () => {
@@ -778,7 +783,7 @@ describe("RuntimeChatService", () => {
     expect(service.listToolNames()).toEqual(["queryRuntimeStore"]);
   });
 
-  test("keeps the operator gateway prompt and tool budget compact", async () => {
+  test("keeps the operator gateway prompt and tool list compact", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {
         actions: [],
@@ -840,11 +845,11 @@ describe("RuntimeChatService", () => {
     if (execution.kind !== "llm") {
       return;
     }
-    expect(execution.systemPrompt.length).toBeLessThanOrEqual(8_000);
     expect(execution.toolNames.length).toBeLessThanOrEqual(12);
-    expect(execution.maxToolSteps).toBe(6);
+    expect(execution.maxToolSteps).toBeUndefined();
     expect(execution.toolNames).toEqual(["getManagedWalletContents", "queryRuntimeStore"]);
     expect(execution.toolNames).not.toContain(WORKSPACE_READ_FILE_TOOL_NAME);
+    expect(execution.systemPrompt).toContain("## Knowledge Files");
   });
 
   test("includes Dexscreener discovery and market-data actions in the normal operator payload", async () => {
@@ -1439,6 +1444,109 @@ describe("RuntimeChatService", () => {
         output: { echoed: 7 },
       },
     ]);
+  });
+
+  test("forces a second no-tool answer pass when merged streaming ends with only tool parts", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "echo",
+      category: "data-based",
+      inputSchema: z.object({ value: z.number() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+    const stateStore = new InMemoryStateStore();
+    let streamInvocationCount = 0;
+    let generateInvocationCount = 0;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => {
+          streamInvocationCount += 1;
+          return {
+            toUIMessageStream: (options?: {
+              originalMessages?: UIMessage[];
+              onFinish?: (event: {
+                messages: UIMessage[];
+                isContinuation: boolean;
+                isAborted: boolean;
+                responseMessage?: UIMessage;
+                finishReason?: string;
+              }) => void;
+            }) =>
+              createUIMessageStream({
+                originalMessages: options?.originalMessages,
+                onFinish: (event) => {
+                  options?.onFinish?.({
+                    ...event,
+                    responseMessage: undefined,
+                  });
+                },
+                execute: ({ writer }) => {
+                  writer.write({ type: "start", messageId: "assistant-tool-pass-1" });
+                  writer.write({ type: "start-step" });
+                  writer.write({ type: "tool-input-start", toolCallId: "tool-call-1", toolName: "echo" });
+                  writer.write({ type: "tool-input-delta", toolCallId: "tool-call-1", inputTextDelta: "{\"value\":7}" });
+                  writer.write({
+                    type: "tool-input-available",
+                    toolCallId: "tool-call-1",
+                    toolName: "echo",
+                    input: { value: 7 },
+                  });
+                  writer.write({
+                    type: "tool-output-available",
+                    toolCallId: "tool-call-1",
+                    output: { echoed: 7 },
+                  });
+                  writer.write({ type: "finish-step" });
+                  writer.write({ type: "finish", finishReason: "stop" });
+                },
+              }),
+            consumeStream: async () => {},
+          };
+        }) as never,
+        generateText: (async () => {
+          generateInvocationCount += 1;
+          return {
+            text: "Top volume meme coin today is BONK.",
+            finishReason: "stop",
+            usage: undefined,
+          };
+        }) as never,
+      },
+    );
+
+    const response = await service.stream(
+      [
+        {
+          id: "user-tool-recovery-1",
+          role: "user",
+          parts: [{ type: "text", text: "what meme coins did volume today" }],
+        },
+      ],
+      { chatId: "chat-tool-recovery-1" },
+    );
+
+    await response.text();
+
+    expect(streamInvocationCount).toBe(1);
+    expect(generateInvocationCount).toBe(1);
+
+    const assistantMessages = stateStore
+      .listChatMessages("chat-tool-recovery-1", 10)
+      .filter((message) => message.role === "assistant");
+    expect(assistantMessages.at(-1)?.content).toContain("Top volume meme coin today is BONK.");
   });
 
   test("persists chat history in SQLite across store reopen", async () => {

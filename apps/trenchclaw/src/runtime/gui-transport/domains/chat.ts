@@ -1,6 +1,7 @@
 import type {
   GuiConversationMessagesResponse,
   GuiConversationsResponse,
+  GuiDeleteConversationResponse,
 } from "@trenchclaw/types";
 import type { UIMessage } from "ai";
 import { CORS_HEADERS } from "../constants";
@@ -61,5 +62,41 @@ export const getConversationMessages = (
   return {
     conversationId: normalizedConversationId,
     messages,
+  };
+};
+
+export const deleteConversation = (
+  context: RuntimeGuiDomainContext,
+  conversationId: string,
+): GuiDeleteConversationResponse => {
+  const normalizedConversationId = conversationId.trim();
+  if (!normalizedConversationId) {
+    throw new Error("Conversation id is required");
+  }
+
+  const conversation = context.runtime.stateStore.getConversation(normalizedConversationId);
+  if (!conversation) {
+    throw new Error(`Conversation not found: ${normalizedConversationId}`);
+  }
+
+  const activeInstanceId = context.getActiveInstance()?.localInstanceId;
+  if (activeInstanceId && conversation.sessionId && conversation.sessionId !== activeInstanceId) {
+    throw new Error("Conversation is not accessible for the current instance");
+  }
+
+  const deleted = context.runtime.stateStore.deleteConversation(normalizedConversationId);
+  if (!deleted) {
+    throw new Error(`Conversation not found: ${normalizedConversationId}`);
+  }
+
+  if (context.getActiveChatId() === normalizedConversationId) {
+    context.setActiveChatId(null);
+  }
+
+  const conversationLabel = conversation.title?.trim() || normalizedConversationId;
+  context.addActivity("chat", `Deleted conversation ${conversationLabel}`);
+
+  return {
+    conversationId: normalizedConversationId,
   };
 };

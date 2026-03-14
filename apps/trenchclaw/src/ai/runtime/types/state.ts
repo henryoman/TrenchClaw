@@ -122,6 +122,7 @@ export interface StateStore {
   saveConversation(conversation: ConversationState): void;
   getConversation(id: string): ConversationState | null;
   listConversations(limit?: number): ConversationState[];
+  deleteConversation(id: string): boolean;
   saveChatMessage(message: ChatMessageState): void;
   listChatMessages(conversationId: string, limit?: number): ChatMessageState[];
   saveInstanceProfile(profile: InstanceProfileState): void;

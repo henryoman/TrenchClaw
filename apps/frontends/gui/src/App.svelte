@@ -119,6 +119,9 @@
           onCreateConversation={() => {
             chat?.createNewConversation();
           }}
+          onDeleteConversation={() => {
+            void chat?.deleteActiveConversation();
+          }}
           onSubmit={() => {
             void chat?.submitChat();
           }}
@@ -241,16 +244,6 @@
 
   .chat-init-error p {
     margin: 0;
-  }
-
-  @media (max-width: 600px) {
-    .right-column {
-      grid-template-rows: auto minmax(280px, 1fr);
-    }
-
-    .right-column.queue-enabled {
-      grid-template-rows: auto minmax(280px, 1fr) minmax(280px, 1fr);
-    }
   }
 
 </style>

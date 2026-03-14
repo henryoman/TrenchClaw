@@ -34,7 +34,7 @@
       <p class="body tc-copy-sm">Use small balances and expect rough edges.</p>
     </section>
 
-    <section class="section">
+    <section class="section info-section">
       <h3 class="section-title tc-kicker">Why it is limited</h3>
       <ul class="facts tc-copy-sm">
         <li>We are narrowing scope on purpose.</li>
@@ -52,7 +52,7 @@
       </ul>
     </section>
 
-    <section class="section">
+    <section class="section docs-section">
       <div class="links-head">
         <h3 class="section-title tc-kicker">Docs</h3>
         <a class="docs-home tc-kicker" href={`${docsBaseUrl}/docs`} target="_blank" rel="noreferrer">
@@ -74,13 +74,15 @@
 <style>
   .info-root {
     display: grid;
-    gap: var(--tc-space-3);
+    gap: var(--tc-space-4);
+    padding-top: var(--tc-space-4);
   }
 
   .warning-block {
     display: grid;
     gap: 6px;
     padding: var(--tc-space-3);
+    margin-bottom: var(--tc-space-4);
     border: 1px solid var(--tc-color-red);
     background: color-mix(in srgb, var(--tc-color-red) 6%, var(--tc-color-black-2));
   }
@@ -102,6 +104,14 @@
   .section {
     display: grid;
     gap: var(--tc-space-2);
+  }
+
+  .info-section {
+    margin-top: var(--tc-space-3);
+  }
+
+  .docs-section {
+    margin-top: var(--tc-space-5);
   }
 
   .section-title {

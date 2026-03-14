@@ -15,7 +15,6 @@ export const createRuntimeGateway = (
   const laneStatuses = buildGatewayLaneStatuses({
     provider: context.resolvedModel.provider,
     model: context.resolvedModel.model,
-    modelAvailable: context.resolvedModel.languageModel !== null,
     endpointsValid: true,
   });
 
@@ -52,14 +51,11 @@ export const createRuntimeGateway = (
     const resolvedModel = context.resolvedModel;
 
     if (!resolvedModel.languageModel) {
-      const disabledMessage = resolvedModel.provider && resolvedModel.model
-        ? `Selected AI model "${resolvedModel.model}" is not approved for operator chat. Choose a stronger model in AI settings.`
-        : "LLM is not configured. Set provider credentials to enable live chat responses.";
       return {
         kind: "direct",
         lane,
         response: {
-          message: disabledMessage,
+          message: "LLM is not configured. Check AI settings and provider credentials to enable live chat responses.",
           toolCalls: [],
           lane,
           provider: resolvedModel.provider,

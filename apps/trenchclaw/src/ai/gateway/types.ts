@@ -39,9 +39,9 @@ export interface GatewayResponse {
 
 export interface GatewayLanePolicy {
   lane: GatewayLane;
-  maxOutputTokens: number;
+  maxOutputTokens?: number;
   temperature?: number;
-  maxToolSteps: number;
+  maxToolSteps?: number;
   promptKind: "operator" | "workspace" | "summary";
 }
 
@@ -67,9 +67,9 @@ export interface GatewayPreparedModelExecution {
   model: LanguageModel;
   systemPrompt: string;
   toolNames: string[];
-  maxOutputTokens: number;
+  maxOutputTokens?: number;
   temperature?: number;
-  maxToolSteps: number;
+  maxToolSteps?: number;
   executionTrace: GatewayExecutionTrace;
 }
 

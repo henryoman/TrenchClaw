@@ -1,5 +1,6 @@
 /* oxlint-disable import/no-unassigned-import */
 import "./styles/base.css";
+import "./styles/responsive.css";
 import "./app.css";
 /* oxlint-enable import/no-unassigned-import */
 import { mount } from "svelte";

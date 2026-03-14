@@ -617,6 +617,24 @@ export class SqliteStateStore implements StateStore {
     });
   }
 
+  deleteConversation(id: string): boolean {
+    const normalizedConversationId = id.trim();
+    if (!normalizedConversationId) {
+      return false;
+    }
+
+    const result = this.db
+      .query(
+        `
+        DELETE FROM conversations
+        WHERE id = ?
+      `,
+      )
+      .run(normalizedConversationId);
+
+    return result.changes > 0;
+  }
+
   saveChatMessage(message: ChatMessageState): void {
     const parsed = chatMessageStateSchema.parse(message);
     this.db
