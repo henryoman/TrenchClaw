@@ -11,6 +11,17 @@ import type {
   LlmStreamResult,
 } from "./types";
 
+const LLM_GENERATE_TIMEOUT = {
+  totalMs: 30_000,
+  stepMs: 30_000,
+} as const;
+
+const LLM_STREAM_TIMEOUT = {
+  totalMs: 45_000,
+  stepMs: 25_000,
+  chunkMs: 12_000,
+} as const;
+
 const buildTemporalContext = (now: Date = new Date()): string => {
   const iso = now.toISOString();
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -75,6 +86,7 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
       model,
       system,
       prompt: input.prompt,
+      timeout: LLM_GENERATE_TIMEOUT,
       maxOutputTokens: input.maxOutputTokens ?? config.defaultMaxOutputTokens ?? undefined,
       temperature: input.temperature ?? config.defaultTemperature ?? undefined,
     });
@@ -88,6 +100,7 @@ export const createLlmClient = (config: LlmClientConfig): LlmClient => {
       model,
       system,
       prompt: input.prompt,
+      timeout: LLM_STREAM_TIMEOUT,
       maxOutputTokens: input.maxOutputTokens ?? config.defaultMaxOutputTokens ?? undefined,
       temperature: input.temperature ?? config.defaultTemperature ?? undefined,
     });

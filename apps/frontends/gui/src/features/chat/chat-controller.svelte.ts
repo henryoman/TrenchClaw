@@ -15,10 +15,52 @@ interface ChatUiState {
 const toFallbackTitle = (unixMs: number): string => new Date(unixMs).toISOString();
 const NEW_CONVERSATION_TITLE = "New chat";
 
-const toDisplayErrorText = (rawErrorText: string): string =>
-  rawErrorText.includes("User not found")
-    ? "Your AI provider key is invalid. Update it in AI settings."
-    : rawErrorText;
+const extractErrorText = (error: unknown): string => {
+  if (typeof error === "string") {
+    return error;
+  }
+
+  if (error instanceof Error) {
+    return extractErrorText(error.message);
+  }
+
+  if (error && typeof error === "object") {
+    if ("message" in error) {
+      return extractErrorText(error.message);
+    }
+    if ("error" in error) {
+      return extractErrorText(error.error);
+    }
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+
+  return String(error);
+};
+
+const toDisplayErrorText = (rawError: unknown): string => {
+  const rawErrorText = extractErrorText(rawError).trim();
+  if (!rawErrorText) {
+    return DEFAULT_CHAT_ERROR;
+  }
+
+  if (rawErrorText.includes("User not found")) {
+    return "Your AI provider key is invalid. Update it in AI settings.";
+  }
+
+  if (
+    rawErrorText.includes("provider_unavailable")
+    || rawErrorText.includes("Provider returned error")
+    || rawErrorText.includes("502")
+  ) {
+    return "The selected AI model is temporarily unavailable. Retry, or switch models in AI settings.";
+  }
+
+  return rawErrorText;
+};
 
 const hasTerminalAssistantText = (messages: UIMessage[]): boolean => {
   const lastMessage = messages.at(-1);
@@ -114,8 +156,7 @@ export const createChatController = () => {
       },
     }),
     onError: (error) => {
-      const rawErrorText = error.message || DEFAULT_CHAT_ERROR;
-      state.runtimeError = toDisplayErrorText(rawErrorText);
+      state.runtimeError = toDisplayErrorText(error);
       void runtimeApi.reportClientError({
         source: "gui-chat",
         message: state.runtimeError,
@@ -213,7 +254,7 @@ export const createChatController = () => {
 
       await selectConversation(nextConversationId);
     } catch (error) {
-      state.runtimeError = toDisplayErrorText(error instanceof Error ? error.message : DEFAULT_CHAT_ERROR);
+      state.runtimeError = toDisplayErrorText(error);
     }
   };
 
@@ -230,14 +271,14 @@ export const createChatController = () => {
     try {
       await chat.sendMessage({ text: nextMessage });
       if (chat.status === "error" && !hasTerminalAssistantText(chat.messages as UIMessage[])) {
-        state.runtimeError = toDisplayErrorText(chat.error?.message || DEFAULT_CHAT_ERROR);
+        state.runtimeError = toDisplayErrorText(chat.error);
       }
       await refreshConversations();
       if (onAfterSend) {
         await onAfterSend();
       }
     } catch (error) {
-      state.runtimeError = toDisplayErrorText(error instanceof Error ? error.message : DEFAULT_CHAT_ERROR);
+      state.runtimeError = toDisplayErrorText(error);
     }
   };
 
