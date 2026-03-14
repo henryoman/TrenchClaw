@@ -428,17 +428,4 @@
     min-width: 0;
   }
 
-  @media (max-width: 600px) {
-    .settings-header {
-      flex-direction: column;
-    }
-
-    .section-heading {
-      flex-direction: column;
-    }
-
-    .settings-grid {
-      grid-template-columns: 1fr;
-    }
-  }
 </style>

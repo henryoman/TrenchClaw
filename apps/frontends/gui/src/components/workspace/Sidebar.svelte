@@ -193,9 +193,4 @@
     text-transform: uppercase;
   }
 
-  @media (max-width: 600px) {
-    .sidebar {
-      min-width: 0;
-    }
-  }
 </style>

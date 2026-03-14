@@ -2,19 +2,16 @@ import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
 
-const PROMPT_CHAR_LIMIT = 8_000;
-const WALLET_SUMMARY_CHAR_LIMIT = 1_200;
 const OPERATOR_KERNEL_PROMPT = [
   "You are TrenchClaw's operator chat assistant.",
-  "Answer direct runtime and market questions with the smallest truthful tool sequence.",
+  "Answer direct runtime and market questions with the clearest truthful tool sequence.",
   "Never invent balances, prices, volume, transactions, or file contents.",
   "Use only enabled operator tools.",
+  "For greetings or acknowledgements, reply in one short natural sentence.",
+  "Do not list capabilities, examples, or menus unless the user explicitly asks what you can do.",
   "Do not mention hidden capabilities or unavailable tools.",
   "Keep answers short and concrete unless the user asks for more.",
 ].join("\n");
-
-const truncate = (value: string, limit: number): string =>
-  value.length > limit ? `${value.slice(0, Math.max(0, limit - 14))}\n...[truncated]` : value;
 
 const renderOperatorProfileSummary = (settings: RuntimeSettings): string => [
   "## Operator Runtime Summary",
@@ -37,33 +34,51 @@ const renderOperatorToolList = (
     "## Enabled Operator Tools",
     `- exact allowlist: ${toolNames.map((toolName) => `\`${toolName}\``).join(", ") || "none"}`,
     ...toolEntries.map((toolEntry) => `- ${toolEntry.name}: ${toolEntry.routingHint}`),
-    "- for wallet holdings and token balances, prefer `getManagedWalletContents` first",
+    "- for wallet holdings, other coins, SPL tokens, or per-wallet contents, use `getManagedWalletContents` first",
     "- for SOL-only balance summaries, prefer `getManagedWalletSolBalances`",
     "- for Dexscreener market questions, use the Dexscreener read actions directly",
+    "- for volume, movers, activity, or trend questions: do one discovery call, then one detail call, then answer",
     "- start with discovery only when the user has not given a token or pair",
+    "- use `getDexscreenerLatestTokenProfiles` to discover what is new",
+    "- use `searchDexscreenerPairs` to discover specific named tokens or symbols",
+    "- use `getDexscreenerTopTokenBoosts` or `getDexscreenerLatestTokenBoosts` only for promoted or boosted-token questions, not as a direct proxy for top volume",
     "- when you need concrete metrics, use `getDexscreenerPairByChainAndPairId`, `getDexscreenerTokenPairsByChain`, or `getDexscreenerTokensByChain` and answer from returned liquidity, volume, and price-change fields",
+    "- never repeat the same tool with the same input in the same turn unless the previous call failed and you explain why you are retrying",
+    "- once you have enough concrete Dexscreener data to answer, stop calling tools and answer directly",
     "- do not use workspace tools in operator chat",
   ].join("\n");
 };
+
+const renderOperatorKnowledgeFiles = (): string => [
+  "## Knowledge Files",
+  "- `src/ai/brain/knowledge/runtime-reference.md`: runtime architecture, bootstrap flow, capability exposure, state roots",
+  "- `src/ai/brain/knowledge/settings-reference.md`: provider selection, model settings, overlay order, vault lookup",
+  "- `src/ai/brain/knowledge/wallet-reference.md`: wallet organization, signing paths, managed wallet behavior",
+  "- `src/ai/brain/knowledge/deep-knowledge/solana/dexscreener/api-reference.md`: Dexscreener endpoint shapes and response fields",
+  "- `src/ai/brain/knowledge/deep-knowledge/solana/dexscreener/data-retreival-docs.md`: Dexscreener request flows and action usage",
+  "- `.runtime-state/generated/knowledge-manifest.md`: compact routing index for available knowledge files",
+  "- knowledge files are reference material; live tools and runtime state are higher authority",
+].join("\n");
 
 export const buildOperatorChatPrompt = async (input: {
   settings: RuntimeSettings;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
   toolNames: string[];
 }): Promise<string> => {
-  const rawWalletSummary = await renderRuntimeWalletPromptSummary();
-  const walletSummary = truncate(rawWalletSummary, WALLET_SUMMARY_CHAR_LIMIT);
+  const walletSummary = await renderRuntimeWalletPromptSummary();
 
-  const prompt = [
+  return [
     OPERATOR_KERNEL_PROMPT,
     renderOperatorProfileSummary(input.settings),
     renderOperatorToolList(input.capabilitySnapshot, input.toolNames),
+    renderOperatorKnowledgeFiles(),
     "## Wallet Summary",
     walletSummary,
     [
       "## Operator Routing",
       "- for direct runtime questions, answer from a single runtime action when possible",
       "- for direct market questions, use Dexscreener runtime actions first and ask a short clarification only if the token set or market scope is genuinely ambiguous",
+      "- do not keep exploring once the returned market data is enough to answer the user",
       "- skip greetings and capability preambles for direct asks",
       "- if one tool call answered the question, summarize the result and stop",
       "- if a runtime action fails, report the exact failure and the next corrective action",
@@ -71,6 +86,4 @@ export const buildOperatorChatPrompt = async (input: {
   ]
     .filter((section) => section.trim().length > 0)
     .join("\n\n");
-
-  return truncate(prompt, PROMPT_CHAR_LIMIT);
 };

@@ -193,6 +193,10 @@ export interface GuiConversationMessagesResponse {
   messages: GuiConversationMessageView[];
 }
 
+export interface GuiDeleteConversationResponse {
+  conversationId: string;
+}
+
 export interface GuiInstanceProfileView {
   fileName: string;
   localInstanceId: string;

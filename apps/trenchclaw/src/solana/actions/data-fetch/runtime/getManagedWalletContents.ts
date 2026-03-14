@@ -1,6 +1,5 @@
 import path from "node:path";
 
-import { address, createSolanaRpc } from "@solana/kit";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
@@ -22,6 +21,8 @@ const maxWalletNames = 100;
 const LAMPORTS_PER_SOL = 1_000_000_000;
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+const RPC_RETRY_MAX_ATTEMPTS = 4;
+const RPC_RETRY_BASE_DELAY_MS = 300;
 
 const getManagedWalletContentsInputSchema = z.object({
   instanceId: z.string().trim().min(1).max(64).optional(),
@@ -68,8 +69,53 @@ interface ParsedTokenAccountBalance {
   tokenAccountAddress: string;
 }
 
+interface JsonRpcBatchRequest {
+  jsonrpc: "2.0";
+  id: string;
+  method: string;
+  params: unknown[];
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
+
+const sleep = async (delayMs: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
+};
+
+const isRetryableRpcError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b429\b/u.test(message)
+    || /rate limit/iu.test(message)
+    || /too many requests/iu.test(message)
+    || /\b503\b/u.test(message)
+    || /\b504\b/u.test(message)
+    || /temporarily unavailable/iu.test(message);
+};
+
+const withRpcRetries = async <T>(operation: () => Promise<T>): Promise<T> => {
+  let attempt = 0;
+  let lastError: unknown;
+
+  while (attempt < RPC_RETRY_MAX_ATTEMPTS) {
+    try {
+      // Retry/backoff must stay sequential so one transient failure does not fan out more RPC load.
+      // eslint-disable-next-line no-await-in-loop
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      attempt += 1;
+      if (attempt >= RPC_RETRY_MAX_ATTEMPTS || !isRetryableRpcError(error)) {
+        throw error;
+      }
+      // Backoff waits must stay sequential between retry attempts.
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(RPC_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
+    }
+  }
+
+  throw lastError;
+};
 
 const toUiAmount = (balanceUiString: string): number => {
   const parsed = Number(balanceUiString);
@@ -189,50 +235,186 @@ const aggregateTokenBalances = (
     });
 };
 
-const loadWalletContentsFromRpc = async (input: {
+const formatRpcError = (error: unknown): string => {
+  if (!isRecord(error)) {
+    return String(error);
+  }
+
+  const code = typeof error.code === "number" || typeof error.code === "string" ? String(error.code) : null;
+  const message = typeof error.message === "string" ? error.message : "Unknown RPC error";
+  return code ? `${code}: ${message}` : message;
+};
+
+const getRpcBatchResult = (
+  entries: Map<string, unknown>,
+  requestId: string,
+): unknown => {
+  if (!entries.has(requestId)) {
+    throw new Error(`RPC batch response did not include result for ${requestId}`);
+  }
+  return entries.get(requestId);
+};
+
+const parseLamports = (result: unknown, requestId: string): bigint => {
+  if (!isRecord(result)) {
+    throw new Error(`RPC ${requestId} returned an invalid balance payload`);
+  }
+
+  const lamports = result.value;
+  if (typeof lamports === "bigint") {
+    return lamports;
+  }
+  if (typeof lamports === "number" && Number.isFinite(lamports)) {
+    return BigInt(Math.trunc(lamports));
+  }
+  if (typeof lamports === "string" && lamports.trim().length > 0) {
+    return BigInt(lamports);
+  }
+
+  throw new Error(`RPC ${requestId} returned a non-numeric balance`);
+};
+
+const parseTokenAccountEntries = (result: unknown): unknown[] => {
+  if (!isRecord(result)) {
+    return [];
+  }
+  return Array.isArray(result.value) ? result.value : [];
+};
+
+const postRpcBatch = async (
+  rpcUrl: string,
+  requests: JsonRpcBatchRequest[],
+): Promise<Map<string, unknown>> => {
+  const response = await fetch(rpcUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(requests),
+  });
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    throw new Error(
+      `RPC request failed with status ${response.status}${responseText ? `: ${responseText.slice(0, 300)}` : ""}`,
+    );
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(responseText);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`RPC batch response was not valid JSON: ${message}`, { cause: error });
+  }
+
+  if (!Array.isArray(payload)) {
+    throw new Error("RPC batch response was not an array");
+  }
+
+  const results = new Map<string, unknown>();
+  for (const entry of payload) {
+    if (!isRecord(entry)) {
+      continue;
+    }
+    const requestId = typeof entry.id === "string" || typeof entry.id === "number" ? String(entry.id) : null;
+    if (!requestId) {
+      continue;
+    }
+    if ("error" in entry && entry.error !== undefined) {
+      throw new Error(`RPC ${requestId} failed: ${formatRpcError(entry.error)}`);
+    }
+    if (!("result" in entry)) {
+      throw new Error(`RPC ${requestId} returned no result`);
+    }
+    results.set(requestId, entry.result);
+  }
+
+  return results;
+};
+
+const loadWalletContentsBatchFromRpc = async (input: {
   rpcUrl?: string;
-  address: string;
+  entries: ManagedWalletLibraryEntry[];
   includeZeroBalances: boolean;
-}): Promise<LoadWalletContentsResult> => {
-  const rpc = createSolanaRpc(resolveRequiredRpcUrl(input.rpcUrl));
-  const ownerAddress = address(input.address);
-  const [solBalance, splTokenAccounts, token2022Accounts] = await Promise.all([
-    rpc.getBalance(ownerAddress).send(),
-    (rpc as any)
-      .getTokenAccountsByOwner(
-        ownerAddress,
+}): Promise<Array<{
+  walletId: string;
+  walletGroup: string;
+  walletName: string;
+  address: string;
+  balanceLamports: string;
+  balanceSol: number;
+  tokenCount: number;
+  tokenBalances: ManagedWalletTokenBalance[];
+}>> => {
+  if (input.entries.length === 0) {
+    return [];
+  }
+
+  const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
+  const requests = input.entries.flatMap((entry): JsonRpcBatchRequest[] => [
+    {
+      jsonrpc: "2.0",
+      id: `${entry.address}:balance`,
+      method: "getBalance",
+      params: [entry.address],
+    },
+    {
+      jsonrpc: "2.0",
+      id: `${entry.address}:spl`,
+      method: "getTokenAccountsByOwner",
+      params: [
+        entry.address,
         {
-          programId: address(TOKEN_PROGRAM_ID),
+          programId: TOKEN_PROGRAM_ID,
         },
         {
           encoding: "jsonParsed",
         },
-      )
-      .send(),
-    (rpc as any)
-      .getTokenAccountsByOwner(
-        ownerAddress,
+      ],
+    },
+    {
+      jsonrpc: "2.0",
+      id: `${entry.address}:token2022`,
+      method: "getTokenAccountsByOwner",
+      params: [
+        entry.address,
         {
-          programId: address(TOKEN_2022_PROGRAM_ID),
+          programId: TOKEN_2022_PROGRAM_ID,
         },
         {
           encoding: "jsonParsed",
         },
-      )
-      .send(),
+      ],
+    },
   ]);
 
-  const parsedTokenBalances = [
-    ...(Array.isArray(splTokenAccounts?.value) ? splTokenAccounts.value : []).map((entry: unknown) =>
-      parseTokenAccountBalance(entry, { tokenProgram: "spl-token", programId: TOKEN_PROGRAM_ID })),
-    ...(Array.isArray(token2022Accounts?.value) ? token2022Accounts.value : []).map((entry: unknown) =>
-      parseTokenAccountBalance(entry, { tokenProgram: "token-2022", programId: TOKEN_2022_PROGRAM_ID })),
-  ].filter((entry): entry is ParsedTokenAccountBalance => entry !== null);
+  const rpcResults = await withRpcRetries(() => postRpcBatch(rpcUrl, requests));
 
-  return {
-    lamports: solBalance.value,
-    tokenBalances: aggregateTokenBalances(parsedTokenBalances, input.includeZeroBalances),
-  };
+  return input.entries.map((entry) => {
+    const balanceRequestId = `${entry.address}:balance`;
+    const splRequestId = `${entry.address}:spl`;
+    const token2022RequestId = `${entry.address}:token2022`;
+    const lamports = parseLamports(getRpcBatchResult(rpcResults, balanceRequestId), balanceRequestId);
+    const parsedTokenBalances = [
+      ...parseTokenAccountEntries(getRpcBatchResult(rpcResults, splRequestId)).map((tokenAccountEntry) =>
+        parseTokenAccountBalance(tokenAccountEntry, { tokenProgram: "spl-token", programId: TOKEN_PROGRAM_ID })),
+      ...parseTokenAccountEntries(getRpcBatchResult(rpcResults, token2022RequestId)).map((tokenAccountEntry) =>
+        parseTokenAccountBalance(tokenAccountEntry, { tokenProgram: "token-2022", programId: TOKEN_2022_PROGRAM_ID })),
+    ].filter((tokenBalance): tokenBalance is ParsedTokenAccountBalance => tokenBalance !== null);
+
+    const tokenBalances = aggregateTokenBalances(parsedTokenBalances, input.includeZeroBalances);
+    return {
+      walletId: entry.walletId,
+      walletGroup: entry.walletGroup,
+      walletName: entry.walletName,
+      address: entry.address,
+      balanceLamports: lamports.toString(),
+      balanceSol: Number(lamports) / LAMPORTS_PER_SOL,
+      tokenCount: tokenBalances.length,
+      tokenBalances,
+    };
+  });
 };
 
 const filterWalletEntries = (
@@ -254,11 +436,51 @@ const filterWalletEntries = (
       `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`));
 };
 
+const loadWalletsWithLoader = async (
+  entries: ManagedWalletLibraryEntry[],
+  loadWalletContents: (input: {
+    rpcUrl?: string;
+    address: string;
+    includeZeroBalances: boolean;
+  }) => Promise<LoadWalletContentsResult>,
+  options: {
+    rpcUrl?: string;
+    includeZeroBalances: boolean;
+  },
+): Promise<Array<{
+  walletId: string;
+  walletGroup: string;
+  walletName: string;
+  address: string;
+  balanceLamports: string;
+    balanceSol: number;
+    tokenCount: number;
+    tokenBalances: ManagedWalletTokenBalance[];
+  }>> => {
+  return Promise.all(
+    entries.map(async (entry) => {
+      const contents = await loadWalletContents({
+        rpcUrl: options.rpcUrl,
+        address: entry.address,
+        includeZeroBalances: options.includeZeroBalances,
+      });
+      return {
+        walletId: entry.walletId,
+        walletGroup: entry.walletGroup,
+        walletName: entry.walletName,
+        address: entry.address,
+        balanceLamports: contents.lamports.toString(),
+        balanceSol: Number(contents.lamports) / LAMPORTS_PER_SOL,
+        tokenCount: contents.tokenBalances.length,
+        tokenBalances: contents.tokenBalances,
+      };
+    }),
+  );
+};
+
 export const createGetManagedWalletContentsAction = (
   deps: GetManagedWalletContentsDeps = {},
 ): Action<GetManagedWalletContentsInput, unknown> => {
-  const loadWalletContents = deps.loadWalletContents ?? loadWalletContentsFromRpc;
-
   return {
     name: "getManagedWalletContents",
     category: "data-based",
@@ -297,25 +519,16 @@ export const createGetManagedWalletContentsAction = (
         }
 
         const filteredEntries = filterWalletEntries(entries, input);
-        const wallets = await Promise.all(
-          filteredEntries.map(async (entry) => {
-            const contents = await loadWalletContents({
+        const wallets = deps.loadWalletContents
+          ? await loadWalletsWithLoader(filteredEntries, deps.loadWalletContents, {
               rpcUrl: ctx.rpcUrl,
-              address: entry.address,
+              includeZeroBalances: input.includeZeroBalances,
+            })
+          : await loadWalletContentsBatchFromRpc({
+              entries: filteredEntries,
+              rpcUrl: ctx.rpcUrl,
               includeZeroBalances: input.includeZeroBalances,
             });
-            return {
-              walletId: entry.walletId,
-              walletGroup: entry.walletGroup,
-              walletName: entry.walletName,
-              address: entry.address,
-              balanceLamports: contents.lamports.toString(),
-              balanceSol: Number(contents.lamports) / LAMPORTS_PER_SOL,
-              tokenCount: contents.tokenBalances.length,
-              tokenBalances: contents.tokenBalances,
-            };
-          }),
-        );
 
         const totalBalanceLamports = wallets.reduce((sum, wallet) => sum + BigInt(wallet.balanceLamports), 0n);
         const tokenTotals = new Map<string, {
@@ -390,11 +603,12 @@ export const createGetManagedWalletContentsAction = (
           idempotencyKey,
         };
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         return {
           ok: false,
-          retryable: false,
-          error: error instanceof Error ? error.message : String(error),
-          code: "GET_MANAGED_WALLET_CONTENTS_FAILED",
+          retryable: isRetryableRpcError(error),
+          error: message,
+          code: isRetryableRpcError(error) ? "GET_MANAGED_WALLET_CONTENTS_RATE_LIMITED" : "GET_MANAGED_WALLET_CONTENTS_FAILED",
           durationMs: Date.now() - startedAt,
           timestamp: Date.now(),
           idempotencyKey,

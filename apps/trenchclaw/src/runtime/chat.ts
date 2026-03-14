@@ -3,10 +3,13 @@ import {
   convertToModelMessages,
   createUIMessageStream,
   createUIMessageStreamResponse,
+  generateText,
+  isToolUIPart,
   stepCountIs,
   streamText,
   tool,
   validateUIMessages,
+  type UIMessageChunk,
   type UIMessage,
 } from "ai";
 import { z } from "zod";
@@ -61,6 +64,7 @@ interface RuntimeChatServiceDeps {
 interface RuntimeChatServiceOverrides {
   convertToModelMessages?: typeof convertToModelMessages;
   streamText?: typeof streamText;
+  generateText?: typeof generateText;
 }
 
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
@@ -104,6 +108,91 @@ const extractUiMessageText = (message: UIMessage): string => {
 };
 
 const createResponseMessageId = (): string => `msg-${crypto.randomUUID()}`;
+
+const assistantMessageHasToolActivity = (message: UIMessage | undefined): boolean => {
+  if (!message || message.role !== "assistant") {
+    return false;
+  }
+  return message.parts.some((part) => isToolUIPart(part));
+};
+
+const assistantMessageHasTextAfterToolActivity = (message: UIMessage | undefined): boolean => {
+  if (!message || message.role !== "assistant") {
+    return false;
+  }
+  let sawToolActivity = false;
+  for (const part of message.parts) {
+    if (isToolUIPart(part)) {
+      sawToolActivity = true;
+      continue;
+    }
+    if (sawToolActivity && part.type === "text" && part.text.trim().length > 0) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const findLatestAssistantMessage = (messages: UIMessage[]): UIMessage | undefined => {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === "assistant") {
+      return message;
+    }
+  }
+  return undefined;
+};
+
+const uiChunkHasVisibleText = (chunk: UIMessageChunk): boolean => {
+  if (chunk.type === "text-delta") {
+    return chunk.delta.trim().length > 0;
+  }
+  return false;
+};
+
+const uiChunkHasToolActivity = (chunk: UIMessageChunk): boolean =>
+  chunk.type === "tool-input-start"
+  || chunk.type === "tool-input-delta"
+  || chunk.type === "tool-input-available"
+  || chunk.type === "tool-input-error"
+  || chunk.type === "tool-output-available"
+  || chunk.type === "tool-output-error"
+  || chunk.type === "tool-output-denied"
+  || chunk.type === "tool-approval-request";
+
+const pipeUIMessageStream = async (
+  stream: ReadableStream<UIMessageChunk>,
+  writeChunk: (chunk: UIMessageChunk) => void,
+  observeChunk?: (chunk: UIMessageChunk) => void,
+): Promise<void> => {
+  const reader = stream.getReader();
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        return;
+      }
+      observeChunk?.(value);
+      writeChunk(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+};
+
+const writeAssistantTextMessage = (input: {
+  writeChunk: (chunk: UIMessageChunk) => void;
+  text: string;
+  finishReason?: "stop" | "length" | "content-filter" | "tool-calls" | "error" | "other";
+}): void => {
+  const messageId = createResponseMessageId();
+  const textId = `text-${crypto.randomUUID()}`;
+  input.writeChunk({ type: "start", messageId });
+  input.writeChunk({ type: "text-start", id: textId });
+  input.writeChunk({ type: "text-delta", id: textId, delta: input.text });
+  input.writeChunk({ type: "text-end", id: textId });
+  input.writeChunk({ type: "finish", finishReason: input.finishReason ?? "stop" });
+};
 
 const filterPersistableMessages = (messages: UIMessage[]): UIMessage[] =>
   messages.filter(
@@ -150,6 +239,17 @@ const serializeForLog = (value: unknown): string => {
   }
 };
 
+const serializeForToolCache = (value: unknown): string => {
+  if (value === undefined) {
+    return "undefined";
+  }
+  try {
+    return JSON.stringify(value) ?? "undefined";
+  } catch {
+    return "[unserializable]";
+  }
+};
+
 const toRuntimeChatErrorMessage = (error: unknown): string => {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("User not found")) {
@@ -166,6 +266,7 @@ const buildActionTools = (
   enabledToolNames?: ReadonlySet<string> | null,
 ): Record<string, any> => {
   const tools: Record<string, any> = {};
+  const toolResultCache = new Map<string, Promise<Record<string, unknown>>>();
 
   for (const registered of deps.registry.list()) {
     const action = deps.registry.get(registered.name);
@@ -181,77 +282,98 @@ const buildActionTools = (
       description: capability?.toolDescription ?? toToolDescription(action.name, action.category, action.subcategory),
       inputSchema: action.inputSchema as z.ZodTypeAny,
       execute: async (rawInput: unknown) => {
-        const dispatchStartedAt = Date.now();
-        deps.logger?.info("chat:tool_start", {
-          actionName: action.name,
-          input: serializeForLog(rawInput),
-        });
-
-        const dispatchResult = await deps.dispatcher.dispatchStep(
-          createActionContext({
-            actor: "agent",
-            eventBus: deps.eventBus,
-            rpcUrl: deps.rpcUrl,
-            jupiterUltra: deps.jupiterUltra,
-            jupiterTrigger: deps.jupiterTrigger,
-            tokenAccounts: deps.tokenAccounts,
-            ultraSigner: deps.ultraSigner,
-            stateStore: deps.stateStore,
-            enqueueJob: deps.enqueueJob,
-            manageJob: deps.manageJob,
-          }),
-          {
+        const cacheKey = `${action.name}:${serializeForToolCache(rawInput)}`;
+        const cachedResult = toolResultCache.get(cacheKey);
+        if (cachedResult) {
+          deps.logger?.info("chat:tool_cache_hit", {
             actionName: action.name,
-            input: rawInput,
-          },
-        );
-
-        const result = dispatchResult.results[0];
-        if (!result) {
-          deps.logger?.error("chat:tool_fail", {
-            actionName: action.name,
-            durationMs: Date.now() - dispatchStartedAt,
-            error: `Action "${action.name}" returned no dispatcher result`,
-            policyHits: serializeForLog(dispatchResult.policyHits),
+            input: serializeForLog(rawInput),
           });
+          return await cachedResult;
+        }
+
+        const dispatchStartedAt = Date.now();
+        const executionPromise = (async (): Promise<Record<string, unknown>> => {
+          deps.logger?.info("chat:tool_start", {
+            actionName: action.name,
+            input: serializeForLog(rawInput),
+          });
+
+          const dispatchResult = await deps.dispatcher.dispatchStep(
+            createActionContext({
+              actor: "agent",
+              eventBus: deps.eventBus,
+              rpcUrl: deps.rpcUrl,
+              jupiterUltra: deps.jupiterUltra,
+              jupiterTrigger: deps.jupiterTrigger,
+              tokenAccounts: deps.tokenAccounts,
+              ultraSigner: deps.ultraSigner,
+              stateStore: deps.stateStore,
+              enqueueJob: deps.enqueueJob,
+              manageJob: deps.manageJob,
+            }),
+            {
+              actionName: action.name,
+              input: rawInput,
+            },
+          );
+
+          const result = dispatchResult.results[0];
+          if (!result) {
+            deps.logger?.error("chat:tool_fail", {
+              actionName: action.name,
+              durationMs: Date.now() - dispatchStartedAt,
+              error: `Action "${action.name}" returned no dispatcher result`,
+              policyHits: serializeForLog(dispatchResult.policyHits),
+            });
+            return {
+              ok: false,
+              error: `Action "${action.name}" returned no dispatcher result`,
+              retryable: false,
+              policyHits: dispatchResult.policyHits,
+            };
+          }
+
+          if (!result.ok) {
+            deps.logger?.error("chat:tool_fail", {
+              actionName: action.name,
+              idempotencyKey: result.idempotencyKey,
+              durationMs: Date.now() - dispatchStartedAt,
+              actionDurationMs: result.durationMs,
+              retryable: result.retryable,
+              error: result.error ?? "unknown error",
+              payload: serializeForLog(result.data ?? null),
+              policyHits: serializeForLog(dispatchResult.policyHits),
+            });
+          } else {
+            deps.logger?.info("chat:tool_success", {
+              actionName: action.name,
+              idempotencyKey: result.idempotencyKey,
+              durationMs: Date.now() - dispatchStartedAt,
+              actionDurationMs: result.durationMs,
+              txSignature: result.txSignature ?? null,
+            });
+          }
+
           return {
-            ok: false,
-            error: `Action "${action.name}" returned no dispatcher result`,
-            retryable: false,
+            ok: result.ok,
+            error: result.error ?? null,
+            retryable: result.retryable,
+            txSignature: result.txSignature ?? null,
+            idempotencyKey: result.idempotencyKey,
+            data: result.data ?? null,
             policyHits: dispatchResult.policyHits,
           };
-        }
+        })();
 
-        if (!result.ok) {
-          deps.logger?.error("chat:tool_fail", {
-            actionName: action.name,
-            idempotencyKey: result.idempotencyKey,
-            durationMs: Date.now() - dispatchStartedAt,
-            actionDurationMs: result.durationMs,
-            retryable: result.retryable,
-            error: result.error ?? "unknown error",
-            payload: serializeForLog(result.data ?? null),
-            policyHits: serializeForLog(dispatchResult.policyHits),
-          });
-        } else {
-          deps.logger?.info("chat:tool_success", {
-            actionName: action.name,
-            idempotencyKey: result.idempotencyKey,
-            durationMs: Date.now() - dispatchStartedAt,
-            actionDurationMs: result.durationMs,
-            txSignature: result.txSignature ?? null,
-          });
-        }
-
-        return {
-          ok: result.ok,
-          error: result.error ?? null,
-          retryable: result.retryable,
-          txSignature: result.txSignature ?? null,
-          idempotencyKey: result.idempotencyKey,
-          data: result.data ?? null,
-          policyHits: dispatchResult.policyHits,
-        };
+        toolResultCache.set(
+          cacheKey,
+          executionPromise.catch((error) => {
+            toolResultCache.delete(cacheKey);
+            throw error;
+          }),
+        );
+        return await toolResultCache.get(cacheKey)!;
       },
     });
   }
@@ -336,6 +458,7 @@ export const createRuntimeChatService = (
 ): RuntimeChatService => {
   const convertMessages = overrides.convertToModelMessages ?? convertToModelMessages;
   const streamWithModel = overrides.streamText ?? streamText;
+  const generateWithModel = overrides.generateText ?? generateText;
   const workspaceRootDirectory = deps.workspaceRootDirectory ?? DEFAULT_WORKSPACE_ROOT_DIRECTORY;
   let workspaceToolPromise: Promise<Record<string, unknown>> | null = null;
 
@@ -456,16 +579,6 @@ export const createRuntimeChatService = (
       });
 
       const streamBuildStartedAt = Date.now();
-      const result = streamWithModel({
-        model,
-        system: systemPrompt,
-        messages: modelMessages,
-        abortSignal: input?.abortSignal,
-        maxOutputTokens,
-        temperature,
-        stopWhen: stepCountIs(maxToolSteps),
-        tools,
-      });
       deps.logger?.info("chat:model_stream_initialized", {
         chatId,
         durationMs: Date.now() - streamBuildStartedAt,
@@ -476,27 +589,164 @@ export const createRuntimeChatService = (
         model: modelId,
       });
 
-      const response = result.toUIMessageStreamResponse({
-        headers: withChatHeaders(input?.headers, chatId),
-        originalMessages: validatedMessages,
-        generateMessageId: createResponseMessageId,
-        consumeSseStream: consumeStream,
-        onError: (error) => toRuntimeChatErrorMessage(error),
-        onFinish: ({ messages: finalMessages }) => {
-          persistFinishedMessages(deps, chatId, {
-            sessionId: input?.sessionId,
-            conversationTitle: input?.conversationTitle,
-          }, finalMessages);
-          deps.logger?.info("chat:stream_finish", {
-            chatId,
-            durationMs: Date.now() - streamStartedAt,
-            finalMessageCount: finalMessages.length,
-            lane: preparedExecution.lane,
-            provider,
-            model: modelId,
-          });
-        },
+      const buildStreamArgs = (inputMessages: Awaited<ReturnType<typeof convertMessages>>, enabledTools?: Record<string, any>) => ({
+        model,
+        system: systemPrompt,
+        messages: inputMessages,
+        abortSignal: input?.abortSignal,
+        ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
+        ...(typeof temperature === "number" ? { temperature } : {}),
+        ...(typeof maxToolSteps === "number" && enabledTools ? { stopWhen: stepCountIs(maxToolSteps) } : {}),
+        ...(enabledTools ? { tools: enabledTools } : {}),
       });
+
+      const firstResult = streamWithModel(buildStreamArgs(modelMessages, tools));
+      const supportsMergedStreaming =
+        typeof firstResult === "object"
+        && firstResult !== null
+        && "toUIMessageStream" in firstResult
+        && typeof firstResult.toUIMessageStream === "function"
+        && "consumeStream" in firstResult
+        && typeof firstResult.consumeStream === "function";
+
+      const response = supportsMergedStreaming
+        ? createUIMessageStreamResponse({
+            headers: withChatHeaders(input?.headers, chatId),
+            stream: createUIMessageStream({
+              originalMessages: validatedMessages,
+              execute: async ({ writer }) => {
+                let firstPassMessages: UIMessage[] = validatedMessages;
+                let firstResponseMessage: UIMessage | undefined;
+                let firstPassSawToolActivity = false;
+                let firstPassSawTextAfterToolActivity = false;
+
+                const firstPassStream = firstResult.toUIMessageStream({
+                  originalMessages: validatedMessages,
+                  sendReasoning: false,
+                  onError: (error) => toRuntimeChatErrorMessage(error),
+                  onFinish: ({ messages: completedMessages, responseMessage }) => {
+                    firstPassMessages = completedMessages;
+                    firstResponseMessage = responseMessage;
+                  },
+                });
+                await Promise.all([
+                  firstResult.consumeStream(),
+                  pipeUIMessageStream(
+                    firstPassStream,
+                    (chunk) => writer.write(chunk),
+                    (chunk) => {
+                      if (uiChunkHasToolActivity(chunk)) {
+                        firstPassSawToolActivity = true;
+                      }
+                      if (uiChunkHasVisibleText(chunk)) {
+                        if (firstPassSawToolActivity) {
+                          firstPassSawTextAfterToolActivity = true;
+                        }
+                      }
+                    },
+                  ),
+                ]);
+
+                const completedAssistantMessage = firstResponseMessage ?? findLatestAssistantMessage(firstPassMessages);
+                const completedAssistantHasToolActivity = assistantMessageHasToolActivity(completedAssistantMessage);
+                const completedAssistantHasTextAfterToolActivity = assistantMessageHasTextAfterToolActivity(completedAssistantMessage);
+                const firstPassHadToolActivity = firstPassSawToolActivity || completedAssistantHasToolActivity;
+
+                if (!firstPassHadToolActivity) {
+                  return;
+                }
+
+                if (
+                  firstPassSawTextAfterToolActivity
+                  || completedAssistantHasTextAfterToolActivity
+                ) {
+                  return;
+                }
+
+                deps.logger?.warn("chat:tool_only_completion", {
+                  chatId,
+                  lane: preparedExecution.lane,
+                  provider,
+                  model: modelId,
+                });
+
+                const followUpMessages = await convertMessages(
+                  [
+                    ...firstPassMessages,
+                    {
+                      id: `msg-${crypto.randomUUID()}`,
+                      role: "user",
+                      parts: [
+                        {
+                          type: "text",
+                          text: "Answer the user directly using the tool results already gathered. Do not call tools again.",
+                        },
+                      ],
+                    },
+                  ],
+                  {
+                    tools,
+                    ignoreIncompleteToolCalls: true,
+                  },
+                );
+
+                const secondResult = await generateWithModel({
+                  model,
+                  system: systemPrompt,
+                  messages: followUpMessages,
+                  abortSignal: input?.abortSignal,
+                  ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
+                  ...(typeof temperature === "number" ? { temperature } : {}),
+                });
+                const secondPassText =
+                  typeof secondResult?.text === "string" && secondResult.text.trim().length > 0
+                    ? secondResult.text.trim()
+                    : "I gathered the tool results, but I do not have a usable final summary yet. Ask again with a narrower token or pair scope.";
+
+                writeAssistantTextMessage({
+                  writeChunk: (chunk) => writer.write(chunk),
+                  text: secondPassText,
+                  finishReason: "stop",
+                });
+              },
+              onFinish: async ({ messages: finalMessages }) => {
+                persistFinishedMessages(deps, chatId, {
+                  sessionId: input?.sessionId,
+                  conversationTitle: input?.conversationTitle,
+                }, finalMessages);
+                deps.logger?.info("chat:stream_finish", {
+                  chatId,
+                  durationMs: Date.now() - streamStartedAt,
+                  finalMessageCount: finalMessages.length,
+                  lane: preparedExecution.lane,
+                  provider,
+                  model: modelId,
+                });
+              },
+            }),
+            consumeSseStream: consumeStream,
+          })
+        : firstResult.toUIMessageStreamResponse({
+            headers: withChatHeaders(input?.headers, chatId),
+            originalMessages: validatedMessages,
+            generateMessageId: createResponseMessageId,
+            consumeSseStream: consumeStream,
+            onError: (error) => toRuntimeChatErrorMessage(error),
+            onFinish: ({ messages: finalMessages }) => {
+              persistFinishedMessages(deps, chatId, {
+                sessionId: input?.sessionId,
+                conversationTitle: input?.conversationTitle,
+              }, finalMessages);
+              deps.logger?.info("chat:stream_finish", {
+                chatId,
+                durationMs: Date.now() - streamStartedAt,
+                finalMessageCount: finalMessages.length,
+                lane: preparedExecution.lane,
+                provider,
+                model: modelId,
+              });
+            },
+          });
 
       if (!response.body) {
         return response;

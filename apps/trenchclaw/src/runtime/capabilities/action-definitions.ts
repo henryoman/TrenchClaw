@@ -214,7 +214,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerLatestTokenProfilesAction,
     description: "Fetch the latest token profiles from Dexscreener.",
-    purpose: "Get a lightweight fresh-token feed when the user asks what is new, trending, or being discovered on Dexscreener.",
+    purpose: "Get a lightweight fresh-token discovery feed when the user asks what is new or when you need candidate tokens before pulling concrete market metrics.",
     tags: ["dexscreener", "market-data", "profiles"],
     exampleInput: {},
     includeInCatalog: ({ settings }) => settings.trading.enabled,
@@ -225,7 +225,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerLatestTokenBoostsAction,
     description: "Fetch the latest boosted tokens from Dexscreener.",
-    purpose: "Inspect tokens currently receiving paid boosts when the user asks what is getting pushed right now.",
+    purpose: "Inspect tokens currently receiving paid boosts when the user asks what is getting pushed right now, not when they ask for raw volume leaders.",
     tags: ["dexscreener", "market-data", "boosts"],
     exampleInput: {},
     includeInCatalog: ({ settings }) => settings.trading.enabled,
@@ -236,7 +236,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerTopTokenBoostsAction,
     description: "Fetch the top boosted tokens from Dexscreener.",
-    purpose: "Rank current Dexscreener boost activity when the user asks what is hottest or most promoted.",
+    purpose: "Rank current Dexscreener boost activity when the user asks what is most promoted, not as a direct proxy for top volume or highest trading activity.",
     tags: ["dexscreener", "market-data", "boosts"],
     exampleInput: {},
     includeInCatalog: ({ settings }) => settings.trading.enabled,
@@ -260,7 +260,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: searchDexscreenerPairsAction,
     description: "Search Dexscreener pairs by query text.",
-    purpose: "Find token or pair candidates by symbol, name, or address before pulling detailed market data.",
+    purpose: "Find token or pair candidates by symbol, name, or address before pulling detailed market data when the user names a token or gives a symbol hint.",
     tags: ["dexscreener", "search", "pairs"],
     exampleInput: {
       query: "SOL/USDC",
@@ -273,7 +273,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerPairByChainAndPairIdAction,
     description: "Fetch a Dexscreener pair by Solana pair address.",
-    purpose: "Get detailed market data for a specific pair.",
+    purpose: "Get detailed market data for one specific pair after discovery so you can answer from concrete liquidity, volume, and price-change fields.",
     tags: ["dexscreener", "pair", "market-data"],
     exampleInput: {
       pairAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
@@ -286,7 +286,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerTokenPairsByChainAction,
     description: "Fetch Dexscreener pools for a token address on Solana.",
-    purpose: "Inspect all pools associated with a token address.",
+    purpose: "Inspect all pools associated with a token address after discovery when you need to identify the right market or best pool for that token.",
     tags: ["dexscreener", "token", "pairs"],
     exampleInput: {
       tokenAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
@@ -299,7 +299,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerTokensByChainAction,
     description: "Fetch Dexscreener market data for up to 30 token addresses on Solana.",
-    purpose: "Batch-load price, liquidity, volume, and price-change data for a small Solana token set after discovery.",
+    purpose: "Batch-load price, liquidity, volume, and price-change data for a small discovered Solana token set so you can rank and answer directly without extra exploration.",
     tags: ["dexscreener", "tokens", "market-data"],
     exampleInput: {
       tokenAddresses: [

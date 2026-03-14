@@ -54,6 +54,7 @@ export const createChatController = () => {
     activeConversationId: null,
     conversations: [],
   });
+  const draftConversationIds = new Set<string>();
 
   const toConversationView = (conversation: GuiConversationView): GuiConversationView => ({
     ...conversation,
@@ -77,6 +78,7 @@ export const createChatController = () => {
       },
       ...state.conversations,
     ];
+    draftConversationIds.add(conversationId);
     return conversationId;
   };
 
@@ -131,6 +133,7 @@ export const createChatController = () => {
 
   const refreshConversations = async (): Promise<void> => {
     const response = await runtimeApi.conversations();
+    draftConversationIds.clear();
     state.conversations = response.conversations.map(toConversationView);
     if (!state.activeConversationId && state.conversations[0]) {
       state.activeConversationId = state.conversations[0].id;
@@ -144,6 +147,12 @@ export const createChatController = () => {
     }
 
     state.runtimeError = "";
+    if (draftConversationIds.has(nextConversationId)) {
+      state.activeConversationId = nextConversationId;
+      chat.messages = [];
+      return;
+    }
+
     const response = await runtimeApi.conversationMessages(nextConversationId);
     state.activeConversationId = nextConversationId;
     chat.messages = toUiMessages(response.messages);
@@ -173,7 +182,39 @@ export const createChatController = () => {
       },
       ...state.conversations.filter((conversation) => conversation.id !== conversationId),
     ];
+    draftConversationIds.add(conversationId);
     chat.messages = [];
+  };
+
+  const deleteActiveConversation = async (): Promise<void> => {
+    const conversationId = state.activeConversationId?.trim() ?? "";
+    if (!conversationId || isSending()) {
+      return;
+    }
+
+    state.runtimeError = "";
+
+    try {
+      if (draftConversationIds.has(conversationId)) {
+        draftConversationIds.delete(conversationId);
+      } else {
+        await runtimeApi.deleteConversation(conversationId);
+      }
+
+      const nextConversationId = state.conversations.find((conversation) => conversation.id !== conversationId)?.id ?? null;
+      const nextConversations = state.conversations.filter((conversation) => conversation.id !== conversationId);
+      state.conversations = nextConversations;
+      state.activeConversationId = nextConversationId;
+
+      if (!nextConversationId) {
+        chat.messages = [];
+        return;
+      }
+
+      await selectConversation(nextConversationId);
+    } catch (error) {
+      state.runtimeError = toDisplayErrorText(error instanceof Error ? error.message : DEFAULT_CHAT_ERROR);
+    }
   };
 
   const submitChat = async (onAfterSend: (() => Promise<void>) | null = null): Promise<void> => {
@@ -206,6 +247,7 @@ export const createChatController = () => {
     isSending,
     initialize,
     createNewConversation,
+    deleteActiveConversation,
     selectConversation,
     submitChat,
   };

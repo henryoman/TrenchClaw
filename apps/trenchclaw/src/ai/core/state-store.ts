@@ -127,6 +127,12 @@ export class InMemoryStateStore implements IStateStore {
       .slice(0, Math.max(1, Math.trunc(limit)));
   }
 
+  deleteConversation(id: string): boolean {
+    const deleted = this.conversations.delete(id);
+    this.chatMessages.delete(id);
+    return deleted;
+  }
+
   saveChatMessage(message: ChatMessageState): void {
     const messages = this.chatMessages.get(message.conversationId) ?? [];
     const existingIndex = messages.findIndex((existing) => existing.id === message.id);

@@ -21,23 +21,14 @@ const OPERATOR_ACTION_ALLOWLIST = [
 const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
   "operator-chat": {
     lane: "operator-chat",
-    maxOutputTokens: 450,
-    temperature: 0.1,
-    maxToolSteps: 6,
     promptKind: "operator",
   },
   "workspace-agent": {
     lane: "workspace-agent",
-    maxOutputTokens: 1_200,
-    temperature: 0.1,
-    maxToolSteps: 12,
     promptKind: "workspace",
   },
   "background-summary": {
     lane: "background-summary",
-    maxOutputTokens: 300,
-    temperature: 0.1,
-    maxToolSteps: 1,
     promptKind: "summary",
   },
 };
@@ -47,23 +38,15 @@ export const getGatewayLanePolicy = (lane: GatewayLane): GatewayLanePolicy => LA
 export const buildGatewayLaneStatuses = (input: {
   provider: string | null;
   model: string | null;
-  modelAvailable: boolean;
   endpointsValid: boolean;
 }): GatewayLaneStatus[] => {
   const baseStatus =
-    input.provider && input.model && input.modelAvailable
+    input.provider && input.model
       ? {
           enabled: true,
           provider: input.provider,
           model: input.model,
         }
-      : input.provider && input.model
-        ? {
-            enabled: false,
-            provider: input.provider,
-            model: input.model,
-            reason: "Selected model is not approved for operator chat",
-          }
       : {
           enabled: false,
           provider: input.provider,

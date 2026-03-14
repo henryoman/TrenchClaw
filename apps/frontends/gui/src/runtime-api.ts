@@ -12,6 +12,7 @@ import type {
   GuiConversationsResponse,
   GuiCreateInstanceRequest,
   GuiCreateInstanceResponse,
+  GuiDeleteConversationResponse,
   GuiDeleteSecretRequest,
   GuiDeleteSecretResponse,
   GuiInstancesResponse,
@@ -88,6 +89,10 @@ export const runtimeApi = {
         `${GUI_API_BASE_PATH}/conversations/${encodeURIComponent(conversationId)}/messages?limit=${Math.max(1, Math.trunc(limit))}`,
       ),
     ),
+  deleteConversation: (conversationId: string): Promise<GuiDeleteConversationResponse> =>
+    fetchJson<GuiDeleteConversationResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/conversations/${encodeURIComponent(conversationId)}`), {
+      method: "DELETE",
+    }),
   instances: (): Promise<GuiInstancesResponse> => fetchJson<GuiInstancesResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`)),
   createInstance: (input: GuiCreateInstanceRequest): Promise<GuiCreateInstanceResponse> =>
     fetchJson<GuiCreateInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`), {

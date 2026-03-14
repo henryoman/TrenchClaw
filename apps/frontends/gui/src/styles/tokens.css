@@ -76,7 +76,6 @@
   --tc-row-box-border: var(--tc-border-muted);
 
   --tc-sidebar-width: 136px;
-  --tc-layout-breakpoint: 600px;
   --tc-right-column-rows: 1fr 1fr;
 
   --tc-sidebar-label-size: var(--tc-type-xs);

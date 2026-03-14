@@ -4,6 +4,7 @@
   import { marked } from "marked";
   import type { GuiConversationView } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
+  import RetroModal from "../ui/RetroModal.svelte";
 
   type ChatPanelProps = {
     messages?: UIMessage[];
@@ -15,6 +16,7 @@
     runtimeError?: string;
     onSelectConversation: (conversationId: string) => void;
     onCreateConversation: () => void;
+    onDeleteConversation: () => void;
     onSubmit: () => void;
   };
 
@@ -28,18 +30,28 @@
     runtimeError = "",
     onSelectConversation,
     onCreateConversation,
+    onDeleteConversation,
     onSubmit,
   }: ChatPanelProps = $props();
 
   let showConversationModal = $state(false);
+  let showConversationSettingsMenu = $state(false);
+  let showDeleteConversationModal = $state(false);
   const chatDisabled = $derived(chatDisabledReason.trim().length > 0);
   let messageViewport: HTMLDivElement | null = $state(null);
   let composer: HTMLTextAreaElement | null = $state(null);
+  let conversationToggleButton: HTMLButtonElement | null = $state(null);
+  let conversationModalElement: HTMLElement | null = $state(null);
+  let settingsToggleButton: HTMLButtonElement | null = $state(null);
+  let settingsMenuElement: HTMLElement | null = $state(null);
   let shouldFollowStream = $state(true);
   const renderKey = $derived(`${messages.length}:${sending ? "1" : "0"}`);
   let lastRenderKey = "";
   const SCROLL_BOTTOM_TOLERANCE_PX = 20;
   const COMPOSER_MAX_LINES = 5;
+  const activeConversationTitle = $derived(
+    conversations.find((conversation) => conversation.id === activeConversationId)?.title ?? "this chat",
+  );
 
   type MessagePart = UIMessage["parts"][number];
 
@@ -129,6 +141,7 @@
     const visibleTextParts: string[] = [];
     const errorTexts: string[] = [];
     const toolActivity: ToolActivityLine[] = [];
+    const seenToolActivityLabels = new Set<string>();
 
     message.parts.forEach((part, index) => {
       if (isTextPart(part)) {
@@ -150,9 +163,14 @@
       }
 
       if (isToolUIPart(part)) {
+        const label = `${getToolName(part)}: ${summarizeToolState(part.state)}`;
+        if (seenToolActivityLabels.has(label)) {
+          return;
+        }
+        seenToolActivityLabels.add(label);
         toolActivity.push({
           key: part.toolCallId,
-          label: `${getToolName(part)}: ${summarizeToolState(part.state)}`,
+          label,
         });
       }
     });
@@ -167,6 +185,31 @@
   const hasAssistantActivity = (segments: AssistantMessageSegments): boolean =>
     segments.errorTexts.length > 0
     || segments.toolActivity.length > 0;
+
+  const isToolOnlyAssistantMessage = (message: UIMessage): boolean => {
+    if (message.role !== "assistant") {
+      return false;
+    }
+    const segments = getAssistantMessageSegments(message);
+    return segments.visibleTextParts.length === 0
+      && segments.errorTexts.length === 0
+      && segments.toolActivity.length > 0;
+  };
+
+  const getDisplayMessages = (sourceMessages: UIMessage[]): UIMessage[] =>
+    sourceMessages.filter((message, index) => {
+      if (!isToolOnlyAssistantMessage(message)) {
+        return true;
+      }
+      for (let nextIndex = index + 1; nextIndex < sourceMessages.length; nextIndex += 1) {
+        if (sourceMessages[nextIndex]?.role === "assistant") {
+          return false;
+        }
+      }
+      return true;
+    });
+
+  const displayMessages = $derived(getDisplayMessages(messages));
 
   const isNearBottom = (): boolean => {
     if (!messageViewport) {
@@ -237,6 +280,42 @@
     submitChat();
   };
 
+  const closeHeaderMenus = (): void => {
+    showConversationModal = false;
+    showConversationSettingsMenu = false;
+  };
+
+  const onGlobalPointerDown = (event: PointerEvent): void => {
+    const target = event.target;
+    if (!(target instanceof Node)) {
+      return;
+    }
+
+    const isInsideConversationMenu =
+      conversationModalElement?.contains(target) || conversationToggleButton?.contains(target);
+    if (!isInsideConversationMenu) {
+      showConversationModal = false;
+    }
+
+    const isInsideSettingsMenu = settingsMenuElement?.contains(target) || settingsToggleButton?.contains(target);
+    if (!isInsideSettingsMenu) {
+      showConversationSettingsMenu = false;
+    }
+  };
+
+  const onGlobalKeyDown = (event: KeyboardEvent): void => {
+    if (event.key !== "Escape") {
+      return;
+    }
+
+    if (showDeleteConversationModal) {
+      showDeleteConversationModal = false;
+      return;
+    }
+
+    closeHeaderMenus();
+  };
+
   $effect(() => {
     if (renderKey !== lastRenderKey) {
       lastRenderKey = renderKey;
@@ -252,6 +331,13 @@
   onMount(() => {
     scrollToBottom("auto");
     resizeComposer();
+    document.addEventListener("pointerdown", onGlobalPointerDown);
+    window.addEventListener("keydown", onGlobalKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", onGlobalPointerDown);
+      window.removeEventListener("keydown", onGlobalKeyDown);
+    };
   });
 </script>
 
@@ -260,12 +346,30 @@
     <span>Chat</span>
     <div class="chat-header-actions">
       <button
+        bind:this={settingsToggleButton}
+        type="button"
+        class="conversation-picker-button conversation-settings-toggle"
+        aria-label="Conversation settings"
+        aria-haspopup="menu"
+        aria-expanded={showConversationSettingsMenu}
+        onclick={() => {
+          showConversationSettingsMenu = !showConversationSettingsMenu;
+          showConversationModal = false;
+        }}
+      >
+        <svg class="settings-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M8 1.4 9.5 5.2 13.7 2.9 10.8 6.3 14.8 8 10.8 9.7 13.7 13.1 9.5 10.8 8 14.6 6.5 10.8 2.3 13.1 5.2 9.7 1.2 8 5.2 6.3 2.3 2.9 6.5 5.2Z" />
+          <path d="M8 6.2v3.6M6.2 8h3.6" />
+        </svg>
+      </button
+      >
+      <button
         type="button"
         class="conversation-picker-button"
         aria-label="Create new conversation"
         onclick={() => {
           onCreateConversation();
-          showConversationModal = false;
+          closeHeaderMenus();
         }}
       >
         <svg class="plus-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -273,11 +377,15 @@
         </svg></button
       >
       <button
+        bind:this={conversationToggleButton}
         type="button"
         class="conversation-picker-button conversation-picker-toggle"
         aria-label="Open conversations"
+        aria-haspopup="dialog"
+        aria-expanded={showConversationModal}
         onclick={() => {
           showConversationModal = !showConversationModal;
+          showConversationSettingsMenu = false;
         }}
       >
         <span
@@ -285,13 +393,12 @@
           class:is-open={showConversationModal}
           aria-hidden="true">▼</span
         >
-      </button
-      >
+      </button>
     </div>
   </header>
 
   {#if showConversationModal}
-    <section class="conversation-modal" aria-label="Conversations">
+    <section bind:this={conversationModalElement} class="conversation-modal" aria-label="Conversations">
       <header class="conversation-modal-header">
         <span class="conversation-modal-title">conversations</span>
         <button
@@ -329,8 +436,24 @@
     </section>
   {/if}
 
+  {#if showConversationSettingsMenu}
+    <section bind:this={settingsMenuElement} class="conversation-settings-menu" aria-label="Conversation settings">
+      <button
+        type="button"
+        class="conversation-settings-option danger"
+        disabled={!activeConversationId || sending}
+        onclick={() => {
+          showConversationSettingsMenu = false;
+          showDeleteConversationModal = true;
+        }}
+      >
+        Delete chat
+      </button>
+    </section>
+  {/if}
+
   <div class="chat-messages" bind:this={messageViewport} onscroll={onMessagesScroll}>
-    {#each messages as message (message.id)}
+    {#each displayMessages as message (message.id)}
       {#if message.role === "assistant"}
         {@const segments = getAssistantMessageSegments(message)}
 
@@ -418,6 +541,32 @@
     ></textarea>
     <RetroButton type="submit" disabled={sending || chatDisabled}>Send</RetroButton>
   </form>
+
+  {#if showDeleteConversationModal}
+    <RetroModal title="Delete chat">
+      <p class="delete-conversation-copy">
+        Are you sure you want to delete <span>{activeConversationTitle}</span>?
+      </p>
+      <p class="delete-conversation-copy muted">This removes the conversation history for this chat.</p>
+      <div class="delete-conversation-actions">
+        <RetroButton
+          variant="secondary"
+          disabled={sending}
+          on:click={() => {
+            showDeleteConversationModal = false;
+          }}>Cancel</RetroButton
+        >
+        <RetroButton
+          variant="danger"
+          disabled={!activeConversationId || sending}
+          on:click={() => {
+            showDeleteConversationModal = false;
+            onDeleteConversation();
+          }}>Delete</RetroButton
+        >
+      </div>
+    </RetroModal>
+  {/if}
 </section>
 
 <style>
@@ -463,6 +612,10 @@
     color: var(--tc-color-lime);
   }
 
+  .conversation-settings-toggle {
+    color: var(--tc-color-lime);
+  }
+
   .conversation-picker-caret {
     display: inline-flex;
     line-height: 1;
@@ -484,6 +637,17 @@
     fill: none;
   }
 
+  .settings-icon {
+    width: 12px;
+    height: 12px;
+    display: block;
+    stroke: currentColor;
+    stroke-width: 1.1;
+    stroke-linecap: square;
+    stroke-linejoin: bevel;
+    fill: none;
+  }
+
   .chat-header-actions {
     display: inline-flex;
     gap: var(--tc-space-1);
@@ -497,6 +661,18 @@
     width: min(280px, 100%);
     border: var(--tc-border);
     background: var(--tc-color-black-2);
+  }
+
+  .conversation-settings-menu {
+    position: absolute;
+    top: 42px;
+    right: 52px;
+    z-index: 10;
+    min-width: 160px;
+    border: var(--tc-border);
+    background: var(--tc-color-black-2);
+    display: flex;
+    flex-direction: column;
   }
 
   .conversation-modal-header {
@@ -567,6 +743,32 @@
 
   .conversation-option.active {
     color: var(--tc-color-turquoise);
+  }
+
+  .conversation-settings-option {
+    border: 0;
+    background: transparent;
+    color: var(--tc-color-gray-1);
+    padding: var(--tc-space-2);
+    font-family: inherit;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .conversation-settings-option.danger {
+    color: var(--tc-color-red);
+  }
+
+  .conversation-settings-option:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .conversation-settings-option:not(:disabled):hover {
+    color: var(--tc-color-cream);
+    background: var(--tc-color-gray-2);
   }
 
   .chat-messages {
@@ -780,6 +982,28 @@
     padding: var(--tc-space-2);
     display: grid;
     grid-template-columns: 1fr auto;
+    gap: var(--tc-space-2);
+  }
+
+  .delete-conversation-copy {
+    margin: 0;
+    color: var(--tc-color-gray-3);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    text-transform: uppercase;
+  }
+
+  .delete-conversation-copy span {
+    color: var(--tc-color-red);
+  }
+
+  .delete-conversation-copy.muted {
+    color: var(--tc-color-gray-1);
+  }
+
+  .delete-conversation-actions {
+    display: flex;
+    justify-content: flex-end;
     gap: var(--tc-space-2);
   }
 
