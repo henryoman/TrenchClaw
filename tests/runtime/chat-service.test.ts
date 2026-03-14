@@ -367,6 +367,74 @@ afterEach(() => {
 });
 
 describe("RuntimeChatService", () => {
+  test("bypasses the model for direct wallet inventory questions", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    let streamInvocationCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async (_context: ActionContext, step: ActionStep) => {
+            expect(step.actionName).toBe("getManagedWalletContents");
+            return {
+              results: [
+                makeActionResult({
+                  ok: true,
+                  data: {
+                    walletCount: 2,
+                    wallets: [
+                      {
+                        walletGroup: "core-wallets",
+                        walletName: "wallet_000",
+                        address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+                      },
+                      {
+                        walletGroup: "core-wallets",
+                        walletName: "wallet_001",
+                        address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+                      },
+                    ],
+                  },
+                }),
+              ],
+              policyHits: [],
+            };
+          },
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        streamText: (() => {
+          streamInvocationCount += 1;
+          throw new Error("model path should not be used for wallet inventory fast path");
+        }) as never,
+      },
+    );
+
+    const response = await service.stream([
+      {
+        id: "user-fast-wallets-1",
+        role: "user",
+        parts: [{ type: "text", text: "what wallets do we have" }],
+      },
+    ], {
+      chatId: "chat-fast-wallets-1",
+    });
+
+    const body = await response.text();
+    expect(streamInvocationCount).toBe(0);
+    expect(body).toContain("wallet_000");
+    expect(body).toContain("getManagedWalletContents");
+
+    const assistant = stateStore.listChatMessages("chat-fast-wallets-1", 10).find((message) => message.role === "assistant");
+    expect(assistant?.content).toContain("We have 2 managed wallets");
+    expect(assistant?.content).toContain("wallet_001");
+  });
+
   test("returns the gateway-configured disabled response when no model is available", async () => {
     const settings = await loadRuntimeSettings("dangerous");
     const endpoints = resolvePrimaryRuntimeEndpoints(settings);
@@ -1457,6 +1525,20 @@ describe("RuntimeChatService", () => {
     const stateStore = new InMemoryStateStore();
     let streamInvocationCount = 0;
     let generateInvocationCount = 0;
+    let capturedStreamTimeout:
+      | {
+          totalMs?: number;
+          stepMs?: number;
+          chunkMs?: number;
+        }
+      | undefined;
+    let capturedFallbackGenerateTimeout:
+      | {
+          totalMs?: number;
+          stepMs?: number;
+          chunkMs?: number;
+        }
+      | undefined;
 
     const service = createRuntimeChatService(
       {
@@ -1472,8 +1554,15 @@ describe("RuntimeChatService", () => {
       {
         resolveStreamingModel: () => ({}) as never,
         convertToModelMessages: async () => [],
-        streamText: (() => {
+        streamText: ((args: {
+          timeout?: {
+            totalMs?: number;
+            stepMs?: number;
+            chunkMs?: number;
+          };
+        }) => {
           streamInvocationCount += 1;
+          capturedStreamTimeout = args.timeout;
           return {
             toUIMessageStream: (options?: {
               originalMessages?: UIMessage[];
@@ -1516,8 +1605,15 @@ describe("RuntimeChatService", () => {
             consumeStream: async () => {},
           };
         }) as never,
-        generateText: (async () => {
+        generateText: (async (args: {
+          timeout?: {
+            totalMs?: number;
+            stepMs?: number;
+            chunkMs?: number;
+          };
+        }) => {
           generateInvocationCount += 1;
+          capturedFallbackGenerateTimeout = args.timeout;
           return {
             text: "Top volume meme coin today is BONK.",
             finishReason: "stop",
@@ -1542,6 +1638,15 @@ describe("RuntimeChatService", () => {
 
     expect(streamInvocationCount).toBe(1);
     expect(generateInvocationCount).toBe(1);
+    expect(capturedStreamTimeout).toEqual({
+      totalMs: 45_000,
+      stepMs: 25_000,
+      chunkMs: 12_000,
+    });
+    expect(capturedFallbackGenerateTimeout).toEqual({
+      totalMs: 20_000,
+      stepMs: 20_000,
+    });
 
     const assistantMessages = stateStore
       .listChatMessages("chat-tool-recovery-1", 10)
@@ -1664,6 +1769,78 @@ describe("RuntimeChatService", () => {
         },
       ]),
     ).rejects.toThrow("LLM authentication failed (OpenRouter: User not found).");
+  });
+
+  test("maps timeout failures to explicit runtime chat errors", async () => {
+    const registry = new ActionRegistry();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => {
+          throw new Error("stream timed out after waiting for the next chunk");
+        }) as never,
+      },
+    );
+
+    await expect(
+      service.stream([
+        {
+          id: "user-timeout-fail-1",
+          role: "user",
+          parts: [{ type: "text", text: "hello runtime" }],
+        },
+      ]),
+    ).rejects.toThrow("LLM request timed out before the model finished responding.");
+  });
+
+  test("maps structured provider unavailable failures to explicit runtime chat errors", async () => {
+    const registry = new ActionRegistry();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => {
+          throw {
+            code: 502,
+            message: "Provider returned error",
+            metadata: {
+              error_type: "provider_unavailable",
+            },
+          };
+        }) as never,
+      },
+    );
+
+    await expect(
+      service.stream([
+        {
+          id: "user-provider-unavailable-1",
+          role: "user",
+          parts: [{ type: "text", text: "hello runtime" }],
+        },
+      ]),
+    ).rejects.toThrow("The upstream AI provider is temporarily unavailable (502 provider_unavailable).");
   });
 
   test("persists error-part-only assistant messages as runtime error text", async () => {

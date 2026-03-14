@@ -72,16 +72,34 @@ const toToolDescription = (actionName: string, category: string, subcategory?: s
 
 const DEFAULT_WORKSPACE_ROOT_DIRECTORY = DEFAULT_WORKSPACE_BASH_ROOT;
 const DEFAULT_CHAT_ID_PREFIX = "chat";
+const CHAT_MODEL_STREAM_TIMEOUT = {
+  totalMs: 45_000,
+  stepMs: 25_000,
+  chunkMs: 12_000,
+} as const;
+const CHAT_MODEL_FALLBACK_GENERATE_TIMEOUT = {
+  totalMs: 20_000,
+  stepMs: 20_000,
+} as const;
 const RUNTIME_WORKSPACE_TOOL_NAMES = [
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
+] as const;
+const WALLET_INVENTORY_FAST_PATH_PATTERNS = [
+  /^\s*(what|which)\s+wallets\s+do\s+we\s+have\??\s*$/iu,
+  /^\s*list\s+(?:our\s+)?wallets\??\s*$/iu,
+  /^\s*show\s+(?:me\s+)?(?:our\s+)?wallets\??\s*$/iu,
+  /^\s*wallet\s+addresses\??\s*$/iu,
 ] as const;
 
 const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
 };
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
 
 const extractUiMessageText = (message: UIMessage): string => {
   const text = message.parts
@@ -250,13 +268,61 @@ const serializeForToolCache = (value: unknown): string => {
   }
 };
 
+const readStructuredErrorDetails = (
+  error: unknown,
+): { message: string; code?: number | string; errorType?: string } | null => {
+  if (!error || typeof error !== "object") {
+    return null;
+  }
+
+  const message =
+    "message" in error && typeof error.message === "string"
+      ? error.message
+      : "error" in error && error.error && typeof error.error === "object" && "message" in error.error && typeof error.error.message === "string"
+        ? error.error.message
+        : null;
+
+  const code =
+    "code" in error && (typeof error.code === "number" || typeof error.code === "string")
+      ? error.code
+      : undefined;
+
+  const metadata =
+    "metadata" in error && error.metadata && typeof error.metadata === "object"
+      ? error.metadata
+      : "error" in error && error.error && typeof error.error === "object" && "metadata" in error.error && error.error.metadata && typeof error.error.metadata === "object"
+        ? error.error.metadata
+        : undefined;
+
+  const errorType =
+    metadata && "error_type" in metadata && typeof metadata.error_type === "string"
+      ? metadata.error_type
+      : undefined;
+
+  return message ? { message, code, errorType } : null;
+};
+
 const toRuntimeChatErrorMessage = (error: unknown): string => {
-  const message = error instanceof Error ? error.message : String(error);
+  const structured = readStructuredErrorDetails(error);
+  const message = error instanceof Error ? error.message : structured?.message ?? String(error);
+  const normalizedMessage = message.toLowerCase();
+  const normalizedErrorType = structured?.errorType?.toLowerCase();
   if (message.includes("User not found")) {
     return "LLM authentication failed (OpenRouter: User not found). Update llm/openrouter/api-key in Vault secrets.";
   }
   if (message.includes("401")) {
     return `LLM request rejected with authentication error: ${message}`;
+  }
+  if (structured?.code === 502 || normalizedErrorType === "provider_unavailable") {
+    return "The upstream AI provider is temporarily unavailable (502 provider_unavailable). Retry, or switch to a more reliable model in AI settings.";
+  }
+  if (
+    normalizedMessage.includes("timeout")
+    || normalizedMessage.includes("timed out")
+    || normalizedMessage.includes("abort")
+    || normalizedMessage.includes("aborted")
+  ) {
+    return "LLM request timed out before the model finished responding. Try again, or switch to a more reliable model in AI settings.";
   }
   return message;
 };
@@ -452,6 +518,91 @@ const createDirectTextStreamResponse = (input: {
   });
 };
 
+const shouldUseWalletInventoryFastPath = (userMessage: string): boolean =>
+  WALLET_INVENTORY_FAST_PATH_PATTERNS.some((pattern) => pattern.test(userMessage));
+
+const formatWalletInventoryFastPathText = (data: unknown): string | null => {
+  if (!isRecord(data) || !Array.isArray(data.wallets)) {
+    return null;
+  }
+
+  const wallets = data.wallets
+    .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    .map((entry) => ({
+      walletGroup: typeof entry.walletGroup === "string" ? entry.walletGroup : "",
+      walletName: typeof entry.walletName === "string" ? entry.walletName : "",
+      address: typeof entry.address === "string" ? entry.address : "",
+    }))
+    .filter((entry) => entry.walletName.length > 0 && entry.address.length > 0);
+
+  if (wallets.length === 0) {
+    return "No managed wallets were found.";
+  }
+
+  const walletGroups = [...new Set(wallets.map((wallet) => wallet.walletGroup).filter((walletGroup) => walletGroup.length > 0))];
+  const heading =
+    walletGroups.length === 1
+      ? `We have ${wallets.length} managed wallet${wallets.length === 1 ? "" : "s"} in the ${walletGroups[0]} group:`
+      : `We have ${wallets.length} managed wallet${wallets.length === 1 ? "" : "s"} across ${walletGroups.length} groups:`;
+
+  const lines = wallets.map((wallet) =>
+    walletGroups.length === 1
+      ? `- ${wallet.walletName}: ${wallet.address}`
+      : `- ${wallet.walletGroup}/${wallet.walletName}: ${wallet.address}`,
+  );
+
+  return [heading, ...lines].join("\n");
+};
+
+const createDirectToolResultStreamResponse = (input: {
+  headers?: HeadersInit;
+  chatId: string;
+  originalMessages: UIMessage[];
+  toolName: string;
+  toolInput: Record<string, unknown>;
+  toolOutput: unknown;
+  text: string;
+  onFinish: (messages: UIMessage[]) => void;
+}): Response => {
+  const toolCallId = `tool-${crypto.randomUUID()}`;
+  const textId = `text-${crypto.randomUUID()}`;
+
+  const stream = createUIMessageStream({
+    originalMessages: input.originalMessages,
+    execute: ({ writer }) => {
+      writer.write({ type: "start", messageId: createResponseMessageId() });
+      writer.write({ type: "start-step" });
+      writer.write({ type: "tool-input-start", toolCallId, toolName: input.toolName });
+      writer.write({
+        type: "tool-input-available",
+        toolCallId,
+        toolName: input.toolName,
+        input: input.toolInput,
+      });
+      writer.write({
+        type: "tool-output-available",
+        toolCallId,
+        output: input.toolOutput,
+      });
+      writer.write({ type: "finish-step" });
+      writer.write({ type: "text-start", id: textId });
+      writer.write({ type: "text-delta", id: textId, delta: input.text });
+      writer.write({ type: "text-end", id: textId });
+      writer.write({ type: "finish", finishReason: "stop" });
+    },
+    onError: (error) => toRuntimeChatErrorMessage(error),
+    onFinish: async ({ messages: finishedMessages }) => {
+      input.onFinish(finishedMessages);
+    },
+  });
+
+  return createUIMessageStreamResponse({
+    headers: withChatHeaders(input.headers, input.chatId),
+    stream,
+    consumeSseStream: consumeStream,
+  });
+};
+
 export const createRuntimeChatService = (
   deps: RuntimeChatServiceDeps,
   overrides: RuntimeChatServiceOverrides = {},
@@ -487,11 +638,79 @@ export const createRuntimeChatService = (
     });
 
     try {
+      const latestUserMessage = extractUiMessageText(messages.at(-1) ?? {
+        id: "",
+        role: "user",
+        parts: [] as UIMessage["parts"],
+      } as UIMessage);
+
+      if (shouldUseWalletInventoryFastPath(latestUserMessage)) {
+        const fastPathStartedAt = Date.now();
+        const fastPathInput = {
+          includeZeroBalances: false,
+        } satisfies Record<string, unknown>;
+        deps.logger?.info("chat:fast_path_start", {
+          chatId,
+          route: "wallet-inventory",
+        });
+
+        const dispatchResult = await deps.dispatcher.dispatchStep(
+          createActionContext({
+            actor: "agent",
+            eventBus: deps.eventBus,
+            rpcUrl: deps.rpcUrl,
+            jupiterUltra: deps.jupiterUltra,
+            jupiterTrigger: deps.jupiterTrigger,
+            tokenAccounts: deps.tokenAccounts,
+            ultraSigner: deps.ultraSigner,
+            stateStore: deps.stateStore,
+            enqueueJob: deps.enqueueJob,
+            manageJob: deps.manageJob,
+          }),
+          {
+            actionName: "getManagedWalletContents",
+            input: fastPathInput,
+          },
+        );
+        const directResult = dispatchResult.results[0];
+        if (directResult?.ok && directResult.data) {
+          const responseText = formatWalletInventoryFastPathText(directResult.data);
+          if (responseText) {
+            deps.logger?.info("chat:fast_path_hit", {
+              chatId,
+              route: "wallet-inventory",
+              durationMs: Date.now() - fastPathStartedAt,
+            });
+            return createDirectToolResultStreamResponse({
+              headers: input?.headers,
+              chatId,
+              originalMessages: messages,
+              toolName: "getManagedWalletContents",
+              toolInput: fastPathInput,
+              toolOutput: directResult.data,
+              text: responseText,
+              onFinish: (finalMessages) => {
+                persistFinishedMessages(deps, chatId, {
+                  sessionId: input?.sessionId,
+                  conversationTitle: input?.conversationTitle,
+                }, finalMessages);
+                deps.logger?.info("chat:stream_finish", {
+                  chatId,
+                  durationMs: Date.now() - streamStartedAt,
+                  finalMessageCount: finalMessages.length,
+                  route: "wallet-inventory-fast-path",
+                });
+              },
+            });
+          }
+        }
+      }
+
       const prepareModelInputStartedAt = Date.now();
       const preparedExecution = await deps.gateway.prepareChatExecution({
         lane: "operator-chat",
         messages,
-        userMessage: extractUiMessageText(messages.at(-1) ?? { id: "", role: "user", parts: [] as UIMessage["parts"] } as UIMessage),
+        userMessage: latestUserMessage,
         sessionId: input?.sessionId,
         abortSignal: input?.abortSignal,
       });
@@ -594,6 +813,7 @@ export const createRuntimeChatService = (
         system: systemPrompt,
         messages: inputMessages,
         abortSignal: input?.abortSignal,
+        timeout: CHAT_MODEL_STREAM_TIMEOUT,
         ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
         ...(typeof temperature === "number" ? { temperature } : {}),
         ...(typeof maxToolSteps === "number" && enabledTools ? { stopWhen: stepCountIs(maxToolSteps) } : {}),
@@ -695,6 +915,7 @@ export const createRuntimeChatService = (
                   system: systemPrompt,
                   messages: followUpMessages,
                   abortSignal: input?.abortSignal,
+                  timeout: CHAT_MODEL_FALLBACK_GENERATE_TIMEOUT,
                   ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
                   ...(typeof temperature === "number" ? { temperature } : {}),
                 });
