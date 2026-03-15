@@ -435,6 +435,80 @@ describe("RuntimeChatService", () => {
     expect(assistant?.content).toContain("wallet_001");
   });
 
+  test("bypasses the model for direct wallet contents questions", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    let streamInvocationCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({
+            results: [
+              makeActionResult({
+                ok: true,
+                data: {
+                  walletCount: 2,
+                  wallets: [
+                    {
+                      walletGroup: "core-wallets",
+                      walletName: "wallet_000",
+                      address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+                      balanceSol: 1.5,
+                      tokenBalances: [
+                        {
+                          mintAddress: "So11111111111111111111111111111111111111112",
+                          balanceUiString: "1.5",
+                        },
+                      ],
+                    },
+                    {
+                      walletGroup: "core-wallets",
+                      walletName: "wallet_001",
+                      address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+                      balanceSol: 0.25,
+                      tokenBalances: [],
+                    },
+                  ],
+                },
+              }),
+            ],
+            policyHits: [],
+          }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        streamText: (() => {
+          streamInvocationCount += 1;
+          throw new Error("model path should not be used for wallet contents fast path");
+        }) as never,
+      },
+    );
+
+    const response = await service.stream([
+      {
+        id: "user-fast-wallet-contents-1",
+        role: "user",
+        parts: [{ type: "text", text: "what are the contents of each wallet" }],
+      },
+    ], {
+      chatId: "chat-fast-wallet-contents-1",
+    });
+
+    const body = await response.text();
+    expect(streamInvocationCount).toBe(0);
+    expect(body).toContain("wallet_000");
+    expect(body).toContain("1.5 SOL");
+
+    const assistant = stateStore.listChatMessages("chat-fast-wallet-contents-1", 10).find((message) => message.role === "assistant");
+    expect(assistant?.content).toContain("Here are the contents for 2 managed wallets");
+    expect(assistant?.content).toContain("Token So11111111111111111111111111111111111111112: 1.5");
+  });
+
   test("returns the gateway-configured disabled response when no model is available", async () => {
     const settings = await loadRuntimeSettings("dangerous");
     const endpoints = resolvePrimaryRuntimeEndpoints(settings);
@@ -1652,6 +1726,111 @@ describe("RuntimeChatService", () => {
       .listChatMessages("chat-tool-recovery-1", 10)
       .filter((message) => message.role === "assistant");
     expect(assistantMessages.at(-1)?.content).toContain("Top volume meme coin today is BONK.");
+  });
+
+  test("resolves tool-only wallet-content failures without a second model pass", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "getManagedWalletContents",
+      category: "data-based",
+      inputSchema: z.object({ includeZeroBalances: z.boolean().optional() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+    const stateStore = new InMemoryStateStore();
+    let generateInvocationCount = 0;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStream: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage?: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) =>
+            createUIMessageStream({
+              originalMessages: options?.originalMessages,
+              onFinish: (event) => {
+                options?.onFinish?.({
+                  ...event,
+                  responseMessage: undefined,
+                });
+              },
+              execute: ({ writer }) => {
+                writer.write({ type: "start", messageId: "assistant-tool-fail-pass-1" });
+                writer.write({ type: "start-step" });
+                writer.write({
+                  type: "tool-input-start",
+                  toolCallId: "tool-call-rate-limit-1",
+                  toolName: "getManagedWalletContents",
+                });
+                writer.write({
+                  type: "tool-input-available",
+                  toolCallId: "tool-call-rate-limit-1",
+                  toolName: "getManagedWalletContents",
+                  input: { includeZeroBalances: false },
+                });
+                writer.write({
+                  type: "tool-output-available",
+                  toolCallId: "tool-call-rate-limit-1",
+                  output: {
+                    ok: false,
+                    error: "RPC request failed with status 429: Too many requests for a specific RPC call",
+                    retryable: true,
+                  },
+                });
+                writer.write({ type: "finish-step" });
+                writer.write({ type: "finish", finishReason: "stop" });
+              },
+            }),
+          consumeStream: async () => {},
+        })) as never,
+        generateText: (async () => {
+          generateInvocationCount += 1;
+          return {
+            text: "should not be called",
+            finishReason: "stop",
+            usage: undefined,
+          };
+        }) as never,
+      },
+    );
+
+    const response = await service.stream(
+      [
+        {
+          id: "user-tool-fail-wallet-contents-1",
+          role: "user",
+          parts: [{ type: "text", text: "what are the contents of each wallet" }],
+        },
+      ],
+      { chatId: "chat-tool-fail-wallet-contents-1" },
+    );
+
+    await response.text();
+
+    expect(generateInvocationCount).toBe(0);
+    const assistant = stateStore
+      .listChatMessages("chat-tool-fail-wallet-contents-1", 10)
+      .find((message) => message.role === "assistant");
+    expect(assistant?.content).toContain("rate-limiting this request");
+    expect(assistant?.content).toContain("429 Too Many Requests");
   });
 
   test("persists chat history in SQLite across store reopen", async () => {

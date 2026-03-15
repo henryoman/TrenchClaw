@@ -92,6 +92,12 @@ const WALLET_INVENTORY_FAST_PATH_PATTERNS = [
   /^\s*show\s+(?:me\s+)?(?:our\s+)?wallets\??\s*$/iu,
   /^\s*wallet\s+addresses\??\s*$/iu,
 ] as const;
+const WALLET_CONTENTS_FAST_PATH_PATTERNS = [
+  /^\s*what\s+are\s+the\s+contents\s+of\s+each\s+wallet\??\s*$/iu,
+  /^\s*show\s+(?:me\s+)?the\s+contents\s+of\s+each\s+wallet\??\s*$/iu,
+  /^\s*show\s+(?:me\s+)?each\s+wallet(?:'s)?\s+contents\??\s*$/iu,
+  /^\s*what\s+does\s+each\s+wallet\s+hold\??\s*$/iu,
+] as const;
 
 const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
@@ -100,6 +106,9 @@ const trimOrUndefinedValue = (value: string | undefined): string | undefined => 
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
+
+const isToolLikePart = (value: unknown): value is Record<string, unknown> & { type: string } =>
+  isRecord(value) && typeof value.type === "string" && value.type.startsWith("tool-");
 
 const extractUiMessageText = (message: UIMessage): string => {
   const text = message.parts
@@ -521,6 +530,9 @@ const createDirectTextStreamResponse = (input: {
 const shouldUseWalletInventoryFastPath = (userMessage: string): boolean =>
   WALLET_INVENTORY_FAST_PATH_PATTERNS.some((pattern) => pattern.test(userMessage));
 
+const shouldUseWalletContentsFastPath = (userMessage: string): boolean =>
+  WALLET_CONTENTS_FAST_PATH_PATTERNS.some((pattern) => pattern.test(userMessage));
+
 const formatWalletInventoryFastPathText = (data: unknown): string | null => {
   if (!isRecord(data) || !Array.isArray(data.wallets)) {
     return null;
@@ -552,6 +564,97 @@ const formatWalletInventoryFastPathText = (data: unknown): string | null => {
   );
 
   return [heading, ...lines].join("\n");
+};
+
+const formatWalletContentsFastPathText = (data: unknown): string | null => {
+  if (!isRecord(data) || !Array.isArray(data.wallets)) {
+    return null;
+  }
+
+  const wallets = data.wallets
+    .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+    .map((entry) => ({
+      walletGroup: typeof entry.walletGroup === "string" ? entry.walletGroup : "",
+      walletName: typeof entry.walletName === "string" ? entry.walletName : "",
+      address: typeof entry.address === "string" ? entry.address : "",
+      balanceSol: typeof entry.balanceSol === "number" ? entry.balanceSol : 0,
+      tokenBalances: Array.isArray(entry.tokenBalances)
+        ? entry.tokenBalances.filter((token): token is Record<string, unknown> => isRecord(token))
+        : [],
+    }))
+    .filter((entry) => entry.walletName.length > 0 && entry.address.length > 0);
+
+  if (wallets.length === 0) {
+    return "No managed wallet contents were found.";
+  }
+
+  const header = `Here are the contents for ${wallets.length} managed wallet${wallets.length === 1 ? "" : "s"}:`;
+  const lines = wallets.flatMap((wallet) => {
+    const tokenSummary = wallet.tokenBalances.length === 0
+      ? ["  Tokens: none"]
+      : wallet.tokenBalances.slice(0, 6).map((token) => {
+          const mintAddress = typeof token.mintAddress === "string" ? token.mintAddress : "unknown-mint";
+          const balanceUiString = typeof token.balanceUiString === "string" ? token.balanceUiString : "0";
+          return `  Token ${mintAddress}: ${balanceUiString}`;
+        });
+
+    return [
+      `- ${wallet.walletName}: ${wallet.balanceSol} SOL (${wallet.address})`,
+      ...tokenSummary,
+    ];
+  });
+
+  return [header, ...lines].join("\n");
+};
+
+const formatWalletContentsRateLimitText = (toolName: string, error: string): string | null => {
+  if (toolName !== "getManagedWalletContents") {
+    return null;
+  }
+
+  const normalized = error.toLowerCase();
+  if (
+    normalized.includes("429")
+    || normalized.includes("too many requests")
+    || normalized.includes("rate limit")
+  ) {
+    return [
+      "I couldn't load wallet contents because the current Solana RPC endpoint is rate-limiting this request.",
+      "The runtime is using a public RPC URL, and `getManagedWalletContents` is hitting `429 Too Many Requests`.",
+      "Configure a dedicated RPC provider or try again after the rate limit cools down.",
+    ].join("\n");
+  }
+
+  return null;
+};
+
+const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined): string | null => {
+  if (!message || message.role !== "assistant") {
+    return null;
+  }
+
+  for (const part of message.parts) {
+    if (!isToolLikePart(part)) {
+      continue;
+    }
+
+    const toolName = part.type.slice(5);
+    const output = "output" in part ? part.output : undefined;
+
+    if (isRecord(output) && output.ok === false && typeof output.error === "string") {
+      return formatWalletContentsRateLimitText(toolName, output.error)
+        ?? `The request failed while running ${toolName}: ${output.error}`;
+    }
+
+    if (toolName === "getManagedWalletContents") {
+      const formatted = formatWalletContentsFastPathText(output);
+      if (formatted) {
+        return formatted;
+      }
+    }
+  }
+
+  return null;
 };
 
 const createDirectToolResultStreamResponse = (input: {
@@ -703,6 +806,79 @@ export const createRuntimeChatService = (
               },
             });
           }
+        }
+      }
+
+      if (shouldUseWalletContentsFastPath(latestUserMessage)) {
+        const fastPathStartedAt = Date.now();
+        const fastPathInput = {
+          includeZeroBalances: false,
+        } satisfies Record<string, unknown>;
+        deps.logger?.info("chat:fast_path_start", {
+          chatId,
+          route: "wallet-contents",
+        });
+
+        const dispatchResult = await deps.dispatcher.dispatchStep(
+          createActionContext({
+            actor: "agent",
+            eventBus: deps.eventBus,
+            rpcUrl: deps.rpcUrl,
+            jupiterUltra: deps.jupiterUltra,
+            jupiterTrigger: deps.jupiterTrigger,
+            tokenAccounts: deps.tokenAccounts,
+            ultraSigner: deps.ultraSigner,
+            stateStore: deps.stateStore,
+            enqueueJob: deps.enqueueJob,
+            manageJob: deps.manageJob,
+          }),
+          {
+            actionName: "getManagedWalletContents",
+            input: fastPathInput,
+          },
+        );
+        const directResult = dispatchResult.results[0];
+        const directText =
+          directResult?.ok && directResult.data
+            ? formatWalletContentsFastPathText(directResult.data)
+            : directResult?.error
+              ? formatWalletContentsRateLimitText("getManagedWalletContents", directResult.error)
+                ?? `I couldn't load wallet contents: ${directResult.error}`
+              : null;
+        if (directResult && directText) {
+          deps.logger?.info("chat:fast_path_hit", {
+            chatId,
+            route: "wallet-contents",
+            durationMs: Date.now() - fastPathStartedAt,
+            ok: directResult.ok,
+          });
+          return createDirectToolResultStreamResponse({
+            headers: input?.headers,
+            chatId,
+            originalMessages: messages,
+            toolName: "getManagedWalletContents",
+            toolInput: fastPathInput,
+            toolOutput: directResult.ok
+              ? directResult.data
+              : {
+                  ok: false,
+                  error: directResult.error ?? "Unknown error",
+                  retryable: directResult.retryable,
+                },
+            text: directText,
+            onFinish: (finalMessages) => {
+              persistFinishedMessages(deps, chatId, {
+                sessionId: input?.sessionId,
+                conversationTitle: input?.conversationTitle,
+              }, finalMessages);
+              deps.logger?.info("chat:stream_finish", {
+                chatId,
+                durationMs: Date.now() - streamStartedAt,
+                finalMessageCount: finalMessages.length,
+                route: "wallet-contents-fast-path",
+              });
+            },
+          });
         }
       }
 
@@ -880,6 +1056,22 @@ export const createRuntimeChatService = (
                   firstPassSawTextAfterToolActivity
                   || completedAssistantHasTextAfterToolActivity
                 ) {
+                  return;
+                }
+
+                const deterministicToolOnlyText = formatKnownToolOnlyCompletionText(completedAssistantMessage);
+                if (deterministicToolOnlyText) {
+                  deps.logger?.info("chat:tool_only_completion_resolved", {
+                    chatId,
+                    lane: preparedExecution.lane,
+                    provider,
+                    model: modelId,
+                  });
+                  writeAssistantTextMessage({
+                    writeChunk: (chunk) => writer.write(chunk),
+                    text: deterministicToolOnlyText,
+                    finishReason: "stop",
+                  });
                   return;
                 }
 
