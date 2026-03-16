@@ -253,4 +253,96 @@ describe("manual action runner", () => {
     expect(result?.ok).toBe(false);
     expect(result?.error).not.toContain("requires explicit user confirmation");
   });
+
+  test("accepts runtime confirmation tokens on model-style transfer envelopes", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
+    process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+
+    const report = await executeAction({
+      input: {
+        toolName: "transfer",
+        input: {
+          destination: "8xYdest1111111111111111111111111111111111111",
+          amount: "0.000000001",
+          userConfirmationToken: "confirm",
+        },
+      },
+    });
+
+    expect(report.actionName).toBe("transfer");
+    const result = report.result as { ok?: boolean; error?: string } | null;
+    expect(result?.ok).toBe(false);
+    expect(result?.error).not.toContain("requires explicit user confirmation");
+  });
+
+  test("blocks model-style close token account envelopes until confirmation is supplied", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
+    process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+
+    const report = await executeAction({
+      input: {
+        toolName: "closeTokenAccount",
+        input: {
+          walletGroup: "core-wallets",
+          walletName: "wallet_001",
+          mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+        },
+      },
+    });
+
+    expect(report.actionName).toBe("closeTokenAccount");
+    const result = report.result as { ok?: boolean; error?: string } | null;
+    expect(result?.ok).toBe(false);
+    expect(result?.error).toContain("requires explicit user confirmation");
+  });
+
+  test("adds confirmation to model-style close token account envelopes when requested", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
+    process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+
+    const report = await executeAction({
+      confirm: true,
+      input: {
+        toolName: "closeTokenAccount",
+        input: {
+          walletGroup: "core-wallets",
+          walletName: "wallet_001",
+          mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+        },
+      },
+    });
+
+    expect(report.actionName).toBe("closeTokenAccount");
+    expect(report.input).toEqual({
+      walletGroup: "core-wallets",
+      walletName: "wallet_001",
+      mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+      confirmedByUser: true,
+    });
+    const result = report.result as { ok?: boolean; error?: string } | null;
+    expect(result?.ok).toBe(false);
+    expect(result?.error).not.toContain("requires explicit user confirmation");
+  });
+
+  test("accepts runtime confirmation tokens on model-style close token account envelopes", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
+    process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+
+    const report = await executeAction({
+      input: {
+        toolName: "closeTokenAccount",
+        input: {
+          walletGroup: "core-wallets",
+          walletName: "wallet_001",
+          mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+          userConfirmationToken: "confirm",
+        },
+      },
+    });
+
+    expect(report.actionName).toBe("closeTokenAccount");
+    const result = report.result as { ok?: boolean; error?: string } | null;
+    expect(result?.ok).toBe(false);
+    expect(result?.error).not.toContain("requires explicit user confirmation");
+  });
 });

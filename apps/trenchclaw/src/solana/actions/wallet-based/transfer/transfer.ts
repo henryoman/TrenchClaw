@@ -54,6 +54,8 @@ const transferInputSchema = z.object({
   createDestinationAta: z.boolean().optional(),
   skipPreflight: z.boolean().optional(),
   maxRetries: z.number().int().min(0).max(10).optional(),
+  userConfirmationToken: z.string().trim().min(1).optional(),
+  confirmedByUser: z.boolean().optional(),
 }).superRefine((value, ctx) => {
   const hasWalletGroup = typeof value.walletGroup === "string";
   const hasWalletName = typeof value.walletName === "string";

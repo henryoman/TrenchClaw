@@ -239,6 +239,7 @@ describe("runtime capability snapshot", () => {
     const defaultSettings = await loadRuntimeSettings("safe");
     const defaultSnapshot = await getRuntimeCapabilitySnapshot(defaultSettings);
     expect(defaultSnapshot.modelTools.map((toolEntry) => toolEntry.name)).not.toContain("transfer");
+    expect(defaultSnapshot.modelTools.map((toolEntry) => toolEntry.name)).not.toContain("closeTokenAccount");
 
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
       "yaml",
@@ -250,5 +251,6 @@ describe("runtime capability snapshot", () => {
     const enabledSettings = await loadRuntimeSettings("safe");
     const enabledSnapshot = await getRuntimeCapabilitySnapshot(enabledSettings);
     expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("transfer");
+    expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("closeTokenAccount");
   });
 });
