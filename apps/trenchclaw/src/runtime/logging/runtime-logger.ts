@@ -13,6 +13,12 @@ const LOG_LEVEL_WEIGHT: Record<RuntimeLogLevel, number> = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
 
+const stringifyJsonSafe = (value: unknown, space?: number): string => JSON.stringify(
+  value,
+  (_key, nestedValue) => (typeof nestedValue === "bigint" ? nestedValue.toString() : nestedValue),
+  space,
+);
+
 const stringifyValue = (value: unknown): string => {
   if (typeof value === "string") {
     return value;
@@ -20,8 +26,11 @@ const stringifyValue = (value: unknown): string => {
   if (typeof value === "number" || typeof value === "boolean" || value == null) {
     return String(value);
   }
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
   try {
-    return JSON.stringify(value);
+    return stringifyJsonSafe(value);
   } catch {
     return "[unserializable]";
   }
@@ -114,11 +123,11 @@ export class RuntimeLogger {
     }
 
     if (this.config.pretty) {
-      console.log(JSON.stringify(payload, null, 2));
+      console.log(stringifyJsonSafe(payload, 2));
       return;
     }
 
-    console.log(JSON.stringify(payload));
+    console.log(stringifyJsonSafe(payload));
   }
 
   private broadcast(entry: RuntimeLogEntry): void {

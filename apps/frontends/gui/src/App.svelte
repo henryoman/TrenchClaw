@@ -111,6 +111,7 @@
           conversations={chat.state.conversations}
           activeConversationId={chat.state.activeConversationId}
           sending={chat.isSending()}
+          deletingConversations={chat.state.deletingConversations}
           chatDisabledReason={runtime.state.llmAvailable ? "" : runtime.state.llmCheckMessage}
           runtimeError={chat.state.runtimeError}
           onSelectConversation={(conversationId) => {
@@ -121,6 +122,9 @@
           }}
           onDeleteConversation={() => {
             void chat?.deleteActiveConversation();
+          }}
+          onDeleteConversations={(conversationIds) => {
+            void chat?.deleteConversations(conversationIds);
           }}
           onSubmit={() => {
             void chat?.submitChat();
@@ -206,7 +210,9 @@
       <SchedulePanel jobs={runtime.state.scheduleJobs} />
     {/if}
     <section class={`right-column ${GUI_QUEUE_PANEL_ENABLED ? "queue-enabled" : "summary-expanded"}`}>
-      <SolPriceStrip />
+      {#key runtime.state.runtimeSessionId}
+        <SolPriceStrip />
+      {/key}
       {#if GUI_QUEUE_PANEL_ENABLED}
         <QueuePanel jobs={runtime.state.queueJobs} />
       {/if}

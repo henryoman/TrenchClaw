@@ -198,6 +198,39 @@ const DEEP_DOC_METADATA_RULES: KnowledgeDocMetadataRule[] = [
     },
   },
   {
+    matches: (relativePath) => relativePath.endsWith("/helius-cli.md"),
+    metadata: {
+      title: "Helius CLI Guide",
+      kind: "vendor-reference",
+      authority: "vendor-snapshot",
+      priority: "escalate",
+      topics: ["helius", "cli", "onboarding", "commands"],
+      readWhen: "Helius CLI install, signup, config, or shell-automation details are needed",
+    },
+  },
+  {
+    matches: (relativePath) => relativePath.endsWith("/helius-cli-commands.md"),
+    metadata: {
+      title: "Helius CLI Commands",
+      kind: "vendor-reference",
+      authority: "vendor-snapshot",
+      priority: "escalate",
+      topics: ["helius", "cli", "commands", "reference"],
+      readWhen: "you need the command-family lookup for the Helius CLI",
+    },
+  },
+  {
+    matches: (relativePath) => relativePath.endsWith("/helius-cli-readme.md"),
+    metadata: {
+      title: "Helius CLI README",
+      kind: "vendor-reference",
+      authority: "vendor-snapshot",
+      priority: "specialized",
+      topics: ["helius", "cli", "examples", "readme"],
+      readWhen: "you want upstream CLI repo examples or to cross-check docs against the README",
+    },
+  },
+  {
     matches: (relativePath) => relativePath.endsWith("/helius-typescript-sdk.md"),
     metadata: {
       title: "Helius TypeScript SDK",

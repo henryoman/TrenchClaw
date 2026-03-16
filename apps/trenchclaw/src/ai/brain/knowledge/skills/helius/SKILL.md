@@ -21,11 +21,11 @@ You are an expert Solana developer building with Helius's infrastructure. Helius
 
 If any MCP tool returns "API key not configured":
 
-**Path A — Existing key:** Use `setHeliusApiKey` with their key from https://dashboard.helius.dev.
+**Path A — Existing key:** Use `setHeliusApiKey` with their key from <https://dashboard.helius.dev>.
 
 **Path B — Agentic signup:** `generateKeypair` → user funds wallet with **~0.001 SOL** for fees + **USDC** (USDC mint: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`) — **1 USDC** basic, **$49** Developer, **$499** Business, **$999** Professional → `checkSignupBalance` → `agenticSignup`. **Do NOT skip steps** — on-chain payment required.
 
-**Path C — CLI:** `npx helius-cli@latest keygen` → fund wallet → `npx helius-cli@latest signup`
+**Path C — CLI:** `helius keygen` → fund wallet → `helius signup --json`
 
 ## Routing
 
@@ -81,13 +81,14 @@ Enhanced WebSockets (Business+) for most needs; Laserstream gRPC (Professional) 
 **When**: human-readable tx data, transaction explorers, swap/transfer/NFT sale analysis, history filtering by type/time/slot
 
 ### Getting Started / Onboarding
-**Read**: `references/onboarding.md`
+**Read**: `references/onboarding.md`, `references/cli.md`
 **MCP tools**: `setHeliusApiKey`, `generateKeypair`, `checkSignupBalance`, `agenticSignup`, `getAccountStatus`, `previewUpgrade`, `upgradePlan`, `payRenewal`
-**When**: account creation, API key management, plan/credits/usage checks, billing
+**When**: account creation, API key management, plan/credits/usage checks, billing, or Helius CLI shell workflows
 
 ### Documentation & Troubleshooting
+**Read**: `references/cli.md` when the user is asking about terminal commands, install flows, or config locations
 **MCP tools**: `lookupHeliusDocs`, `listHeliusDocTopics`, `getHeliusCreditsInfo`, `getRateLimitInfo`, `troubleshootError`, `getPumpFunGuide`
-**When**: API details, pricing, rate limits, error troubleshooting, credit costs, pump.fun tokens. Prefer `lookupHeliusDocs` with `section` parameter for targeted lookups.
+**When**: API details, pricing, rate limits, error troubleshooting, credit costs, pump.fun tokens, or CLI/reference lookups. Prefer `lookupHeliusDocs` with `section` parameter for targeted lookups.
 
 ### Plans & Billing
 **MCP tools**: `getHeliusPlanInfo`, `compareHeliusPlans`, `getHeliusCreditsInfo`, `getRateLimitInfo`

@@ -228,6 +228,145 @@
   gap: 1rem;
 }
 
+.docs-prereq-section {
+  margin-top: 1.5rem;
+}
+
+.docs-prereq-shell {
+  border: 1px solid var(--docs-border);
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at top right, rgba(208, 245, 128, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(148, 163, 184, 0.05), transparent 72%),
+    var(--docs-panel);
+  padding: 1.4rem;
+  box-shadow: var(--docs-shadow);
+}
+
+.docs-prereq-heading {
+  max-width: 68ch;
+}
+
+.docs-prereq-title {
+  color: var(--docs-heading);
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1.02;
+  margin: 0.55rem 0 0;
+}
+
+.docs-prereq-description {
+  color: var(--docs-text-soft);
+  font-size: 1rem;
+  line-height: 1.72;
+  margin-top: 0.9rem;
+}
+
+.docs-prereq-layout {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.4rem;
+}
+
+.docs-prereq-bootstrap,
+.docs-prereq-card {
+  border: 1px solid var(--docs-border);
+  border-radius: 1rem;
+  background: rgba(8, 12, 18, 0.66);
+  padding: 1.15rem;
+}
+
+.docs-shell[data-docs-theme='light'] .docs-prereq-bootstrap,
+.docs-shell[data-docs-theme='light'] .docs-prereq-card {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.docs-prereq-chip,
+.docs-prereq-card-kind {
+  color: var(--docs-text-soft);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.docs-prereq-bootstrap-title,
+.docs-prereq-card-title {
+  color: var(--docs-heading);
+  font-size: 1.08rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-top: 0.55rem;
+}
+
+.docs-prereq-bootstrap-description,
+.docs-prereq-card-description {
+  color: var(--docs-text-soft);
+  font-size: 0.95rem;
+  line-height: 1.62;
+  margin-top: 0.55rem;
+}
+
+.docs-prereq-command,
+.docs-prereq-mini-command {
+  border: 1px solid var(--docs-border);
+  border-radius: 0.85rem;
+  display: block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.75;
+  margin-top: 0.9rem;
+  overflow-x: auto;
+  padding: 0.85rem 0.95rem;
+  white-space: pre;
+}
+
+.docs-prereq-command {
+  background: rgba(2, 8, 23, 0.9);
+  color: var(--docs-pre-fg);
+}
+
+.docs-prereq-mini-command {
+  background: var(--docs-inline-code-bg);
+  color: var(--docs-inline-code-color);
+}
+
+.docs-prereq-note {
+  color: var(--docs-text-soft);
+  font-size: 0.85rem;
+  line-height: 1.65;
+  margin-top: 0.8rem;
+}
+
+.docs-prereq-link {
+  display: inline-flex;
+  margin-top: 1rem;
+}
+
+.docs-prereq-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .docs-prereq-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .docs-prereq-layout {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    align-items: start;
+  }
+
+  .docs-prereq-bootstrap {
+    position: sticky;
+    top: 5.5rem;
+  }
+}
+
 @media (min-width: 640px) {
   .docs-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

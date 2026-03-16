@@ -282,7 +282,7 @@ const normalizeRuntimeSettings = (
         directory: resolveRuntimeStatePath("db/sessions"),
         agentId: "trenchclaw",
         source: "cli",
-        reuseSessionOnBoot: toBooleanValue(sessionsStorage.reuseSessionOnBoot, true),
+        reuseSessionOnBoot: toBooleanValue(sessionsStorage.reuseSessionOnBoot, false),
       },
       memory: {
         enabled: true,

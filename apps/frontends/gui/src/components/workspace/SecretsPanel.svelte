@@ -73,13 +73,15 @@
   const defaultPublicRpc = (): GuiPublicRpcOptionView | undefined =>
     publicRpcOptions.find((rpc) => rpc.id === DEFAULT_MAINNET_RPC_ID) ?? publicRpcOptions[0];
 
-  const publicRpcFor = (publicRpcId: string | null): GuiPublicRpcOptionView | undefined =>
-    publicRpcOptions.find((rpc) => rpc.id === publicRpcId) ?? defaultPublicRpc();
-
   const defaultRpcProvider = (): GuiRpcProviderOptionView | undefined => rpcProviderOptions[0];
 
   const rpcProviderFor = (rpcProviderId: string | null): GuiRpcProviderOptionView | undefined =>
     rpcProviderOptions.find((provider) => provider.id === rpcProviderId) ?? defaultRpcProvider();
+
+  const isKnownPublicRpcUrl = (value: string): boolean => {
+    const normalizedValue = value.trim();
+    return normalizedValue.length > 0 && publicRpcOptions.some((rpc) => rpc.url === normalizedValue);
+  };
 
   const initialSourceFor = (option: GuiSecretOptionView): "custom" | "public" => {
     if (!option.supportsPublicRpc) {
@@ -110,8 +112,12 @@
 
   const initialValueFor = (option: GuiSecretOptionView): string => {
     const entry = entryFor(option.id);
-    if ((entry?.value ?? "").trim().length > 0) {
-      return entry?.value ?? "";
+    const entryValue = entry?.value ?? "";
+    if (option.supportsPublicRpc && entry?.source === "public" && isKnownPublicRpcUrl(entryValue)) {
+      return "";
+    }
+    if (entryValue.trim().length > 0) {
+      return entryValue;
     }
     return "";
   };
@@ -128,7 +134,7 @@
       const rpcProviderId = option.supportsPublicRpc
         ? (draftRpcProviderIds[option.id] ?? initialRpcProviderIdFor(option))
         : null;
-      const provider = rpcProviderFor(rpcProviderId);
+      const provider = option.supportsPublicRpc ? rpcProviderFor(rpcProviderId) : undefined;
       return {
         id: option.id,
         label: option.label,
@@ -175,8 +181,8 @@
       onSave({
         optionId: field.id,
         value: field.value.trim(),
-        source: option.supportsPublicRpc ? field.source : undefined,
-        publicRpcId: option.supportsPublicRpc ? (field.source === "public" ? field.publicRpcId : null) : undefined,
+        source: undefined,
+        publicRpcId: undefined,
         rpcProviderId: option.supportsPublicRpc ? field.rpcProviderId : undefined,
       }),
     )

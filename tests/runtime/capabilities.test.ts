@@ -218,6 +218,24 @@ describe("runtime capability snapshot", () => {
     expect(modelToolNames).toEqual(expect.arrayContaining(DEXSCREENER_MODEL_TOOL_NAMES));
   });
 
+  test("describes Dexscreener tools clearly enough for ranking versus recency selection", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML.replace("trading:\n  enabled: false", "trading:\n  enabled: true"),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const latestBoosts = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerLatestTokenBoosts");
+    const topBoosts = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerTopTokenBoosts");
+    const tokenBatch = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerTokensByChain");
+
+    expect(latestBoosts?.toolDescription).toContain("what was just boosted");
+    expect(latestBoosts?.toolDescription).toContain("not as the default tool for broad 'hot today' or trending questions");
+    expect(topBoosts?.toolDescription).toContain("what is hot, trending, or most promoted right now");
+    expect(tokenBatch?.toolDescription).toContain("concrete batch comparison or ranking answer");
+  });
+
   test("hides Dexscreener model tools when the integration is disabled", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
       "yaml",

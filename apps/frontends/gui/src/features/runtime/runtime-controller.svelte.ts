@@ -39,6 +39,7 @@ export type AppPhase = "loading" | "landing" | "login" | "app";
 interface RuntimeUiState {
   phase: AppPhase;
   runtimeStatus: string;
+  runtimeSessionId: string;
   activeInstance: GuiInstanceProfileView | null;
   availableInstances: GuiInstanceProfileView[];
   splashError: string;
@@ -96,15 +97,28 @@ const humanizeProfile = (profile: string): string => {
 const formatRuntimeStatus = (profile: string, llmEnabled: boolean): string =>
   `${humanizeProfile(profile)}${llmEnabled ? " | AI on" : " | AI off"}`;
 
+const compactTimeFormatter = new Intl.DateTimeFormat([], { hour: "2-digit", minute: "2-digit" });
+
 export const formatTime = (unixMs: number): string =>
-  new Date(unixMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  compactTimeFormatter
+    .formatToParts(new Date(unixMs))
+    .filter((part, index, parts) =>
+      part.type !== "dayPeriod"
+      && !(part.type === "literal" && (parts[index - 1]?.type === "dayPeriod" || parts[index + 1]?.type === "dayPeriod")),
+    )
+    .map((part) => part.value)
+    .join("")
+    .trim();
 
 export const createRuntimeController = () => {
   let eventsSource: EventSource | null = null;
+  let knownRuntimeSessionId: string | null = null;
+  let runtimeInitializedEntry: GuiActivityEntry | null = null;
 
   const state = $state<RuntimeUiState>({
     phase: "landing",
     runtimeStatus: RUNTIME_STATUS_CHECKING,
+    runtimeSessionId: "",
     activeInstance: null,
     availableInstances: [],
     splashError: "",
@@ -162,6 +176,38 @@ export const createRuntimeController = () => {
     state.signInInstanceId = response.instances[0]?.localInstanceId ?? "";
   };
 
+  const mergeActivityEntries = (entries: GuiActivityEntry[]): GuiActivityEntry[] => {
+    const filteredSourceEntries = entries.filter((entry) => entry.summary !== "Runtime transport initialized");
+    if (!runtimeInitializedEntry) {
+      return filteredSourceEntries;
+    }
+    const entry = runtimeInitializedEntry;
+    const filteredEntries = filteredSourceEntries.filter((activityEntry) => activityEntry.id !== entry.id);
+    return [entry, ...filteredEntries.slice(-(RUNTIME_ACTIVITY_LIMIT - 1))];
+  };
+
+  const applyBootstrapState = (bootstrap: GuiBootstrapResponse): void => {
+    state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
+    if (bootstrap.activeInstance) {
+      state.activeInstance = bootstrap.activeInstance;
+    }
+
+    const runtimeSessionId = bootstrap.runtime.sessionId?.trim() || null;
+    state.runtimeSessionId = runtimeSessionId ?? "";
+    if (runtimeSessionId && runtimeSessionId !== knownRuntimeSessionId) {
+      knownRuntimeSessionId = runtimeSessionId;
+      runtimeInitializedEntry = {
+        id: `runtime-init-${runtimeSessionId}`,
+        source: "runtime",
+        summary: "initialized",
+        timestamp: bootstrap.runtime.bootedAt ?? Date.now(),
+      };
+      state.queueJobs = [];
+      state.scheduleJobs = [];
+      state.activityEntries = [runtimeInitializedEntry];
+    }
+  };
+
   const loadAppData = async (): Promise<void> => {
     const [bootstrap, queue, schedule, activity] = await Promise.all([
       runtimeApi.bootstrap(),
@@ -170,13 +216,10 @@ export const createRuntimeController = () => {
       runtimeApi.activity(RUNTIME_ACTIVITY_LIMIT),
     ]);
 
-    state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
+    applyBootstrapState(bootstrap);
     state.queueJobs = queue.jobs;
     state.scheduleJobs = schedule.jobs;
-    state.activityEntries = activity.entries;
-    if (bootstrap.activeInstance) {
-      state.activeInstance = bootstrap.activeInstance;
-    }
+    state.activityEntries = mergeActivityEntries(activity.entries);
   };
 
   const refreshRuntimePanels = async (): Promise<void> => {
@@ -212,10 +255,7 @@ export const createRuntimeController = () => {
     source.addEventListener("bootstrap", (event) => {
       try {
         const payload = JSON.parse((event as MessageEvent<string>).data) as GuiBootstrapResponse;
-        state.runtimeStatus = formatRuntimeStatus(payload.profile, payload.llmEnabled);
-        if (payload.activeInstance) {
-          state.activeInstance = payload.activeInstance;
-        }
+        applyBootstrapState(payload);
       } catch {
         // Ignore malformed stream events.
       }
@@ -242,7 +282,7 @@ export const createRuntimeController = () => {
     source.addEventListener("activity", (event) => {
       try {
         const payload = JSON.parse((event as MessageEvent<string>).data) as GuiActivityResponse;
-        state.activityEntries = payload.entries;
+        state.activityEntries = mergeActivityEntries(payload.entries);
       } catch {
         // Ignore malformed stream events.
       }
@@ -273,7 +313,7 @@ export const createRuntimeController = () => {
 
     try {
       const bootstrap = await Promise.race([bootstrapPromise, timeoutPromise]);
-      state.runtimeStatus = formatRuntimeStatus(bootstrap.profile, bootstrap.llmEnabled);
+      applyBootstrapState(bootstrap);
       if (resolvePhaseAfterBootstrap(bootstrap.activeInstance) === "app") {
         if (!bootstrap.activeInstance) {
           throw new Error("Missing active instance for app phase.");
@@ -409,23 +449,6 @@ export const createRuntimeController = () => {
       state.secretEntries = payload.entries;
       state.publicRpcOptions = payload.publicRpcOptions;
       state.rpcProviderOptions = payload.rpcProviderOptions;
-
-      const defaultRpcOptionId = payload.publicRpcOptions.find((rpc) => rpc.id === "solana-mainnet-beta")?.id
-        ?? payload.publicRpcOptions[0]?.id
-        ?? "";
-      const defaultRpcUrl = payload.publicRpcOptions.find((rpc) => rpc.id === defaultRpcOptionId)?.url ?? "";
-      const rpcEntry = payload.entries.find((entry) => entry.optionId === "solana-rpc-url");
-      if (rpcEntry && !rpcEntry.value.trim() && defaultRpcOptionId && defaultRpcUrl) {
-        const seeded = await runtimeApi.upsertSecret({
-          optionId: "solana-rpc-url",
-          value: defaultRpcUrl,
-          source: "public",
-          publicRpcId: defaultRpcOptionId,
-        });
-        state.secretEntries = state.secretEntries.map((entry) =>
-          entry.optionId === seeded.entry.optionId ? seeded.entry : entry,
-        );
-      }
     } catch (error) {
       state.secretsError = error instanceof Error ? error.message : "Failed to load secrets.";
     } finally {

@@ -1,6 +1,6 @@
 # Knowledge Manifest
 
-Generated at: 2026-03-13T20:04:59.765Z
+Generated at: 2026-03-16T22:42:16.914Z
 Root: src/ai/brain/knowledge
 
 Use this manifest to choose the smallest correct doc set before opening files.
@@ -36,6 +36,9 @@ Use this manifest to choose the smallest correct doc set before opening files.
 | `src/ai/brain/knowledge/deep-knowledge/solana/dexscreener/api-reference.md` | dexscreener, api, market-data | escalate | Dexscreener endpoints, parameters, or response-shape details are needed |
 | `src/ai/brain/knowledge/deep-knowledge/solana/dexscreener/data-retreival-docs.md` | dexscreener, actions, market-data | escalate | Dexscreener request flows, action patterns, or data retrieval details are needed |
 | `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-agents-llms.md` | helius, agents, docs-index | specialized | you need to discover which Helius agents docs pages exist before opening a deeper reference |
+| `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli-commands.md` | helius, cli, commands, reference | escalate | you need the command-family lookup for the Helius CLI |
+| `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli-readme.md` | helius, cli, examples, readme | specialized | you want upstream CLI repo examples or to cross-check docs against the README |
+| `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli.md` | helius, cli, onboarding, commands | escalate | Helius CLI install, signup, config, or shell-automation details are needed |
 | `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-docs-llms-full.md` | helius, docs-index, discovery | specialized | you need broad Helius doc discovery across multiple product areas |
 | `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-typescript-sdk.md` | helius, typescript, sdk | escalate | TypeScript SDK method shapes, examples, or client behavior are needed |
 | `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius.md` | helius, rpc, das, sdk | escalate | Helius API or SDK details exceed the short ops guide |
@@ -47,7 +50,7 @@ Use this manifest to choose the smallest correct doc set before opening files.
 | `src/ai/brain/knowledge/skills/agent-browser/SKILL.md` | 7 | browser, automation, auth, snapshots | browser automation, authenticated sessions, profiling, or web capture work is requested |
 | `src/ai/brain/knowledge/skills/helius-dflow/SKILL.md` | 12 | helius, dflow, trading, websockets | DFlow market integrations or combined Helius+DFlow flows are requested |
 | `src/ai/brain/knowledge/skills/helius-phantom/SKILL.md` | 16 | helius, phantom, wallet, frontend | Phantom wallet integrations, frontend flows, or wallet app patterns are requested |
-| `src/ai/brain/knowledge/skills/helius/SKILL.md` | 9 | helius, rpc, das, sender | Helius API, SDK, onboarding, webhooks, or RPC workflows are requested |
+| `src/ai/brain/knowledge/skills/helius/SKILL.md` | 10 | helius, rpc, das, sender | Helius API, SDK, onboarding, webhooks, or RPC workflows are requested |
 | `src/ai/brain/knowledge/skills/svm/SKILL.md` | 10 | solana, svm, programs, transactions | Solana VM architecture, execution, or low-level protocol topics are requested |
 
 ## Support Files
@@ -72,6 +75,9 @@ knowledge/
 |       |   `-- data-retreival-docs.md
 |       `-- helius/
 |           |-- helius-agents-llms.md
+|           |-- helius-cli-commands.md
+|           |-- helius-cli-readme.md
+|           |-- helius-cli.md
 |           |-- helius-docs-llms-full.md
 |           |-- helius-typescript-sdk.md
 |           `-- helius.md
@@ -92,6 +98,7 @@ knowledge/
 |   |   `-- SKILL.md
 |   |-- helius/
 |   |   |-- references/
+|   |   |   |-- cli.md
 |   |   |   |-- das.md
 |   |   |   |-- enhanced-transactions.md
 |   |   |   |-- laserstream.md

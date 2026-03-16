@@ -12,11 +12,13 @@
     conversations?: GuiConversationView[];
     activeConversationId?: string | null;
     sending?: boolean;
+    deletingConversations?: boolean;
     chatDisabledReason?: string;
     runtimeError?: string;
     onSelectConversation: (conversationId: string) => void;
     onCreateConversation: () => void;
     onDeleteConversation: () => void;
+    onDeleteConversations: (conversationIds: string[]) => void;
     onSubmit: () => void;
   };
 
@@ -26,18 +28,24 @@
     conversations = [],
     activeConversationId = null,
     sending = false,
+    deletingConversations = false,
     chatDisabledReason = "",
     runtimeError = "",
     onSelectConversation,
     onCreateConversation,
     onDeleteConversation,
+    onDeleteConversations,
     onSubmit,
   }: ChatPanelProps = $props();
 
   let showConversationModal = $state(false);
   let showConversationSettingsMenu = $state(false);
   let showDeleteConversationModal = $state(false);
+  let showDeleteSelectedConversationsModal = $state(false);
+  let conversationSelectionMode = $state(false);
+  let selectedConversationIds = $state<string[]>([]);
   const chatDisabled = $derived(chatDisabledReason.trim().length > 0);
+  const modalBusy = $derived(sending || deletingConversations);
   let messageViewport: HTMLDivElement | null = $state(null);
   let composer: HTMLTextAreaElement | null = $state(null);
   let conversationToggleButton: HTMLButtonElement | null = $state(null);
@@ -52,6 +60,8 @@
   const activeConversationTitle = $derived(
     conversations.find((conversation) => conversation.id === activeConversationId)?.title ?? "this chat",
   );
+  const selectedConversationCount = $derived(selectedConversationIds.length);
+  const hasSelectedConversations = $derived(selectedConversationCount > 0);
 
   type MessagePart = UIMessage["parts"][number];
 
@@ -280,12 +290,59 @@
     submitChat();
   };
 
-  const closeHeaderMenus = (): void => {
+  const resetConversationSelection = (): void => {
+    conversationSelectionMode = false;
+    selectedConversationIds = [];
+  };
+
+  const closeConversationModal = (): void => {
     showConversationModal = false;
+    showDeleteSelectedConversationsModal = false;
+    resetConversationSelection();
+  };
+
+  const toggleConversationSelectionMode = (): void => {
+    if (modalBusy || conversations.length === 0) {
+      return;
+    }
+    if (conversationSelectionMode) {
+      resetConversationSelection();
+      return;
+    }
+    conversationSelectionMode = true;
+    selectedConversationIds = [];
+  };
+
+  const toggleConversationSelection = (conversationId: string): void => {
+    if (modalBusy) {
+      return;
+    }
+    if (selectedConversationIds.includes(conversationId)) {
+      selectedConversationIds = selectedConversationIds.filter((candidateId) => candidateId !== conversationId);
+      return;
+    }
+    selectedConversationIds = [...selectedConversationIds, conversationId];
+  };
+
+  const confirmDeleteSelectedConversations = (): void => {
+    const conversationIds = [...selectedConversationIds];
+    if (conversationIds.length === 0 || modalBusy) {
+      return;
+    }
+    closeConversationModal();
+    onDeleteConversations(conversationIds);
+  };
+
+  const closeHeaderMenus = (): void => {
+    closeConversationModal();
     showConversationSettingsMenu = false;
   };
 
   const onGlobalPointerDown = (event: PointerEvent): void => {
+    if (showDeleteConversationModal || showDeleteSelectedConversationsModal) {
+      return;
+    }
+
     const target = event.target;
     if (!(target instanceof Node)) {
       return;
@@ -294,7 +351,7 @@
     const isInsideConversationMenu =
       conversationModalElement?.contains(target) || conversationToggleButton?.contains(target);
     if (!isInsideConversationMenu) {
-      showConversationModal = false;
+      closeConversationModal();
     }
 
     const isInsideSettingsMenu = settingsMenuElement?.contains(target) || settingsToggleButton?.contains(target);
@@ -313,6 +370,11 @@
       return;
     }
 
+    if (showDeleteSelectedConversationsModal) {
+      showDeleteSelectedConversationsModal = false;
+      return;
+    }
+
     closeHeaderMenus();
   };
 
@@ -326,6 +388,16 @@
   $effect(() => {
     void input;
     resizeComposer();
+  });
+
+  $effect(() => {
+    const conversationIdSet = new Set(conversations.map((conversation) => conversation.id));
+    if (selectedConversationIds.some((conversationId) => !conversationIdSet.has(conversationId))) {
+      selectedConversationIds = selectedConversationIds.filter((conversationId) => conversationIdSet.has(conversationId));
+    }
+    if (conversationSelectionMode && conversations.length === 0) {
+      resetConversationSelection();
+    }
   });
 
   onMount(() => {
@@ -352,9 +424,10 @@
         aria-label="Conversation settings"
         aria-haspopup="menu"
         aria-expanded={showConversationSettingsMenu}
+        disabled={deletingConversations}
         onclick={() => {
           showConversationSettingsMenu = !showConversationSettingsMenu;
-          showConversationModal = false;
+          closeConversationModal();
         }}
       >
         <svg class="settings-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -367,6 +440,7 @@
         type="button"
         class="conversation-picker-button"
         aria-label="Create new conversation"
+        disabled={deletingConversations}
         onclick={() => {
           onCreateConversation();
           closeHeaderMenus();
@@ -383,8 +457,13 @@
         aria-label="Open conversations"
         aria-haspopup="dialog"
         aria-expanded={showConversationModal}
+        disabled={deletingConversations}
         onclick={() => {
-          showConversationModal = !showConversationModal;
+          if (showConversationModal) {
+            closeConversationModal();
+          } else {
+            showConversationModal = true;
+          }
           showConversationSettingsMenu = false;
         }}
       >
@@ -400,36 +479,91 @@
   {#if showConversationModal}
     <section bind:this={conversationModalElement} class="conversation-modal" aria-label="Conversations">
       <header class="conversation-modal-header">
-        <span class="conversation-modal-title">conversations</span>
-        <button
-          type="button"
-          class="conversation-modal-close"
-          aria-label="Close conversations"
-          onclick={() => {
-            showConversationModal = false;
-          }}
-        >
-          <svg class="conversation-modal-close-icon" viewBox="0 0 8 8" aria-hidden="true" focusable="false">
-            <path d="M1 1L7 7M7 1L1 7" />
-          </svg>
-        </button
-        >
+        <div class="conversation-modal-heading">
+          <span class="conversation-modal-title">conversations</span>
+        </div>
+        <div class="conversation-modal-header-actions">
+          <button
+            type="button"
+            class="conversation-modal-delete-action"
+            class:is-visible={conversationSelectionMode}
+            aria-hidden={!conversationSelectionMode}
+            disabled={!conversationSelectionMode || !hasSelectedConversations || modalBusy}
+            onclick={() => {
+              showDeleteSelectedConversationsModal = true;
+            }}
+          >
+            Delete
+          </button>
+          <button
+            type="button"
+            class="conversation-modal-icon-button conversation-modal-select-toggle"
+            aria-label={conversationSelectionMode ? "Exit conversation selection mode" : "Select conversations to delete"}
+            aria-pressed={conversationSelectionMode}
+            disabled={modalBusy || conversations.length === 0}
+            onclick={toggleConversationSelectionMode}
+          >
+            <svg class="conversation-modal-trash-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+              <path d="M3.5 4.5h9" />
+              <path d="M6 2.7h4" />
+              <path d="M5 4.5v7.1c0 .5.4.9.9.9h4.2c.5 0 .9-.4.9-.9V4.5" />
+              <path d="M6.8 6.5v4.2M9.2 6.5v4.2" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            class="conversation-modal-icon-button conversation-modal-close"
+            aria-label="Close conversations"
+            onclick={closeConversationModal}
+          >
+            <svg class="conversation-modal-close-icon" viewBox="0 0 8 8" aria-hidden="true" focusable="false">
+              <path d="M1 1L7 7M7 1L1 7" />
+            </svg>
+          </button
+          >
+        </div>
       </header>
       <div class="conversation-modal-list">
         {#if conversations.length === 0}
           <p class="conversation-empty">No conversations yet</p>
         {:else}
           {#each conversations as conversation (conversation.id)}
-            <button
-              type="button"
-              class="conversation-option {activeConversationId === conversation.id ? 'active' : ''}"
-              onclick={() => {
-                onSelectConversation(conversation.id);
-                showConversationModal = false;
-              }}
-            >
-              {conversation.title}
-            </button>
+            {@const isSelected = selectedConversationIds.includes(conversation.id)}
+            {#if conversationSelectionMode}
+              <label
+                class="conversation-option conversation-option-selectable {isSelected ? 'selected' : ''} {activeConversationId === conversation.id ? 'active' : ''}"
+              >
+                <input
+                  type="checkbox"
+                  class="conversation-option-checkbox"
+                  checked={isSelected}
+                  disabled={modalBusy}
+                  onchange={() => {
+                    toggleConversationSelection(conversation.id);
+                  }}
+                />
+                <span class="conversation-option-checkbox-frame" aria-hidden="true">
+                  {#if isSelected}
+                    <svg class="conversation-option-check-icon" viewBox="0 0 10 10" focusable="false">
+                      <path d="M1.5 5.2 4 7.7 8.5 2.8" />
+                    </svg>
+                  {/if}
+                </span>
+                <span class="conversation-option-title">{conversation.title}</span>
+              </label>
+            {:else}
+              <button
+                type="button"
+                class="conversation-option {activeConversationId === conversation.id ? 'active' : ''}"
+                disabled={modalBusy}
+                onclick={() => {
+                  onSelectConversation(conversation.id);
+                  closeConversationModal();
+                }}
+              >
+                {conversation.title}
+              </button>
+            {/if}
           {/each}
         {/if}
       </div>
@@ -441,7 +575,7 @@
       <button
         type="button"
         class="conversation-settings-option danger"
-        disabled={!activeConversationId || sending}
+        disabled={!activeConversationId || modalBusy}
         onclick={() => {
           showConversationSettingsMenu = false;
           showDeleteConversationModal = true;
@@ -533,13 +667,13 @@
       bind:value={input}
       class="chat-composer"
       placeholder="Type a message"
-      disabled={chatDisabled}
+      disabled={chatDisabled || deletingConversations}
       rows="1"
       spellcheck="false"
       oninput={resizeComposer}
       onkeydown={onComposerKeyDown}
     ></textarea>
-    <RetroButton type="submit" disabled={sending || chatDisabled}>Send</RetroButton>
+    <RetroButton type="submit" disabled={sending || chatDisabled || deletingConversations}>Send</RetroButton>
   </form>
 
   {#if showDeleteConversationModal}
@@ -551,18 +685,43 @@
       <div class="delete-conversation-actions">
         <RetroButton
           variant="secondary"
-          disabled={sending}
+          disabled={modalBusy}
           on:click={() => {
             showDeleteConversationModal = false;
           }}>Cancel</RetroButton
         >
         <RetroButton
           variant="danger"
-          disabled={!activeConversationId || sending}
+          disabled={!activeConversationId || modalBusy}
           on:click={() => {
             showDeleteConversationModal = false;
             onDeleteConversation();
           }}>Delete</RetroButton
+        >
+      </div>
+    </RetroModal>
+  {/if}
+
+  {#if showDeleteSelectedConversationsModal}
+    <RetroModal title="Delete conversations">
+      <p class="delete-conversation-copy">Are you sure you want to delete all of these conversations?</p>
+      <p class="delete-conversation-copy">
+        <span>{selectedConversationCount}</span>
+        conversation{selectedConversationCount === 1 ? "" : "s"} selected.
+      </p>
+      <p class="delete-conversation-copy muted">This removes the conversation history for each selected chat.</p>
+      <div class="delete-conversation-actions">
+        <RetroButton
+          variant="secondary"
+          disabled={modalBusy}
+          on:click={() => {
+            showDeleteSelectedConversationsModal = false;
+          }}>Cancel</RetroButton
+        >
+        <RetroButton
+          variant="danger"
+          disabled={!hasSelectedConversations || modalBusy}
+          on:click={confirmDeleteSelectedConversations}>Delete</RetroButton
         >
       </div>
     </RetroModal>
@@ -606,6 +765,11 @@
     cursor: pointer;
     font-size: 0.68rem;
     line-height: 1;
+  }
+
+  .conversation-picker-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
   }
 
   .conversation-picker-toggle {
@@ -681,6 +845,13 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--tc-space-2);
+  }
+
+  .conversation-modal-heading {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
   }
 
   .conversation-modal-title {
@@ -688,10 +859,43 @@
     font-size: var(--tc-type-md);
     font-weight: 700;
     line-height: 1.2;
-    text-transform: uppercase;
   }
 
-  .conversation-modal-close {
+  .conversation-modal-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--tc-space-1);
+  }
+
+  .conversation-modal-delete-action {
+    min-width: 4.75rem;
+    height: 18px;
+    border: var(--tc-border-muted);
+    background: transparent;
+    color: var(--tc-color-red);
+    padding: 0 0.45rem;
+    font-family: inherit;
+    font-size: 0.64rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  .conversation-modal-delete-action.is-visible {
+    visibility: visible;
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  .conversation-modal-delete-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .conversation-modal-icon-button {
     border: var(--tc-border-muted);
     background: transparent;
     color: var(--tc-color-gray-2);
@@ -701,6 +905,25 @@
     cursor: pointer;
     display: grid;
     place-items: center;
+    flex-shrink: 0;
+  }
+
+  .conversation-modal-icon-button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .conversation-modal-close {
+    color: var(--tc-color-gray-2);
+  }
+
+  .conversation-modal-select-toggle {
+    color: var(--tc-color-red);
+  }
+
+  .conversation-modal-select-toggle[aria-pressed="true"] {
+    border-color: var(--tc-color-red);
+    background: color-mix(in srgb, var(--tc-color-red) 14%, transparent);
   }
 
   .conversation-modal-close-icon {
@@ -708,6 +931,16 @@
     height: 8px;
     stroke: currentColor;
     stroke-width: 1.25;
+    fill: none;
+  }
+
+  .conversation-modal-trash-icon {
+    width: 10px;
+    height: 10px;
+    stroke: currentColor;
+    stroke-width: 1.15;
+    stroke-linecap: square;
+    stroke-linejoin: bevel;
     fill: none;
   }
 
@@ -735,6 +968,9 @@
     text-transform: uppercase;
     text-align: left;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--tc-space-2);
   }
 
   .conversation-option:last-child {
@@ -743,6 +979,55 @@
 
   .conversation-option.active {
     color: var(--tc-color-turquoise);
+  }
+
+  .conversation-option:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .conversation-option-selectable {
+    position: relative;
+  }
+
+  .conversation-option.selected {
+    color: var(--tc-color-cream);
+    background: color-mix(in srgb, var(--tc-color-red) 10%, transparent);
+  }
+
+  .conversation-option-checkbox {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .conversation-option-checkbox-frame {
+    width: 13px;
+    height: 13px;
+    border: var(--tc-border-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--tc-color-red);
+    background: transparent;
+  }
+
+  .conversation-option-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .conversation-option-check-icon {
+    width: 8px;
+    height: 8px;
+    stroke: currentColor;
+    stroke-width: 1.4;
+    stroke-linecap: square;
+    stroke-linejoin: bevel;
+    fill: none;
   }
 
   .conversation-settings-option {

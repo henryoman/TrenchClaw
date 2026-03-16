@@ -67,7 +67,7 @@ const renderProfileMeaning = (profile: string): string => {
     case "safe":
       return "read-first operation, no direct model file writes, and dangerous actions remain constrained.";
     case "dangerous":
-      return "mutating runtime actions may be available, and dangerous actions can still require explicit confirmation.";
+      return "mutating runtime actions are available for testing, and extra confirmation only applies if live settings explicitly turn it back on.";
     case "veryDangerous":
       return "more execution paths are enabled, but runtime policy and confirmation checks still apply where configured.";
     default:

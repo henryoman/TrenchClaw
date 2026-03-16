@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { runtimeApi } from "../../runtime-api";
   import RetroButton from "../ui/RetroButton.svelte";
 
-  const SOL_PRICE_URL =
-    "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd&include_last_updated_at=true";
   const PRICE_REFRESH_MS = 60_000;
+  const PRICE_RETRY_MS = 5_000;
   const priceFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -17,53 +17,69 @@
   let refreshing = $state(false);
 
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
-  let activeController: AbortController | null = null;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  let activeRequestId = 0;
 
-  const formatUpdatedAt = (unixSeconds: number): string =>
-    new Date(unixSeconds * 1_000).toLocaleTimeString([], {
+  const formatUpdatedAt = (unixMs: number): string =>
+    new Date(unixMs).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
 
+  const clearRetryTimer = (): void => {
+    if (!retryTimer) {
+      return;
+    }
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  };
+
+  const scheduleRetry = (): void => {
+    if (retryTimer) {
+      return;
+    }
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      void loadPrice();
+    }, PRICE_RETRY_MS);
+  };
+
   const loadPrice = async (): Promise<void> => {
-    activeController?.abort();
-    const controller = new AbortController();
-    activeController = controller;
+    const requestId = ++activeRequestId;
     refreshing = true;
+    clearRetryTimer();
 
     try {
-      const response = await fetch(SOL_PRICE_URL, { signal: controller.signal });
-      if (!response.ok) {
-        throw new Error(`Price request failed (${response.status})`);
-      }
-
-      const payload = (await response.json()) as {
-        solana?: {
-          usd?: number;
-          last_updated_at?: number;
-        };
-      };
-      const usdPrice = payload.solana?.usd;
-      if (typeof usdPrice !== "number" || !Number.isFinite(usdPrice)) {
-        throw new Error("Missing SOL price");
-      }
-
-      priceLabel = priceFormatter.format(usdPrice);
-      priceUpdatedAt =
-        typeof payload.solana?.last_updated_at === "number"
-          ? `Updated ${formatUpdatedAt(payload.solana.last_updated_at)}`
-          : "";
-    } catch (error) {
-      if (error instanceof Error && error.name === "AbortError") {
+      const payload = await runtimeApi.solPrice();
+      if (requestId !== activeRequestId) {
         return;
       }
-      priceLabel = "Unavailable";
-      priceUpdatedAt = "";
-    } finally {
-      if (activeController === controller) {
-        activeController = null;
+
+      if (typeof payload.priceUsd === "number" && Number.isFinite(payload.priceUsd)) {
+        priceLabel = priceFormatter.format(payload.priceUsd);
+        priceUpdatedAt =
+          typeof payload.updatedAt === "number"
+            ? `Updated ${formatUpdatedAt(payload.updatedAt)}`
+            : "";
+        return;
       }
-      refreshing = false;
+
+      if (priceLabel === "Loading...") {
+        priceUpdatedAt = "";
+        scheduleRetry();
+      }
+    } catch {
+      if (requestId !== activeRequestId) {
+        return;
+      }
+      if (priceLabel === "Loading...") {
+        priceUpdatedAt = "";
+        scheduleRetry();
+      }
+    } finally {
+      if (requestId === activeRequestId) {
+        refreshing = false;
+      }
     }
   };
 
@@ -77,7 +93,7 @@
       if (refreshTimer) {
         clearInterval(refreshTimer);
       }
-      activeController?.abort();
+      clearRetryTimer();
     };
   });
 </script>

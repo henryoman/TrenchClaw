@@ -15,6 +15,46 @@ export const installTargets = [
   },
 ] as const;
 
+export const docsPrerequisiteBootstrap = {
+  label: 'Checker + tool updater',
+  description: 'Run this first if you want the helper-managed prerequisite install path before digging into deeper setup.',
+  command: 'curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh',
+  note: 'Current scope: this script installs or updates Solana CLI and Helius CLI. For Helius it prefers Bun, then pnpm, then npm, and prints manual fallback commands if none are installed.',
+} as const;
+
+export const docsPrerequisites = [
+  {
+    label: 'Solana CLI',
+    kind: 'Helper-managed or separate install',
+    description: 'Needed for CLI-driven Solana workflows, wallet commands, and chain-side debugging.',
+    command: 'sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"',
+  },
+  {
+    label: 'Helius CLI',
+    kind: 'Helper-managed or separate install',
+    description: 'Recommended for Helius-first operator workflows and project-level Helius management.',
+    command: 'npm install -g helius-cli@latest',
+  },
+  {
+    label: 'Helius API key',
+    kind: 'Required key',
+    description: 'Needed for Helius-backed RPC, DAS, and other runtime integrations that depend on Helius.',
+    command: null,
+  },
+  {
+    label: 'OpenRouter API key',
+    kind: 'Required key',
+    description: 'Needed for the default AI provider path used by TrenchClaw.',
+    command: null,
+  },
+  {
+    label: 'Jupiter Ultra API key',
+    kind: 'Required key',
+    description: 'Needed for Jupiter Ultra access when swap flows call the Ultra API.',
+    command: null,
+  },
+] as const;
+
 export const principles = [
   {
     title: 'Automate repeatable tasks',

@@ -10,6 +10,7 @@ interface ChatUiState {
   runtimeError: string;
   activeConversationId: string | null;
   conversations: GuiConversationView[];
+  deletingConversations: boolean;
 }
 
 const toFallbackTitle = (unixMs: number): string => new Date(unixMs).toISOString();
@@ -95,6 +96,7 @@ export const createChatController = () => {
     runtimeError: "",
     activeConversationId: null,
     conversations: [],
+    deletingConversations: false,
   });
   const draftConversationIds = new Set<string>();
 
@@ -176,9 +178,10 @@ export const createChatController = () => {
     const response = await runtimeApi.conversations();
     draftConversationIds.clear();
     state.conversations = response.conversations.map(toConversationView);
-    if (!state.activeConversationId && state.conversations[0]) {
-      state.activeConversationId = state.conversations[0].id;
+    if (state.activeConversationId && state.conversations.some((conversation) => conversation.id === state.activeConversationId)) {
+      return;
     }
+    state.activeConversationId = state.conversations[0]?.id ?? null;
   };
 
   const selectConversation = async (conversationId: string): Promise<void> => {
@@ -210,6 +213,9 @@ export const createChatController = () => {
   };
 
   const createNewConversation = (): void => {
+    if (state.deletingConversations) {
+      return;
+    }
     const now = Date.now();
     const conversationId = `chat-${crypto.randomUUID()}`;
     state.activeConversationId = conversationId;
@@ -227,40 +233,77 @@ export const createChatController = () => {
     chat.messages = [];
   };
 
-  const deleteActiveConversation = async (): Promise<void> => {
-    const conversationId = state.activeConversationId?.trim() ?? "";
-    if (!conversationId || isSending()) {
+  const deleteConversations = async (conversationIds: string[]): Promise<void> => {
+    const normalizedConversationIds = Array.from(new Set(
+      conversationIds
+        .map((conversationId) => conversationId.trim())
+        .filter((conversationId) => conversationId.length > 0),
+    ));
+    if (normalizedConversationIds.length === 0 || isSending() || state.deletingConversations) {
       return;
     }
 
     state.runtimeError = "";
+    state.deletingConversations = true;
+    const deletedConversationIds = new Set(normalizedConversationIds);
+    const activeConversationId = state.activeConversationId?.trim() ?? "";
+    const activeConversationDeleted = activeConversationId.length > 0 && deletedConversationIds.has(activeConversationId);
+    const nextActiveConversationId = activeConversationDeleted
+      ? state.conversations.find((conversation) => !deletedConversationIds.has(conversation.id))?.id ?? null
+      : state.activeConversationId;
+    const persistedConversationIds: string[] = [];
 
     try {
-      if (draftConversationIds.has(conversationId)) {
-        draftConversationIds.delete(conversationId);
-      } else {
-        await runtimeApi.deleteConversation(conversationId);
+      for (const conversationId of normalizedConversationIds) {
+        if (draftConversationIds.has(conversationId)) {
+          draftConversationIds.delete(conversationId);
+          continue;
+        }
+        persistedConversationIds.push(conversationId);
+      }
+      await Promise.all(persistedConversationIds.map((conversationId) => runtimeApi.deleteConversation(conversationId)));
+
+      state.conversations = state.conversations.filter((conversation) => !deletedConversationIds.has(conversation.id));
+      state.activeConversationId = nextActiveConversationId;
+
+      if (!activeConversationDeleted) {
+        return;
       }
 
-      const nextConversationId = state.conversations.find((conversation) => conversation.id !== conversationId)?.id ?? null;
-      const nextConversations = state.conversations.filter((conversation) => conversation.id !== conversationId);
-      state.conversations = nextConversations;
-      state.activeConversationId = nextConversationId;
-
-      if (!nextConversationId) {
+      if (!nextActiveConversationId) {
         chat.messages = [];
         return;
       }
 
-      await selectConversation(nextConversationId);
+      await selectConversation(nextActiveConversationId);
     } catch (error) {
       state.runtimeError = toDisplayErrorText(error);
+      try {
+        await refreshConversations();
+        if (!state.activeConversationId) {
+          chat.messages = [];
+          return;
+        }
+        await selectConversation(state.activeConversationId);
+      } catch {
+        // Keep the original delete error visible if refresh also fails.
+      }
+    } finally {
+      state.deletingConversations = false;
     }
+  };
+
+  const deleteActiveConversation = async (): Promise<void> => {
+    const conversationId = state.activeConversationId?.trim() ?? "";
+    if (!conversationId) {
+      return;
+    }
+    await deleteConversations([conversationId]);
   };
 
   const submitChat = async (onAfterSend: (() => Promise<void>) | null = null): Promise<void> => {
     const nextMessage = state.input.trim();
-    if (!nextMessage || isSending()) {
+    if (!nextMessage || isSending() || state.deletingConversations) {
       return;
     }
 
@@ -288,6 +331,7 @@ export const createChatController = () => {
     isSending,
     initialize,
     createNewConversation,
+    deleteConversations,
     deleteActiveConversation,
     selectConversation,
     submitChat,

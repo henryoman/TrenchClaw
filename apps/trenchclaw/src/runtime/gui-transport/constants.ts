@@ -56,13 +56,6 @@ export const RPC_PROVIDER_OPTIONS: GuiRpcProviderOptionView[] = [
     placeholder: "https://your-chainstack-endpoint.example",
     mode: "endpoint-url",
   },
-  {
-    id: "temporal",
-    label: "Temporal",
-    credentialLabel: "RPC endpoint URL",
-    placeholder: "https://your-temporal-endpoint.example",
-    mode: "endpoint-url",
-  },
 ];
 
 export const SECRET_OPTIONS: GuiSecretOptionView[] = [
