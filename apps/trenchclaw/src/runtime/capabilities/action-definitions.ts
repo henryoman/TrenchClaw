@@ -352,8 +352,8 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: getManagedWalletContentsAction,
-    description: "Fetch full managed-wallet contents: SOL plus SPL and Token-2022 balances for each wallet.",
-    purpose: "Answer 'what other coins are in our managed wallets' directly without external explorers or shell commands.",
+    description: "Fetch full managed-wallet contents: SOL, fungible balances, and collectible counts for each wallet.",
+    purpose: "Answer managed-wallet holdings questions directly, preferring Helius DAS metadata when Helius is the active private RPC.",
     tags: ["wallets", "balances", "tokens", "read"],
     exampleInput: {
       walletGroup: "practice-wallets",

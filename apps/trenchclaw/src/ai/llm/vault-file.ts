@@ -10,6 +10,9 @@ export const DEFAULT_VAULT_JSON = {
       "http-url": "",
       source: "custom",
       "public-id": "",
+      "provider-id": "",
+      "api-key": "",
+      "ws-url": "",
     },
   },
   llm: {

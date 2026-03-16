@@ -6,6 +6,7 @@ import type {
   GuiInstanceProfileView,
   GuiPublicRpcOptionView,
   GuiQueueJobView,
+  GuiRpcProviderOptionView,
   GuiScheduleJobView,
   GuiSecretEntryView,
   GuiSecretOptionView,
@@ -62,11 +63,10 @@ interface RuntimeUiState {
   tradingSettings: GuiTradingSettingsView | null;
   tradingSettingsBusy: boolean;
   tradingSettingsError: string;
-  vaultFilePath: string;
-  vaultTemplatePath: string;
   secretsOptions: GuiSecretOptionView[];
   secretEntries: GuiSecretEntryView[];
   publicRpcOptions: GuiPublicRpcOptionView[];
+  rpcProviderOptions: GuiRpcProviderOptionView[];
   secretsBusy: boolean;
   secretsError: string;
   llmCheckBusy: boolean;
@@ -129,11 +129,10 @@ export const createRuntimeController = () => {
     tradingSettings: null,
     tradingSettingsBusy: false,
     tradingSettingsError: "",
-    vaultFilePath: "",
-    vaultTemplatePath: "",
     secretsOptions: [],
     secretEntries: [],
     publicRpcOptions: [],
+    rpcProviderOptions: [],
     secretsBusy: false,
     secretsError: "",
     llmCheckBusy: false,
@@ -406,11 +405,10 @@ export const createRuntimeController = () => {
     state.secretsError = "";
     try {
       const payload = await runtimeApi.secrets();
-      state.vaultFilePath = payload.filePath;
-      state.vaultTemplatePath = payload.templatePath;
       state.secretsOptions = payload.options;
       state.secretEntries = payload.entries;
       state.publicRpcOptions = payload.publicRpcOptions;
+      state.rpcProviderOptions = payload.rpcProviderOptions;
 
       const defaultRpcOptionId = payload.publicRpcOptions.find((rpc) => rpc.id === "solana-mainnet-beta")?.id
         ?? payload.publicRpcOptions[0]?.id
@@ -424,7 +422,6 @@ export const createRuntimeController = () => {
           source: "public",
           publicRpcId: defaultRpcOptionId,
         });
-        state.vaultFilePath = seeded.filePath;
         state.secretEntries = state.secretEntries.map((entry) =>
           entry.optionId === seeded.entry.optionId ? seeded.entry : entry,
         );
@@ -506,12 +503,12 @@ export const createRuntimeController = () => {
     value: string;
     source?: "custom" | "public";
     publicRpcId?: string | null;
+    rpcProviderId?: string | null;
   }): Promise<void> => {
     state.secretsBusy = true;
     state.secretsError = "";
     try {
       const result = await runtimeApi.upsertSecret(input);
-      state.vaultFilePath = result.filePath;
       state.secretEntries = state.secretEntries.map((entry) =>
         entry.optionId === result.entry.optionId ? result.entry : entry,
       );
@@ -529,15 +526,15 @@ export const createRuntimeController = () => {
     state.secretsBusy = true;
     state.secretsError = "";
     try {
-      const result = await runtimeApi.deleteSecret({ optionId });
-      state.vaultFilePath = result.filePath;
+      await runtimeApi.deleteSecret({ optionId });
       state.secretEntries = state.secretEntries.map((entry) =>
         entry.optionId === optionId
           ? {
               ...entry,
               value: "",
-              source: "custom",
-              publicRpcId: null,
+              source: optionId === "solana-rpc-url" ? "public" : "custom",
+              publicRpcId: optionId === "solana-rpc-url" ? "solana-mainnet-beta" : null,
+              rpcProviderId: null,
             }
           : entry,
       );

@@ -578,6 +578,7 @@ const formatWalletContentsFastPathText = (data: unknown): string | null => {
       walletName: typeof entry.walletName === "string" ? entry.walletName : "",
       address: typeof entry.address === "string" ? entry.address : "",
       balanceSol: typeof entry.balanceSol === "number" ? entry.balanceSol : 0,
+      collectibleCount: typeof entry.collectibleCount === "number" ? entry.collectibleCount : 0,
       tokenBalances: Array.isArray(entry.tokenBalances)
         ? entry.tokenBalances.filter((token): token is Record<string, unknown> => isRecord(token))
         : [],
@@ -594,12 +595,19 @@ const formatWalletContentsFastPathText = (data: unknown): string | null => {
       ? ["  Tokens: none"]
       : wallet.tokenBalances.slice(0, 6).map((token) => {
           const mintAddress = typeof token.mintAddress === "string" ? token.mintAddress : "unknown-mint";
+          const symbol = typeof token.symbol === "string" && token.symbol.trim().length > 0 ? token.symbol.trim() : null;
           const balanceUiString = typeof token.balanceUiString === "string" ? token.balanceUiString : "0";
-          return `  Token ${mintAddress}: ${balanceUiString}`;
+          const valueUsd = typeof token.valueUsd === "number" && Number.isFinite(token.valueUsd) ? token.valueUsd : null;
+          const label = symbol ? `${symbol} (${mintAddress})` : mintAddress;
+          return `  Token ${label}: ${balanceUiString}${valueUsd !== null ? ` (~$${valueUsd.toFixed(2)})` : ""}`;
         });
+    const collectibleSummary = wallet.collectibleCount > 0
+      ? [`  Collectibles: ${wallet.collectibleCount}`]
+      : [];
 
     return [
       `- ${wallet.walletName}: ${wallet.balanceSol} SOL (${wallet.address})`,
+      ...collectibleSummary,
       ...tokenSummary,
     ];
   });
@@ -619,9 +627,9 @@ const formatWalletContentsRateLimitText = (toolName: string, error: string): str
     || normalized.includes("rate limit")
   ) {
     return [
-      "I couldn't load wallet contents because the current Solana RPC endpoint is rate-limiting this request.",
-      "The runtime is using a public RPC URL, and `getManagedWalletContents` is hitting `429 Too Many Requests`.",
-      "Configure a dedicated RPC provider or try again after the rate limit cools down.",
+      "I couldn't load wallet contents because the current RPC provider is rate-limiting this request.",
+      "`getManagedWalletContents` hit `429 Too Many Requests` while reading managed-wallet balances.",
+      "Try again after the cooldown, or configure a dedicated private RPC provider such as Helius.",
     ].join("\n");
   }
 

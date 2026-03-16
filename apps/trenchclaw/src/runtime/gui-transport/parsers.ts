@@ -303,11 +303,14 @@ export const parseUpsertSecretRequest = async (request: Request): Promise<GuiUps
     const source = payload.source === "public" || payload.source === "custom" ? payload.source : undefined;
     const publicRpcId =
       payload.publicRpcId === null || typeof payload.publicRpcId === "string" ? payload.publicRpcId : undefined;
+    const rpcProviderId =
+      payload.rpcProviderId === null || typeof payload.rpcProviderId === "string" ? payload.rpcProviderId : undefined;
     return {
       optionId,
       value: payload.value,
       source,
       publicRpcId,
+      rpcProviderId,
     };
   } catch {
     return null;

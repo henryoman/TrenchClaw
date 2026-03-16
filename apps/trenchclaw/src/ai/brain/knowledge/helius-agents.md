@@ -1,23 +1,29 @@
 # Helius Quick Ops: CLI + RPC Command Cookbook
 
-Last verified: 2026-03-03
+Last verified: 2026-03-15
 
 Use this file for high-signal Helius operations: wallet creation, funding, transfers, and direct RPC/DAS JSON methods.
 
 ## One-Time Setup
 
 ```bash
-# Helius CLI
-npm install -g helius-cli
+# Helius CLI (preferred here: Bun global install)
+bun add -g helius-cli
+
+# npm fallback
+# npm install -g helius-cli
 
 # Solana + SPL CLI (if missing)
 # https://docs.solana.com/cli/install-solana-cli-tools
 # https://spl.solana.com/token
 
-# Authenticate with Helius
+# Existing users can set the key directly
+helius config set-api-key "$HELIUS_API_KEY"
+
+# Or do the full signup flow
 helius keygen
 helius signup --json
-helius login --keypair ~/.helius-cli/keypair.json --json
+helius login --keypair ~/.helius/keypair.json --json
 
 # Grab a key, then export endpoint
 export HELIUS_API_KEY="<your_api_key>"
@@ -32,6 +38,9 @@ Useful checks:
 - `helius apikeys create --json`
 - `helius rpc --json`
 - `helius usage --json`
+- `helius asset owner <wallet> --json`
+- `helius asset get <mint> --json`
+- `helius wallet balances <wallet> --json`
 
 ## Wallet Ops (Actually Useful)
 
@@ -140,6 +149,26 @@ rpc "getSignaturesForAsset" "[{\"id\":\"${ASSET_ID}\",\"page\":1,\"limit\":20}]"
 rpc "getTransactionsForAddress" "[{\"address\":\"${OWNER}\",\"limit\":20}]" | jq '.result[0]'
 ```
 
+## Helius CLI DAS Shortcuts
+
+Current Helius CLI releases expose DAS directly:
+
+```bash
+helius asset owner "${OWNER}" --limit 1000 --json
+helius asset get "${ASSET_ID}" --json
+helius asset search --owner "${OWNER}" --json
+helius asset token-accounts --owner "${OWNER}" --json
+```
+
+Use the CLI for shell scripts and operator debugging. Inside TrenchClaw, prefer typed runtime actions over shell commands.
+
+## TrenchClaw Managed Wallet Contents
+
+- `getManagedWalletContents` is the primary managed-wallet holdings read
+- when Helius is the selected private RPC, it prefers DAS `getAssetsByOwner`
+- when Helius is not selected, it falls back to raw `getBalance` plus `getTokenAccountsByOwner`
+- Helius-backed reads can return token metadata, USD pricing, and collectible counts in addition to balances
+
 ## Endpoint References
 
 - Mainnet RPC (Gateway preferred): `https://beta.helius-rpc.com/?api-key=YOUR_API_KEY`
@@ -162,6 +191,7 @@ Helius-specific / closely related action entry points:
 - `src/solana/actions/data-fetch/rpc/getMarketData.ts`
 - `src/solana/actions/data-fetch/rpc/getTokenMetadata.ts`
 - `src/solana/actions/data-fetch/rpc/getTokenPrice.ts`
+- `src/solana/actions/data-fetch/runtime/getManagedWalletContents.ts`
 - `src/solana/actions/wallet-based/read-only/checkBalance.ts`
 - `src/solana/actions/wallet-based/read-only/checkSolBalance.ts`
 - `src/solana/actions/wallet-based/read-only/getWalletState.ts`
@@ -169,6 +199,7 @@ Helius-specific / closely related action entry points:
 - `src/solana/actions/wallet-based/swap/rpc/quoteSwap.ts`
 - `src/solana/actions/wallet-based/swap/ultra/swap.ts`
 - `src/solana/actions/wallet-based/transfer/transfer.ts`
+- `src/solana/lib/rpc/helius.ts`
 
 ## Runtime Integration Points
 
@@ -185,8 +216,16 @@ Helius-specific / closely related action entry points:
 
 Recommended Helius values:
 
-- `rpc.helius.http-url`: `https://beta.helius-rpc.com/?api-key=`
-- `rpc.helius.ws-url`: `wss://beta.helius-rpc.com/?api-key=`
+- `rpc.default.provider-id`: `helius`
+- `rpc.default.api-key`: `<your_api_key>`
+- `rpc.default.http-url`: `https://mainnet.helius-rpc.com/?api-key=<your_api_key>`
+- `rpc.default.ws-url`: `wss://mainnet.helius-rpc.com/?api-key=<your_api_key>`
+
+Legacy compatibility keys still recognized:
+
+- `rpc.helius.http-url`
+- `rpc.helius.ws-url`
+- `rpc.helius.api-key`
 
 RPC selection policy:
 
@@ -208,6 +247,6 @@ Related env vars used by runtime routing:
 
 ## Where To Find More Helius Info
 
-- Deep reference (repo-authored): `src/ai/brain/knowledge/deep-knowledge/helius.md`
+- Deep reference (repo-authored): `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius.md`
 - Agents docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/helius-agents-llms.md`
 - Full docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/helius-docs-llms-full.md`

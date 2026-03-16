@@ -23,6 +23,8 @@ The GUI does not currently provide a full wallet create or rename flow.
 - `createWalletGroupDirectory`
 - `createWallets`
 - `renameWallets`
+- `getManagedWalletContents`
+- `getManagedWalletSolBalances`
 
 `createWallets` supports:
 
@@ -39,8 +41,20 @@ The GUI does not currently provide a full wallet create or rename flow.
 
 Wallet access depends on an active instance.
 
+## Wallet Contents Reads
+
+`getManagedWalletContents` is the main holdings read for managed wallets.
+
+- returns per-wallet SOL balances plus fungible token balances
+- aggregates totals across the selected wallet set
+- when Helius is the selected private RPC, it prefers Helius DAS for richer token metadata, price data, and collectible counts
+- when Helius is not selected, it falls back to raw Solana RPC balance and token-account reads
+
+`getManagedWalletSolBalances` is the lightweight SOL-only alternative when you do not need token details.
+
 ## Operational Tips
 
 - confirm the active instance before creating or downloading wallets
 - treat downloaded JSON backup files as sensitive material
 - keep wallet organization simple and flat by group, because that matches the current runtime contract
+- for rich holdings output, configure Helius as the selected private RPC before asking for wallet contents
