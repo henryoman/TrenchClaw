@@ -339,6 +339,13 @@ const toRuntimeChatErrorMessage = (error: unknown): string => {
 const buildActionTools = (
   deps: RuntimeChatServiceDeps,
   enabledToolNames?: ReadonlySet<string> | null,
+  input?: {
+    onToolResult?: (result: {
+      actionName: string;
+      rawInput: unknown;
+      output: Record<string, unknown>;
+    }) => void;
+  },
 ): Record<string, any> => {
   const tools: Record<string, any> = {};
   const toolResultCache = new Map<string, Promise<Record<string, unknown>>>();
@@ -430,7 +437,7 @@ const buildActionTools = (
             });
           }
 
-          return {
+          const output = {
             ok: result.ok,
             error: result.error ?? null,
             retryable: result.retryable,
@@ -439,6 +446,12 @@ const buildActionTools = (
             data: result.data ?? null,
             policyHits: dispatchResult.policyHits,
           };
+          input?.onToolResult?.({
+            actionName: action.name,
+            rawInput,
+            output,
+          });
+          return output;
         })();
 
         toolResultCache.set(
@@ -636,6 +649,61 @@ const formatWalletContentsRateLimitText = (toolName: string, error: string): str
   return null;
 };
 
+const formatTransferToolResultText = (output: unknown): string | null => {
+  if (!isRecord(output) || output.ok !== true || !isRecord(output.data)) {
+    return null;
+  }
+
+  const data = output.data;
+  const transferType = data.transferType;
+  const sourceAddress = typeof data.sourceAddress === "string" ? data.sourceAddress : null;
+  const destination = typeof data.destination === "string" ? data.destination : null;
+  const amountRaw = typeof data.amountRaw === "string" ? data.amountRaw : null;
+  const amountUi = typeof data.amountUi === "number" ? data.amountUi : null;
+  const txSignature = typeof data.txSignature === "string" ? data.txSignature : null;
+  if (
+    (transferType !== "sol" && transferType !== "spl")
+    || !sourceAddress
+    || !destination
+    || !amountRaw
+    || amountUi === null
+    || !txSignature
+  ) {
+    return null;
+  }
+
+  const assetText =
+    transferType === "sol"
+      ? "SOL"
+      : `token mint \`${typeof data.mintAddress === "string" ? data.mintAddress : "unknown"}\``;
+
+  return [
+    `Transfer submitted successfully.`,
+    `Moved \`${amountRaw}\` raw unit(s) (${amountUi}) of ${assetText} from \`${sourceAddress}\` to \`${destination}\`.`,
+    `Transaction signature: \`${txSignature}\`.`,
+  ].join("\n");
+};
+
+const formatCloseTokenAccountToolResultText = (output: unknown): string | null => {
+  if (!isRecord(output) || output.ok !== true || !isRecord(output.data)) {
+    return null;
+  }
+
+  const data = output.data;
+  const tokenAccountAddress = typeof data.tokenAccountAddress === "string" ? data.tokenAccountAddress : null;
+  const destination = typeof data.destination === "string" ? data.destination : null;
+  const txSignature = typeof data.txSignature === "string" ? data.txSignature : null;
+  if (!tokenAccountAddress || !destination || !txSignature) {
+    return null;
+  }
+
+  return [
+    `Token account closed successfully.`,
+    `Closed \`${tokenAccountAddress}\` and sent the reclaimed rent to \`${destination}\`.`,
+    `Transaction signature: \`${txSignature}\`.`,
+  ].join("\n");
+};
+
 const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined): string | null => {
   if (!message || message.role !== "assistant") {
     return null;
@@ -655,7 +723,25 @@ const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined): stri
     }
 
     if (toolName === "getManagedWalletContents") {
-      const formatted = formatWalletContentsFastPathText(output);
+      const walletContentsOutput =
+        isRecord(output) && output.ok === true && "data" in output
+          ? output.data
+          : output;
+      const formatted = formatWalletContentsFastPathText(walletContentsOutput);
+      if (formatted) {
+        return formatted;
+      }
+    }
+
+    if (toolName === "transfer") {
+      const formatted = formatTransferToolResultText(output);
+      if (formatted) {
+        return formatted;
+      }
+    }
+
+    if (toolName === "closeTokenAccount") {
+      const formatted = formatCloseTokenAccountToolResultText(output);
       if (formatted) {
         return formatted;
       }
@@ -664,6 +750,20 @@ const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined): stri
 
   return null;
 };
+
+const createToolPartFromStreamState = (input: {
+  toolName: string;
+  toolCallId: string;
+  state: "input-available" | "output-available";
+  input?: unknown;
+  output?: unknown;
+}): UIMessage["parts"][number] => ({
+  type: `tool-${input.toolName}`,
+  toolCallId: input.toolCallId,
+  state: input.state,
+  ...(input.input === undefined ? {} : { input: input.input }),
+  ...(input.output === undefined ? {} : { output: input.output }),
+});
 
 const createDirectToolResultStreamResponse = (input: {
   headers?: HeadersInit;
@@ -939,7 +1039,17 @@ export const createRuntimeChatService = (
         model: modelId,
       });
 
-      const tools: Record<string, any> = buildActionTools(deps, enabledToolNames);
+      const executedToolResults = new Map<string, {
+        actionName: string;
+        rawInput: unknown;
+        output: Record<string, unknown>;
+      }>();
+      const tools: Record<string, any> = buildActionTools(deps, enabledToolNames, {
+        onToolResult: (result) => {
+          const cacheKey = `${result.actionName}:${serializeForToolCache(result.rawInput)}`;
+          executedToolResults.set(cacheKey, result);
+        },
+      });
       const needsWorkspaceTools = preparedExecution.toolNames.some((toolName) =>
         RUNTIME_WORKSPACE_TOOL_NAMES.includes(toolName as (typeof RUNTIME_WORKSPACE_TOOL_NAMES)[number]),
       );
@@ -1023,6 +1133,11 @@ export const createRuntimeChatService = (
                 let firstResponseMessage: UIMessage | undefined;
                 let firstPassSawToolActivity = false;
                 let firstPassSawTextAfterToolActivity = false;
+                const observedToolCalls = new Map<string, {
+                  toolName: string;
+                  input?: unknown;
+                  output?: unknown;
+                }>();
 
                 const firstPassStream = firstResult.toUIMessageStream({
                   originalMessages: validatedMessages,
@@ -1042,6 +1157,27 @@ export const createRuntimeChatService = (
                       if (uiChunkHasToolActivity(chunk)) {
                         firstPassSawToolActivity = true;
                       }
+                      if (
+                        chunk.type === "tool-input-available"
+                        && typeof chunk.toolCallId === "string"
+                        && typeof chunk.toolName === "string"
+                      ) {
+                        const current = observedToolCalls.get(chunk.toolCallId);
+                        observedToolCalls.set(chunk.toolCallId, {
+                          toolName: chunk.toolName,
+                          input: chunk.input,
+                          output: current?.output,
+                        });
+                      }
+                      if (chunk.type === "tool-output-available" && typeof chunk.toolCallId === "string") {
+                        const current = observedToolCalls.get(chunk.toolCallId);
+                        if (current?.toolName) {
+                          observedToolCalls.set(chunk.toolCallId, {
+                            ...current,
+                            output: chunk.output,
+                          });
+                        }
+                      }
                       if (uiChunkHasVisibleText(chunk)) {
                         if (firstPassSawToolActivity) {
                           firstPassSawTextAfterToolActivity = true;
@@ -1055,6 +1191,51 @@ export const createRuntimeChatService = (
                 const completedAssistantHasToolActivity = assistantMessageHasToolActivity(completedAssistantMessage);
                 const completedAssistantHasTextAfterToolActivity = assistantMessageHasTextAfterToolActivity(completedAssistantMessage);
                 const firstPassHadToolActivity = firstPassSawToolActivity || completedAssistantHasToolActivity;
+                const observedToolParts = Array.from(observedToolCalls.entries()).flatMap(([toolCallId, entry]) => {
+                  const parts: UIMessage["parts"] = [];
+                  if (entry.input !== undefined) {
+                    parts.push(createToolPartFromStreamState({
+                      toolName: entry.toolName,
+                      toolCallId,
+                      state: "input-available",
+                      input: entry.input,
+                    }));
+                  }
+                  if (entry.output !== undefined) {
+                    parts.push(createToolPartFromStreamState({
+                      toolName: entry.toolName,
+                      toolCallId,
+                      state: "output-available",
+                      input: entry.input,
+                      output: entry.output,
+                    }));
+                  }
+                  return parts;
+                });
+                const observedToolMessage =
+                  observedToolParts.length > 0
+                    ? {
+                        id: `msg-${crypto.randomUUID()}`,
+                        role: "assistant" as const,
+                        parts: observedToolParts,
+                      }
+                    : undefined;
+                const executedToolParts = Array.from(executedToolResults.values()).map((result) =>
+                  createToolPartFromStreamState({
+                    toolName: result.actionName,
+                    toolCallId: `tool-${crypto.randomUUID()}`,
+                    state: "output-available",
+                    input: result.rawInput,
+                    output: result.output,
+                  }));
+                const executedToolMessage =
+                  executedToolParts.length > 0
+                    ? {
+                        id: `msg-${crypto.randomUUID()}`,
+                        role: "assistant" as const,
+                        parts: executedToolParts,
+                      }
+                    : undefined;
 
                 if (!firstPassHadToolActivity) {
                   return;
@@ -1067,7 +1248,9 @@ export const createRuntimeChatService = (
                   return;
                 }
 
-                const deterministicToolOnlyText = formatKnownToolOnlyCompletionText(completedAssistantMessage);
+                const deterministicToolOnlyText = formatKnownToolOnlyCompletionText(completedAssistantMessage)
+                  ?? formatKnownToolOnlyCompletionText(observedToolMessage)
+                  ?? formatKnownToolOnlyCompletionText(executedToolMessage);
                 if (deterministicToolOnlyText) {
                   deps.logger?.info("chat:tool_only_completion_resolved", {
                     chatId,

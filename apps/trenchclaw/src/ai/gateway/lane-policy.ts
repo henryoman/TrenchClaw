@@ -16,6 +16,8 @@ const OPERATOR_ACTION_ALLOWLIST = [
   "searchDexscreenerPairs",
   "createWallets",
   "renameWallets",
+  "transfer",
+  "closeTokenAccount",
 ] as const;
 
 const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
