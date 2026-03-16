@@ -37,10 +37,17 @@ describe("transferAction", () => {
     }).success).toBe(false);
   });
 
+  test("accepts plain-decimal string amounts for tool-style transfer calls", () => {
+    expect(transferAction.inputSchema?.safeParse({
+      destination: "target",
+      amount: "0.000000001",
+    }).success).toBe(true);
+  });
+
   test("returns a signer error when neither a context signer nor managed wallet is provided", async () => {
     const result = await transferAction.execute({} as never, {
       destination: "target",
-      amount: 1,
+      amount: "0.1",
     });
 
     expect(result.ok).toBe(false);
@@ -74,7 +81,7 @@ describe("transferAction", () => {
       walletGroup: "core-wallets",
       walletName: "wallet_000",
       destination: created.data?.wallets[0]?.address ?? "target",
-      amount: 0.001,
+      amount: "0.001",
     });
 
     expect(result.ok).toBe(false);

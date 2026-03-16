@@ -6,6 +6,7 @@ import {
   getDexscreenerLatestCommunityTakeovers,
   getDexscreenerLatestTokenBoosts,
   getDexscreenerLatestTokenProfiles,
+  isDexscreenerRetryableError,
   getDexscreenerOrdersByToken,
   getDexscreenerPairByChainAndPairId,
   getDexscreenerTokenPairsByChain,
@@ -58,11 +59,12 @@ const createDexscreenerAction = <TInput, TOutput>(input: {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      const retryable = isDexscreenerRetryableError(error);
       return {
         ok: false,
-        retryable: false,
+        retryable,
         error: message,
-        code: "DEXSCREENER_ACTION_FAILED",
+        code: retryable ? "DEXSCREENER_ACTION_RETRYABLE" : "DEXSCREENER_ACTION_FAILED",
         durationMs: Date.now() - startedAt,
         timestamp: Date.now(),
         idempotencyKey,

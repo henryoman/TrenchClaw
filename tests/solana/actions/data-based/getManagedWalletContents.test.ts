@@ -583,4 +583,150 @@ describe("getManagedWalletContentsAction", () => {
       }),
     ]);
   });
+
+  test("falls back to sequential raw RPC reads after batch rate limiting", async () => {
+    const instanceId = "96";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      [
+        JSON.stringify({
+          walletId: "core-wallets.wallet_000",
+          walletGroup: "core-wallets",
+          walletName: "wallet_000",
+          address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+        }),
+        JSON.stringify({
+          walletId: "core-wallets.wallet_001",
+          walletGroup: "core-wallets",
+          walletName: "wallet_001",
+          address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.label.json"),
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let requestCount = 0;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) as unknown[] : [];
+      requestCount += 1;
+      if (body.length > 1) {
+        return new Response(
+          JSON.stringify([
+            {
+              jsonrpc: "2.0",
+              error: {
+                code: 429,
+                message: "Too many requests for a specific RPC call",
+              },
+              id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance",
+            },
+          ]),
+          {
+            status: 429,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      }
+
+      const request = body[0] as { id: string };
+      const responses: Record<string, unknown> = {
+        "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance": {
+          jsonrpc: "2.0",
+          id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance",
+          result: { value: 40_010_000 },
+        },
+        "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:spl": {
+          jsonrpc: "2.0",
+          id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:spl",
+          result: {
+            value: [
+              {
+                pubkey: "Ata111111111111111111111111111111111111111",
+                account: {
+                  owner: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                  data: {
+                    parsed: {
+                      info: {
+                        mint: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+                        tokenAmount: {
+                          amount: "37227586660488",
+                          decimals: 9,
+                          uiAmountString: "37227.586660488",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+        "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:token2022": {
+          jsonrpc: "2.0",
+          id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:token2022",
+          result: { value: [] },
+        },
+        "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance": {
+          jsonrpc: "2.0",
+          id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance",
+          result: { value: 0 },
+        },
+        "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:spl": {
+          jsonrpc: "2.0",
+          id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:spl",
+          result: { value: [] },
+        },
+        "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:token2022": {
+          jsonrpc: "2.0",
+          id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:token2022",
+          result: { value: [] },
+        },
+      };
+
+      return new Response(JSON.stringify([responses[request.id]]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const action = createGetManagedWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        walletGroup: "core-wallets",
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(requestCount).toBeGreaterThan(1);
+    const payload = result.data as {
+      dataSource: string;
+      wallets: Array<{ walletName: string; tokenCount: number }>;
+    };
+    expect(payload.dataSource).toBe("rpc-sequential");
+    expect(payload.wallets).toEqual([
+      expect.objectContaining({
+        walletName: "wallet_000",
+        tokenCount: 1,
+      }),
+      expect.objectContaining({
+        walletName: "wallet_001",
+        tokenCount: 0,
+      }),
+    ]);
+  });
 });

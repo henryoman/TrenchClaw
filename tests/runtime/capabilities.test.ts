@@ -3,6 +3,19 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { getRuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
 
+const DEXSCREENER_MODEL_TOOL_NAMES = [
+  "getDexscreenerLatestAds",
+  "getDexscreenerLatestCommunityTakeovers",
+  "getDexscreenerLatestTokenBoosts",
+  "getDexscreenerLatestTokenProfiles",
+  "getDexscreenerOrdersByToken",
+  "getDexscreenerPairByChainAndPairId",
+  "getDexscreenerTokenPairsByChain",
+  "getDexscreenerTokensByChain",
+  "getDexscreenerTopTokenBoosts",
+  "searchDexscreenerPairs",
+] as const;
+
 const TEST_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
@@ -190,5 +203,52 @@ describe("runtime capability snapshot", () => {
     expect(modelToolNames).toContain("workspaceReadFile");
     expect(modelToolNames).not.toContain("workspaceWriteFile");
     expect(modelToolNames).not.toContain("createWallets");
+  });
+
+  test("exposes Dexscreener model tools when trading is enabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML.replace("trading:\n  enabled: false", "trading:\n  enabled: true"),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
+
+    expect(modelToolNames).toEqual(expect.arrayContaining(DEXSCREENER_MODEL_TOOL_NAMES));
+  });
+
+  test("hides Dexscreener model tools when the integration is disabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML
+        .replace("trading:\n  enabled: false", "trading:\n  enabled: true")
+        .replace("  dexscreener:\n    enabled: true", "  dexscreener:\n    enabled: false"),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
+
+    for (const toolName of DEXSCREENER_MODEL_TOOL_NAMES) {
+      expect(modelToolNames).not.toContain(toolName);
+    }
+  });
+
+  test("exposes transfer to the model only when wallet signing transfers are enabled", async () => {
+    const defaultSettings = await loadRuntimeSettings("safe");
+    const defaultSnapshot = await getRuntimeCapabilitySnapshot(defaultSettings);
+    expect(defaultSnapshot.modelTools.map((toolEntry) => toolEntry.name)).not.toContain("transfer");
+
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML
+        .replace("  enabled: false", "  enabled: true")
+        .replace("    allowWalletSigning: false", "    allowWalletSigning: true"),
+    );
+
+    const enabledSettings = await loadRuntimeSettings("safe");
+    const enabledSnapshot = await getRuntimeCapabilitySnapshot(enabledSettings);
+    expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("transfer");
   });
 });
