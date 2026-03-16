@@ -54,3 +54,15 @@ Do not hand-edit:
 - read wallet state before mutation
 - treat wallet organization as protected state
 - prefer runtime actions over manual file edits
+- use `getManagedWalletContents` for full holdings
+- use `getManagedWalletSolBalances` when only SOL balances are needed
+
+## Managed Wallet Contents
+
+`getManagedWalletContents` is the main holdings read for managed wallets.
+
+- returns SOL plus fungible token balances for each managed wallet
+- aggregates token totals across the selected wallet set
+- prefers Helius DAS when Helius is the selected private RPC
+- falls back to raw `getBalance` + `getTokenAccountsByOwner` reads when Helius is not the active provider
+- Helius-backed reads can include token symbol/name/image metadata, USD pricing, and collectible counts

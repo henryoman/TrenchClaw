@@ -3,6 +3,8 @@
     GuiAiModelOptionView,
     GuiAiProviderOptionView,
     GuiAiSettingsView,
+    GuiPublicRpcOptionView,
+    GuiRpcProviderOptionView,
     GuiSecretEntryView,
     GuiTradingSettingsView,
   } from "@trenchclaw/types";
@@ -20,6 +22,10 @@
   export let aiProviderOptions: GuiAiProviderOptionView[] = [];
   export let aiModelOptions: GuiAiModelOptionView[] = [];
   export let secretEntries: GuiSecretEntryView[] = [];
+  export let publicRpcOptions: GuiPublicRpcOptionView[] = [];
+  export let rpcProviderOptions: GuiRpcProviderOptionView[] = [];
+  export let secretsBusy = false;
+  export let secretsError = "";
   export let aiSettingsBusy = false;
   export let aiSettingsError = "";
   export let tradingSettingsFilePath = "";
@@ -30,6 +36,13 @@
   export let onSaveAiSettings: (settings: GuiAiSettingsView) => Promise<void> | void = () => {};
   export let onReloadTradingSettings: () => void = () => {};
   export let onSaveTradingSettings: (settings: GuiTradingSettingsView) => Promise<void> | void = () => {};
+  export let onSaveSecret: (input: {
+    optionId: string;
+    value: string;
+    source?: "custom" | "public";
+    publicRpcId?: string | null;
+    rpcProviderId?: string | null;
+  }) => Promise<void> | void = () => {};
 
   const DEFAULT_AI_PROVIDER_OPTIONS: GuiAiProviderOptionView[] = [
     { id: "openrouter", label: "OpenRouter", description: "Use OpenRouter and show OpenRouter-supported models." },
@@ -37,6 +50,8 @@
   ];
   const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "openrouter";
   const DEFAULT_AI_MODEL = "anthropic/claude-sonnet-4.6";
+  const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
+  const SOLANA_RPC_OPTION_ID = "solana-rpc-url";
   const PROVIDER_KEY_OPTION_BY_ID: Record<GuiAiSettingsView["provider"], string> = {
     gateway: "vercel-ai-gateway-api-key",
     openrouter: "openrouter-api-key",
@@ -73,6 +88,17 @@
   const formatAiProviderOptionLabel = (option: GuiAiProviderOptionView): string =>
     `${option.label}${providerHasKey(option.id) ? " | configured" : " | missing key"}`;
 
+  const solanaRpcEntry = (): GuiSecretEntryView | undefined =>
+    secretEntries.find((entry) => entry.optionId === SOLANA_RPC_OPTION_ID);
+
+  const rpcProviderFor = (rpcProviderId: string | null): GuiRpcProviderOptionView | undefined =>
+    rpcProviderOptions.find((provider) => provider.id === rpcProviderId) ?? rpcProviderOptions[0];
+
+  const isKnownPublicRpcUrl = (value: string): boolean => {
+    const normalizedValue = value.trim();
+    return normalizedValue.length > 0 && publicRpcOptions.some((option) => option.url === normalizedValue);
+  };
+
   const DEFAULT_AI_SETTINGS: GuiAiSettingsView = {
     provider: DEFAULT_AI_PROVIDER,
     model: DEFAULT_AI_MODEL,
@@ -94,8 +120,12 @@
   let tradingSettingsDraft: GuiTradingSettingsView = { ...DEFAULT_TRADING_SETTINGS };
   let aiSettingsHydrationSignature = "";
   let tradingSettingsHydrationSignature = "";
+  let blockchainSettingsHydrationSignature = "";
   let aiSettingsDirty = false;
   let tradingSettingsDirty = false;
+  let primaryRpcProviderIdDraft = "";
+  let primaryRpcCredentialDraft = "";
+  let primaryRpcDirty = false;
 
   const createAiSettingsHydrationSignature = (): string =>
     JSON.stringify({
@@ -108,6 +138,19 @@
     JSON.stringify({
       tradingSettings,
       tradingSettingsFilePath,
+    });
+
+  const createBlockchainSettingsHydrationSignature = (): string =>
+    JSON.stringify({
+      secretEntries: secretEntries.map((entry) => [
+        entry.optionId,
+        entry.value,
+        entry.source,
+        entry.publicRpcId,
+        entry.rpcProviderId,
+      ]),
+      publicRpcOptions: publicRpcOptions.map((option) => option.id),
+      rpcProviderOptions: rpcProviderOptions.map((option) => option.id),
     });
 
   const onAiSettingChange = <K extends keyof GuiAiSettingsView>(key: K, value: GuiAiSettingsView[K]): void => {
@@ -164,6 +207,38 @@
     }
     tradingSettingsDirty = false;
     onReloadTradingSettings();
+  };
+
+  const handlePrimaryRpcProviderChange = (providerId: string): void => {
+    primaryRpcProviderIdDraft = providerId;
+    primaryRpcDirty = true;
+  };
+
+  const handlePrimaryRpcCredentialChange = (value: string): void => {
+    primaryRpcCredentialDraft = value;
+    primaryRpcDirty = true;
+  };
+
+  const savePrimaryRpcSettings = (): void => {
+    const entry = solanaRpcEntry();
+    const rpcProvider = rpcProviderFor(primaryRpcProviderIdDraft);
+    if (!entry || !rpcProvider) {
+      return;
+    }
+
+    Promise.resolve(
+      onSaveSecret({
+        optionId: SOLANA_RPC_OPTION_ID,
+        value: primaryRpcCredentialDraft.trim(),
+        source: "custom",
+        publicRpcId: null,
+        rpcProviderId: rpcProvider.id,
+      }),
+    )
+      .then(() => {
+        primaryRpcDirty = false;
+      })
+      .catch(() => {});
   };
 
   const saveAiSettings = (): void => {
@@ -227,7 +302,22 @@
     }
   }
 
+  $: {
+    const signature = createBlockchainSettingsHydrationSignature();
+    if (signature !== blockchainSettingsHydrationSignature) {
+      const entry = solanaRpcEntry();
+      const fallbackProviderId = rpcProviderOptions[0]?.id ?? "";
+      primaryRpcProviderIdDraft = entry?.rpcProviderId ?? fallbackProviderId;
+      primaryRpcCredentialDraft = entry && !(entry.source === "public" && isKnownPublicRpcUrl(entry.value))
+        ? entry.value
+        : "";
+      blockchainSettingsHydrationSignature = signature;
+      primaryRpcDirty = false;
+    }
+  }
+
   $: aiSettingsErrorText = aiSettingsError.trim();
+  $: blockchainSettingsErrorText = secretsError.trim();
   $: tradingSettingsErrorText = tradingSettingsError.trim();
   $: selectableAiProviderOptions = aiProviderOptions.length > 0 ? [...aiProviderOptions] : [...DEFAULT_AI_PROVIDER_OPTIONS];
   $: filteredAiModelOptions = resolveCompatibleAiModels(aiSettingsDraft.provider);
@@ -236,6 +326,9 @@
     ? [createCustomAiModelOption(aiSettingsDraft.model.trim()), ...filteredAiModelOptions]
     : [...filteredAiModelOptions];
   $: selectedAiProviderHasKey = providerHasKey(aiSettingsDraft.provider);
+  $: selectedPrimaryRpcProvider = rpcProviderFor(primaryRpcProviderIdDraft);
+  $: primaryRpcCredentialLabel = selectedPrimaryRpcProvider?.mode === "endpoint-url" ? "RPC endpoint URL" : "API key";
+  $: primaryRpcCredentialPlaceholder = selectedPrimaryRpcProvider?.placeholder ?? "Enter RPC credential";
 </script>
 
 <section class="settings-panel" aria-label="Settings panel">
@@ -329,6 +422,56 @@
     </section>
 
     <RetroStatusMessage tone="error" text={aiSettingsErrorText} />
+
+    <RetroDivider />
+
+    <section class="settings-section" aria-label="Blockchain settings">
+      <div class="section-heading">
+        <p class="section-label">Blockchain settings</p>
+        <div class="actions">
+          <RetroButton
+            variant="primary"
+            disabled={secretsBusy || !primaryRpcProviderIdDraft || !primaryRpcCredentialDraft.trim() || !primaryRpcDirty}
+            on:click={savePrimaryRpcSettings}
+          >
+            Save
+          </RetroButton>
+        </div>
+      </div>
+
+      <div class="settings-grid">
+        <RetroField label="RPC provider">
+          <RetroSelect
+            value={primaryRpcProviderIdDraft}
+            indicatorShape="triangle"
+            chevronColor="var(--tc-color-lime)"
+            disabled={secretsBusy}
+            on:change={(event) => {
+              const target = event.currentTarget as HTMLSelectElement;
+              handlePrimaryRpcProviderChange(target.value);
+            }}
+          >
+            {#each rpcProviderOptions as providerOption}
+              <option value={providerOption.id}>{providerOption.label}</option>
+            {/each}
+          </RetroSelect>
+        </RetroField>
+
+        <RetroField label={primaryRpcCredentialLabel}>
+          <RetroInput
+            value={primaryRpcCredentialDraft}
+            placeholder={primaryRpcCredentialPlaceholder}
+            disabled={secretsBusy}
+            on:input={(event) => {
+              const target = event.currentTarget as HTMLInputElement;
+              handlePrimaryRpcCredentialChange(target.value);
+            }}
+          />
+        </RetroField>
+      </div>
+    </section>
+
+    <RetroStatusMessage tone="error" text={blockchainSettingsErrorText} />
 
     <RetroDivider />
 

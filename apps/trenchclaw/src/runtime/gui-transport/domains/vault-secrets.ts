@@ -18,7 +18,7 @@ import {
   sanitizeVaultData,
 } from "../../../ai/llm/vault-file";
 import { assertInstanceSystemWritePath } from "../../security/write-scope";
-import { PUBLIC_RPC_OPTIONS, SECRET_OPTIONS } from "../constants";
+import { PUBLIC_RPC_OPTIONS, RPC_PROVIDER_OPTIONS, SECRET_OPTIONS } from "../constants";
 import { isRecord } from "../parsers";
 import type { RuntimeGuiDomainContext } from "../contracts";
 
@@ -32,6 +32,12 @@ const SECRET_OPTIONS_INTERNAL: SecretOptionInternal[] = SECRET_OPTIONS.map((opti
 }));
 
 const SECRET_OPTION_BY_ID = new Map(SECRET_OPTIONS_INTERNAL.map((option) => [option.id, option]));
+const RPC_PROVIDER_BY_ID = new Map(RPC_PROVIDER_OPTIONS.map((option) => [option.id, option]));
+const SOLANA_RPC_OPTION_ID = "solana-rpc-url";
+const DEFAULT_RPC_PROVIDER_ID = RPC_PROVIDER_OPTIONS[0]?.id ?? "helius";
+
+const trimString = (value: unknown): string =>
+  typeof value === "string" ? value.trim() : "";
 
 const getByPath = (root: unknown, pathSegments: string[]): unknown => {
   let current = root;
@@ -70,6 +76,115 @@ const setByPath = (root: Record<string, unknown>, pathSegments: string[], value:
   current[leafKey] = value;
 };
 
+const resolveWebsocketUrl = (httpUrl: string): string =>
+  httpUrl.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
+
+const buildPrivateRpcUrls = (providerId: string, credential: string): { httpUrl: string; wsUrl: string } => {
+  const trimmedCredential = credential.trim();
+  if (!trimmedCredential) {
+    throw new Error("RPC credential is required.");
+  }
+
+  if (providerId === "helius") {
+    return {
+      httpUrl: `https://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(trimmedCredential)}`,
+      wsUrl: `wss://mainnet.helius-rpc.com/?api-key=${encodeURIComponent(trimmedCredential)}`,
+    };
+  }
+
+  if (providerId === "shyft") {
+    return {
+      httpUrl: `https://rpc.shyft.to/?api_key=${encodeURIComponent(trimmedCredential)}`,
+      wsUrl: `wss://rpc.shyft.to/?api_key=${encodeURIComponent(trimmedCredential)}`,
+    };
+  }
+
+  if (!/^https?:\/\//iu.test(trimmedCredential)) {
+    throw new Error("This RPC provider requires the full endpoint URL.");
+  }
+
+  return {
+    httpUrl: trimmedCredential,
+    wsUrl: resolveWebsocketUrl(trimmedCredential),
+  };
+};
+
+const inferRpcProviderId = (vaultData: Record<string, unknown>): string => {
+  const storedProviderId = trimString(getByPath(vaultData, ["rpc", "default", "provider-id"]));
+  if (storedProviderId && RPC_PROVIDER_BY_ID.has(storedProviderId)) {
+    return storedProviderId;
+  }
+
+  for (const provider of RPC_PROVIDER_OPTIONS) {
+    const legacyProviderValue = getByPath(vaultData, ["rpc", provider.id]);
+    if (isRecord(legacyProviderValue)) {
+      const legacyApiKey = trimString(legacyProviderValue["api-key"]);
+      const legacyHttpUrl = trimString(legacyProviderValue["http-url"]);
+      if (legacyApiKey || legacyHttpUrl) {
+        return provider.id;
+      }
+    }
+  }
+
+  const activeHttpUrl = trimString(getByPath(vaultData, ["rpc", "default", "http-url"]));
+  if (activeHttpUrl.includes("helius-rpc.com")) {
+    return "helius";
+  }
+  if (activeHttpUrl.includes("rpc.shyft.to")) {
+    return "shyft";
+  }
+  if (activeHttpUrl.includes("quiknode.pro")) {
+    return "quicknode";
+  }
+  if (activeHttpUrl.includes("chainstack")) {
+    return "chainstack";
+  }
+
+  return DEFAULT_RPC_PROVIDER_ID;
+};
+
+const resolveStoredRpcCredential = (vaultData: Record<string, unknown>, providerId: string): string => {
+  const storedCredential = trimString(getByPath(vaultData, ["rpc", "default", "api-key"]));
+  if (storedCredential) {
+    return storedCredential;
+  }
+
+  const legacyProviderValue = getByPath(vaultData, ["rpc", providerId]);
+  if (isRecord(legacyProviderValue)) {
+    const legacyApiKey = trimString(legacyProviderValue["api-key"]);
+    if (legacyApiKey) {
+      return legacyApiKey;
+    }
+    const legacyHttpUrl = trimString(legacyProviderValue["http-url"]);
+    if (legacyHttpUrl) {
+      return legacyHttpUrl;
+    }
+  }
+
+  const activeHttpUrl = trimString(getByPath(vaultData, ["rpc", "default", "http-url"]));
+  const provider = RPC_PROVIDER_BY_ID.get(providerId);
+  if (provider?.mode === "endpoint-url" && activeHttpUrl) {
+    return activeHttpUrl;
+  }
+
+  return "";
+};
+
+const updatePrivateRpcVaultState = (
+  vaultData: Record<string, unknown>,
+  providerId: string,
+  credential: string,
+): void => {
+  const urls = buildPrivateRpcUrls(providerId, credential);
+  setByPath(vaultData, ["rpc", "default", "provider-id"], providerId);
+  setByPath(vaultData, ["rpc", "default", "api-key"], credential);
+  setByPath(vaultData, ["rpc", "default", "http-url"], urls.httpUrl);
+  setByPath(vaultData, ["rpc", "default", "ws-url"], urls.wsUrl);
+  setByPath(vaultData, ["rpc", providerId, "api-key"], credential);
+  setByPath(vaultData, ["rpc", providerId, "http-url"], urls.httpUrl);
+  setByPath(vaultData, ["rpc", providerId, "ws-url"], urls.wsUrl);
+};
+
 const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionInternal): GuiSecretEntryView => {
   const rawValue = getByPath(vaultData, option.pathSegments);
   const value = typeof rawValue === "string" ? rawValue : "";
@@ -83,6 +198,7 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
       value,
       source: "custom",
       publicRpcId: null,
+      rpcProviderId: null,
     };
   }
 
@@ -90,15 +206,18 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
   const source = sourceRaw === "public" ? "public" : "custom";
   const publicRpcRaw = getByPath(vaultData, ["rpc", "default", "public-id"]);
   const publicRpcId = typeof publicRpcRaw === "string" && publicRpcRaw.trim().length > 0 ? publicRpcRaw : null;
+  const rpcProviderId = inferRpcProviderId(vaultData);
+  const rpcCredential = resolveStoredRpcCredential(vaultData, rpcProviderId);
 
   return {
     optionId: option.id,
     category: option.category,
     label: option.label,
     vaultPath: option.vaultPath,
-    value,
+    value: rpcCredential || value,
     source,
     publicRpcId,
+    rpcProviderId,
   };
 };
 
@@ -171,6 +290,7 @@ export const getSecrets = async (context: RuntimeGuiDomainContext): Promise<GuiS
     options: SECRET_OPTIONS,
     entries,
     publicRpcOptions: PUBLIC_RPC_OPTIONS,
+    rpcProviderOptions: RPC_PROVIDER_OPTIONS,
   };
 };
 
@@ -186,21 +306,35 @@ export const upsertSecret = async (
   }
 
   const trimmedValue = payload.value.trim();
-  setByPath(vaultData, option.pathSegments, trimmedValue);
 
   if (option.supportsPublicRpc) {
     const source = payload.source === "public" ? "public" : "custom";
+    const rpcProviderId = trimString(payload.rpcProviderId) || inferRpcProviderId(vaultData);
     setByPath(vaultData, ["rpc", "default", "source"], source);
     if (source === "public") {
+      const existingCredential = resolveStoredRpcCredential(vaultData, rpcProviderId);
+      if (trimmedValue || existingCredential) {
+        if (!RPC_PROVIDER_BY_ID.has(rpcProviderId)) {
+          throw new Error("rpcProviderId must reference a supported private RPC provider");
+        }
+        updatePrivateRpcVaultState(vaultData, rpcProviderId, trimmedValue || existingCredential);
+      }
       const publicRpcOption = PUBLIC_RPC_OPTIONS.find((entry) => entry.id === payload.publicRpcId);
       if (!publicRpcOption) {
         throw new Error("publicRpcId must reference a supported public Solana RPC option");
       }
       setByPath(vaultData, option.pathSegments, publicRpcOption.url);
       setByPath(vaultData, ["rpc", "default", "public-id"], publicRpcOption.id);
+      setByPath(vaultData, ["rpc", "default", "ws-url"], resolveWebsocketUrl(publicRpcOption.url));
     } else {
+      if (!RPC_PROVIDER_BY_ID.has(rpcProviderId)) {
+        throw new Error("rpcProviderId must reference a supported private RPC provider");
+      }
+      updatePrivateRpcVaultState(vaultData, rpcProviderId, trimmedValue);
       setByPath(vaultData, ["rpc", "default", "public-id"], "");
     }
+  } else {
+    setByPath(vaultData, option.pathSegments, trimmedValue);
   }
 
   const serialized = serializeVaultData(vaultData);
@@ -228,8 +362,22 @@ export const deleteSecret = async (
 
   setByPath(vaultData, option.pathSegments, "");
   if (option.supportsPublicRpc) {
-    setByPath(vaultData, ["rpc", "default", "source"], "custom");
-    setByPath(vaultData, ["rpc", "default", "public-id"], "");
+    const defaultPublicRpc = PUBLIC_RPC_OPTIONS.find((rpc) => rpc.id === "solana-mainnet-beta") ?? PUBLIC_RPC_OPTIONS[0];
+    setByPath(vaultData, ["rpc", "default", "source"], "public");
+    setByPath(vaultData, ["rpc", "default", "public-id"], defaultPublicRpc?.id ?? "");
+    setByPath(vaultData, ["rpc", "default", "provider-id"], "");
+    setByPath(vaultData, ["rpc", "default", "api-key"], "");
+    setByPath(vaultData, ["rpc", "default", "ws-url"], defaultPublicRpc ? resolveWebsocketUrl(defaultPublicRpc.url) : "");
+    if (defaultPublicRpc) {
+      setByPath(vaultData, option.pathSegments, defaultPublicRpc.url);
+    }
+    for (const provider of RPC_PROVIDER_OPTIONS) {
+      setByPath(vaultData, ["rpc", provider.id, "api-key"], "");
+      if (option.id === SOLANA_RPC_OPTION_ID) {
+        setByPath(vaultData, ["rpc", provider.id, "http-url"], "");
+        setByPath(vaultData, ["rpc", provider.id, "ws-url"], "");
+      }
+    }
   }
 
   const serialized = serializeVaultData(vaultData);

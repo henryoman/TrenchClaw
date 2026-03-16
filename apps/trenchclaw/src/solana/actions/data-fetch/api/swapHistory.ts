@@ -2,7 +2,7 @@ import { z } from "zod";
 import { createHelius } from "helius-sdk";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import { loadVaultData, readVaultString } from "../../../../ai/llm/vault-file";
+import { resolveHeliusRpcConfig } from "../../../lib/rpc/helius";
 
 const HELIUS_SWAP_HISTORY_LIMIT = 20;
 const HELIUS_CONTINUATION_RETRY_LIMIT = 10;
@@ -146,13 +146,14 @@ const pacificDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
 });
 
 const resolveHeliusApiKey = async (): Promise<string> => {
-  const { vaultData } = await loadVaultData();
-  const apiKey = readVaultString(vaultData, "rpc/helius/api-key");
+  const { apiKey } = await resolveHeliusRpcConfig();
   if (apiKey) {
     return apiKey;
   }
 
-  throw new Error("Missing Helius API key. Populate rpc.helius.api-key in the vault.");
+  throw new Error(
+    "Missing Helius API key. Configure a Helius private RPC credential or populate rpc.helius.api-key in the vault.",
+  );
 };
 
 const extractContinuationSignature = (message: string): string | null => {

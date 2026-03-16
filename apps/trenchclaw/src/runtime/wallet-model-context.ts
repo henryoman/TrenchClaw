@@ -253,6 +253,7 @@ export const renderRuntimeWalletPromptSummary = async (
       `- managed wallet status: missing library file (${DEFAULT_WALLET_LIBRARY_FILE_NAME})`,
       `- discovered managed wallets from labels: ${inferredEntries.length}`,
       "- use `getManagedWalletContents` for holdings and token balances",
+      "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC",
       "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
       "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
     ].join("\n");
@@ -277,6 +278,7 @@ export const renderRuntimeWalletPromptSummary = async (
     `- wallet preview: ${previewWallets.join("; ") || "none"}`,
     "- use `createWallets` for wallet creation and `renameWallets` for label changes",
     "- use `getManagedWalletContents` for holdings and token balances",
+    "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC",
     "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
     "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
   ].join("\n");

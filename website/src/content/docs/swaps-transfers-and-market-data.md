@@ -42,6 +42,8 @@ Standard or RPC swap files in the repo are not the current public swap path.
 
 `getSwapHistory` is available for recent swap activity on a wallet.
 
+It uses Helius enhanced transaction history, so a Helius API key must be configured in the active instance vault.
+
 ## Dexscreener
 
 Available market-data actions include:

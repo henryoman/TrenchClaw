@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { GuiPublicRpcOptionView, GuiSecretOptionView } from "@trenchclaw/types";
+import type { GuiPublicRpcOptionView, GuiRpcProviderOptionView, GuiSecretOptionView } from "@trenchclaw/types";
 import {
   RUNTIME_INSTANCE_ROOT,
   RUNTIME_NO_READ_ROOT,
@@ -27,13 +27,51 @@ export const PUBLIC_RPC_OPTIONS: GuiPublicRpcOptionView[] = [
   { id: "solana-devnet", label: "Solana Devnet (public)", url: "https://api.devnet.solana.com" },
 ];
 
+export const RPC_PROVIDER_OPTIONS: GuiRpcProviderOptionView[] = [
+  {
+    id: "helius",
+    label: "Helius",
+    credentialLabel: "RPC API key",
+    placeholder: "Enter Helius API key",
+    mode: "api-key",
+  },
+  {
+    id: "quicknode",
+    label: "QuickNode",
+    credentialLabel: "RPC endpoint URL",
+    placeholder: "https://your-endpoint.solana-mainnet.quiknode.pro/...",
+    mode: "endpoint-url",
+  },
+  {
+    id: "shyft",
+    label: "Shyft",
+    credentialLabel: "RPC API key",
+    placeholder: "Enter Shyft API key",
+    mode: "api-key",
+  },
+  {
+    id: "chainstack",
+    label: "Chainstack",
+    credentialLabel: "RPC endpoint URL",
+    placeholder: "https://your-chainstack-endpoint.example",
+    mode: "endpoint-url",
+  },
+  {
+    id: "temporal",
+    label: "Temporal",
+    credentialLabel: "RPC endpoint URL",
+    placeholder: "https://your-temporal-endpoint.example",
+    mode: "endpoint-url",
+  },
+];
+
 export const SECRET_OPTIONS: GuiSecretOptionView[] = [
   {
     id: "solana-rpc-url",
     category: "blockchain",
-    label: "Solana RPC URL",
+    label: "Private RPC credential",
     vaultPath: "rpc/default/http-url",
-    placeholder: "https://your-rpc-provider.example",
+    placeholder: "Enter RPC credential",
     supportsPublicRpc: true,
   },
   {

@@ -425,4 +425,162 @@ describe("getManagedWalletContentsAction", () => {
       }),
     ]);
   });
+
+  test("prefers Helius DAS when Helius is the selected private RPC", async () => {
+    const instanceId = "99";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      JSON.stringify({
+        walletId: "core-wallets.wallet_000",
+        walletGroup: "core-wallets",
+        walletName: "wallet_000",
+        address: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1",
+        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+      }),
+      "utf8",
+    );
+    await writeFile(
+      path.join(instanceDirectory, "vault.json"),
+      `${JSON.stringify({
+        rpc: {
+          default: {
+            "provider-id": "helius",
+            "api-key": "test-helius-key",
+            "http-url": "https://mainnet.helius-rpc.com/?api-key=test-helius-key",
+          },
+        },
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let seenUrl = "";
+    let seenRpcBody: unknown;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      seenUrl = typeof input === "string" ? input : input.toString();
+      seenRpcBody = init?.body ? JSON.parse(String(init.body)) : null;
+      return new Response(
+        JSON.stringify([
+          {
+            jsonrpc: "2.0",
+            id: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:helius-das:1",
+            result: {
+              nativeBalance: {
+                lamports: 2_000_000_000,
+              },
+              items: [
+                {
+                  id: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                  interface: "FungibleToken",
+                  content: {
+                    metadata: {
+                      name: "USD Coin",
+                      symbol: "USDC",
+                    },
+                    links: {
+                      image: "https://example.test/usdc.png",
+                    },
+                  },
+                  token_info: {
+                    balance: "1234500",
+                    decimals: 6,
+                    token_program: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                    associated_token_address: "AtaUsdc11111111111111111111111111111111111",
+                    price_info: {
+                      price_per_token: 1,
+                      total_price: 1.2345,
+                    },
+                  },
+                },
+                {
+                  id: "CnfT11111111111111111111111111111111111111",
+                  interface: "CompressedNFT",
+                  compression: {
+                    compressed: true,
+                  },
+                },
+              ],
+            },
+          },
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+
+    const action = createGetManagedWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        walletGroup: "core-wallets",
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(seenUrl).toBe("https://mainnet.helius-rpc.com/?api-key=test-helius-key");
+    expect(seenRpcBody).toEqual([
+      expect.objectContaining({
+        method: "getAssetsByOwner",
+        id: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:helius-das:1",
+        params: {
+          ownerAddress: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1",
+          page: 1,
+          limit: 1000,
+          displayOptions: {
+            showFungible: true,
+            showNativeBalance: true,
+            showZeroBalance: false,
+          },
+        },
+      }),
+    ]);
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      dataSource: string;
+      totalCollectibleCount: number;
+      totalPricedTokenUsd: number | null;
+      wallets: Array<{
+        balanceLamports: string;
+        collectibleCount: number;
+        compressedCollectibleCount: number;
+        tokenBalances: Array<{
+          mintAddress: string;
+          symbol?: string | null;
+          name?: string | null;
+          valueUsd?: number | null;
+        }>;
+      }>;
+    };
+
+    expect(payload.dataSource).toBe("helius-das");
+    expect(payload.totalCollectibleCount).toBe(1);
+    expect(payload.totalPricedTokenUsd).toBe(1.2345);
+    expect(payload.wallets).toEqual([
+      expect.objectContaining({
+        balanceLamports: "2000000000",
+        collectibleCount: 1,
+        compressedCollectibleCount: 1,
+        tokenBalances: [
+          expect.objectContaining({
+            mintAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+            symbol: "USDC",
+            name: "USD Coin",
+            valueUsd: 1.2345,
+          }),
+        ],
+      }),
+    ]);
+  });
 });

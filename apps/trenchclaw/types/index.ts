@@ -340,6 +340,14 @@ export interface GuiSecretOptionView {
   supportsPublicRpc: boolean;
 }
 
+export interface GuiRpcProviderOptionView {
+  id: string;
+  label: string;
+  credentialLabel: string;
+  placeholder: string;
+  mode: "api-key" | "endpoint-url";
+}
+
 export interface GuiSecretEntryView {
   optionId: string;
   category: GuiSecretCategory;
@@ -348,6 +356,7 @@ export interface GuiSecretEntryView {
   value: string;
   source: "custom" | "public";
   publicRpcId: string | null;
+  rpcProviderId: string | null;
 }
 
 export interface GuiPublicRpcOptionView {
@@ -363,6 +372,7 @@ export interface GuiSecretsResponse {
   options: GuiSecretOptionView[];
   entries: GuiSecretEntryView[];
   publicRpcOptions: GuiPublicRpcOptionView[];
+  rpcProviderOptions: GuiRpcProviderOptionView[];
 }
 
 export interface GuiUpsertSecretRequest {
@@ -370,6 +380,7 @@ export interface GuiUpsertSecretRequest {
   value: string;
   source?: "custom" | "public";
   publicRpcId?: string | null;
+  rpcProviderId?: string | null;
 }
 
 export interface GuiUpsertSecretResponse {

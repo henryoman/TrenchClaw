@@ -136,6 +136,7 @@
         options={runtime.state.secretsOptions}
         entries={runtime.state.secretEntries}
         publicRpcOptions={runtime.state.publicRpcOptions}
+        rpcProviderOptions={runtime.state.rpcProviderOptions}
         busy={runtime.state.secretsBusy}
         error={runtime.state.secretsError}
         llmCheckBusy={runtime.state.llmCheckBusy}
@@ -161,6 +162,10 @@
         aiProviderOptions={runtime.state.aiProviderOptions}
         aiModelOptions={runtime.state.aiModelOptions}
         secretEntries={runtime.state.secretEntries}
+        publicRpcOptions={runtime.state.publicRpcOptions}
+        rpcProviderOptions={runtime.state.rpcProviderOptions}
+        secretsBusy={runtime.state.secretsBusy}
+        secretsError={runtime.state.secretsError}
         aiSettingsBusy={runtime.state.aiSettingsBusy}
         aiSettingsError={runtime.state.aiSettingsError}
         tradingSettingsFilePath={runtime.state.tradingSettingsFilePath}
@@ -178,6 +183,9 @@
         }}
         onSaveTradingSettings={(settings) => {
           void runtime.saveTradingSettings(settings);
+        }}
+        onSaveSecret={(input) => {
+          void runtime.upsertSecret(input);
         }}
       />
     {:else if activeTab === "info"}

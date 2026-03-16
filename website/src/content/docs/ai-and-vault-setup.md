@@ -42,11 +42,31 @@ featured: true
 
 - public RPC presets
 - custom RPC URLs
+- private RPC provider credentials
 
 Built-in public presets:
 
 - Solana Mainnet public RPC
 - Solana Devnet public RPC
+
+## Helius Setup
+
+If you want Helius-backed wallet reads and swap history:
+
+1. Open the secrets or vault panel.
+2. Set `Private RPC credential`.
+3. Choose `Helius` as the provider.
+4. Paste your Helius API key.
+5. Save.
+
+That setup writes the active RPC under `rpc/default/*` and keeps legacy `rpc/helius/*` compatibility fields for older Helius-specific reads.
+
+Current Helius-backed runtime behavior:
+
+- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC
+- `getManagedWalletContents` falls back to raw Solana RPC token-account reads when Helius is not selected
+- `getSwapHistory` uses Helius enhanced transaction history and needs a Helius API key
+- the GUI-generated Helius RPC URLs include both HTTP and WebSocket endpoints automatically
 
 ## Setup Steps
 
@@ -73,6 +93,8 @@ The AI check depends on:
 
 - vault file exists and is parseable JSON
 - default RPC path is set to the endpoint you actually want
+- if you selected Helius, `rpc/default/provider-id` resolves to `helius`
+- if you selected Helius, the vault also contains a non-empty Helius API key
 - AI provider key is saved without extra whitespace
 - the selected provider in AI settings is the one you intend to use
 - the model string matches the provider's expected identifier
@@ -93,6 +115,7 @@ The AI check depends on:
 - the URL is correct
 - the endpoint is reachable
 - the provider supports the cluster you intend to use
+- for rich managed-wallet contents, confirm Helius is the selected private RPC instead of a public RPC URL
 
 ### Vault file appeared automatically
 

@@ -24,9 +24,6 @@ import type {
   GuiWalletsResponse,
   GuiUpsertSecretRequest,
   GuiUpsertSecretResponse,
-  GuiUpdateVaultRequest,
-  GuiUpdateVaultResponse,
-  GuiVaultResponse,
 } from "@trenchclaw/types";
 import { GUI_API_BASE_PATH, REQUEST_TIMEOUT_MS } from "./config";
 
@@ -117,13 +114,6 @@ export const runtimeApi = {
     fetchJson<GuiTradingSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/trading-settings`)),
   updateTradingSettings: (input: GuiUpdateTradingSettingsRequest): Promise<GuiUpdateTradingSettingsResponse> =>
     fetchJson<GuiUpdateTradingSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/trading-settings`), {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(input),
-    }),
-  vault: (): Promise<GuiVaultResponse> => fetchJson<GuiVaultResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/vault`)),
-  updateVault: (input: GuiUpdateVaultRequest): Promise<GuiUpdateVaultResponse> =>
-    fetchJson<GuiUpdateVaultResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/vault`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
