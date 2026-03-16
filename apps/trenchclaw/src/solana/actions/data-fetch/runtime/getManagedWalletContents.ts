@@ -37,7 +37,7 @@ const getManagedWalletContentsInputSchema = z.object({
 
 type GetManagedWalletContentsInput = z.output<typeof getManagedWalletContentsInputSchema>;
 type TokenProgramLabel = "spl-token" | "token-2022";
-type ManagedWalletContentsDataSource = "helius-das" | "rpc-batch";
+type ManagedWalletContentsDataSource = "helius-das" | "rpc-batch" | "rpc-sequential";
 
 export interface ManagedWalletTokenBalance {
   mintAddress: string;
@@ -1001,6 +1001,7 @@ export const createGetManagedWalletContentsAction = (
             });
 
         const useHeliusDas = Boolean(heliusConfig?.rpcUrl);
+        let dataSource: ManagedWalletContentsDataSource = "rpc-batch";
         const wallets = deps.loadWalletContents
           ? await loadWalletsWithLoader(filteredEntries, deps.loadWalletContents, {
               rpcUrl: ctx.rpcUrl,
@@ -1026,6 +1027,7 @@ export const createGetManagedWalletContentsAction = (
                   if (ctx.rpcUrl && isOfficialSolanaPublicRpcUrl(ctx.rpcUrl)) {
                     await sleep(PUBLIC_MAINNET_RPC_SEQUENTIAL_COOLDOWN_MS);
                   }
+                  dataSource = "rpc-sequential";
                   return loadWalletContentsSequentiallyFromRpc({
                     entries: filteredEntries,
                     rpcUrl: ctx.rpcUrl,
@@ -1033,6 +1035,9 @@ export const createGetManagedWalletContentsAction = (
                   });
                 }
               })();
+        if (useHeliusDas) {
+          dataSource = "helius-das";
+        }
 
         const totalBalanceLamports = wallets.reduce((sum, wallet) => sum + BigInt(wallet.balanceLamports), 0n);
         const aggregatedTokenTotals = buildTokenTotals(wallets);
@@ -1047,7 +1052,7 @@ export const createGetManagedWalletContentsAction = (
             walletLibraryFilePath,
             invalidLibraryLineCount: walletLibrary.invalidLineCount,
             includeZeroBalances: input.includeZeroBalances,
-            dataSource: useHeliusDas ? "helius-das" : "rpc-batch",
+            dataSource,
             wallets,
             totalBalanceLamports: totalBalanceLamports.toString(),
             totalBalanceSol: Number(totalBalanceLamports) / LAMPORTS_PER_SOL,

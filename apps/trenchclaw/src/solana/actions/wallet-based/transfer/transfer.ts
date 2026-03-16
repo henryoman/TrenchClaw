@@ -13,6 +13,7 @@ import {
   pipe,
   setTransactionMessageFeePayer,
   setTransactionMessageLifetimeUsingBlockhash,
+  signature,
   type Instruction,
 } from "@solana/kit";
 
@@ -28,10 +29,21 @@ const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
+const TRANSFER_CONFIRMATION_TIMEOUT_MS = 45_000;
+const TRANSFER_CONFIRMATION_POLL_INTERVAL_MS = 500;
+
+type CommitmentLevel = "processed" | "confirmed" | "finalized";
+type TransferAmountInput = number | string;
+type TransferAmountResolution = {
+  uiAmountString: string;
+  uiAmountNumber: number;
+  rawAmount: bigint;
+};
+const transferAmountSchema = z.union([z.number().positive(), z.string().trim().min(1)]);
 
 const transferInputSchema = z.object({
   destination: z.string().min(1),
-  amount: z.number().positive(),
+  amount: transferAmountSchema,
   walletGroup: walletGroupNameSchema.optional(),
   walletName: walletNameSchema.optional(),
   mintAddress: z.string().min(1).optional(),
@@ -113,12 +125,132 @@ const createFailure = (
   idempotencyKey,
 });
 
-const toLamports = (solAmount: number): bigint => {
-  return BigInt(Math.round(solAmount * LAMPORTS_PER_SOL));
+const numberToPlainString = (value: number): string => {
+  const raw = value.toString();
+  if (!/[eE]/.test(raw)) {
+    return raw;
+  }
+
+  const [mantissa, exponentPart = "0"] = raw.toLowerCase().split("e");
+  const exponent = Number(exponentPart);
+  if (!Number.isInteger(exponent)) {
+    throw new Error(`Unable to normalize numeric amount "${raw}"`);
+  }
+
+  const negative = mantissa.startsWith("-");
+  const unsignedMantissa = negative ? mantissa.slice(1) : mantissa;
+  const [whole = "0", fraction = ""] = unsignedMantissa.split(".");
+  const digits = `${whole}${fraction}`.replace(/^0+(?=\d)/, "") || "0";
+  const decimalIndex = whole.length + exponent;
+
+  if (decimalIndex <= 0) {
+    return `${negative ? "-" : ""}0.${"0".repeat(-decimalIndex)}${digits}`;
+  }
+
+  if (decimalIndex >= digits.length) {
+    return `${negative ? "-" : ""}${digits}${"0".repeat(decimalIndex - digits.length)}`;
+  }
+
+  return `${negative ? "-" : ""}${digits.slice(0, decimalIndex)}.${digits.slice(decimalIndex)}`;
 };
 
-const toTokenRawAmount = (uiAmount: number, decimals: number): bigint => {
-  return BigInt(Math.round(uiAmount * 10 ** decimals));
+const normalizeUiAmountString = (value: TransferAmountInput, scale: number): string => {
+  if (!Number.isInteger(scale) || scale < 0 || scale > 18) {
+    throw new Error(`Invalid amount scale "${scale}"`);
+  }
+
+  const raw = typeof value === "number" ? numberToPlainString(value) : value.trim();
+  if (raw.length === 0) {
+    throw new Error("Amount is required.");
+  }
+  if (/[eE]/.test(raw)) {
+    throw new Error(`Amount "${raw}" must be a plain decimal value.`);
+  }
+  if (!/^(?:0|[1-9]\d*)(?:\.\d+)?$/.test(raw)) {
+    throw new Error(`Amount "${raw}" must be a positive decimal value.`);
+  }
+
+  const [intPartRaw, fracPartRaw = ""] = raw.split(".");
+  if (fracPartRaw.length > scale) {
+    throw new Error(`Amount "${raw}" has more than ${scale} decimal places.`);
+  }
+
+  const intPart = intPartRaw.replace(/^0+(?=\d)/, "") || "0";
+  const fracPart = fracPartRaw.replace(/0+$/, "");
+  const normalized = fracPart.length > 0 ? `${intPart}.${fracPart}` : intPart;
+
+  if (/^0(?:\.0+)?$/.test(normalized)) {
+    throw new Error("Amount must be greater than zero.");
+  }
+
+  return normalized;
+};
+
+const toScaledRawAmount = (uiAmountString: string, scale: number): bigint => {
+  const [intPartRaw, fracPartRaw = ""] = uiAmountString.split(".");
+  const intPart = intPartRaw || "0";
+  const fracPart = fracPartRaw.padEnd(scale, "0").slice(0, scale);
+  const normalized = `${intPart}${fracPart}`.replace(/^0+(?=\d)/, "") || "0";
+  return BigInt(normalized);
+};
+
+const resolveTransferAmount = (value: TransferAmountInput, scale: number): TransferAmountResolution => {
+  const uiAmountString = normalizeUiAmountString(value, scale);
+  const uiAmountNumber = Number(uiAmountString);
+  if (!Number.isFinite(uiAmountNumber) || uiAmountNumber <= 0) {
+    throw new Error(`Amount "${uiAmountString}" is not a valid positive number.`);
+  }
+
+  return {
+    uiAmountString,
+    uiAmountNumber,
+    rawAmount: toScaledRawAmount(uiAmountString, scale),
+  };
+};
+
+const isCommitmentSatisfied = (actual: CommitmentLevel | null, required: CommitmentLevel): boolean => {
+  if (!actual) {
+    return false;
+  }
+
+  const order: CommitmentLevel[] = ["processed", "confirmed", "finalized"];
+  return order.indexOf(actual) >= order.indexOf(required);
+};
+
+const waitForTransferConfirmation = async (input: {
+  rpc: ReturnType<typeof createSolanaRpc>;
+  txSignature: string;
+  timeoutMs?: number;
+  commitment?: CommitmentLevel;
+}): Promise<void> => {
+  const timeoutAt = Date.now() + (input.timeoutMs ?? TRANSFER_CONFIRMATION_TIMEOUT_MS);
+  const requiredCommitment = input.commitment ?? "confirmed";
+
+  while (Date.now() < timeoutAt) {
+    const response = await (input.rpc as any).getSignatureStatuses(
+      [signature(input.txSignature)],
+      { searchTransactionHistory: true },
+    ).send();
+    const status = response?.value?.[0] as
+      | {
+          err?: unknown;
+          confirmationStatus?: CommitmentLevel | null;
+        }
+      | null
+      | undefined;
+
+    if (status?.err) {
+      throw new Error(`Transfer transaction ${input.txSignature} failed: ${JSON.stringify(status.err)}`);
+    }
+
+    if (status && isCommitmentSatisfied(status.confirmationStatus ?? null, requiredCommitment)) {
+      return;
+    }
+
+    await Bun.sleep(TRANSFER_CONFIRMATION_POLL_INTERVAL_MS);
+  }
+
+  throw new Error(`Timed out waiting for transfer confirmation for signature ${input.txSignature}`);
 };
 
 const encodeSystemTransferData = (lamports: bigint): Uint8Array => {
@@ -237,7 +369,8 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
       let transferOutput: Omit<TransferOutput, "txSignature">;
 
       if (!input.mintAddress) {
-        const lamports = toLamports(input.amount);
+        const amount = resolveTransferAmount(input.amount, 9);
+        const lamports = amount.rawAmount;
         if (lamports <= 0n) {
           return createFailure(idempotencyKey, "Amount is too small after conversion to lamports.", "INVALID_AMOUNT");
         }
@@ -248,13 +381,14 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
           transferType: "sol",
           sourceAddress: signerAddress,
           destination: input.destination,
-          amountUi: input.amount,
+          amountUi: amount.uiAmountNumber,
           amountRaw: lamports.toString(10),
         };
       } else {
         const tokenProgramId = getTokenProgramId(input.tokenProgram);
         const decimals = await resolveTokenDecimals(rpc, input.mintAddress, input.decimals);
-        const amountRaw = toTokenRawAmount(input.amount, decimals);
+        const amount = resolveTransferAmount(input.amount, decimals);
+        const amountRaw = amount.rawAmount;
 
         if (amountRaw <= 0n) {
           return createFailure(
@@ -300,7 +434,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
           sourceAddress: signerAddress,
           destination: input.destination,
           mintAddress: input.mintAddress,
-          amountUi: input.amount,
+          amountUi: amount.uiAmountNumber,
           amountRaw: amountRaw.toString(10),
           sourceTokenAccount,
           destinationTokenAccount,
@@ -326,6 +460,10 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
           maxRetries: input.maxRetries ?? 0,
         })
         .send();
+      await waitForTransferConfirmation({
+        rpc,
+        txSignature: String(signature),
+      });
 
       const result: ActionResult<TransferOutput> = {
         ok: true,

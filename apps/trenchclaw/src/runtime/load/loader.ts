@@ -91,6 +91,7 @@ const normalizeRuntimeSettings = (
   const network = isRecord(candidate.network) ? candidate.network : {};
   const trading = isRecord(candidate.trading) ? candidate.trading : {};
   const tradingJupiter = isRecord(trading.jupiter) ? trading.jupiter : {};
+  const dexscreenerSettings = isRecord(trading.dexscreener) ? trading.dexscreener : {};
   const tradingPreferences = isRecord(trading.preferences) ? trading.preferences : undefined;
   const wallet = isRecord(candidate.wallet) ? candidate.wallet : {};
   const agent = isRecord(candidate.agent) ? candidate.agent : {};
@@ -224,7 +225,7 @@ const normalizeRuntimeSettings = (
         },
       },
       dexscreener: {
-        enabled: true,
+        enabled: toBooleanValue(dexscreenerSettings.enabled, true),
       },
       preferences: tradingPreferences ?? {},
     },
