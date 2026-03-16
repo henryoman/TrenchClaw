@@ -35,6 +35,7 @@ const renderOperatorToolList = (
     `- exact allowlist: ${toolNames.map((toolName) => `\`${toolName}\``).join(", ") || "none"}`,
     ...toolEntries.map((toolEntry) => `- ${toolEntry.name}: ${toolEntry.routingHint}`),
     "- for wallet holdings, other coins, SPL tokens, or per-wallet contents, use `getManagedWalletContents` first",
+    "- casual wallet questions like `what's in our wallets`, `show me our wallet balances`, or `wallet update` should still be treated as wallet-contents requests and answered in normal English",
     "- for SOL-only balance summaries, prefer `getManagedWalletSolBalances`",
     "- for direct wallet transfers, use `transfer` only after the user clearly asked to move funds and you know the exact source wallet, destination, asset, and amount",
     "- when a token account is empty and the user wants cleanup or rent recovery, use `closeTokenAccount`",

@@ -509,6 +509,97 @@ describe("RuntimeChatService", () => {
     expect(assistant?.content).toContain("Token So11111111111111111111111111111111111111112: 1.5");
   });
 
+  test("bypasses the model for varied plain-English wallet questions", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    let streamInvocationCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({
+            results: [
+              makeActionResult({
+                ok: true,
+                data: {
+                  walletCount: 2,
+                  wallets: [
+                    {
+                      walletGroup: "core-wallets",
+                      walletName: "wallet_000",
+                      address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+                      balanceSol: 0.037965724,
+                      tokenBalances: [
+                        {
+                          mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+                          balanceUiString: "37227.586660486",
+                        },
+                      ],
+                    },
+                    {
+                      walletGroup: "core-wallets",
+                      walletName: "wallet_001",
+                      address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+                      balanceSol: 0,
+                      tokenBalances: [
+                        {
+                          mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+                          balanceUiString: "0.000000002",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              }),
+            ],
+            policyHits: [],
+          }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        streamText: (() => {
+          streamInvocationCount += 1;
+          throw new Error("model path should not be used for plain-English wallet fast path");
+        }) as never,
+      },
+    );
+    const walletQuestions = [
+      "what do we have in our wallets right now",
+      "what's in our wallets",
+      "show me our wallet balances",
+      "how much do we have in our wallets",
+      "wallet update",
+    ];
+
+    for (const [index, question] of walletQuestions.entries()) {
+      const chatId = `chat-fast-wallet-english-${index}`;
+      const response = await service.stream([
+        {
+          id: `user-fast-wallet-english-${index}`,
+          role: "user",
+          parts: [{ type: "text", text: question }],
+        },
+      ], {
+        chatId,
+      });
+
+      const body = await response.text();
+      expect(body).toContain("Here are the contents for 2 managed wallets");
+      expect(body).toContain("wallet_000");
+      expect(body).toContain("37227.586660486");
+
+      const assistant = stateStore.listChatMessages(chatId, 10).find((message) => message.role === "assistant");
+      expect(assistant?.content).toContain("wallet_001");
+      expect(assistant?.content).toContain("0.000000002");
+    }
+
+    expect(streamInvocationCount).toBe(0);
+  });
+
   test("returns the gateway-configured disabled response when no model is available", async () => {
     const settings = await loadRuntimeSettings("dangerous");
     const endpoints = resolvePrimaryRuntimeEndpoints(settings);

@@ -86,22 +86,78 @@ const RUNTIME_WORKSPACE_TOOL_NAMES = [
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
 ] as const;
-const WALLET_INVENTORY_FAST_PATH_PATTERNS = [
-  /^\s*(what|which)\s+wallets\s+do\s+we\s+have\??\s*$/iu,
-  /^\s*list\s+(?:our\s+)?wallets\??\s*$/iu,
-  /^\s*show\s+(?:me\s+)?(?:our\s+)?wallets\??\s*$/iu,
-  /^\s*wallet\s+addresses\??\s*$/iu,
+const WALLET_MUTATION_INTENT_TOKENS = [
+  "transfer",
+  "send",
+  "move",
+  "swap",
+  "buy",
+  "sell",
+  "create",
+  "rename",
+  "close",
+  "delete",
+  "remove",
+  "fund",
+  "airdrop",
+  "deposit",
+  "withdraw",
+  "import",
+  "export",
 ] as const;
-const WALLET_CONTENTS_FAST_PATH_PATTERNS = [
-  /^\s*what\s+are\s+the\s+contents\s+of\s+each\s+wallet\??\s*$/iu,
-  /^\s*show\s+(?:me\s+)?the\s+contents\s+of\s+each\s+wallet\??\s*$/iu,
-  /^\s*show\s+(?:me\s+)?each\s+wallet(?:'s)?\s+contents\??\s*$/iu,
-  /^\s*what\s+does\s+each\s+wallet\s+hold\??\s*$/iu,
+const WALLET_INVENTORY_INTENT_PHRASES = [
+  "what wallets do we have",
+  "which wallets do we have",
+  "list wallets",
+  "show wallets",
+  "wallet addresses",
+  "wallet address",
+  "wallet names",
+  "wallet name",
+] as const;
+const WALLET_CONTENTS_INTENT_PHRASES = [
+  "what do we have",
+  "what is in",
+  "whats in",
+  "what s in",
+  "contents",
+  "content",
+  "hold",
+  "holds",
+  "holding",
+  "holdings",
+  "balance",
+  "balances",
+  "token",
+  "tokens",
+  "coin",
+  "coins",
+  "asset",
+  "assets",
+  "how much",
+  "right now",
+  "wallet update",
+  "wallet status",
 ] as const;
 
 const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
+};
+
+const normalizeIntentText = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s']/gu, " ")
+    .replace(/\s+/gu, " ")
+    .trim();
+
+const hasAnyIntentPhrase = (haystack: string, phrases: readonly string[]): boolean =>
+  phrases.some((phrase) => haystack.includes(phrase));
+
+const hasWalletMutationIntent = (userMessage: string): boolean => {
+  const normalized = normalizeIntentText(userMessage);
+  return hasAnyIntentPhrase(normalized, WALLET_MUTATION_INTENT_TOKENS);
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -540,11 +596,29 @@ const createDirectTextStreamResponse = (input: {
   });
 };
 
-const shouldUseWalletInventoryFastPath = (userMessage: string): boolean =>
-  WALLET_INVENTORY_FAST_PATH_PATTERNS.some((pattern) => pattern.test(userMessage));
+const shouldUseWalletInventoryFastPath = (userMessage: string): boolean => {
+  const normalized = normalizeIntentText(userMessage);
+  if (!/\bwallets?\b/u.test(normalized) || hasWalletMutationIntent(normalized)) {
+    return false;
+  }
 
-const shouldUseWalletContentsFastPath = (userMessage: string): boolean =>
-  WALLET_CONTENTS_FAST_PATH_PATTERNS.some((pattern) => pattern.test(userMessage));
+  const mentionsInventory = hasAnyIntentPhrase(normalized, WALLET_INVENTORY_INTENT_PHRASES);
+  const mentionsContents = hasAnyIntentPhrase(normalized, WALLET_CONTENTS_INTENT_PHRASES);
+  return mentionsInventory && !mentionsContents;
+};
+
+const shouldUseWalletContentsFastPath = (userMessage: string): boolean => {
+  const normalized = normalizeIntentText(userMessage);
+  if (!/\bwallets?\b/u.test(normalized) || hasWalletMutationIntent(normalized)) {
+    return false;
+  }
+
+  if (hasAnyIntentPhrase(normalized, WALLET_CONTENTS_INTENT_PHRASES)) {
+    return true;
+  }
+
+  return /\b(?:what|show|list|how)\b/u.test(normalized);
+};
 
 const formatWalletInventoryFastPathText = (data: unknown): string | null => {
   if (!isRecord(data) || !Array.isArray(data.wallets)) {
