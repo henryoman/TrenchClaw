@@ -208,13 +208,14 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
   const publicRpcId = typeof publicRpcRaw === "string" && publicRpcRaw.trim().length > 0 ? publicRpcRaw : null;
   const rpcProviderId = inferRpcProviderId(vaultData);
   const rpcCredential = resolveStoredRpcCredential(vaultData, rpcProviderId);
+  const displayedValue = source === "public" ? rpcCredential : rpcCredential || value;
 
   return {
     optionId: option.id,
     category: option.category,
     label: option.label,
     vaultPath: option.vaultPath,
-    value: rpcCredential || value,
+    value: displayedValue,
     source,
     publicRpcId,
     rpcProviderId,

@@ -11,6 +11,7 @@ set -eu
 # - TRENCHCLAW_INSTALL_REQUIRED_TOOLS (default: 0)
 # - TRENCHCLAW_UPDATE_EXISTING_TOOLS (default: 1)
 # - TRENCHCLAW_RELOAD_SHELL (default: 0; set to 1 to exec a login shell at end)
+# - TRENCHCLAW_AUTO_CONFIRM (default: 0; set to 1 to skip the experimental install prompt)
 
 TRENCHCLAW_VERSION="${TRENCHCLAW_VERSION:-latest}"
 TRENCHCLAW_REPO="${TRENCHCLAW_REPO:-henryoman/trenchclaw}"
@@ -21,6 +22,7 @@ TRENCHCLAW_BIN_DIR="${TRENCHCLAW_BIN_DIR:-$HOME/.local/bin}"
 TRENCHCLAW_INSTALL_REQUIRED_TOOLS="${TRENCHCLAW_INSTALL_REQUIRED_TOOLS:-0}"
 TRENCHCLAW_UPDATE_EXISTING_TOOLS="${TRENCHCLAW_UPDATE_EXISTING_TOOLS:-1}"
 TRENCHCLAW_RELOAD_SHELL="${TRENCHCLAW_RELOAD_SHELL:-0}"
+TRENCHCLAW_AUTO_CONFIRM="${TRENCHCLAW_AUTO_CONFIRM:-0}"
 TRENCHCLAW_INSTALLED_VERSION=""
 
 info() {
@@ -38,6 +40,56 @@ need_cmd() {
 
 require_cmd() {
   need_cmd "$1" || fail "$1 is required but not installed"
+}
+
+is_truthy() {
+  case "$(printf '%s' "${1:-}" | tr '[:upper:]' '[:lower:]')" in
+    1|true|yes|y|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+parse_args() {
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      -y|--yes)
+        TRENCHCLAW_AUTO_CONFIRM="1"
+        ;;
+      *)
+        fail "Unknown argument: $1"
+        ;;
+    esac
+    shift
+  done
+}
+
+prompt_install_confirmation() {
+  if is_truthy "$TRENCHCLAW_AUTO_CONFIRM" || is_truthy "${CI:-0}"; then
+    info "Skipping experimental install confirmation."
+    return 0
+  fi
+
+  if [ ! -r /dev/tty ]; then
+    fail "Interactive confirmation requires a terminal. Re-run in a terminal, or set TRENCHCLAW_AUTO_CONFIRM=1 for non-interactive installs."
+  fi
+
+  printf '%s\n' "ARE YOU SURE YOU WANT TO DOWNLOAD THIS SOFTWARE?" >/dev/tty
+  printf '%s\n' "IT IS EXPERIMENTAL AND WE HIGHLY RECOMMEND WAITING UNTIL V0.1.0 TO TRY TRENCHCLAW." >/dev/tty
+  printf '%s' "Continue? [y/N]: " >/dev/tty
+
+  if ! IFS= read -r answer </dev/tty; then
+    fail "Could not read install confirmation."
+  fi
+
+  case "$(printf '%s' "$answer" | tr '[:upper:]' '[:lower:]')" in
+    y|yes)
+      info "Experimental install confirmed."
+      ;;
+    *)
+      info "Install cancelled."
+      exit 0
+      ;;
+  esac
 }
 
 resolve_sha256_command() {
@@ -227,6 +279,8 @@ print_summary() {
 }
 
 main() {
+  parse_args "$@"
+  prompt_install_confirmation
   install_trenchclaw_bundle
   if [ "$TRENCHCLAW_INSTALL_REQUIRED_TOOLS" = "1" ]; then
     info "Skipping automatic external tool installation in the public install flow."

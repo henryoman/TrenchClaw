@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import type { DocListItem } from '$lib/docs';
+  import { docsPrerequisiteBootstrap, docsPrerequisites } from '$lib/site/content';
 
   let { docs }: { docs: DocListItem[] } = $props();
 
@@ -12,7 +13,7 @@
   <p class="docs-kicker">Documentation</p>
   <h1 class="docs-index-title">Product docs</h1>
   <p class="docs-index-description">
-    Clear docs for install, setup, wallets, swaps, routines, and runtime behavior.
+    Clear docs for install, prerequisites, wallets, swaps, routines, and runtime behavior.
   </p>
   <div class="docs-hero-actions">
     {#if startHere}
@@ -23,6 +24,47 @@
     {/if}
   </div>
 </div>
+
+<section class="docs-prereq-section mt-8" aria-labelledby="docs-prereq-title">
+  <div class="docs-prereq-shell">
+    <div class="docs-prereq-heading">
+      <p class="docs-kicker">Recommended prerequisites</p>
+      <h2 id="docs-prereq-title" class="docs-prereq-title">Set up the minimum stuff first.</h2>
+      <p class="docs-prereq-description">
+        The scope here is simple: install TrenchClaw, run the updater script if you want managed tool refreshes,
+        then make sure the separate tools and API keys below exist before deeper setup.
+      </p>
+    </div>
+
+    <div class="docs-prereq-layout">
+      <div class="docs-prereq-bootstrap">
+        <div class="docs-prereq-chip">Recommended first step</div>
+        <h3 class="docs-prereq-bootstrap-title">{docsPrerequisiteBootstrap.label}</h3>
+        <p class="docs-prereq-bootstrap-description">{docsPrerequisiteBootstrap.description}</p>
+        <code class="docs-prereq-command">{docsPrerequisiteBootstrap.command}</code>
+        <p class="docs-prereq-note">{docsPrerequisiteBootstrap.note}</p>
+        {#if startHere}
+          <a href={resolve('/docs/[slug]', { slug: startHere.slug })} class="docs-secondary-button docs-prereq-link">
+            Open getting started
+          </a>
+        {/if}
+      </div>
+
+      <div class="docs-prereq-grid">
+        {#each docsPrerequisites as item (item.label)}
+          <div class="docs-prereq-card">
+            <p class="docs-prereq-card-kind">{item.kind}</p>
+            <h3 class="docs-prereq-card-title">{item.label}</h3>
+            <p class="docs-prereq-card-description">{item.description}</p>
+            {#if item.command}
+              <code class="docs-prereq-mini-command">{item.command}</code>
+            {/if}
+          </div>
+        {/each}
+      </div>
+    </div>
+  </div>
+</section>
 
 <div class="docs-grid mt-8">
   {#each docs as doc (doc.slug)}

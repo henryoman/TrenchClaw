@@ -16,6 +16,7 @@ import { deleteConversation, streamChat, getConversationMessages, getConversatio
 import { createInstance, listInstances, signInInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
+import { getSolPrice } from "./domains/sol-price";
 import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
 import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
@@ -134,6 +135,10 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
     if (request.method === "GET" && url.pathname === "/api/gui/bootstrap") {
       return Response.json(await getBootstrap(context), { headers: CORS_HEADERS });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/sol-price") {
+      return Response.json(await getSolPrice(), { headers: CORS_HEADERS });
     }
 
     if (request.method === "GET" && url.pathname === "/api/gui/events") {

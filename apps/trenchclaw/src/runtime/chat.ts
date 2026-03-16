@@ -233,6 +233,19 @@ const uiChunkHasVisibleText = (chunk: UIMessageChunk): boolean => {
   return false;
 };
 
+const isSuppressiblePreToolChunk = (chunk: UIMessageChunk): boolean =>
+  chunk.type === "text-start"
+  || chunk.type === "text-delta"
+  || chunk.type === "text-end"
+  || chunk.type === "reasoning-start"
+  || chunk.type === "reasoning-delta"
+  || chunk.type === "reasoning-end";
+
+const isReasoningChunk = (chunk: UIMessageChunk): boolean =>
+  chunk.type === "reasoning-start"
+  || chunk.type === "reasoning-delta"
+  || chunk.type === "reasoning-end";
+
 const uiChunkHasToolActivity = (chunk: UIMessageChunk): boolean =>
   chunk.type === "tool-input-start"
   || chunk.type === "tool-input-delta"
@@ -277,11 +290,64 @@ const writeAssistantTextMessage = (input: {
   input.writeChunk({ type: "finish", finishReason: input.finishReason ?? "stop" });
 };
 
+const stripPreToolNarrationFromAssistantMessage = (message: UIMessage): UIMessage => {
+  if (message.role !== "assistant") {
+    return message;
+  }
+
+  const firstToolPartIndex = message.parts.findIndex((part) => isToolUIPart(part));
+  if (firstToolPartIndex <= 0) {
+    return message;
+  }
+
+  const sanitizedParts = message.parts.filter((part, index) => {
+    if (index >= firstToolPartIndex) {
+      return true;
+    }
+    return part.type !== "text" && part.type !== "reasoning";
+  });
+
+  if (sanitizedParts.length === message.parts.length) {
+    return message;
+  }
+
+  return {
+    ...message,
+    parts: sanitizedParts,
+  };
+};
+
 const filterPersistableMessages = (messages: UIMessage[]): UIMessage[] =>
-  messages.filter(
-    (message): message is UIMessage & { role: "assistant" | "system" | "user" } =>
-      message.role === "assistant" || message.role === "system" || message.role === "user",
-  );
+  messages
+    .map((message) => stripPreToolNarrationFromAssistantMessage(message))
+    .filter(
+      (message): message is UIMessage & { role: "assistant" | "system" | "user" } =>
+        message.role === "assistant" || message.role === "system" || message.role === "user",
+    );
+
+const replaceLastAssistantMessageWithText = (messages: UIMessage[], text: string): UIMessage[] => {
+  const nextMessages = [...messages];
+  for (let index = nextMessages.length - 1; index >= 0; index -= 1) {
+    const message = nextMessages[index];
+    if (message?.role !== "assistant") {
+      continue;
+    }
+    nextMessages[index] = {
+      ...message,
+      parts: [{ type: "text", text }] as UIMessage["parts"],
+    };
+    return nextMessages;
+  }
+
+  return [
+    ...nextMessages,
+    {
+      id: `msg-${crypto.randomUUID()}`,
+      role: "assistant",
+      parts: [{ type: "text", text }] as UIMessage["parts"],
+    },
+  ];
+};
 
 const sanitizeConversationTitle = (title: string | undefined, fallbackMessages: UIMessage[]): string | undefined => {
   const explicit = trimOrUndefinedValue(title);
@@ -311,12 +377,17 @@ const withChatHeaders = (headers: HeadersInit | undefined, chatId: string): Head
 const truncateText = (value: string, maxLength = 1_500): string =>
   value.length > maxLength ? `${value.slice(0, maxLength)}…[truncated]` : value;
 
+const stringifyJsonSafe = (value: unknown): string => JSON.stringify(
+  value,
+  (_key, nestedValue) => (typeof nestedValue === "bigint" ? nestedValue.toString() : nestedValue),
+);
+
 const serializeForLog = (value: unknown): string => {
   if (typeof value === "string") {
     return truncateText(value);
   }
   try {
-    return truncateText(JSON.stringify(value));
+    return truncateText(stringifyJsonSafe(value));
   } catch {
     return "[unserializable]";
   }
@@ -327,7 +398,7 @@ const serializeForToolCache = (value: unknown): string => {
     return "undefined";
   }
   try {
-    return JSON.stringify(value) ?? "undefined";
+    return stringifyJsonSafe(value) ?? "undefined";
   } catch {
     return "[unserializable]";
   }
@@ -825,19 +896,43 @@ const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined): stri
   return null;
 };
 
-const createToolPartFromStreamState = (input: {
+function createToolPartFromStreamState(input: {
+  toolName: string;
+  toolCallId: string;
+  state: "input-available";
+  input: unknown;
+}): UIMessage["parts"][number];
+function createToolPartFromStreamState(input: {
+  toolName: string;
+  toolCallId: string;
+  state: "output-available";
+  input: unknown;
+  output: unknown;
+}): UIMessage["parts"][number];
+function createToolPartFromStreamState(input: {
   toolName: string;
   toolCallId: string;
   state: "input-available" | "output-available";
-  input?: unknown;
+  input: unknown;
   output?: unknown;
-}): UIMessage["parts"][number] => ({
-  type: `tool-${input.toolName}`,
-  toolCallId: input.toolCallId,
-  state: input.state,
-  ...(input.input === undefined ? {} : { input: input.input }),
-  ...(input.output === undefined ? {} : { output: input.output }),
-});
+}): UIMessage["parts"][number] {
+  if (input.state === "input-available") {
+    return {
+      type: `tool-${input.toolName}`,
+      toolCallId: input.toolCallId,
+      state: "input-available",
+      input: input.input,
+    };
+  }
+
+  return {
+    type: `tool-${input.toolName}`,
+    toolCallId: input.toolCallId,
+    state: "output-available",
+    input: input.input,
+    output: input.output,
+  };
+}
 
 const createDirectToolResultStreamResponse = (input: {
   headers?: HeadersInit;
@@ -1197,6 +1292,7 @@ export const createRuntimeChatService = (
         && "consumeStream" in firstResult
         && typeof firstResult.consumeStream === "function";
 
+      let finalAssistantTextOverride: string | null = null;
       const response = supportsMergedStreaming
         ? createUIMessageStreamResponse({
             headers: withChatHeaders(input?.headers, chatId),
@@ -1205,13 +1301,23 @@ export const createRuntimeChatService = (
               execute: async ({ writer }) => {
                 let firstPassMessages: UIMessage[] = validatedMessages;
                 let firstResponseMessage: UIMessage | undefined;
-                let firstPassSawToolActivity = false;
+                let streamSawToolActivity = false;
                 let firstPassSawTextAfterToolActivity = false;
+                const queuedPreToolChunks: UIMessageChunk[] = [];
                 const observedToolCalls = new Map<string, {
                   toolName: string;
                   input?: unknown;
                   output?: unknown;
                 }>();
+                const flushQueuedPreToolChunks = (mode: "all" | "structural-only"): void => {
+                  for (const queuedChunk of queuedPreToolChunks) {
+                    if (mode === "structural-only" && isSuppressiblePreToolChunk(queuedChunk)) {
+                      continue;
+                    }
+                    writer.write(queuedChunk);
+                  }
+                  queuedPreToolChunks.length = 0;
+                };
 
                 const firstPassStream = firstResult.toUIMessageStream({
                   originalMessages: validatedMessages,
@@ -1224,12 +1330,23 @@ export const createRuntimeChatService = (
                 });
                 await Promise.all([
                   firstResult.consumeStream(),
-                  pipeUIMessageStream(
-                    firstPassStream,
-                    (chunk) => writer.write(chunk),
-                    (chunk) => {
+                  pipeUIMessageStream(firstPassStream, (chunk) => {
+                    if (isReasoningChunk(chunk)) {
+                      return;
+                    }
+                    if (!streamSawToolActivity) {
                       if (uiChunkHasToolActivity(chunk)) {
-                        firstPassSawToolActivity = true;
+                        streamSawToolActivity = true;
+                        flushQueuedPreToolChunks("structural-only");
+                      } else {
+                        queuedPreToolChunks.push(chunk);
+                        return;
+                      }
+                    }
+                    writer.write(chunk);
+                  }, (chunk) => {
+                      if (uiChunkHasToolActivity(chunk)) {
+                        streamSawToolActivity = true;
                       }
                       if (
                         chunk.type === "tool-input-available"
@@ -1253,18 +1370,20 @@ export const createRuntimeChatService = (
                         }
                       }
                       if (uiChunkHasVisibleText(chunk)) {
-                        if (firstPassSawToolActivity) {
+                        if (streamSawToolActivity) {
                           firstPassSawTextAfterToolActivity = true;
                         }
                       }
-                    },
-                  ),
+                    }),
                 ]);
+                if (queuedPreToolChunks.length > 0) {
+                  flushQueuedPreToolChunks("all");
+                }
 
                 const completedAssistantMessage = firstResponseMessage ?? findLatestAssistantMessage(firstPassMessages);
                 const completedAssistantHasToolActivity = assistantMessageHasToolActivity(completedAssistantMessage);
                 const completedAssistantHasTextAfterToolActivity = assistantMessageHasTextAfterToolActivity(completedAssistantMessage);
-                const firstPassHadToolActivity = firstPassSawToolActivity || completedAssistantHasToolActivity;
+                const firstPassHadToolActivity = streamSawToolActivity || completedAssistantHasToolActivity;
                 const observedToolParts = Array.from(observedToolCalls.entries()).flatMap(([toolCallId, entry]) => {
                   const parts: UIMessage["parts"] = [];
                   if (entry.input !== undefined) {
@@ -1280,7 +1399,7 @@ export const createRuntimeChatService = (
                       toolName: entry.toolName,
                       toolCallId,
                       state: "output-available",
-                      input: entry.input,
+                      input: entry.input ?? null,
                       output: entry.output,
                     }));
                   }
@@ -1299,7 +1418,7 @@ export const createRuntimeChatService = (
                     toolName: result.actionName,
                     toolCallId: `tool-${crypto.randomUUID()}`,
                     state: "output-available",
-                    input: result.rawInput,
+                    input: result.rawInput ?? null,
                     output: result.output,
                   }));
                 const executedToolMessage =
@@ -1326,6 +1445,7 @@ export const createRuntimeChatService = (
                   ?? formatKnownToolOnlyCompletionText(observedToolMessage)
                   ?? formatKnownToolOnlyCompletionText(executedToolMessage);
                 if (deterministicToolOnlyText) {
+                  finalAssistantTextOverride = deterministicToolOnlyText;
                   deps.logger?.info("chat:tool_only_completion_resolved", {
                     chatId,
                     lane: preparedExecution.lane,
@@ -1388,10 +1508,14 @@ export const createRuntimeChatService = (
                 });
               },
               onFinish: async ({ messages: finalMessages }) => {
+                const persistableFinalMessages =
+                  finalAssistantTextOverride && finalAssistantTextOverride.trim().length > 0
+                    ? replaceLastAssistantMessageWithText(finalMessages, finalAssistantTextOverride)
+                    : finalMessages;
                 persistFinishedMessages(deps, chatId, {
                   sessionId: input?.sessionId,
                   conversationTitle: input?.conversationTitle,
-                }, finalMessages);
+                }, persistableFinalMessages);
                 deps.logger?.info("chat:stream_finish", {
                   chatId,
                   durationMs: Date.now() - streamStartedAt,

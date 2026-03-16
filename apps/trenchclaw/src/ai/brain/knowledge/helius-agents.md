@@ -1,17 +1,21 @@
 # Helius Quick Ops: CLI + RPC Command Cookbook
 
-Last verified: 2026-03-15
+Last verified: 2026-03-16
 
 Use this file for high-signal Helius operations: wallet creation, funding, transfers, and direct RPC/DAS JSON methods.
 
 ## One-Time Setup
 
 ```bash
-# Helius CLI (preferred here: Bun global install)
-bun add -g helius-cli
+# Helper-managed path for Solana CLI + Helius CLI
+curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
 
-# npm fallback
-# npm install -g helius-cli
+# Manual Helius CLI install (official)
+npm install -g helius-cli@latest
+
+# Manual Helius CLI install (also works if Bun or pnpm is present)
+# bun add -g helius-cli@latest
+# pnpm add -g helius-cli@latest
 
 # Solana + SPL CLI (if missing)
 # https://docs.solana.com/cli/install-solana-cli-tools
@@ -23,7 +27,7 @@ helius config set-api-key "$HELIUS_API_KEY"
 # Or do the full signup flow
 helius keygen
 helius signup --json
-helius login --keypair ~/.helius/keypair.json --json
+helius login --json
 
 # Grab a key, then export endpoint
 export HELIUS_API_KEY="<your_api_key>"
@@ -33,6 +37,7 @@ export RPC_URL="https://beta.helius-rpc.com/?api-key=${HELIUS_API_KEY}"
 Useful checks:
 
 - `helius --version`
+- `helius config show`
 - `helius projects --json`
 - `helius apikeys --json`
 - `helius apikeys create --json`
@@ -162,6 +167,12 @@ helius asset token-accounts --owner "${OWNER}" --json
 
 Use the CLI for shell scripts and operator debugging. Inside TrenchClaw, prefer typed runtime actions over shell commands.
 
+## CLI Notes
+
+- Helper-managed TrenchClaw setup now installs or updates `helius-cli` in the same prerequisite script that handles Solana CLI.
+- Official Helius docs currently describe config under `~/.helius/`, while the upstream CLI README still documents `~/.helius-cli/`. When path-level troubleshooting matters, verify against the installed CLI with `helius config show` instead of assuming one location.
+- For scripts, prefer `--json` and check exit codes explicitly.
+
 ## TrenchClaw Managed Wallet Contents
 
 - `getManagedWalletContents` is the primary managed-wallet holdings read
@@ -240,13 +251,20 @@ Related env vars used by runtime routing:
 
 ## Source Links
 
-- Agent signup and CLI instructions: https://dashboard.helius.dev/agents.md
-- Docs index (discover all pages): https://www.helius.dev/docs/llms.txt
-- Agents docs index: https://www.helius.dev/docs/agents/llms.txt
-- CLI repo: https://github.com/helius-labs/helius-cli
+- Agent signup and CLI instructions: <https://dashboard.helius.dev/agents.md>
+- Docs index (discover all pages): <https://www.helius.dev/docs/llms.txt>
+- Agents docs index: <https://www.helius.dev/docs/agents/llms.txt>
+- Agents overview: <https://www.helius.dev/docs/agents/overview>
+- CLI guide: <https://www.helius.dev/docs/agents/cli>
+- CLI command reference: <https://www.helius.dev/docs/agents/cli/commands>
+- CLI repo: <https://github.com/helius-labs/helius-cli>
 
 ## Where To Find More Helius Info
 
 - Deep reference (repo-authored): `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius.md`
-- Agents docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/helius-agents-llms.md`
-- Full docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/helius-docs-llms-full.md`
+- Skill CLI reference: `src/ai/brain/knowledge/skills/helius/references/cli.md`
+- Agents docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-agents-llms.md`
+- Full docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-docs-llms-full.md`
+- Deep CLI guide snapshot: `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli.md`
+- Deep CLI command snapshot: `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli-commands.md`
+- CLI upstream README snapshot: `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli-readme.md`

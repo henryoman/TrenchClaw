@@ -489,6 +489,7 @@ export interface RuntimeBootstrap {
     schedulerTickMs: number;
     llmEnabled: boolean;
     llmModel?: string;
+    bootedAt?: number;
     sessionId?: string;
     sessionKey?: string;
     gatewayLanes?: Array<{
@@ -502,6 +503,7 @@ export interface RuntimeBootstrap {
 }
 
 export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
+  const bootedAt = Date.now();
   const profile = resolveRuntimeSettingsProfile();
   const settings = await loadRuntimeSettings(profile);
   const endpoints = resolvePrimaryRuntimeEndpoints(settings);
@@ -934,6 +936,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       schedulerTickMs: settings.runtime.scheduler.tickMs,
       llmEnabled: llm != null,
       llmModel: llm?.model,
+      bootedAt,
       sessionId: session?.sessionId,
       sessionKey: session?.sessionKey,
       gatewayLanes: gateway.describe().lanes,

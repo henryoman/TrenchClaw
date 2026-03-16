@@ -50,7 +50,6 @@
   ];
   const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "openrouter";
   const DEFAULT_AI_MODEL = "anthropic/claude-sonnet-4.6";
-  const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
   const SOLANA_RPC_OPTION_ID = "solana-rpc-url";
   const PROVIDER_KEY_OPTION_BY_ID: Record<GuiAiSettingsView["provider"], string> = {
     gateway: "vercel-ai-gateway-api-key",
@@ -93,6 +92,9 @@
 
   const rpcProviderFor = (rpcProviderId: string | null): GuiRpcProviderOptionView | undefined =>
     rpcProviderOptions.find((provider) => provider.id === rpcProviderId) ?? rpcProviderOptions[0];
+
+  const formatRpcProviderOptionLabel = (provider: GuiRpcProviderOptionView): string =>
+    provider.id === "helius" ? `${provider.label} | recommended` : provider.label;
 
   const isKnownPublicRpcUrl = (value: string): boolean => {
     const normalizedValue = value.trim();
@@ -327,6 +329,7 @@
     : [...filteredAiModelOptions];
   $: selectedAiProviderHasKey = providerHasKey(aiSettingsDraft.provider);
   $: selectedPrimaryRpcProvider = rpcProviderFor(primaryRpcProviderIdDraft);
+  $: selectedPrimaryRpcProviderIsHelius = selectedPrimaryRpcProvider?.id === "helius";
   $: primaryRpcCredentialLabel = selectedPrimaryRpcProvider?.mode === "endpoint-url" ? "RPC endpoint URL" : "API key";
   $: primaryRpcCredentialPlaceholder = selectedPrimaryRpcProvider?.placeholder ?? "Enter RPC credential";
 </script>
@@ -427,7 +430,10 @@
 
     <section class="settings-section" aria-label="Blockchain settings">
       <div class="section-heading">
-        <p class="section-label">Blockchain settings</p>
+        <div class="section-copy">
+          <p class="section-label">Blockchain settings</p>
+          <p class="section-description">Choose the RPC provider here. Helius is the recommended option and gets the richest settings surface.</p>
+        </div>
         <div class="actions">
           <RetroButton
             variant="primary"
@@ -452,7 +458,7 @@
             }}
           >
             {#each rpcProviderOptions as providerOption}
-              <option value={providerOption.id}>{providerOption.label}</option>
+              <option value={providerOption.id}>{formatRpcProviderOptionLabel(providerOption)}</option>
             {/each}
           </RetroSelect>
         </RetroField>
@@ -469,6 +475,22 @@
           />
         </RetroField>
       </div>
+
+      {#if selectedPrimaryRpcProviderIsHelius}
+        <div class="provider-callout" aria-label="Helius provider settings">
+          <p class="provider-callout-title">Helius gateway settings</p>
+          <p class="provider-callout-copy">
+            Coming soon.
+          </p>
+        </div>
+      {:else if selectedPrimaryRpcProvider}
+        <div class="provider-callout provider-callout-muted" aria-label="Provider settings note">
+          <p class="provider-callout-title">{selectedPrimaryRpcProvider.label} settings</p>
+          <p class="provider-callout-copy">
+            Advanced provider-specific controls are centered on Helius. This provider currently uses the standard credential flow only.
+          </p>
+        </div>
+      {/if}
     </section>
 
     <RetroStatusMessage tone="error" text={blockchainSettingsErrorText} />
@@ -564,11 +586,50 @@
     text-transform: uppercase;
   }
 
+  .section-copy {
+    display: grid;
+    gap: var(--tc-space-1);
+    min-width: 0;
+  }
+
+  .section-description {
+    margin: 0;
+    color: var(--tc-color-gray-2);
+    font-size: 0.85rem;
+    line-height: 1.4;
+  }
+
   .settings-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--tc-space-3);
     min-width: 0;
+  }
+
+  .provider-callout {
+    display: grid;
+    gap: var(--tc-space-1);
+    border: var(--tc-row-box-border);
+    background: var(--tc-row-box-bg);
+    padding: var(--tc-row-box-padding);
+  }
+
+  .provider-callout-muted {
+    opacity: 0.92;
+  }
+
+  .provider-callout-title {
+    margin: 0;
+    color: var(--tc-color-lime);
+    font-size: var(--tc-field-label-size);
+    letter-spacing: var(--tc-field-label-letter-spacing);
+    text-transform: uppercase;
+  }
+
+  .provider-callout-copy {
+    margin: 0;
+    color: var(--tc-color-gray-2);
+    line-height: 1.45;
   }
 
 </style>

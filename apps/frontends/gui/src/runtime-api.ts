@@ -4,6 +4,7 @@ import type {
   GuiUpdateAiSettingsResponse,
   GuiActivityResponse,
   GuiBootstrapResponse,
+  GuiSolPriceResponse,
   GuiTradingSettingsResponse,
   GuiUpdateTradingSettingsRequest,
   GuiUpdateTradingSettingsResponse,
@@ -72,6 +73,7 @@ const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promi
 
 export const runtimeApi = {
   bootstrap: (): Promise<GuiBootstrapResponse> => fetchJson<GuiBootstrapResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/bootstrap`)),
+  solPrice: (): Promise<GuiSolPriceResponse> => fetchJson<GuiSolPriceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/sol-price`)),
   queue: (): Promise<GuiQueueResponse> => fetchJson<GuiQueueResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/queue`)),
   schedule: (): Promise<GuiScheduleResponse> => fetchJson<GuiScheduleResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/schedule`)),
   activity: (limit = 100): Promise<GuiActivityResponse> =>

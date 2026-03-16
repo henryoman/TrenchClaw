@@ -195,6 +195,58 @@ describe("Runtime v1 API", () => {
     await reader.cancel();
   });
 
+  test("GET /api/gui/sol-price returns the cached runtime price and collapses burst refreshes", async () => {
+    const originalFetch = globalThis.fetch;
+    let upstreamCallCount = 0;
+
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      if (!url.startsWith("https://api.dexscreener.com/")) {
+        return originalFetch(input, init);
+      }
+
+      upstreamCallCount += 1;
+      return Response.json([
+        {
+          chainId: "solana",
+          pairAddress: "pair-low-liquidity",
+          quoteToken: { symbol: "USDC" },
+          priceUsd: "140.10",
+          liquidity: { usd: 10_000 },
+        },
+        {
+          chainId: "solana",
+          pairAddress: "pair-high-liquidity",
+          quoteToken: { symbol: "USDC" },
+          priceUsd: "141.25",
+          liquidity: { usd: 250_000 },
+        },
+      ]);
+    }) as typeof globalThis.fetch;
+
+    try {
+      const runtime = buildRuntime();
+      const transport = new RuntimeGuiTransport(runtime);
+      const handler = transport.createApiHandler();
+
+      const firstResponse = await handler(new Request("http://localhost/api/gui/sol-price", { method: "GET" }));
+      const secondResponse = await handler(new Request("http://localhost/api/gui/sol-price", { method: "GET" }));
+
+      expect(firstResponse.status).toBe(200);
+      expect(secondResponse.status).toBe(200);
+      expect(upstreamCallCount).toBe(1);
+
+      const firstPayload = (await firstResponse.json()) as { priceUsd: number | null; updatedAt: number | null };
+      const secondPayload = (await secondResponse.json()) as { priceUsd: number | null; updatedAt: number | null };
+      expect(firstPayload.priceUsd).toBe(141.25);
+      expect(typeof firstPayload.updatedAt).toBe("number");
+      expect(secondPayload.priceUsd).toBe(141.25);
+      expect(secondPayload.updatedAt).toBe(firstPayload.updatedAt);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test("GET /api/gui/schedule returns upcoming recurring jobs", async () => {
     const runtime = buildRuntime();
     const now = Date.now();
@@ -406,7 +458,13 @@ describe("Runtime v1 API", () => {
 
       const payload = (await response.json()) as {
         options: Array<{ id: string }>;
-        entries: Array<{ optionId: string }>;
+        entries: Array<{
+          optionId: string;
+          value: string;
+          source: string;
+          rpcProviderId: string | null;
+        }>;
+        rpcProviderOptions: Array<{ id: string }>;
       };
       expect(payload.options.map((option) => option.id)).toEqual([
         "solana-rpc-url",
@@ -414,6 +472,24 @@ describe("Runtime v1 API", () => {
         "openrouter-api-key",
         "vercel-ai-gateway-api-key",
       ]);
+      expect(payload.rpcProviderOptions.map((option) => option.id)).toEqual([
+        "helius",
+        "quicknode",
+        "shyft",
+        "chainstack",
+      ]);
+      expect(payload.entries.find((entry) => entry.optionId === "solana-rpc-url")).toMatchObject({
+        optionId: "solana-rpc-url",
+        value: "custom-helius-key",
+        source: "public",
+        rpcProviderId: "helius",
+      });
+      expect(payload.entries.find((entry) => entry.optionId === "jupiter-api-key")).toMatchObject({
+        optionId: "jupiter-api-key",
+        value: "",
+        source: "custom",
+        rpcProviderId: null,
+      });
       expect(payload.entries.some((entry) => entry.optionId === "ultra-signer-private-key")).toBe(false);
 
       const storedVault = JSON.parse(await readFile(vaultPath, "utf8")) as {
@@ -426,6 +502,86 @@ describe("Runtime v1 API", () => {
         "http-url": "https://kept-custom-rpc.example",
         "ws-url": "wss://kept-custom-rpc.example",
         "api-key": "custom-helius-key",
+      });
+    } finally {
+      if (previousActiveInstanceId === undefined) {
+        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+      } else {
+        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+      }
+      await rm(instancePath, { recursive: true, force: true });
+    }
+  });
+
+  test("GET /api/gui/secrets does not surface the public Solana endpoint as an RPC credential", async () => {
+    const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+    const instanceId = "98";
+    const instancesRoot = runtimeStatePath("instances");
+    const instancePath = path.join(instancesRoot, instanceId);
+    const vaultPath = path.join(instancePath, "vault.json");
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    try {
+      await rm(instancePath, { recursive: true, force: true });
+      await mkdir(instancePath, { recursive: true });
+      await writeFile(vaultPath, `${JSON.stringify({
+        rpc: {
+          default: {
+            "http-url": "https://api.mainnet-beta.solana.com",
+            source: "public",
+            "public-id": "solana-mainnet-beta",
+          },
+        },
+        llm: {
+          openrouter: {
+            "api-key": "",
+          },
+          gateway: {
+            "api-key": "",
+          },
+        },
+        integrations: {
+          dexscreener: {
+            "api-key": "",
+          },
+          jupiter: {
+            "api-key": "",
+          },
+        },
+      }, null, 2)}\n`);
+
+      const runtime = buildRuntime();
+      const transport = new RuntimeGuiTransport(runtime);
+      transport.setActiveInstance({
+        fileName: "instance.json",
+        localInstanceId: instanceId,
+        name: "test-instance",
+        safetyProfile: "dangerous",
+        userPinRequired: false,
+        createdAt: "2026-03-12T00:00:00.000Z",
+        updatedAt: "2026-03-12T00:00:00.000Z",
+      });
+      const handler = transport.createApiHandler();
+
+      const response = await handler(new Request("http://localhost/api/gui/secrets", { method: "GET" }));
+      expect(response.status).toBe(200);
+
+      const payload = (await response.json()) as {
+        entries: Array<{
+          optionId: string;
+          value: string;
+          source: string;
+          rpcProviderId: string | null;
+        }>;
+      };
+      expect(payload.entries.find((entry) => entry.optionId === "solana-rpc-url")).toMatchObject({
+        optionId: "solana-rpc-url",
+        value: "",
+        source: "public",
+      });
+      expect(payload.entries.find((entry) => entry.optionId === "jupiter-api-key")).toMatchObject({
+        optionId: "jupiter-api-key",
+        value: "",
       });
     } finally {
       if (previousActiveInstanceId === undefined) {

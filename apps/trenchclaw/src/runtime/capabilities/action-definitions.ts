@@ -214,8 +214,9 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: getDexscreenerLatestTokenProfilesAction,
-    description: "Fetch the latest token profiles from Dexscreener.",
-    purpose: "Get a lightweight fresh-token discovery feed when the user asks what is new or when you need candidate tokens before pulling concrete market metrics.",
+    description: "Fetch a fresh discovery feed of the latest token profiles from Dexscreener.",
+    purpose: "Get a lightweight fresh-token discovery feed when the user asks what is new, newly listed, or when you need candidate tokens before pulling concrete market metrics.",
+    routingHint: "the user asks what is new, newly listed, or you need a first discovery pass before ranking candidate tokens",
     tags: ["dexscreener", "market-data", "profiles"],
     exampleInput: {},
     includeInCatalog: ({ settings }) => settings.trading.enabled,
@@ -225,8 +226,9 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: getDexscreenerLatestTokenBoostsAction,
-    description: "Fetch the latest boosted tokens from Dexscreener.",
-    purpose: "Inspect tokens currently receiving paid boosts when the user asks what is getting pushed right now, not when they ask for raw volume leaders.",
+    description: "Fetch the most recently boosted tokens from Dexscreener.",
+    purpose: "Inspect the newest boosted or newly promoted tokens when the user explicitly asks what was just pushed, not as the default tool for broad 'hot today' or trending questions.",
+    routingHint: "the user explicitly asks what was just boosted, newly promoted, or most recently pushed on Dexscreener",
     tags: ["dexscreener", "market-data", "boosts"],
     exampleInput: {},
     includeInCatalog: ({ settings }) => settings.trading.enabled,
@@ -236,8 +238,9 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
   {
     kind: "action",
     action: getDexscreenerTopTokenBoostsAction,
-    description: "Fetch the top boosted tokens from Dexscreener.",
-    purpose: "Rank current Dexscreener boost activity when the user asks what is most promoted, not as a direct proxy for top volume or highest trading activity.",
+    description: "Fetch the top boosted tokens from Dexscreener right now.",
+    purpose: "Rank current Dexscreener boost activity when the user asks what is hot, trending, or most promoted right now, not as a direct proxy for top volume or highest trading activity.",
+    routingHint: "the user asks what is hot, trending, or most promoted right now and a boost-ranked starting set is the best first pass",
     tags: ["dexscreener", "market-data", "boosts"],
     exampleInput: {},
     includeInCatalog: ({ settings }) => settings.trading.enabled,
@@ -261,7 +264,8 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: searchDexscreenerPairsAction,
     description: "Search Dexscreener pairs by query text.",
-    purpose: "Find token or pair candidates by symbol, name, or address before pulling detailed market data when the user names a token or gives a symbol hint.",
+    purpose: "Find token or pair candidates by symbol, name, or address before pulling detailed market data when the user names a token or gives only a fuzzy symbol hint.",
+    routingHint: "the user gives only a symbol, ticker, token name, or fuzzy token reference and you need discovery before any deeper market read",
     tags: ["dexscreener", "search", "pairs"],
     exampleInput: {
       query: "SOL/USDC",
@@ -275,6 +279,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     action: getDexscreenerPairByChainAndPairIdAction,
     description: "Fetch a Dexscreener pair by Solana pair address.",
     purpose: "Get detailed market data for one specific pair after discovery so you can answer from concrete liquidity, volume, and price-change fields.",
+    routingHint: "the user already gave one exact Solana pair address and wants that market's concrete data",
     tags: ["dexscreener", "pair", "market-data"],
     exampleInput: {
       pairAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
@@ -287,7 +292,8 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerTokenPairsByChainAction,
     description: "Fetch Dexscreener pools for a token address on Solana.",
-    purpose: "Inspect all pools associated with a token address after discovery when you need to identify the right market or best pool for that token.",
+    purpose: "Inspect all pools associated with one token address after discovery when you need to identify the right market or best pool for that token.",
+    routingHint: "the user gave one exact token address and you need that token's pools before answering",
     tags: ["dexscreener", "token", "pairs"],
     exampleInput: {
       tokenAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
@@ -300,7 +306,8 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     kind: "action",
     action: getDexscreenerTokensByChainAction,
     description: "Fetch Dexscreener market data for up to 30 token addresses on Solana.",
-    purpose: "Batch-load price, liquidity, volume, and price-change data for a small discovered Solana token set so you can rank and answer directly without extra exploration.",
+    purpose: "Batch-load price, liquidity, volume, and price-change data for a small discovered Solana token set so you can rank, compare, and answer directly without extra exploration.",
+    routingHint: "you already know a small set of token addresses and need a concrete batch comparison or ranking answer",
     tags: ["dexscreener", "tokens", "market-data"],
     exampleInput: {
       tokenAddresses: [

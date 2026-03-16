@@ -857,6 +857,63 @@ describe("RuntimeChatService", () => {
     expect(payload.second.data.count).toBe(1);
   });
 
+  test("reuses duplicate tool calls with bigint input within a single streamed turn", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "echoBigInt",
+      category: "data-based",
+      inputSchema: z.object({ value: z.bigint() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+
+    let dispatchCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => {
+            dispatchCount += 1;
+            return {
+              results: [makeActionResult({ ok: true, data: { count: dispatchCount } })],
+              policyHits: [],
+            };
+          },
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: {
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+        }) => ({
+          toUIMessageStreamResponse: async () => {
+            const echoTool = args.tools.echoBigInt;
+            if (!echoTool) {
+              throw new Error("echoBigInt tool not registered");
+            }
+            const first = await echoTool.execute({ value: 42n });
+            const second = await echoTool.execute({ value: 42n });
+            return Response.json({ first, second });
+          },
+        })) as never,
+      },
+    );
+
+    const response = await service.stream([]);
+    const payload = (await response.json()) as {
+      first: { data: { count: number } };
+      second: { data: { count: number } };
+    };
+
+    expect(dispatchCount).toBe(1);
+    expect(payload.first.data.count).toBe(1);
+    expect(payload.second.data.count).toBe(1);
+  });
+
   test("registers only capability-snapshot model tools for chat", async () => {
     const registry = new ActionRegistry();
     registry.register({
@@ -1040,6 +1097,72 @@ describe("RuntimeChatService", () => {
     expect(service.listToolNames()).toEqual(["closeTokenAccount", "queryRuntimeStore", "transfer"]);
   });
 
+  test("lists exposed wallet mutation tools in the operator prompt summary", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "queryRuntimeStore",
+            description: "runtime store",
+            purpose: "runtime store",
+            routingHint: "runtime store",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: {},
+            toolDescription: "runtime store",
+          },
+          {
+            kind: "action",
+            name: "transfer",
+            description: "transfer funds",
+            purpose: "transfer funds",
+            routingHint: "transfer funds",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: { destination: "dest", amount: "0.1" },
+            toolDescription: "transfer funds",
+          },
+          {
+            kind: "action",
+            name: "closeTokenAccount",
+            description: "close token account",
+            purpose: "close token account",
+            routingHint: "close token account",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", mintAddress: "mint" },
+            toolDescription: "close token account",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-transfer-summary-1",
+          role: "user",
+          parts: [{ type: "text", text: "can you transfer tokens" }],
+        },
+      ],
+      userMessage: "can you transfer tokens",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane: `closeTokenAccount`, `transfer`");
+  });
+
   test("keeps the operator gateway prompt and tool list compact", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {
@@ -1215,9 +1338,11 @@ describe("RuntimeChatService", () => {
       "getDexscreenerTopTokenBoosts",
       "searchDexscreenerPairs",
     ]);
-    expect(execution.systemPrompt).toContain(
-      "use `getDexscreenerPairByChainAndPairId`, `getDexscreenerTokenPairsByChain`, or `getDexscreenerTokensByChain`",
-    );
+    expect(execution.systemPrompt).toContain("## Tool Selection Rules");
+    expect(execution.systemPrompt).toContain("## Dexscreener Quick Picks");
+    expect(execution.systemPrompt).toContain("### `getDexscreenerTokensByChain`");
+    expect(execution.systemPrompt).toContain("Pass up to 30 `tokenAddresses`.");
+    expect(execution.systemPrompt).toContain("Do not default to `getDexscreenerLatestTokenBoosts` for broad trending questions.");
   });
 
   test("includes a compact wallet summary in the system prompt", async () => {
@@ -1976,6 +2101,252 @@ describe("RuntimeChatService", () => {
     expect(assistantMessages.at(-1)?.content).toContain("wallet_000");
     expect(assistantMessages.at(-1)?.content).toContain("CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS");
     expect(assistantMessages.at(-1)?.content).toContain("37227.586660487");
+  });
+
+  test("resolves tool-only wallet-content success even when the model wrote text before the tool call", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "getManagedWalletContents",
+      category: "data-based",
+      inputSchema: z.object({ walletGroup: z.string().optional(), includeZeroBalances: z.boolean().optional() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+    const stateStore = new InMemoryStateStore();
+    let generateInvocationCount = 0;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStream: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage?: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) =>
+            createUIMessageStream({
+              originalMessages: options?.originalMessages,
+              onFinish: (event) => {
+                options?.onFinish?.({
+                  ...event,
+                  responseMessage: undefined,
+                });
+              },
+              execute: ({ writer }) => {
+                writer.write({ type: "start", messageId: "assistant-wallet-tool-preamble-pass-1" });
+                writer.write({ type: "text-start", id: "text-preamble-1" });
+                writer.write({
+                  type: "text-delta",
+                  id: "text-preamble-1",
+                  delta: "I don't have any tool results from a previous turn to answer from. Let me fetch the wallet contents now.",
+                });
+                writer.write({ type: "text-end", id: "text-preamble-1" });
+                writer.write({ type: "start-step" });
+                writer.write({
+                  type: "tool-input-start",
+                  toolCallId: "wallet-tool-call-preamble-1",
+                  toolName: "getManagedWalletContents",
+                });
+                writer.write({
+                  type: "tool-input-available",
+                  toolCallId: "wallet-tool-call-preamble-1",
+                  toolName: "getManagedWalletContents",
+                  input: { includeZeroBalances: false },
+                });
+                writer.write({
+                  type: "tool-output-available",
+                  toolCallId: "wallet-tool-call-preamble-1",
+                  output: {
+                    ok: true,
+                    data: {
+                      walletCount: 2,
+                      wallets: [
+                        {
+                          walletName: "wallet_000",
+                          address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+                          balanceSol: 0.037955726,
+                          tokenBalances: [
+                            {
+                              mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+                              balanceUiString: "37227.586660486",
+                            },
+                          ],
+                        },
+                        {
+                          walletName: "wallet_001",
+                          address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+                          balanceSol: 0,
+                          tokenBalances: [
+                            {
+                              mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+                              balanceUiString: "0.000000002",
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                });
+                writer.write({ type: "finish-step" });
+                writer.write({ type: "finish", finishReason: "tool-calls" });
+              },
+            }),
+          consumeStream: async () => {},
+        })) as never,
+        generateText: (async () => {
+          generateInvocationCount += 1;
+          return {
+            text: "should not be called",
+            finishReason: "stop",
+            usage: undefined,
+          };
+        }) as never,
+      },
+    );
+
+    const response = await service.stream(
+      [
+        {
+          id: "user-wallet-tool-preamble-1",
+          role: "user",
+          parts: [{ type: "text", text: "list our wallets and the contents of each wallet" }],
+        },
+      ],
+      { chatId: "chat-wallet-tool-preamble-1" },
+    );
+
+    await response.text();
+
+    expect(generateInvocationCount).toBe(0);
+    const assistantMessages = stateStore
+      .listChatMessages("chat-wallet-tool-preamble-1", 10)
+      .filter((message) => message.role === "assistant");
+    expect(assistantMessages.at(-1)?.content).toContain("wallet_000");
+    expect(assistantMessages.at(-1)?.content).toContain("37227.586660486");
+    expect(assistantMessages.at(-1)?.content).not.toContain("I don't have any tool results from a previous turn");
+  });
+
+  test("ignores reasoning chunks when resolving a tool-only completion", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "transfer",
+      category: "wallet-based",
+      inputSchema: z.object({ destination: z.string(), amount: z.string() }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+    const stateStore = new InMemoryStateStore();
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStream: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage?: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) =>
+            createUIMessageStream({
+              originalMessages: options?.originalMessages,
+              onFinish: (event) => {
+                options?.onFinish?.({
+                  ...event,
+                  responseMessage: undefined,
+                });
+              },
+              execute: ({ writer }) => {
+                writer.write({ type: "start", messageId: "assistant-transfer-reasoning-pass-1" });
+                writer.write({ type: "reasoning-start", id: "reasoning-1" });
+                writer.write({ type: "reasoning-delta", id: "reasoning-1", delta: "thinking" });
+                writer.write({ type: "reasoning-end", id: "reasoning-1" });
+                writer.write({ type: "start-step" });
+                writer.write({
+                  type: "tool-input-start",
+                  toolCallId: "transfer-reasoning-tool-call-1",
+                  toolName: "transfer",
+                });
+                writer.write({
+                  type: "tool-input-available",
+                  toolCallId: "transfer-reasoning-tool-call-1",
+                  toolName: "transfer",
+                  input: { walletGroup: "core-wallets", walletName: "wallet_000", amount: "100" },
+                });
+                writer.write({
+                  type: "tool-output-available",
+                  toolCallId: "transfer-reasoning-tool-call-1",
+                  output: {
+                    ok: true,
+                    data: {
+                      transferType: "spl",
+                      sourceAddress: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+                      destination: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+                      mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+                      amountUi: 100,
+                      amountRaw: "100000000000",
+                      txSignature: "sig-reasoning-123",
+                    },
+                  },
+                });
+                writer.write({ type: "finish-step" });
+                writer.write({ type: "finish", finishReason: "tool-calls" });
+              },
+            }),
+          consumeStream: async () => {},
+        })) as never,
+        generateText: (async () => {
+          throw new Error("generateText should not be called");
+        }) as never,
+      },
+    );
+
+    const response = await service.stream(
+      [
+        {
+          id: "user-transfer-reasoning-1",
+          role: "user",
+          parts: [{ type: "text", text: "transfer 100 tokens" }],
+        },
+      ],
+      { chatId: "chat-transfer-reasoning-1" },
+    );
+
+    await response.text();
+
+    const assistantMessages = stateStore
+      .listChatMessages("chat-transfer-reasoning-1", 10)
+      .filter((message) => message.role === "assistant");
+    expect(assistantMessages.at(-1)?.content).toContain("Transfer submitted successfully.");
+    expect(assistantMessages.at(-1)?.content).toContain("sig-reasoning-123");
   });
 
   test("resolves tool-only transfer success from streamed tool output without a second model pass", async () => {

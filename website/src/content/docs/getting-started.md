@@ -1,11 +1,13 @@
 ---
-title: Docs Under Construction
-description: Install the standalone release, launch TrenchClaw, and know where the local runtime and state live.
+title: Getting Started
+description: Install the standalone release, set up the recommended prerequisites, and know where the local runtime and state live.
 order: 1
 featured: true
 ---
 
 ## Get Started
+
+This page is intentionally narrow. It covers the public install path, the recommended prerequisites, and the local runtime layout. It does not try to document every feature.
 
 ## Package Type
 
@@ -23,18 +25,53 @@ Published release artifacts are built for:
 - `linux-x64`
 - `linux-arm64`
 
-## Install
+## Install TrenchClaw
 
-### macOS
+### Install on macOS
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | bash
 ```
 
-### Linux
+### Install on Linux
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash
+```
+
+## Recommended Prerequisites
+
+If you want the helper-managed prerequisite installer first, run:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
+```
+
+Current scope: that script installs or updates Solana CLI and Helius CLI. For Helius CLI it prefers `bun`, then `pnpm`, then `npm`, and prints manual follow-up commands if none of those package managers are installed.
+
+Make sure the following are set up before deeper runtime or trading workflows:
+
+- `Solana CLI` - helper-managed or separate install.
+
+  ```bash
+  sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+  ```
+
+- `Helius CLI` - helper-managed or separate install.
+
+  ```bash
+  npm install -g helius-cli@latest
+  ```
+
+- `Helius API key` - required for Helius-backed RPC and data flows.
+- `OpenRouter API key` - required for the default LLM provider path.
+- `Jupiter Ultra API key` - required for Jupiter Ultra swap access.
+
+Useful checks:
+
+```bash
+solana --version
+helius --version
 ```
 
 ## What The Installer Does
@@ -47,17 +84,17 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linu
 - updates `~/.local/share/trenchclaw/current`
 - writes `~/.local/bin/trenchclaw`
 
-The public installer does not install Bun, Solana CLI, or any other external tool by default.
+The public installer does not install Bun, Solana CLI, Helius CLI, or any other external tool by default. Use the helper-managed prerequisite script when you want the optional toolchain path.
 
 ## Pin A Specific Release
 
-### macOS
+### Pin on macOS
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
 ```
 
-### Linux
+### Pin on Linux
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash

@@ -3,13 +3,17 @@ set -eu
 
 # Configurable environment variables:
 # - TRENCHCLAW_INSTALL_SOLANA (default: 1)
+# - TRENCHCLAW_INSTALL_HELIUS (default: 1)
 # - TRENCHCLAW_UPDATE_EXISTING_TOOLS (default: 1)
 
 TRENCHCLAW_INSTALL_SOLANA="${TRENCHCLAW_INSTALL_SOLANA:-1}"
+TRENCHCLAW_INSTALL_HELIUS="${TRENCHCLAW_INSTALL_HELIUS:-1}"
 TRENCHCLAW_UPDATE_EXISTING_TOOLS="${TRENCHCLAW_UPDATE_EXISTING_TOOLS:-1}"
 
 SOLANA_BIN_DIR="${HOME}/.local/share/solana/install/active_release/bin"
 SOLANA_STABLE_INSTALL_URL="https://release.anza.xyz/stable/install"
+BUN_BIN_DIR="${HOME}/.bun/bin"
+HELIUS_PACKAGE_NAME="helius-cli"
 
 info() {
   printf '%s\n' "[trenchclaw-tools] $1"
@@ -55,6 +59,13 @@ require_cmd() {
   need_cmd "$1" || fail "$1 is required but not installed"
 }
 
+print_manual_helius_install_help() {
+  info "Install one of these package managers, then rerun this helper or install Helius CLI manually:"
+  info "  bun add -g ${HELIUS_PACKAGE_NAME}@latest"
+  info "  pnpm add -g ${HELIUS_PACKAGE_NAME}@latest"
+  info "  npm install -g ${HELIUS_PACKAGE_NAME}@latest"
+}
+
 install_or_update_solana() {
   [ "$TRENCHCLAW_INSTALL_SOLANA" = "1" ] || return 0
 
@@ -88,8 +99,57 @@ install_or_update_solana() {
   info "Solana CLI tools ready: $(solana --version)"
 }
 
+install_or_update_helius() {
+  installer=""
+
+  [ "$TRENCHCLAW_INSTALL_HELIUS" = "1" ] || return 0
+
+  if need_cmd bun; then
+    installer="bun"
+    add_path_for_current_process "$BUN_BIN_DIR"
+    ensure_path_in_shell_profiles "$BUN_BIN_DIR"
+  elif need_cmd pnpm; then
+    installer="pnpm"
+  elif need_cmd npm; then
+    installer="npm"
+  fi
+
+  if [ -z "$installer" ]; then
+    info "Skipping Helius CLI install/update because Bun, pnpm, and npm are unavailable."
+    print_manual_helius_install_help
+    return 0
+  fi
+
+  if need_cmd helius; then
+    info "Helius CLI detected: $(helius --version 2>/dev/null || printf '%s' 'version unavailable')"
+    if [ "$TRENCHCLAW_UPDATE_EXISTING_TOOLS" != "1" ]; then
+      info "Skipping Helius CLI update because TRENCHCLAW_UPDATE_EXISTING_TOOLS=0"
+      return 0
+    fi
+  else
+    info "Installing Helius CLI with ${installer}..."
+  fi
+
+  case "$installer" in
+    bun)
+      bun add -g "${HELIUS_PACKAGE_NAME}@latest" || fail "bun failed to install ${HELIUS_PACKAGE_NAME}"
+      ;;
+    pnpm)
+      pnpm add -g "${HELIUS_PACKAGE_NAME}@latest" || fail "pnpm failed to install ${HELIUS_PACKAGE_NAME}"
+      ;;
+    npm)
+      npm install -g "${HELIUS_PACKAGE_NAME}@latest" || fail "npm failed to install ${HELIUS_PACKAGE_NAME}"
+      ;;
+  esac
+
+  add_path_for_current_process "$BUN_BIN_DIR"
+  need_cmd helius || fail "Helius CLI is still unavailable after install/update"
+  info "Helius CLI ready: $(helius --version 2>/dev/null || printf '%s' 'version unavailable')"
+}
+
 main() {
   install_or_update_solana
+  install_or_update_helius
 }
 
 main "$@"

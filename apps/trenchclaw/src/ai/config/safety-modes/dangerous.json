@@ -28,7 +28,7 @@
   "trading": {
     "enabled": true,
     "liveWalletUse": true,
-    "requireUserConfirmationForDangerousActions": true,
+    "requireUserConfirmationForDangerousActions": false,
     "preferences": {
       "defaultSwapProvider": "ultra",
       "defaultSwapMode": "ExactIn",

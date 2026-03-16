@@ -14,6 +14,22 @@ import type {
 
 const compareByName = (a: { name: string }, b: { name: string }): number => a.name.localeCompare(b.name);
 
+const formatExampleInput = (value: unknown): string | null => {
+  if (value === undefined) {
+    return null;
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    if (!serialized) {
+      return null;
+    }
+    return serialized.length > 240 ? `${serialized.slice(0, 237)}...` : serialized;
+  } catch {
+    return null;
+  }
+};
+
 const inferActionSideEffectLevel = (definition: RuntimeActionCapabilityDefinition): CapabilitySideEffectLevel => {
   if (definition.sideEffectLevel) {
     return definition.sideEffectLevel;
@@ -44,15 +60,22 @@ const inferWorkspaceSideEffectLevel = (
 
 const buildToolDescription = (input: {
   description: string;
+  purpose: string;
   routingHint: string;
   sideEffectLevel: CapabilitySideEffectLevel;
   requiresConfirmation: boolean;
+  exampleInput?: unknown;
 }): string => {
   const parts = [
     input.description.trim(),
-    `Prefer this when ${input.routingHint.trim().replace(/\.$/u, "")}.`,
+    `Why: ${input.purpose.trim().replace(/\.$/u, "")}.`,
+    `Use this when ${input.routingHint.trim().replace(/\.$/u, "")}.`,
     `Side effects: ${input.sideEffectLevel}.`,
   ];
+  const exampleInput = formatExampleInput(input.exampleInput);
+  if (exampleInput) {
+    parts.push(`Example input: ${exampleInput}.`);
+  }
   if (input.requiresConfirmation) {
     parts.push("This can require explicit user confirmation under the active runtime policy.");
   }
@@ -93,9 +116,11 @@ const toActionSnapshotEntry = async (
     exposedToModel,
     toolDescription: buildToolDescription({
       description: definition.description,
+      purpose: definition.purpose,
       routingHint,
       sideEffectLevel,
       requiresConfirmation,
+      exampleInput: definition.exampleInput,
     }),
     action,
   };
@@ -125,9 +150,11 @@ const toWorkspaceToolSnapshotEntry = async (
     exposedToModel: definition.chatExposed !== false && enabledBySettings,
     toolDescription: buildToolDescription({
       description: definition.description,
+      purpose: definition.purpose,
       routingHint,
       sideEffectLevel,
       requiresConfirmation: false,
+      exampleInput: definition.exampleInput,
     }),
   };
 };

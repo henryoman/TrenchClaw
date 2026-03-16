@@ -182,7 +182,7 @@ https://www.helius.dev/docs/api-reference/zk-compression/llms.txt
 | Get wallet's NFTs and tokens | `getAssetsByOwner` (DAS API) | `getTokenAccountsByOwner` | `getTokenAccountsByOwner` returns raw accounts, not token metadata |
 | Get complete transaction history | `getTransactionsForAddress` | `getSignaturesForAddress` | `getTransactionsForAddress` includes token accounts and `getSignaturesForAddress` does not |
 | Get transaction history for cNFTs | `getSignaturesForAsset` (DAS API) | `getSignaturesForAddress` | `getSignaturesForAddress` doesn't work for compressed NFTs |
-| Stream real-time data (new projects) | LaserStream gRPC | Yellowstone gRPC on dedicated nodes | LaserStream is simpler, provides 24-hour replay, supports auto-reconnects | 
+| Stream real-time data (new projects) | LaserStream gRPC | Yellowstone gRPC on dedicated nodes | LaserStream is simpler, provides 24-hour replay, supports auto-reconnects |
 | Send transactions reliably | Helius Sender (dual routes to validators + Jito) | Standard `sendTransaction` | sendTransaction uses a single path and has lower landing rates |
 | Get priority fee estimates | `getPriorityFeeEstimate` | `getRecentPrioritizationFees` | `getRecentPrioritizationFees` requires manual calculation |
 | Search NFTs by collection | DAS API `getAssetsByGroup` or `searchAssets` | `getProgramAccounts` | `getProgramAccounts` is expensive, slow, and data could be unindexed |

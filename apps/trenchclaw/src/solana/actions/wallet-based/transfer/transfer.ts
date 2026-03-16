@@ -133,7 +133,10 @@ const numberToPlainString = (value: number): string => {
     return raw;
   }
 
-  const [mantissa, exponentPart = "0"] = raw.toLowerCase().split("e");
+  const normalizedRaw = raw.toLowerCase();
+  const exponentMarkerIndex = normalizedRaw.indexOf("e");
+  const mantissa = exponentMarkerIndex >= 0 ? normalizedRaw.slice(0, exponentMarkerIndex) : normalizedRaw;
+  const exponentPart = exponentMarkerIndex >= 0 ? normalizedRaw.slice(exponentMarkerIndex + 1) || "0" : "0";
   const exponent = Number(exponentPart);
   if (!Number.isInteger(exponent)) {
     throw new Error(`Unable to normalize numeric amount "${raw}"`);
@@ -172,7 +175,9 @@ const normalizeUiAmountString = (value: TransferAmountInput, scale: number): str
     throw new Error(`Amount "${raw}" must be a positive decimal value.`);
   }
 
-  const [intPartRaw, fracPartRaw = ""] = raw.split(".");
+  const rawParts = raw.split(".", 2);
+  const intPartRaw = rawParts[0] ?? "0";
+  const fracPartRaw = rawParts[1] ?? "";
   if (fracPartRaw.length > scale) {
     throw new Error(`Amount "${raw}" has more than ${scale} decimal places.`);
   }

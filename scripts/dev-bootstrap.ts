@@ -22,6 +22,70 @@ interface PortProbeResult {
   errorCode?: string;
 }
 
+const listPortOwnerPids = async (port: number): Promise<number[]> => {
+  const proc = Bun.spawn(["lsof", "-ti", `tcp:${port}`], {
+    cwd: REPO_ROOT,
+    stdout: "pipe",
+    stderr: "ignore",
+  });
+  const output = await new Response(proc.stdout).text();
+  await proc.exited;
+  return output
+    .split(/\s+/u)
+    .map((value) => Number.parseInt(value, 10))
+    .filter((value) => Number.isInteger(value) && value > 0);
+};
+
+const waitForPortToBecomeAvailable = async (host: string, port: number, attempts = 20, delayMs = 150): Promise<boolean> => {
+  for (let index = 0; index < attempts; index += 1) {
+    const probe = await canBindPort(host, port);
+    if (probe.available) {
+      return true;
+    }
+    await Bun.sleep(delayMs);
+  }
+  return false;
+};
+
+const reclaimPort = async (host: string, port: number, label: string): Promise<void> => {
+  const probe = await canBindPort(host, port);
+  if (probe.available) {
+    return;
+  }
+
+  const ownerPids = await listPortOwnerPids(port);
+  if (ownerPids.length === 0) {
+    throw new Error(`Preferred ${label} port ${port} is in use and no owning process could be identified.`);
+  }
+
+  console.warn(`[bootstrap] reclaiming ${label} port ${port} from pid(s): ${ownerPids.join(", ")}`);
+  for (const pid of ownerPids) {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {
+      // Ignore races where the process exits before we signal it.
+    }
+  }
+
+  if (await waitForPortToBecomeAvailable(host, port)) {
+    return;
+  }
+
+  for (const pid of ownerPids) {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // Ignore races where the process exits before we signal it.
+    }
+  }
+
+  if (await waitForPortToBecomeAvailable(host, port)) {
+    return;
+  }
+
+  throw new Error(`Unable to reclaim ${label} port ${port}.`);
+};
+
 const canBindPort = (host: string, port: number): Promise<PortProbeResult> =>
   new Promise((resolve) => {
     const server = createServer();
@@ -88,26 +152,27 @@ const forceStop = (proc: Bun.Subprocess): void => {
 const run = async (): Promise<void> => {
   const runtimeStrictPort = process.env.RUNTIME_STRICT_PORT === "1";
   const guiStrictPort = process.env.GUI_STRICT_PORT === "1";
-
-  const runtimePort = runtimeStrictPort
-    ? ensureValidPort(DEFAULT_RUNTIME_PORT, "runtime")
-    : await findAvailablePort(RUNTIME_HOST, DEFAULT_RUNTIME_PORT, "runtime");
-
-  const initialGuiPort = guiStrictPort
-    ? ensureValidPort(DEFAULT_GUI_PORT, "gui")
-    : await findAvailablePort(RUNTIME_HOST, DEFAULT_GUI_PORT, "gui");
-
-  const guiPort =
-    initialGuiPort === runtimePort ? await findAvailablePort(RUNTIME_HOST, initialGuiPort + 1, "gui") : initialGuiPort;
+  const runtimePort = ensureValidPort(DEFAULT_RUNTIME_PORT, "runtime");
+  const guiPort = ensureValidPort(DEFAULT_GUI_PORT, "gui");
   const runtimeUrl = `http://${RUNTIME_HOST}:${runtimePort}`;
   const guiUrl = `http://${RUNTIME_HOST}:${guiPort}`;
 
-  if (runtimePort !== DEFAULT_RUNTIME_PORT) {
-    console.log(`[bootstrap] runtime port ${DEFAULT_RUNTIME_PORT} unavailable; using ${runtimePort}`);
+  if (runtimeStrictPort) {
+    const runtimeProbe = await canBindPort(RUNTIME_HOST, runtimePort);
+    if (!runtimeProbe.available) {
+      throw new Error(`Runtime port ${runtimePort} is unavailable and strict mode is enabled.`);
+    }
+  } else {
+    await reclaimPort(RUNTIME_HOST, runtimePort, "runtime");
   }
 
-  if (guiPort !== DEFAULT_GUI_PORT) {
-    console.log(`[bootstrap] gui port ${DEFAULT_GUI_PORT} unavailable; using ${guiPort}`);
+  if (guiStrictPort) {
+    const guiProbe = await canBindPort(RUNTIME_HOST, guiPort);
+    if (!guiProbe.available) {
+      throw new Error(`GUI port ${guiPort} is unavailable and strict mode is enabled.`);
+    }
+  } else {
+    await reclaimPort(RUNTIME_HOST, guiPort, "gui");
   }
 
   console.log(`[bootstrap] runtime target: ${runtimeUrl}`);

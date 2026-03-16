@@ -145,6 +145,7 @@ export interface GuiBootstrapResponse {
     schedulerTickMs: number;
     llmEnabled: boolean;
     llmModel?: string;
+    bootedAt?: number;
     sessionId?: string;
     sessionKey?: string;
   };
@@ -167,6 +168,11 @@ export interface GuiActivityEntry {
 
 export interface GuiActivityResponse {
   entries: GuiActivityEntry[];
+}
+
+export interface GuiSolPriceResponse {
+  priceUsd: number | null;
+  updatedAt: number | null;
 }
 
 export interface GuiConversationView {

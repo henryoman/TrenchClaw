@@ -23,7 +23,6 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
 
   constructor(public readonly runtime: RuntimeBootstrap) {
     this.activeInstance = readPersistedActiveInstanceSync();
-    this.addActivity("runtime", "Runtime transport initialized");
   }
 
   dispose(): void {
