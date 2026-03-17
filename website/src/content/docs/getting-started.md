@@ -91,13 +91,13 @@ The public installer does not install Bun, Solana CLI, Helius CLI, or any other 
 ### Pin on macOS
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.1 bash
 ```
 
 ### Pin on Linux
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.1 bash
 ```
 
 ## Launch
@@ -133,13 +133,19 @@ Writable state root:
 ~/.trenchclaw/
   db/
   generated/
+  runtime/
+    ai.json
+    settings.json
   instances/
+    active-instance.json
+    <id>/
+      instance.json
+      vault.json
+      keypairs/
+      settings/
+        trading.json
   protected/
     keypairs/
-  user/
-    vault.json
-    vault.template.json
-    workspace/
 ```
 
 ## Troubleshooting
