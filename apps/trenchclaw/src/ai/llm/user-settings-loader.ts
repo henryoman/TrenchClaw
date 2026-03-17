@@ -155,8 +155,32 @@ const applyResolvedRpcFallbacks = (
   settings: unknown,
   vaultData: unknown,
 ): unknown => {
-  if (!isRecord(settings) || !isRecord(settings.rpc) || !isRecord(settings.rpc.providers)) {
+  if (!isRecord(settings)) {
     return settings;
+  }
+
+  const defaultHttpUrl = readVaultStringByPath(vaultData, "rpc/default/http-url");
+  const defaultWsUrl =
+    defaultHttpUrl
+      ? defaultHttpUrl.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:")
+      : undefined;
+  if (!defaultHttpUrl) {
+    return settings;
+  }
+
+  if (!isRecord(settings.rpc) || !isRecord(settings.rpc.providers)) {
+    return {
+      ...settings,
+      rpc: {
+        primaryRpc: "primary",
+        providers: {
+          primary: {
+            endpointRef: defaultHttpUrl,
+            ...(defaultWsUrl ? { wsEndpointRef: defaultWsUrl } : {}),
+          },
+        },
+      },
+    };
   }
 
   const rpcSettings = settings.rpc as Record<string, unknown>;
@@ -177,7 +201,6 @@ const applyResolvedRpcFallbacks = (
     typeof provider.wsEndpointRef === "string" && provider.wsEndpointRef.trim().length > 0
       ? provider.wsEndpointRef.trim()
       : undefined;
-  const defaultHttpUrl = readVaultStringByPath(vaultData, "rpc/default/http-url");
   const endpointRef =
     !requestedEndpointRef || isUnresolvedVaultRef(requestedEndpointRef)
       ? defaultHttpUrl

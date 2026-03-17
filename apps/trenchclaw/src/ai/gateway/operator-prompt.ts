@@ -20,6 +20,7 @@ const MUTATING_OPERATOR_TOOLS = new Set([
   "closeTokenAccount",
   "createWallets",
   "renameWallets",
+  "managedUltraSwap",
 ]);
 
 const renderOperatorProfileSummary = (input: {
@@ -119,6 +120,11 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     useWhen: "the user explicitly wants to reclaim rent from an empty token account after the balance has already been moved out",
     avoidWhen: "the token account still holds tokens or the user did not ask for cleanup",
     inputAdvice: "Use `walletGroup`, `walletName`, and either `mintAddress` or `tokenAccountAddress`, plus `userConfirmationToken` when required.",
+  },
+  managedUltraSwap: {
+    useWhen: "the user explicitly wants to swap through Jupiter Ultra using a managed wallet and you know walletGroup, walletName, inputCoin, outputCoin, amount, and confirmation token if policy requires it",
+    avoidWhen: "the user did not explicitly request a swap, the managed wallet is unknown, or the confirmation token is missing when policy requires it",
+    inputAdvice: "Use `walletGroup`, `walletName`, `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required.",
   },
 };
 

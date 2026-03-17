@@ -9,9 +9,7 @@
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroDivider from "../ui/RetroDivider.svelte";
   import RetroField from "../ui/RetroField.svelte";
-  import RetroInput from "../ui/RetroInput.svelte";
   import RetroSectionHeader from "../ui/RetroSectionHeader.svelte";
-  import RetroSelect from "../ui/RetroSelect.svelte";
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
 
   export let options: GuiSecretOptionView[] = [];
@@ -61,6 +59,8 @@
   let draftSources: Record<string, "custom" | "public"> = {};
   let draftPublicRpcIds: Record<string, string> = {};
   let draftRpcProviderIds: Record<string, string> = {};
+  let inputElements: Record<string, HTMLInputElement | null> = {};
+  let selectElements: Record<string, HTMLSelectElement | null> = {};
   let hydrationSignature = "";
   let dirtyOptionIds = new Set<string>();
 
@@ -150,62 +150,84 @@
       };
     });
 
+  const markDirty = (optionId: string): void => {
+    dirtyOptionIds = new Set([...dirtyOptionIds, optionId]);
+  };
+
   const handleValueChange = (optionId: string, value: string): void => {
     draftValues = {
       ...draftValues,
       [optionId]: value,
     };
-    dirtyOptionIds = new Set([...dirtyOptionIds, optionId]);
+    markDirty(optionId);
   };
 
   const handleRpcProviderChange = (optionId: string, selection: string): void => {
-    const provider = rpcProviderOptions.find((entry) => entry.id === selection);
-    if (!provider) {
+    if (!rpcProviderOptions.some((entry) => entry.id === selection)) {
       return;
     }
 
     draftRpcProviderIds = {
       ...draftRpcProviderIds,
-      [optionId]: provider.id,
+      [optionId]: selection,
     };
-    dirtyOptionIds = new Set([...dirtyOptionIds, optionId]);
+    markDirty(optionId);
   };
 
-  const saveField = (field: VisibleSecretField): void => {
-    const option = optionFor(field.id);
+  const currentDraftValueFor = (optionId: string): string => draftValues[optionId] ?? "";
+
+  const currentDraftRpcProviderIdFor = (optionId: string): string | null => draftRpcProviderIds[optionId] ?? null;
+
+  const isDirty = (optionId: string): boolean => dirtyOptionIds.has(optionId);
+
+  const currentInputValueFor = (optionId: string): string => inputElements[optionId]?.value ?? currentDraftValueFor(optionId);
+
+  const currentSelectValueFor = (optionId: string): string | null =>
+    selectElements[optionId]?.value ?? currentDraftRpcProviderIdFor(optionId);
+
+  const saveField = (optionId: string): void => {
+    const option = optionFor(optionId);
     if (!option) {
       return;
     }
 
     Promise.resolve(
       onSave({
-        optionId: field.id,
-        value: field.value.trim(),
+        optionId,
+        value: currentInputValueFor(optionId).trim(),
         source: undefined,
         publicRpcId: undefined,
-        rpcProviderId: option.supportsPublicRpc ? field.rpcProviderId : undefined,
+        rpcProviderId: option.supportsPublicRpc ? currentSelectValueFor(optionId) : undefined,
       }),
     )
       .then(() => {
-        dirtyOptionIds.delete(field.id);
+        draftValues = {
+          ...draftValues,
+          [optionId]: currentInputValueFor(optionId),
+        };
+        dirtyOptionIds.delete(optionId);
         dirtyOptionIds = new Set(dirtyOptionIds);
       })
       .catch(() => {});
   };
 
-  const clearField = (field: VisibleSecretField): void => {
-    const option = optionFor(field.id);
+  const clearField = (optionId: string): void => {
+    const option = optionFor(optionId);
     if (!option) {
       return;
     }
 
     draftValues = {
       ...draftValues,
-      [field.id]: "",
+      [optionId]: "",
     };
-    dirtyOptionIds.delete(field.id);
+    const input = inputElements[optionId];
+    if (input) {
+      input.value = "";
+    }
+    dirtyOptionIds.delete(optionId);
     dirtyOptionIds = new Set(dirtyOptionIds);
-    void onClear(field.id);
+    void onClear(optionId);
   };
 
   const handleReload = (): void => {
@@ -279,22 +301,23 @@
         {#each aiFields as field (field.id)}
           <article class="secret-card">
             <RetroField label={field.label}>
-              <RetroInput
-                value={field.value}
+              <input
+                value={currentDraftValueFor(field.id)}
+                bind:this={inputElements[field.id]}
                 disabled={busy}
                 placeholder={field.placeholder}
+                class="native-input"
                 on:input={(event) => {
-                  const target = event.target as HTMLInputElement;
-                  handleValueChange(field.id, target.value);
+                  handleValueChange(field.id, (event.currentTarget as HTMLInputElement).value);
                 }}
               />
             </RetroField>
 
             <div class="row-actions">
-              <RetroButton disabled={busy || !field.value.trim() || !field.dirty} on:click={() => saveField(field)}>
+              <RetroButton disabled={busy} on:click={() => saveField(field.id)}>
                 Save
               </RetroButton>
-              <RetroButton variant="secondary" disabled={busy || !field.value.trim()} on:click={() => clearField(field)}>
+              <RetroButton variant="secondary" disabled={busy} on:click={() => clearField(field.id)}>
                 Clear
               </RetroButton>
             </div>
@@ -312,38 +335,47 @@
           <article class="secret-card">
             {#if field.supportsPublicRpc}
               <RetroField label="RPC provider">
-                <RetroSelect
-                  value={field.rpcProviderId ?? ""}
-                  disabled={busy}
-                  on:change={(event) => {
-                    const target = event.target as HTMLSelectElement;
-                    handleRpcProviderChange(field.id, target.value);
-                  }}
-                >
+                <div class="native-select-wrap">
+                  <select
+                    value={draftRpcProviderIds[field.id] ?? ""}
+                    bind:this={selectElements[field.id]}
+                    disabled={busy}
+                    class="native-select"
+                    on:change={(event) => {
+                      handleRpcProviderChange(field.id, (event.currentTarget as HTMLSelectElement).value);
+                    }}
+                  >
                   {#each rpcProviderOptions as provider (provider.id)}
                     <option value={provider.id}>{provider.label}</option>
                   {/each}
-                </RetroSelect>
+                  </select>
+                  <span class="native-select-chevron" aria-hidden="true">
+                    <svg class="native-select-chevron-svg" viewBox="0 0 12 8" focusable="false">
+                      <path d="M1 1L6 6L11 1" />
+                    </svg>
+                  </span>
+                </div>
               </RetroField>
             {/if}
 
             <RetroField label={field.credentialLabel}>
-              <RetroInput
-                value={field.value}
+              <input
+                value={currentDraftValueFor(field.id)}
+                bind:this={inputElements[field.id]}
                 disabled={busy}
                 placeholder={field.placeholder}
+                class="native-input"
                 on:input={(event) => {
-                  const target = event.target as HTMLInputElement;
-                  handleValueChange(field.id, target.value);
+                  handleValueChange(field.id, (event.currentTarget as HTMLInputElement).value);
                 }}
               />
             </RetroField>
 
             <div class="row-actions">
-              <RetroButton disabled={busy || !field.value.trim() || !field.dirty} on:click={() => saveField(field)}>
+              <RetroButton disabled={busy} on:click={() => saveField(field.id)}>
                 Save
               </RetroButton>
-              <RetroButton variant="secondary" disabled={busy || !field.value.trim()} on:click={() => clearField(field)}>
+              <RetroButton variant="secondary" disabled={busy} on:click={() => clearField(field.id)}>
                 Clear
               </RetroButton>
             </div>
@@ -416,6 +448,70 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--tc-space-2);
+  }
+
+  .native-input {
+    width: 100%;
+    border: var(--tc-border-muted);
+    background: var(--tc-color-black-2);
+    color: var(--tc-color-gray-3);
+    padding: var(--tc-control-padding-y) var(--tc-control-padding-x);
+    font-size: var(--tc-control-font-size);
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .native-input:focus {
+    border-color: var(--tc-color-turquoise);
+    outline: none;
+  }
+
+  .native-select-wrap {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .native-select {
+    width: 100%;
+    border: var(--tc-border-muted);
+    background: var(--tc-color-black-2);
+    color: var(--tc-color-gray-3);
+    padding: var(--tc-control-padding-y) var(--tc-select-padding-right) var(--tc-control-padding-y)
+      var(--tc-control-padding-x);
+    font-size: var(--tc-control-font-size);
+    min-width: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  }
+
+  .native-select:focus {
+    border-color: var(--tc-color-turquoise);
+    outline: none;
+  }
+
+  .native-select-chevron {
+    position: absolute;
+    top: 50%;
+    right: var(--tc-control-padding-x);
+    display: inline-flex;
+    width: 12px;
+    height: 8px;
+    pointer-events: none;
+    transform: translateY(-50%);
+  }
+
+  .native-select-chevron-svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .native-select-chevron-svg path {
+    stroke: var(--tc-color-gray-3);
+    stroke-width: 1.5;
+    fill: none;
+    stroke-linecap: square;
   }
 
   h3 {

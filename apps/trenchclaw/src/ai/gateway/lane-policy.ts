@@ -18,6 +18,7 @@ const OPERATOR_ACTION_ALLOWLIST = [
   "renameWallets",
   "transfer",
   "closeTokenAccount",
+  "managedUltraSwap",
 ] as const;
 
 const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
