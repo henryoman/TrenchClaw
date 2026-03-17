@@ -171,7 +171,7 @@
   font-weight: 800;
   letter-spacing: -0.045em;
   line-height: 1;
-  max-width: 10ch;
+  max-width: 14ch;
 }
 
 .docs-index-description {
@@ -314,12 +314,14 @@
   border-radius: 0.85rem;
   display: block;
   font-family: 'IBM Plex Mono', monospace;
-  font-size: 0.78rem;
-  line-height: 1.75;
+  font-size: 0.84rem;
+  line-height: 1.7;
   margin-top: 0.9rem;
   overflow-x: auto;
   padding: 0.85rem 0.95rem;
-  white-space: pre;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  width: 100%;
 }
 
 .docs-prereq-command {
@@ -454,7 +456,7 @@
 }
 
 .docs-content {
-  max-width: 760px;
+  max-width: 920px;
   padding: 1.4rem 1.1rem 1.8rem;
 }
 
@@ -477,7 +479,7 @@
   letter-spacing: -0.05em;
   line-height: 0.96;
   margin: 0;
-  max-width: 13ch;
+  max-width: 18ch;
 }
 
 .docs-lead {
@@ -566,7 +568,7 @@
   border-radius: 0.9rem;
   margin: 1rem 0;
   overflow-x: auto;
-  padding: 1.1rem 4.6rem 1.05rem 1rem;
+  padding: 2.3rem 1rem 1.05rem;
   position: relative;
 }
 
@@ -587,7 +589,9 @@
   border: 0;
   color: var(--docs-pre-fg);
   display: block;
-  padding: 0.95rem 0 0;
+  overflow-wrap: anywhere;
+  padding: 0;
+  white-space: pre-wrap;
 }
 
 .code-copy-button {

@@ -1,10 +1,36 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
   export let value = "";
   export let placeholder = "";
   export let disabled = false;
+
+  const dispatch = createEventDispatcher<{
+    valueInput: { value: string };
+    valueChange: { value: string };
+    valueBlur: { value: string };
+  }>();
 </script>
 
-<input bind:value {placeholder} {disabled} class="retro-input" on:input on:change on:blur />
+<input
+  bind:value
+  {placeholder}
+  {disabled}
+  class="retro-input"
+  on:input={(event) => {
+    const nextValue = (event.currentTarget as HTMLInputElement).value;
+    value = nextValue;
+    dispatch("valueInput", { value: nextValue });
+  }}
+  on:change={(event) => {
+    const nextValue = (event.currentTarget as HTMLInputElement).value;
+    value = nextValue;
+    dispatch("valueChange", { value: nextValue });
+  }}
+  on:blur={() => {
+    dispatch("valueBlur", { value });
+  }}
+/>
 
 <style>
   .retro-input {

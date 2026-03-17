@@ -16,29 +16,29 @@ export const installTargets = [
 ] as const;
 
 export const docsPrerequisiteBootstrap = {
-  label: 'Checker + tool updater',
-  description: 'Run this first if you want the helper-managed prerequisite install path before digging into deeper setup.',
+  label: 'Prerequisite installer',
+  description: 'Run this if you want TrenchClaw to install or update the main external tools used by these docs.',
   command: 'curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh',
-  note: 'Current scope: this script installs or updates Solana CLI and Helius CLI. For Helius it prefers Bun, then pnpm, then npm, and prints manual fallback commands if none are installed.',
+  note: 'Today this helper manages Solana CLI and Helius CLI. For Helius it prefers Bun, then pnpm, then npm, and prints manual install commands if none are available.',
 } as const;
 
 export const docsPrerequisites = [
   {
     label: 'Solana CLI',
     kind: 'Helper-managed or separate install',
-    description: 'Needed for CLI-driven Solana workflows, wallet commands, and chain-side debugging.',
+    description: 'Needed for wallet commands, signing flows, local validator work, and chain-side debugging.',
     command: 'sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"',
   },
   {
     label: 'Helius CLI',
     kind: 'Helper-managed or separate install',
-    description: 'Recommended for Helius-first operator workflows and project-level Helius management.',
-    command: 'npm install -g helius-cli@latest',
+    description: 'Useful for Helius project setup, API key management, RPC endpoint lookup, and shell automation.',
+    command: 'bun add -g helius-cli@latest',
   },
   {
     label: 'Helius API key',
     kind: 'Required key',
-    description: 'Needed for Helius-backed RPC, DAS, and other runtime integrations that depend on Helius.',
+    description: 'Needed for Helius-backed RPC, DAS, enhanced transaction lookups, and related runtime integrations.',
     command: null,
   },
   {

@@ -29,10 +29,10 @@
   <div class="docs-prereq-shell">
     <div class="docs-prereq-heading">
       <p class="docs-kicker">Recommended prerequisites</p>
-      <h2 id="docs-prereq-title" class="docs-prereq-title">Set up the minimum stuff first.</h2>
+      <h2 id="docs-prereq-title" class="docs-prereq-title">Install TrenchClaw, then connect the tools it depends on.</h2>
       <p class="docs-prereq-description">
-        The scope here is simple: install TrenchClaw, run the updater script if you want managed tool refreshes,
-        then make sure the separate tools and API keys below exist before deeper setup.
+        Start with the release installer. If you want TrenchClaw to install or update external tools for you, run the
+        helper next. After that, add the provider keys required by the workflows you actually plan to use.
       </p>
     </div>
 

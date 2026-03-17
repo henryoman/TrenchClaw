@@ -7,7 +7,7 @@ featured: true
 
 ## Get Started
 
-This page is intentionally narrow. It covers the public install path, the recommended prerequisites, and the local runtime layout. It does not try to document every feature.
+This guide covers the shipped install path, the recommended prerequisite toolchain, and the local runtime layout.
 
 ## Package Type
 
@@ -41,13 +41,13 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linu
 
 ## Recommended Prerequisites
 
-If you want the helper-managed prerequisite installer first, run:
+If you want TrenchClaw to install or update the main external tools for you first, run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
 ```
 
-Current scope: that script installs or updates Solana CLI and Helius CLI. For Helius CLI it prefers `bun`, then `pnpm`, then `npm`, and prints manual follow-up commands if none of those package managers are installed.
+Today that helper manages Solana CLI and Helius CLI. For Helius CLI it prefers `bun`, then `pnpm`, then `npm`, and prints manual follow-up commands if none of those package managers are installed.
 
 Make sure the following are set up before deeper runtime or trading workflows:
 
@@ -60,12 +60,22 @@ Make sure the following are set up before deeper runtime or trading workflows:
 - `Helius CLI` - helper-managed or separate install.
 
   ```bash
-  npm install -g helius-cli@latest
+  bun add -g helius-cli@latest
   ```
 
-- `Helius API key` - required for Helius-backed RPC and data flows.
+- `Helius API key` - required for Helius-backed RPC, DAS, enhanced transaction lookups, and related data flows.
 - `OpenRouter API key` - required for the default LLM provider path.
 - `Jupiter Ultra API key` - required for Jupiter Ultra swap access.
+
+Helius' current Node SDK is built on `@solana/kit`, so the Helius docs and the runtime's Solana stack now line up on the same client model when you need deeper RPC examples.
+
+If you already have a Helius API key, these are the most useful first-run CLI commands:
+
+```bash
+helius config set-api-key YOUR_API_KEY
+helius projects
+helius rpc <project-id>
+```
 
 Useful checks:
 
@@ -84,20 +94,20 @@ helius --version
 - updates `~/.local/share/trenchclaw/current`
 - writes `~/.local/bin/trenchclaw`
 
-The public installer does not install Bun, Solana CLI, Helius CLI, or any other external tool by default. Use the helper-managed prerequisite script when you want the optional toolchain path.
+The public installer does not install Bun, Solana CLI, Helius CLI, or any other external tool by default. Use the helper script when you want TrenchClaw to manage that toolchain for you.
 
 ## Pin A Specific Release
 
 ### Pin on macOS
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.1 bash
 ```
 
 ### Pin on Linux
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.2 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.1 bash
 ```
 
 ## Launch
@@ -133,13 +143,19 @@ Writable state root:
 ~/.trenchclaw/
   db/
   generated/
+  runtime/
+    ai.json
+    settings.json
   instances/
+    active-instance.json
+    <id>/
+      instance.json
+      vault.json
+      keypairs/
+      settings/
+        trading.json
   protected/
     keypairs/
-  user/
-    vault.json
-    vault.template.json
-    workspace/
 ```
 
 ## Troubleshooting

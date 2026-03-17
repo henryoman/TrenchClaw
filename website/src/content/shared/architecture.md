@@ -58,8 +58,8 @@ If a tool name is not in the injected runtime tool catalog, it is not callable.
 
 - `.runtime-state/runtime/ai.json`
 - `.runtime-state/runtime/settings.json`
-- `.runtime-state/runtime/vault.json`
 - `.runtime-state/instances/<id>/instance.json`
+- `.runtime-state/instances/<id>/vault.json`
 - `.runtime-state/instances/<id>/settings/trading.json`
 
 ### Runtime code

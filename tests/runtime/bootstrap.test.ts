@@ -151,7 +151,6 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_PROFILE",
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_SETTINGS_USER_FILE",
-  "TRENCHCLAW_USER_SETTINGS_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
   "TRENCHCLAW_BOOT_REFRESH_CONTEXT",
   "TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE",
@@ -181,7 +180,6 @@ const writeJson = async (content: unknown): Promise<string> => {
 const applyDefaultEnv = async (): Promise<void> => {
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
-  process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
   delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
   delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
   delete process.env.TRENCHCLAW_VAULT_FILE;
@@ -240,8 +238,6 @@ rpc:
         },
       },
     });
-    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
-
     const settings = await loadRuntimeSettings("dangerous");
     expect(settings.network.rpc.endpoints[0]?.url).toBe("https://vault-helius-rpc.example");
     expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("wss://vault-helius-rpc.example");
@@ -277,8 +273,6 @@ rpc:
         },
       },
     });
-    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
-
     await expect(loadRuntimeSettings("dangerous")).rejects.toThrow(
       "must be resolved to a concrete URL before bootstrap",
     );
@@ -293,7 +287,6 @@ network:
   wsUrl: wss://ws.example
 `);
     process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
-    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
     delete process.env.TRENCHCLAW_VAULT_FILE;
 
     await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("must use one of http:, https:");
@@ -308,8 +301,6 @@ network:
   wsUrl: \${WS_URL}
 `);
     process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
-    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({});
-
     await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("cannot be parsed as a URL");
   });
 

@@ -15,7 +15,6 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
-  "TRENCHCLAW_USER_SETTINGS_FILE",
   "TRENCHCLAW_RUNTIME_STATE_ROOT",
   "TRENCHCLAW_APP_ROOT",
 ] as const;
@@ -187,11 +186,10 @@ describe("trading settings layering", () => {
     });
   });
 
-  test("merges legacy user compatibility settings under the new runtime compatibility file", async () => {
+  test("loads compatibility settings only from the canonical runtime settings file", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
-    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({
       rpc: {
         primaryRpc: "helius",
         providers: {
@@ -207,7 +205,7 @@ describe("trading settings layering", () => {
     const payload = await loadResolvedUserSettings();
     const settings = await loadRuntimeSettings("dangerous");
 
-    expect(payload.legacyCompatibilitySettingsPath).toBe(process.env.TRENCHCLAW_USER_SETTINGS_FILE);
+    expect(payload.compatibilitySettingsPath).toBe(process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE);
     expect((payload.rawSettings as { compatibility?: { rpc?: { primaryRpc?: string } } }).compatibility?.rpc?.primaryRpc).toBe("helius");
     expect(settings.network.rpc.endpoints[0]?.url).toBe("https://vault-helius-rpc.example");
     expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("wss://vault-helius-rpc.example");
@@ -228,8 +226,7 @@ describe("trading settings layering", () => {
       },
       integrations: {},
     });
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
-    process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeJson({
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({
       rpc: {
         primaryRpc: "helius",
         providers: {
