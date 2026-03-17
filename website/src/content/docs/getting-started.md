@@ -1,13 +1,13 @@
 ---
 title: Getting Started
-description: Install the standalone release, set up the recommended prerequisites, and know where the local runtime and state live.
+description: Install the standalone release, set up only the keys and tools you actually need, and know where the local runtime and state live.
 order: 1
 featured: true
 ---
 
 ## Get Started
 
-This guide covers the shipped install path, the recommended prerequisite toolchain, and the local runtime layout.
+This guide covers the shipped install path, the current beta dependency story, and the local runtime layout.
 
 ## Package Type
 
@@ -39,9 +39,9 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/maco
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash
 ```
 
-## Recommended Prerequisites
+## Optional Workflow Prerequisites
 
-If you want TrenchClaw to install or update the main external tools for you first, run:
+If you want TrenchClaw to install or update the optional external CLIs for you, run:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
@@ -49,23 +49,25 @@ curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/i
 
 Today that helper manages Solana CLI and Helius CLI. For Helius CLI it prefers `bun`, then `pnpm`, then `npm`, and prints manual follow-up commands if none of those package managers are installed.
 
-Make sure the following are set up before deeper runtime or trading workflows:
+The current beta does not require those CLIs for baseline install or first launch. Install them only when a specific workflow or shell command asks for them.
 
-- `Solana CLI` - helper-managed or separate install.
+Make sure the following are set up before the matching workflows:
+
+- `Solana CLI` - optional shell and power-user tooling.
 
   ```bash
   sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
   ```
 
-- `Helius CLI` - helper-managed or separate install.
+- `Helius CLI` - optional shell and power-user tooling.
 
   ```bash
   bun add -g helius-cli@latest
   ```
 
-- `Helius API key` - required for Helius-backed RPC, DAS, enhanced transaction lookups, and related data flows.
-- `OpenRouter API key` - required for the default LLM provider path.
-- `Jupiter Ultra API key` - required for Jupiter Ultra swap access.
+- `Helius API key` - required when you want Helius-backed wallet enrichment or swap-history reads.
+- `OpenRouter API key` - required for the default chat-driven workflow path, unless you switch to Gateway.
+- `Jupiter Ultra API key` - required for Jupiter Ultra swaps and trigger-order flows.
 
 Helius' current Node SDK is built on `@solana/kit`, so the Helius docs and the runtime's Solana stack now line up on the same client model when you need deeper RPC examples.
 
@@ -82,6 +84,7 @@ Useful checks:
 ```bash
 solana --version
 helius --version
+trenchclaw doctor
 ```
 
 ## What The Installer Does
@@ -94,7 +97,7 @@ helius --version
 - updates `~/.local/share/trenchclaw/current`
 - writes `~/.local/bin/trenchclaw`
 
-The public installer does not install Bun, Solana CLI, Helius CLI, or any other external tool by default. Use the helper script when you want TrenchClaw to manage that toolchain for you.
+The public installer does not install Bun, Solana CLI, Helius CLI, or any other external tool by default. Use the helper script when you want TrenchClaw to manage that optional toolchain for you.
 
 ## Pin A Specific Release
 
@@ -115,6 +118,14 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linu
 ```bash
 trenchclaw
 ```
+
+After install, run:
+
+```bash
+trenchclaw doctor
+```
+
+That reports which keys, CLIs, and beta workflows are currently ready on this machine.
 
 Default local ports:
 
@@ -184,4 +195,4 @@ The installer stops on checksum mismatch. Retry the install after confirming the
 
 ### Optional external tools are missing
 
-First launch is not blocked by missing Solana CLI tools. Install optional tools separately only when a specific feature asks for them.
+First launch is not blocked by missing Solana CLI or Helius CLI tools. Install optional tools separately only when a specific feature or shell workflow asks for them, then rerun `trenchclaw doctor`.

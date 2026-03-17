@@ -10,6 +10,7 @@ Current built-in routines:
 
 - `actionSequence`
 - `createWallets`
+- queued `scheduleManagedUltraSwap` plans
 
 ## `actionSequence`
 
@@ -33,6 +34,8 @@ This routine wraps managed wallet creation and optional rename steps.
 
 The queue is persisted and can recover interrupted running jobs on restart.
 
+Current beta queueing is explicit and narrow. It is useful for straightforward scheduled work, not a broad autonomous strategy engine.
+
 ## Job Management
 
 - enqueue
@@ -50,7 +53,7 @@ The queue is persisted and can recover interrupted running jobs on restart.
 
 ## Not Shipped As Public Runtime Features
 
-- trigger-driven automation from timer, price, or on-chain triggers
+- trigger-driven automation from timer, price, or on-chain triggers beyond direct Jupiter Trigger order actions
 - a large library of live strategy routines such as DCA, sniper, swing, or percentage execution
 
 ## Tips
