@@ -166,7 +166,6 @@
         aiProviderOptions={runtime.state.aiProviderOptions}
         aiModelOptions={runtime.state.aiModelOptions}
         secretEntries={runtime.state.secretEntries}
-        publicRpcOptions={runtime.state.publicRpcOptions}
         rpcProviderOptions={runtime.state.rpcProviderOptions}
         secretsBusy={runtime.state.secretsBusy}
         secretsError={runtime.state.secretsError}

@@ -17,11 +17,10 @@ export const resolvePathFromModule = (
   return fileURLToPath(new URL(relativePath, moduleUrl));
 };
 
-export const resolvePreferredPathFromModule = async (input: {
-  moduleUrl: string;
-  preferredRelativePath: string;
+export const resolvePreferredPath = async (input: {
+  preferredPath: string;
   envValues?: Array<string | undefined>;
-  legacyRelativePaths?: string[];
+  legacyPaths?: string[];
 }): Promise<string> => {
   const configuredPath = input.envValues
     ?.map((value) => value?.trim())
@@ -30,17 +29,17 @@ export const resolvePreferredPathFromModule = async (input: {
     return configuredPath;
   }
 
-  const preferredPath = fileURLToPath(new URL(input.preferredRelativePath, input.moduleUrl));
+  const preferredPath = path.resolve(input.preferredPath);
   if (await Bun.file(preferredPath).exists()) {
     return preferredPath;
   }
 
   const legacyPaths = await Promise.all(
-    (input.legacyRelativePaths ?? []).map(async (legacyRelativePath) => {
-      const legacyPath = fileURLToPath(new URL(legacyRelativePath, input.moduleUrl));
+    (input.legacyPaths ?? []).map(async (legacyPath) => {
+      const resolvedLegacyPath = path.resolve(legacyPath);
       return {
-        legacyPath,
-        exists: await Bun.file(legacyPath).exists(),
+        legacyPath: resolvedLegacyPath,
+        exists: await Bun.file(resolvedLegacyPath).exists(),
       };
     }),
   );
@@ -50,6 +49,20 @@ export const resolvePreferredPathFromModule = async (input: {
   }
 
   return preferredPath;
+};
+
+export const resolvePreferredPathFromModule = async (input: {
+  moduleUrl: string;
+  preferredRelativePath: string;
+  envValues?: Array<string | undefined>;
+  legacyRelativePaths?: string[];
+}): Promise<string> => {
+  return resolvePreferredPath({
+    preferredPath: fileURLToPath(new URL(input.preferredRelativePath, input.moduleUrl)),
+    envValues: input.envValues,
+    legacyPaths: (input.legacyRelativePaths ?? []).map((legacyRelativePath) =>
+      fileURLToPath(new URL(legacyRelativePath, input.moduleUrl))),
+  });
 };
 
 export const parseStructuredFile = async (filePath: string): Promise<unknown> => {

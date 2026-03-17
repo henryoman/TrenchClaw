@@ -1339,6 +1339,8 @@ describe("RuntimeChatService", () => {
       "searchDexscreenerPairs",
     ]);
     expect(execution.systemPrompt).toContain("## Tool Selection Rules");
+    expect(execution.systemPrompt).toContain("## Meme Coin Routine");
+    expect(execution.systemPrompt).toContain("if the user asks about meme coins, current meme coins, hot meme coins, or trending meme coins: run `getDexscreenerTopTokenBoosts` first");
     expect(execution.systemPrompt).toContain("## Dexscreener Quick Picks");
     expect(execution.systemPrompt).toContain("### `getDexscreenerTokensByChain`");
     expect(execution.systemPrompt).toContain("Pass up to 30 `tokenAddresses`.");

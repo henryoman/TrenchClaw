@@ -3,7 +3,6 @@
     GuiAiModelOptionView,
     GuiAiProviderOptionView,
     GuiAiSettingsView,
-    GuiPublicRpcOptionView,
     GuiRpcProviderOptionView,
     GuiSecretEntryView,
     GuiTradingSettingsView,
@@ -22,7 +21,6 @@
   export let aiProviderOptions: GuiAiProviderOptionView[] = [];
   export let aiModelOptions: GuiAiModelOptionView[] = [];
   export let secretEntries: GuiSecretEntryView[] = [];
-  export let publicRpcOptions: GuiPublicRpcOptionView[] = [];
   export let rpcProviderOptions: GuiRpcProviderOptionView[] = [];
   export let secretsBusy = false;
   export let secretsError = "";
@@ -51,7 +49,6 @@
   const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "openrouter";
   const DEFAULT_AI_MODEL = "anthropic/claude-sonnet-4.6";
   const SOLANA_RPC_OPTION_ID = "solana-rpc-url";
-  const JUPITER_API_KEY_OPTION_ID = "jupiter-api-key";
   const PROVIDER_KEY_OPTION_BY_ID: Record<GuiAiSettingsView["provider"], string> = {
     gateway: "vercel-ai-gateway-api-key",
     openrouter: "openrouter-api-key",
@@ -91,20 +88,6 @@
   const solanaRpcEntry = (): GuiSecretEntryView | undefined =>
     secretEntries.find((entry) => entry.optionId === SOLANA_RPC_OPTION_ID);
 
-  const jupiterApiKeyEntry = (): GuiSecretEntryView | undefined =>
-    secretEntries.find((entry) => entry.optionId === JUPITER_API_KEY_OPTION_ID);
-
-  const rpcProviderFor = (rpcProviderId: string | null): GuiRpcProviderOptionView | undefined =>
-    rpcProviderOptions.find((provider) => provider.id === rpcProviderId) ?? rpcProviderOptions[0];
-
-  const formatRpcProviderOptionLabel = (provider: GuiRpcProviderOptionView): string =>
-    provider.id === "helius" ? `${provider.label} | recommended` : provider.label;
-
-  const isKnownPublicRpcUrl = (value: string): boolean => {
-    const normalizedValue = value.trim();
-    return normalizedValue.length > 0 && publicRpcOptions.some((option) => option.url === normalizedValue);
-  };
-
   const DEFAULT_AI_SETTINGS: GuiAiSettingsView = {
     provider: DEFAULT_AI_PROVIDER,
     model: DEFAULT_AI_MODEL,
@@ -130,10 +113,7 @@
   let aiSettingsDirty = false;
   let tradingSettingsDirty = false;
   let primaryRpcProviderIdDraft = "";
-  let primaryRpcCredentialDraft = "";
   let primaryRpcDirty = false;
-  let jupiterApiKeyDraft = "";
-  let jupiterApiKeyDirty = false;
 
   const createAiSettingsHydrationSignature = (): string =>
     JSON.stringify({
@@ -150,14 +130,7 @@
 
   const createBlockchainSettingsHydrationSignature = (): string =>
     JSON.stringify({
-      secretEntries: secretEntries.map((entry) => [
-        entry.optionId,
-        entry.value,
-        entry.source,
-        entry.publicRpcId,
-        entry.rpcProviderId,
-      ]),
-      publicRpcOptions: publicRpcOptions.map((option) => option.id),
+      secretEntries: secretEntries.map((entry) => [entry.optionId, entry.rpcProviderId, entry.source, entry.publicRpcId, entry.value]),
       rpcProviderOptions: rpcProviderOptions.map((option) => option.id),
     });
 
@@ -208,7 +181,7 @@
 
   const handleReloadTradingSettings = (): void => {
     if (tradingSettingsDirty) {
-      const proceed = window.confirm("You have unsaved trading settings changes. Reload and discard them?");
+      const proceed = window.confirm("You have unsaved blockchain settings changes. Reload and discard them?");
       if (!proceed) {
         return;
       }
@@ -220,62 +193,6 @@
   const handlePrimaryRpcProviderChange = (providerId: string): void => {
     primaryRpcProviderIdDraft = providerId;
     primaryRpcDirty = true;
-  };
-
-  const handlePrimaryRpcCredentialChange = (value: string): void => {
-    primaryRpcCredentialDraft = value;
-    primaryRpcDirty = true;
-  };
-
-  const handleJupiterApiKeyChange = (value: string): void => {
-    jupiterApiKeyDraft = value;
-    jupiterApiKeyDirty = true;
-  };
-
-  const saveBlockchainSettings = (): void => {
-    const entry = solanaRpcEntry();
-    const rpcProvider = rpcProviderFor(primaryRpcProviderIdDraft);
-    const pendingSaves: Array<Promise<void> | void> = [];
-
-    if (primaryRpcDirty) {
-      if (!entry || !rpcProvider || !primaryRpcCredentialDraft.trim()) {
-        return;
-      }
-
-      pendingSaves.push(
-        onSaveSecret({
-          optionId: SOLANA_RPC_OPTION_ID,
-          value: primaryRpcCredentialDraft.trim(),
-          source: "custom",
-          publicRpcId: null,
-          rpcProviderId: rpcProvider.id,
-        }),
-      );
-    }
-
-    if (jupiterApiKeyDirty) {
-      if (!jupiterApiKeyDraft.trim()) {
-        return;
-      }
-
-      pendingSaves.push(
-        onSaveSecret({
-          optionId: JUPITER_API_KEY_OPTION_ID,
-          value: jupiterApiKeyDraft.trim(),
-        }),
-      );
-    }
-
-    if (pendingSaves.length === 0) {
-      return;
-    }
-
-    Promise.all(pendingSaves.map((save) => Promise.resolve(save)))
-      .then(() => {
-        primaryRpcDirty = false;
-        jupiterApiKeyDirty = false;
-      })
-      .catch(() => {});
   };
 
   const saveAiSettings = (): void => {
@@ -315,6 +232,27 @@
       .catch(() => {});
   };
 
+  const savePrimaryRpcProvider = (): void => {
+    const entry = solanaRpcEntry();
+    if (!entry || !primaryRpcProviderIdDraft) {
+      return;
+    }
+
+    Promise.resolve(
+      onSaveSecret({
+        optionId: SOLANA_RPC_OPTION_ID,
+        value: entry.value,
+        source: entry.source,
+        publicRpcId: entry.publicRpcId,
+        rpcProviderId: primaryRpcProviderIdDraft,
+      }),
+    )
+      .then(() => {
+        primaryRpcDirty = false;
+      })
+      .catch(() => {});
+  };
+
   $: {
     const signature = createAiSettingsHydrationSignature();
     if (signature !== aiSettingsHydrationSignature) {
@@ -342,17 +280,9 @@
   $: {
     const signature = createBlockchainSettingsHydrationSignature();
     if (signature !== blockchainSettingsHydrationSignature) {
-      const rpcEntry = solanaRpcEntry();
-      const jupiterEntry = jupiterApiKeyEntry();
-      const fallbackProviderId = rpcProviderOptions[0]?.id ?? "";
-      primaryRpcProviderIdDraft = rpcEntry?.rpcProviderId ?? fallbackProviderId;
-      primaryRpcCredentialDraft = rpcEntry && !(rpcEntry.source === "public" && isKnownPublicRpcUrl(rpcEntry.value))
-        ? rpcEntry.value
-        : "";
-      jupiterApiKeyDraft = jupiterEntry?.value ?? "";
+      primaryRpcProviderIdDraft = solanaRpcEntry()?.rpcProviderId ?? rpcProviderOptions[0]?.id ?? "";
       blockchainSettingsHydrationSignature = signature;
       primaryRpcDirty = false;
-      jupiterApiKeyDirty = false;
     }
   }
 
@@ -366,14 +296,6 @@
     ? [createCustomAiModelOption(aiSettingsDraft.model.trim()), ...filteredAiModelOptions]
     : [...filteredAiModelOptions];
   $: selectedAiProviderHasKey = providerHasKey(aiSettingsDraft.provider);
-  $: selectedPrimaryRpcProvider = rpcProviderFor(primaryRpcProviderIdDraft);
-  $: selectedPrimaryRpcProviderIsHelius = selectedPrimaryRpcProvider?.id === "helius";
-  $: primaryRpcCredentialLabel = selectedPrimaryRpcProvider?.mode === "endpoint-url" ? "RPC endpoint URL" : "RPC Provider Key";
-  $: primaryRpcCredentialPlaceholder = selectedPrimaryRpcProvider?.placeholder ?? "Enter RPC credential";
-  $: canSaveBlockchainSettings = (
-    (primaryRpcDirty && Boolean(primaryRpcProviderIdDraft) && Boolean(primaryRpcCredentialDraft.trim()))
-    || (jupiterApiKeyDirty && Boolean(jupiterApiKeyDraft.trim()))
-  );
 </script>
 
 <section class="settings-panel" aria-label="Settings panel">
@@ -405,7 +327,7 @@
             chevronColor="var(--tc-color-lime)"
             disabled={aiSettingsBusy}
             on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
+              const target = event.target as HTMLSelectElement;
               handleAiProviderChange(target.value as GuiAiSettingsView["provider"]);
             }}
           >
@@ -427,7 +349,7 @@
             chevronColor="var(--tc-color-lime)"
             disabled={aiSettingsBusy}
             on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
+              const target = event.target as HTMLSelectElement;
               onAiSettingChange("model", target.value);
             }}
           >
@@ -443,7 +365,7 @@
             placeholder="Provider default"
             disabled={aiSettingsBusy}
             on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
+              const target = event.target as HTMLInputElement;
               const next = target.value.trim();
               onAiSettingChange("temperature", next.length === 0 ? null : Number(next));
             }}
@@ -456,7 +378,7 @@
             placeholder="Runtime default"
             disabled={aiSettingsBusy}
             on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
+              const target = event.target as HTMLInputElement;
               const next = target.value.trim();
               onAiSettingChange("maxOutputTokens", next.length === 0 ? null : Number(next));
             }}
@@ -470,24 +392,24 @@
 
     <RetroDivider />
 
-    <section class="settings-section" aria-label="Blockchain settings">
+    <section class="settings-section" aria-label="RPC settings">
       <div class="section-heading">
-        <div class="section-copy">
-          <p class="section-label">Blockchain settings</p>
-          <p class="section-description">Choose the RPC provider here. Helius is the recommended option and gets the richest settings surface.</p>
+        <div>
+          <p class="section-label">RPC settings</p>
+          <p class="section-description">Choose the RPC provider here. Enter the matching key in `Keys`.</p>
         </div>
         <div class="actions">
           <RetroButton
             variant="primary"
-            disabled={secretsBusy || !canSaveBlockchainSettings}
-            on:click={saveBlockchainSettings}
+            disabled={secretsBusy || !primaryRpcProviderIdDraft || !primaryRpcDirty}
+            on:click={savePrimaryRpcProvider}
           >
             Save
           </RetroButton>
         </div>
       </div>
 
-      <div class="blockchain-settings-grid">
+      <div class="settings-grid settings-grid-single">
         <RetroField label="RPC provider">
           <RetroSelect
             value={primaryRpcProviderIdDraft}
@@ -495,65 +417,25 @@
             chevronColor="var(--tc-color-lime)"
             disabled={secretsBusy}
             on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
+              const target = event.target as HTMLSelectElement;
               handlePrimaryRpcProviderChange(target.value);
             }}
           >
             {#each rpcProviderOptions as providerOption}
-              <option value={providerOption.id}>{formatRpcProviderOptionLabel(providerOption)}</option>
+              <option value={providerOption.id}>{providerOption.label}</option>
             {/each}
           </RetroSelect>
         </RetroField>
-
-        <RetroField label={primaryRpcCredentialLabel}>
-          <RetroInput
-            value={primaryRpcCredentialDraft}
-            placeholder={primaryRpcCredentialPlaceholder}
-            disabled={secretsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              handlePrimaryRpcCredentialChange(target.value);
-            }}
-          />
-        </RetroField>
-
-        <RetroField label="Jupiter Ultra API Key">
-          <RetroInput
-            value={jupiterApiKeyDraft}
-            placeholder="Enter Jupiter Ultra API key"
-            disabled={secretsBusy}
-            on:input={(event) => {
-              const target = event.currentTarget as HTMLInputElement;
-              handleJupiterApiKeyChange(target.value);
-            }}
-          />
-        </RetroField>
       </div>
-
-      {#if selectedPrimaryRpcProviderIsHelius}
-        <div class="provider-callout" aria-label="Helius provider settings">
-          <p class="provider-callout-title">Helius gateway settings</p>
-          <p class="provider-callout-copy">
-            Coming soon.
-          </p>
-        </div>
-      {:else if selectedPrimaryRpcProvider}
-        <div class="provider-callout provider-callout-muted" aria-label="Provider settings note">
-          <p class="provider-callout-title">{selectedPrimaryRpcProvider.label} settings</p>
-          <p class="provider-callout-copy">
-            Advanced provider-specific controls are centered on Helius. This provider currently uses the standard credential flow only.
-          </p>
-        </div>
-      {/if}
     </section>
 
     <RetroStatusMessage tone="error" text={blockchainSettingsErrorText} />
 
     <RetroDivider />
 
-    <section class="settings-section" aria-label="Trading settings">
+    <section class="settings-section" aria-label="Blockchain settings">
       <div class="section-heading">
-        <p class="section-label">Trading settings</p>
+        <p class="section-label">Blockchain settings</p>
         <div class="actions">
           <RetroButton variant="secondary" disabled={tradingSettingsBusy} on:click={handleReloadTradingSettings}>Reload</RetroButton>
           <RetroButton variant="primary" disabled={tradingSettingsBusy} on:click={saveTradingSettings}>Save</RetroButton>
@@ -567,12 +449,12 @@
             indicatorShape="triangle"
             disabled={tradingSettingsBusy}
             on:change={(event) => {
-              const target = event.currentTarget as HTMLSelectElement;
+              const target = event.target as HTMLSelectElement;
               onTradingSettingChange("defaultSwapProvider", target.value as GuiTradingSettingsView["defaultSwapProvider"]);
             }}
           >
             <option value="ultra">Ultra</option>
-            <option value="standard">RPC</option>
+            <option value="standard">RPC (Coming soon)</option>
           </RetroSelect>
         </RetroField>
 
@@ -640,14 +522,8 @@
     text-transform: uppercase;
   }
 
-  .section-copy {
-    display: grid;
-    gap: var(--tc-space-1);
-    min-width: 0;
-  }
-
   .section-description {
-    margin: 0;
+    margin: var(--tc-space-1) 0 0;
     color: var(--tc-color-gray-2);
     font-size: 0.85rem;
     line-height: 1.4;
@@ -660,36 +536,7 @@
     min-width: 0;
   }
 
-  .blockchain-settings-grid {
-    display: grid;
-    gap: var(--tc-space-3);
-    min-width: 0;
+  .settings-grid-single {
+    grid-template-columns: minmax(0, 1fr);
   }
-
-  .provider-callout {
-    display: grid;
-    gap: var(--tc-space-1);
-    border: var(--tc-row-box-border);
-    background: var(--tc-row-box-bg);
-    padding: var(--tc-row-box-padding);
-  }
-
-  .provider-callout-muted {
-    opacity: 0.92;
-  }
-
-  .provider-callout-title {
-    margin: 0;
-    color: var(--tc-color-lime);
-    font-size: var(--tc-field-label-size);
-    letter-spacing: var(--tc-field-label-letter-spacing);
-    text-transform: uppercase;
-  }
-
-  .provider-callout-copy {
-    margin: 0;
-    color: var(--tc-color-gray-2);
-    line-height: 1.45;
-  }
-
 </style>
