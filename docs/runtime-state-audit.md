@@ -156,7 +156,7 @@ Current avoidable overhead:
 
 - stale `dist/release*` output trees
 - compatibility code that tries to merge shared and per-instance vaults
-- docs/prompts that still describe `.runtime-state/runtime/vault.json`
+- any docs/prompts that reintroduce shared vault paths
 
 Do not add back:
 
