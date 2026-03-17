@@ -165,6 +165,13 @@ const renderDexscreenerRoutingPlaybook = (): string => [
   "- broad trending asks are not the same as newly boosted asks; do not treat `getDexscreenerLatestTokenBoosts` as the default trending tool",
 ].join("\n");
 
+const renderMemeCoinRoutine = (): string => [
+  "## Meme Coin Routine",
+  "- if the user asks about meme coins, current meme coins, hot meme coins, or trending meme coins: run `getDexscreenerTopTokenBoosts` first",
+  "- treat meme-coin market questions as current-trending questions unless the user explicitly asks what was just newly boosted",
+  "- do not use `getDexscreenerLatestTokenBoosts` as the first action for meme-coin questions unless the user explicitly asks for newly boosted or most recently promoted tokens",
+].join("\n");
+
 const renderOperatorToolReference = (
   snapshot: RuntimeCapabilitySnapshot | undefined,
   toolNames: string[],
@@ -225,6 +232,7 @@ export const buildOperatorChatPrompt = async (input: {
       toolNames: input.toolNames,
     }),
     renderOperatorDecisionRules(),
+    renderMemeCoinRoutine(),
     renderDexscreenerRoutingPlaybook(),
     renderOperatorToolReference(input.capabilitySnapshot, input.toolNames),
     renderOperatorKnowledgeFiles(),

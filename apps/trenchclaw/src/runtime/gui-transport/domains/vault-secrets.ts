@@ -311,13 +311,14 @@ export const upsertSecret = async (
   if (option.supportsPublicRpc) {
     const source = payload.source === "public" ? "public" : "custom";
     const rpcProviderId = trimString(payload.rpcProviderId) || inferRpcProviderId(vaultData);
+    if (!RPC_PROVIDER_BY_ID.has(rpcProviderId)) {
+      throw new Error("rpcProviderId must reference a supported private RPC provider");
+    }
     setByPath(vaultData, ["rpc", "default", "source"], source);
+    setByPath(vaultData, ["rpc", "default", "provider-id"], rpcProviderId);
     if (source === "public") {
       const existingCredential = resolveStoredRpcCredential(vaultData, rpcProviderId);
       if (trimmedValue || existingCredential) {
-        if (!RPC_PROVIDER_BY_ID.has(rpcProviderId)) {
-          throw new Error("rpcProviderId must reference a supported private RPC provider");
-        }
         updatePrivateRpcVaultState(vaultData, rpcProviderId, trimmedValue || existingCredential);
       }
       const publicRpcOption = PUBLIC_RPC_OPTIONS.find((entry) => entry.id === payload.publicRpcId);
@@ -328,9 +329,6 @@ export const upsertSecret = async (
       setByPath(vaultData, ["rpc", "default", "public-id"], publicRpcOption.id);
       setByPath(vaultData, ["rpc", "default", "ws-url"], resolveWebsocketUrl(publicRpcOption.url));
     } else {
-      if (!RPC_PROVIDER_BY_ID.has(rpcProviderId)) {
-        throw new Error("rpcProviderId must reference a supported private RPC provider");
-      }
       updatePrivateRpcVaultState(vaultData, rpcProviderId, trimmedValue);
       setByPath(vaultData, ["rpc", "default", "public-id"], "");
     }

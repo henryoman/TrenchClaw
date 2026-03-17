@@ -284,7 +284,7 @@
                 disabled={busy}
                 placeholder={field.placeholder}
                 on:input={(event) => {
-                  const target = event.currentTarget as HTMLInputElement;
+                  const target = event.target as HTMLInputElement;
                   handleValueChange(field.id, target.value);
                 }}
               />
@@ -316,7 +316,7 @@
                   value={field.rpcProviderId ?? ""}
                   disabled={busy}
                   on:change={(event) => {
-                    const target = event.currentTarget as HTMLSelectElement;
+                    const target = event.target as HTMLSelectElement;
                     handleRpcProviderChange(field.id, target.value);
                   }}
                 >
@@ -333,7 +333,7 @@
                 disabled={busy}
                 placeholder={field.placeholder}
                 on:input={(event) => {
-                  const target = event.currentTarget as HTMLInputElement;
+                  const target = event.target as HTMLInputElement;
                   handleValueChange(field.id, target.value);
                 }}
               />

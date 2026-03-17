@@ -38,8 +38,16 @@ interface ResolvedLayout {
   runtimeStateRoot: string;
 }
 
-const normalizeConfiguredPath = (value: string): string =>
-  path.isAbsolute(value) ? path.resolve(value) : path.resolve(process.cwd(), value);
+const resolveAbsoluteConfiguredPath = (envKey: string, value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${envKey} must not be empty when set.`);
+  }
+  if (!path.isAbsolute(trimmed)) {
+    throw new Error(`${envKey} must be an absolute path. Received "${trimmed}".`);
+  }
+  return path.resolve(trimmed);
+};
 
 const isWorkspaceRoot = (candidate: string): boolean =>
   existsSync(path.join(candidate, "apps/trenchclaw/package.json")) &&
@@ -55,7 +63,7 @@ const resolveDefaultRuntimeStateRoot = (): string =>
 const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
   const configured = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
   if (configured) {
-    return normalizeConfiguredPath(configured);
+    return resolveAbsoluteConfiguredPath("TRENCHCLAW_RUNTIME_STATE_ROOT", configured);
   }
 
   if (kind === "workspace") {
@@ -68,7 +76,7 @@ const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): strin
 const resolveLayout = (): ResolvedLayout => {
   const envReleaseRoot = process.env.TRENCHCLAW_RELEASE_ROOT?.trim();
   const candidates = [
-    envReleaseRoot ? normalizeConfiguredPath(envReleaseRoot) : null,
+    envReleaseRoot ? resolveAbsoluteConfiguredPath("TRENCHCLAW_RELEASE_ROOT", envReleaseRoot) : null,
     path.dirname(process.execPath),
     path.resolve(import.meta.dir, "../.."),
     path.resolve(import.meta.dir, "../../.."),
