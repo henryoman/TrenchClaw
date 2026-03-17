@@ -17,7 +17,7 @@ export const installTargets = [
 
 export const docsPrerequisiteBootstrap = {
   label: 'Prerequisite installer',
-  description: 'Run this if you want TrenchClaw to install or update the main external tools used by these docs.',
+  description: 'Run this if you want TrenchClaw to install or update the optional external CLIs used by some workflows.',
   command: 'curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh',
   note: 'Today this helper manages Solana CLI and Helius CLI. For Helius it prefers Bun, then pnpm, then npm, and prints manual install commands if none are available.',
 } as const;
@@ -25,13 +25,13 @@ export const docsPrerequisiteBootstrap = {
 export const docsPrerequisites = [
   {
     label: 'Solana CLI',
-    kind: 'Helper-managed or separate install',
-    description: 'Needed for wallet commands, signing flows, local validator work, and chain-side debugging.',
+    kind: 'Optional workflow tool',
+    description: 'Useful for shell commands, chain-side debugging, and CLI-backed helper workflows.',
     command: 'sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"',
   },
   {
     label: 'Helius CLI',
-    kind: 'Helper-managed or separate install',
+    kind: 'Optional workflow tool',
     description: 'Useful for Helius project setup, API key management, RPC endpoint lookup, and shell automation.',
     command: 'bun add -g helius-cli@latest',
   },

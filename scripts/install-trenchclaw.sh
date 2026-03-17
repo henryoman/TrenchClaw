@@ -8,7 +8,7 @@ set -eu
 # - TRENCHCLAW_ARTIFACT_NAME (default: trenchclaw-$TRENCHCLAW_VERSION-$platform.tar.gz)
 # - TRENCHCLAW_APP_HOME (default: $HOME/.local/share/trenchclaw)
 # - TRENCHCLAW_BIN_DIR (default: $HOME/.local/bin)
-# - TRENCHCLAW_INSTALL_REQUIRED_TOOLS (default: 0)
+# - TRENCHCLAW_INSTALL_REQUIRED_TOOLS (default: 0, compatibility flag only; public install still skips external tools)
 # - TRENCHCLAW_UPDATE_EXISTING_TOOLS (default: 1)
 # - TRENCHCLAW_RELOAD_SHELL (default: 0; set to 1 to exec a login shell at end)
 # - TRENCHCLAW_AUTO_CONFIRM (default: 0; set to 1 to skip the experimental install prompt)
@@ -274,6 +274,9 @@ print_summary() {
   info "Writable state root: ${TRENCHCLAW_RUNTIME_STATE_ROOT:-$HOME/.trenchclaw}"
   info "Next steps:"
   info "  trenchclaw"
+  info "  trenchclaw doctor"
+  info "Optional CLI toolchain helper:"
+  info "  curl -fsSL https://raw.githubusercontent.com/$TRENCHCLAW_REPO/main/scripts/install-required-tools.sh | sh"
   info "If your current shell still cannot find trenchclaw, run:"
   info "  exec \$SHELL -l"
 }
@@ -284,7 +287,7 @@ main() {
   install_trenchclaw_bundle
   if [ "$TRENCHCLAW_INSTALL_REQUIRED_TOOLS" = "1" ]; then
     info "Skipping automatic external tool installation in the public install flow."
-    info "Install optional tools separately if you need features that require them."
+    info "Use trenchclaw doctor after launch, then install optional tools only for workflows that need them."
   fi
   print_summary "$TRENCHCLAW_INSTALLED_VERSION"
 
