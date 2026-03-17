@@ -80,7 +80,7 @@ Use the docs for install and first-run:
 
 ## Build + Release (Current Path)
 
-Consumer path right now is an app bundle (`runner + gui + core runtime`) that users launch with Bun.
+Public releases ship as standalone compiled `trenchclaw` binaries. Bun is required for local development and release engineering, not for end-user installs.
 
 ```bash
 # local verification
@@ -89,17 +89,16 @@ bun run app:build
 bun run bundle:verify
 
 # package release artifact + checksums
-bun run release:package -- --version v0.0.2
+bun run release:package -- --version v0.0.0-beta.1
 
 # generate release notes from commits since last release tag
-bun run release:notes -- --version v0.0.2 --output dist/release/release-notes.md
+bun run release:notes -- --version v0.0.0-beta.1 --output dist/release/release-notes.md
 
-# dry-run next version (no automatic bumping yet)
+# dry-run next beta version
 bun run version:next
-bun run version:next:beta
 ```
 
-Release publishing is manual only (GitHub Actions `Release` workflow via `workflow_dispatch`).
+Release publishing is manual only through the GitHub Actions `Release` workflow (`workflow_dispatch`), and the repo stays on the `0.0.0-beta.N` track for now.
 
 ```mermaid
 flowchart LR
@@ -148,7 +147,7 @@ TrenchClaw is designed as a constrained execution system, not a free-form chatbo
 
 - Filesystem access is enforced by manifest, not prompt intent (`apps/trenchclaw/src/runtime/security/filesystem-manifest.ts` + `src/ai/brain/protected/system/filesystem-manifest.yaml`).
 - Default model permission is deny (`model: none`), with explicit read/write allowlists for narrow runtime paths.
-- Sensitive runtime user paths are hard-blocked (`.runtime-state/user` is `model: none`), and protected writes are scoped under the runtime-owned protected roots with explicit policy checks (`solana/lib/wallet/protected-write-policy.ts`).
+- Runtime writes are scoped under the runtime-owned and instance-owned roots, with protected key material guarded by explicit policy checks (`solana/lib/wallet/protected-write-policy.ts`).
 
 ### 5) Configuration authority boundaries
 
