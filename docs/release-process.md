@@ -61,6 +61,24 @@ Release note categories are configured by [`.github/release.yml`](/Volumes/T9/cu
 - `scripts/generate-release-notes.ts` is useful for commit-window inspection and drafting
 - if you keep `releases/<version>.md`, treat it as an internal draft unless the workflow is changed to publish it
 
+## Public Beta Message
+
+Current public beta messaging should stay narrow:
+
+- managed wallet operations
+- managed wallet reads
+- Dexscreener research
+- Jupiter Ultra swaps
+- chat-driven local runtime workflows
+
+Do not headline broader automation, privacy flows, or non-Ultra public swap paths until they are better proven.
+
+## Public Download Link
+
+Until a specific tagged asset URL is ready to promote, use the GitHub Releases page as the placeholder public download destination:
+
+- `https://github.com/henryoman/trenchclaw/releases`
+
 ## Local Release Prep
 
 For local verification before dispatching the workflow:

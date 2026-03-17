@@ -38,6 +38,7 @@ Switching instances does not fully rebuild the live runtime policy engine. A fre
 - live trigger execution from timer, price, or on-chain trigger modules
 - a broad catalog of production-ready strategy planners
 - standard or RPC swap paths as a public supported runtime flow
+- privacy flows as a headline beta surface
 
 ## Recommended Use
 
@@ -45,4 +46,5 @@ Switching instances does not fully rebuild the live runtime policy engine. A fre
 - verify the active instance before touching wallets
 - treat vault contents and wallet backup files as sensitive material
 - install optional external tools only when a specific workflow requires them
+- run `trenchclaw doctor` after changing keys, RPC setup, or CLI tooling
 - test with devnet or small amounts before relying on more dangerous execution paths

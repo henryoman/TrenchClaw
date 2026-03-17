@@ -1,11 +1,12 @@
 #!/usr/bin/env sh
 set -eu
 
-# Ensures latest Bun + Solana CLI (stable channel) are installed.
+# Ensures latest Bun + Solana CLI + Helius CLI are installed.
 
 BUN_BIN_DIR="$HOME/.bun/bin"
 SOLANA_BIN_DIR="$HOME/.local/share/solana/install/active_release/bin"
 SOLANA_STABLE_INSTALL_URL="https://release.anza.xyz/stable/install"
+HELIUS_PACKAGE_NAME="helius-cli"
 
 info() {
   printf '%s\n' "[runner-deps] $1"
@@ -93,9 +94,28 @@ install_or_upgrade_solana() {
   info "Solana CLI ready: $(solana --version)"
 }
 
+install_or_upgrade_helius() {
+  add_path_for_current_process "$BUN_BIN_DIR"
+  ensure_path_in_shell_profiles "$BUN_BIN_DIR"
+
+  if need_cmd helius; then
+    info "Helius CLI detected: $(helius --version 2>/dev/null || printf '%s' 'version unavailable')"
+    info "Upgrading Helius CLI to latest..."
+  else
+    info "Helius CLI not found. Installing latest..."
+  fi
+
+  bun add -g "${HELIUS_PACKAGE_NAME}@latest" || fail "bun failed to install ${HELIUS_PACKAGE_NAME}"
+
+  add_path_for_current_process "$BUN_BIN_DIR"
+  need_cmd helius || fail "Helius CLI is still unavailable after install/upgrade"
+  info "Helius CLI ready: $(helius --version 2>/dev/null || printf '%s' 'version unavailable')"
+}
+
 main() {
   install_or_upgrade_bun
   install_or_upgrade_solana
+  install_or_upgrade_helius
   info "Dependency bootstrap complete."
   info "If your current shell cannot find commands yet, run: exec \$SHELL -l"
 }

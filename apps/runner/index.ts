@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { accessSync, constants as FsConstants, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 
@@ -27,15 +27,73 @@ const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 const strong = (value: string): string => applyAnsi(value, "bold");
 const spotlight = (value: string): string => applyAnsi(value, "bold", "neonTurquoise");
 
-type LayoutKind = "workspace" | "release";
+export type LayoutKind = "workspace" | "release";
 
-interface ResolvedLayout {
+export interface ResolvedLayout {
   kind: LayoutKind;
   root: string;
   guiDistDir: string;
   guiIndexPath: string;
   coreAssetRoot: string;
   runtimeStateRoot: string;
+}
+
+type DoctorStatus = "ok" | "warn" | "missing";
+
+interface DoctorCheck {
+  id: string;
+  label: string;
+  status: DoctorStatus;
+  details: string;
+  fixHint?: string;
+  blocking?: boolean;
+}
+
+interface DoctorFeatureReadiness {
+  id: string;
+  label: string;
+  status: DoctorStatus;
+  details: string;
+}
+
+interface DoctorSummary {
+  ok: number;
+  warn: number;
+  missing: number;
+  blocking: number;
+}
+
+export interface DoctorReport {
+  generatedAt: string;
+  version: string;
+  layout: {
+    kind: LayoutKind;
+    root: string;
+    guiIndexPath: string;
+    runtimeStateRoot: string;
+  };
+  commands: {
+    bun: string | null;
+    solana: string | null;
+    "solana-keygen": string | null;
+    helius: string | null;
+  };
+  activeInstance: {
+    id: string | null;
+    source: "env" | "active-instance" | "single-instance" | "none";
+    vaultPath: string | null;
+    vaultExists: boolean;
+  };
+  checks: DoctorCheck[];
+  featureReadiness: DoctorFeatureReadiness[];
+  summary: DoctorSummary;
+}
+
+interface DoctorReportOptions {
+  layout?: ResolvedLayout;
+  version?: string;
+  which?: (command: string) => string | null | undefined;
+  env?: NodeJS.ProcessEnv;
 }
 
 const resolveAbsoluteConfiguredPath = (envKey: string, value: string): string => {
@@ -167,6 +225,429 @@ const resolveBinaryVersion = (): string => {
   }
 
   return "unknown";
+};
+
+const DOCTOR_STATUS_LABELS: Record<DoctorStatus, string> = {
+  ok: "OK",
+  warn: "WARN",
+  missing: "MISSING",
+};
+
+const readJsonObjectSync = (filePath: string): Record<string, unknown> | null => {
+  if (!existsSync(filePath)) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+};
+
+const readStringPath = (root: unknown, segments: string[]): string | null => {
+  let current = root;
+  for (const segment of segments) {
+    if (!current || typeof current !== "object" || Array.isArray(current)) {
+      return null;
+    }
+    current = (current as Record<string, unknown>)[segment];
+  }
+  return typeof current === "string" && current.trim().length > 0 ? current.trim() : null;
+};
+
+const findNearestExistingAncestor = (targetPath: string): string | null => {
+  let current = path.resolve(targetPath);
+  while (true) {
+    if (existsSync(current)) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (parent === current) {
+      return null;
+    }
+    current = parent;
+  }
+};
+
+const resolveDoctorStateRootStatus = (runtimeStateRoot: string): {
+  status: DoctorStatus;
+  details: string;
+  blocking: boolean;
+} => {
+  const resolvedRoot = path.resolve(runtimeStateRoot);
+  if (existsSync(resolvedRoot)) {
+    try {
+      accessSync(resolvedRoot, FsConstants.R_OK | FsConstants.W_OK);
+      return {
+        status: "ok",
+        details: `Writable runtime state root detected at ${resolvedRoot}.`,
+        blocking: false,
+      };
+    } catch {
+      return {
+        status: "missing",
+        details: `Runtime state root exists at ${resolvedRoot}, but this process cannot read and write it.`,
+        blocking: true,
+      };
+    }
+  }
+
+  const parent = findNearestExistingAncestor(path.dirname(resolvedRoot));
+  if (!parent) {
+    return {
+      status: "missing",
+      details: `Could not find an existing parent directory for ${resolvedRoot}.`,
+      blocking: true,
+    };
+  }
+
+  try {
+    accessSync(parent, FsConstants.R_OK | FsConstants.W_OK);
+    return {
+      status: "ok",
+      details: `Runtime state root will be created at ${resolvedRoot}; nearest writable parent is ${parent}.`,
+      blocking: false,
+    };
+  } catch {
+    return {
+      status: "missing",
+      details: `Runtime state root ${resolvedRoot} does not exist and nearest parent ${parent} is not writable.`,
+      blocking: true,
+    };
+  }
+};
+
+const isTwoDigitInstanceId = (value: string): boolean => /^\d{2}$/u.test(value.trim());
+
+const resolveDoctorActiveInstance = (runtimeStateRoot: string, env: NodeJS.ProcessEnv): {
+  id: string | null;
+  source: "env" | "active-instance" | "single-instance" | "none";
+} => {
+  const fromEnv = env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim();
+  if (fromEnv && isTwoDigitInstanceId(fromEnv)) {
+    return { id: fromEnv, source: "env" };
+  }
+
+  const instanceRoot = path.join(runtimeStateRoot, "instances");
+  const activeInstancePath = path.join(instanceRoot, "active-instance.json");
+  const persisted = readJsonObjectSync(activeInstancePath);
+  const persistedId = typeof persisted?.localInstanceId === "string" ? persisted.localInstanceId.trim() : "";
+  if (persistedId && isTwoDigitInstanceId(persistedId)) {
+    return { id: persistedId, source: "active-instance" };
+  }
+
+  if (!existsSync(instanceRoot)) {
+    return { id: null, source: "none" };
+  }
+
+  try {
+    const instanceIds = readdirSync(instanceRoot, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && isTwoDigitInstanceId(entry.name))
+      .map((entry) => entry.name)
+      .toSorted((left, right) => left.localeCompare(right));
+    if (instanceIds.length === 1) {
+      return { id: instanceIds[0] ?? null, source: "single-instance" };
+    }
+  } catch {
+    // Ignore and fall through.
+  }
+
+  return { id: null, source: "none" };
+};
+
+const hasHeliusVaultConfig = (vaultData: Record<string, unknown> | null): boolean => {
+  if (!vaultData) {
+    return false;
+  }
+  const providerId = readStringPath(vaultData, ["rpc", "default", "provider-id"]);
+  const defaultHttpUrl = readStringPath(vaultData, ["rpc", "default", "http-url"]);
+  const legacyApiKey = readStringPath(vaultData, ["rpc", "helius", "api-key"]);
+  return providerId === "helius"
+    || Boolean(defaultHttpUrl && defaultHttpUrl.includes("helius-rpc.com"))
+    || Boolean(legacyApiKey);
+};
+
+const hasAiKey = (vaultData: Record<string, unknown> | null): boolean =>
+  Boolean(
+    readStringPath(vaultData, ["llm", "openrouter", "api-key"])
+    || readStringPath(vaultData, ["llm", "gateway", "api-key"]),
+  );
+
+const hasJupiterKey = (vaultData: Record<string, unknown> | null): boolean =>
+  Boolean(readStringPath(vaultData, ["integrations", "jupiter", "api-key"]));
+
+const summarizeDoctorChecks = (checks: readonly DoctorCheck[]): DoctorSummary =>
+  checks.reduce<DoctorSummary>(
+    (summary, check) => {
+      summary[check.status] += 1;
+      if (check.blocking && check.status !== "ok") {
+        summary.blocking += 1;
+      }
+      return summary;
+    },
+    { ok: 0, warn: 0, missing: 0, blocking: 0 },
+  );
+
+export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorReport => {
+  const layout = options.layout ?? LAYOUT;
+  const env = options.env ?? process.env;
+  const which = options.which ?? ((command: string) => Bun.which(command) ?? null);
+  const version = options.version ?? resolveBinaryVersion();
+
+  const commands = {
+    bun: which("bun") ?? null,
+    solana: which("solana") ?? null,
+    "solana-keygen": which("solana-keygen") ?? null,
+    helius: which("helius") ?? null,
+  } as const;
+
+  const stateRootStatus = resolveDoctorStateRootStatus(layout.runtimeStateRoot);
+  const activeInstance = resolveDoctorActiveInstance(layout.runtimeStateRoot, env);
+  const vaultPath = activeInstance.id
+    ? path.join(layout.runtimeStateRoot, "instances", activeInstance.id, "vault.json")
+    : null;
+  const vaultExists = Boolean(vaultPath && existsSync(vaultPath));
+  const vaultData = vaultPath ? readJsonObjectSync(vaultPath) : null;
+  const aiKeyReady = hasAiKey(vaultData);
+  const jupiterKeyReady = hasJupiterKey(vaultData);
+  const heliusReady = hasHeliusVaultConfig(vaultData);
+  const releaseMetadataPath = path.join(layout.root, "release-metadata.json");
+
+  const checks: DoctorCheck[] = [
+    {
+      id: "app-layout",
+      label: "App bundle",
+      status: existsSync(layout.guiIndexPath) ? "ok" : "missing",
+      details: existsSync(layout.guiIndexPath)
+        ? `GUI assets detected at ${layout.guiIndexPath}.`
+        : `GUI assets are missing at ${layout.guiIndexPath}. Build or reinstall TrenchClaw before launching.`,
+      fixHint: existsSync(layout.guiIndexPath) ? undefined : "Run the app build or reinstall the packaged release.",
+      blocking: !existsSync(layout.guiIndexPath),
+    },
+    {
+      id: "release-metadata",
+      label: "Release metadata",
+      status: layout.kind === "release" ? (existsSync(releaseMetadataPath) ? "ok" : "warn") : "ok",
+      details: layout.kind === "release"
+        ? existsSync(releaseMetadataPath)
+          ? `Release metadata detected at ${releaseMetadataPath}.`
+          : `Release metadata file is missing at ${releaseMetadataPath}. The app can still run, but the release bundle looks incomplete.`
+        : `Workspace mode detected; package metadata will be used instead of bundled release metadata.`,
+      fixHint: layout.kind === "release" && !existsSync(releaseMetadataPath)
+        ? "Reinstall from a complete GitHub Release artifact."
+        : undefined,
+    },
+    {
+      id: "runtime-state-root",
+      label: "Runtime state root",
+      status: stateRootStatus.status,
+      details: stateRootStatus.details,
+      fixHint: stateRootStatus.status === "ok"
+        ? undefined
+        : "Set TRENCHCLAW_RUNTIME_STATE_ROOT to a writable absolute path or fix directory permissions.",
+      blocking: stateRootStatus.blocking,
+    },
+    {
+      id: "active-instance",
+      label: "Active instance",
+      status: activeInstance.id ? "ok" : "warn",
+      details: activeInstance.id
+        ? `Using instance ${activeInstance.id} from ${activeInstance.source}.`
+        : "No active instance detected yet. Sign in or create an instance before wallet and vault workflows.",
+      fixHint: activeInstance.id ? undefined : "Launch TrenchClaw and sign into an instance first.",
+    },
+    {
+      id: "instance-vault",
+      label: "Instance vault",
+      status: !activeInstance.id ? "warn" : vaultExists ? "ok" : "warn",
+      details: !activeInstance.id
+        ? "No active instance means there is no instance-scoped vault to inspect yet."
+        : vaultExists
+          ? `Instance vault detected at ${vaultPath}.`
+          : `Expected instance vault at ${vaultPath}, but it does not exist yet.`,
+      fixHint: !activeInstance.id ? undefined : vaultExists ? undefined : "Open the vault or secrets UI once to create and populate the instance vault.",
+    },
+    {
+      id: "ai-key",
+      label: "AI provider key",
+      status: !activeInstance.id ? "warn" : aiKeyReady ? "ok" : "warn",
+      details: !activeInstance.id
+        ? "AI key readiness cannot be checked until an instance vault exists."
+        : aiKeyReady
+          ? "Found at least one AI key in the active instance vault."
+          : "No OpenRouter or Gateway key found in the active instance vault.",
+      fixHint: !activeInstance.id || aiKeyReady ? undefined : "Add an OpenRouter or Gateway API key in the vault or secrets panel.",
+    },
+    {
+      id: "jupiter-key",
+      label: "Jupiter Ultra key",
+      status: !activeInstance.id ? "warn" : jupiterKeyReady ? "ok" : "warn",
+      details: !activeInstance.id
+        ? "Jupiter key readiness cannot be checked until an instance vault exists."
+        : jupiterKeyReady
+          ? "Jupiter Ultra API key detected in the active instance vault."
+          : "No Jupiter Ultra API key found in the active instance vault.",
+      fixHint: !activeInstance.id || jupiterKeyReady ? undefined : "Add the Jupiter Ultra API key in the vault or secrets panel before swap or trigger workflows.",
+    },
+    {
+      id: "helius-config",
+      label: "Helius-backed RPC setup",
+      status: !activeInstance.id ? "warn" : heliusReady ? "ok" : "warn",
+      details: !activeInstance.id
+        ? "Helius-backed reads cannot be checked until an instance vault exists."
+        : heliusReady
+          ? "Helius-backed RPC credentials are configured for the active instance."
+          : "No Helius-backed RPC credential or legacy Helius API key found in the active instance vault.",
+      fixHint: !activeInstance.id || heliusReady ? undefined : "Set a Helius private RPC credential in the secrets panel if you want Helius-enriched reads or swap history.",
+    },
+    {
+      id: "solana-cli",
+      label: "Solana CLI",
+      status: commands.solana ? "ok" : "warn",
+      details: commands.solana
+        ? `Detected at ${commands.solana}.`
+        : "Solana CLI is not installed. This does not block first launch, but some shell and power-user workflows expect it.",
+      fixHint: commands.solana ? undefined : "Install with the tool helper or the official Anza installer when a workflow needs it.",
+    },
+    {
+      id: "solana-keygen",
+      label: "solana-keygen",
+      status: commands["solana-keygen"] ? "ok" : "warn",
+      details: commands["solana-keygen"]
+        ? `Detected at ${commands["solana-keygen"]}.`
+        : "solana-keygen is not installed. Vanity wallet helper flows depend on it.",
+      fixHint: commands["solana-keygen"] ? undefined : "Install Solana CLI to provide solana-keygen.",
+    },
+    {
+      id: "helius-cli",
+      label: "Helius CLI",
+      status: commands.helius ? "ok" : "warn",
+      details: commands.helius
+        ? `Detected at ${commands.helius}.`
+        : "Helius CLI is not installed. This does not block first launch, but CLI-backed shell workflows will ask for it.",
+      fixHint: commands.helius ? undefined : "Install with the tool helper or `bun add -g helius-cli@latest` when a workflow needs it.",
+    },
+  ];
+
+  const featureReadiness: DoctorFeatureReadiness[] = [
+    {
+      id: "baseline-launch",
+      label: "Baseline first launch",
+      status: stateRootStatus.status === "ok" && existsSync(layout.guiIndexPath) ? "ok" : "missing",
+      details: stateRootStatus.status === "ok" && existsSync(layout.guiIndexPath)
+        ? "The local install looks healthy enough to launch TrenchClaw."
+        : "The local install is missing app assets or a writable state root.",
+    },
+    {
+      id: "chat-workflows",
+      label: "Chat-driven workflows",
+      status: activeInstance.id && aiKeyReady ? "ok" : "warn",
+      details: activeInstance.id && aiKeyReady
+        ? "Active instance and AI key are both ready."
+        : "Needs an active instance plus an OpenRouter or Gateway key.",
+    },
+    {
+      id: "managed-wallet-reads",
+      label: "Managed wallet reads",
+      status: activeInstance.id ? "ok" : "warn",
+      details: activeInstance.id
+        ? "Instance-scoped wallet workflows can resolve against the active instance."
+        : "Needs an active instance before managed wallet reads are useful.",
+    },
+    {
+      id: "helius-enriched-reads",
+      label: "Helius-enriched reads and swap history",
+      status: activeInstance.id && heliusReady ? "ok" : "warn",
+      details: activeInstance.id && heliusReady
+        ? "Helius-backed RPC credentials are ready for enriched reads."
+        : "Needs an active instance and Helius-backed RPC credentials.",
+    },
+    {
+      id: "ultra-workflows",
+      label: "Ultra swaps and trigger orders",
+      status: activeInstance.id && jupiterKeyReady ? "ok" : "warn",
+      details: activeInstance.id && jupiterKeyReady
+        ? "Active instance and Jupiter Ultra key are ready."
+        : "Needs an active instance and a Jupiter Ultra API key.",
+    },
+    {
+      id: "cli-shell-workflows",
+      label: "CLI-driven shell workflows",
+      status: commands.solana && commands.helius ? "ok" : "warn",
+      details: commands.solana && commands.helius
+        ? "Both Solana CLI and Helius CLI are available in the shell environment."
+        : "Needs Solana CLI and Helius CLI when workflows explicitly depend on shell tooling.",
+    },
+    {
+      id: "vanity-wallet-helper",
+      label: "Vanity wallet helper",
+      status: commands["solana-keygen"] ? "ok" : "warn",
+      details: commands["solana-keygen"]
+        ? "solana-keygen is available."
+        : "Needs solana-keygen from the Solana CLI install.",
+    },
+  ];
+
+  const summary = summarizeDoctorChecks(checks);
+
+  return {
+    generatedAt: new Date().toISOString(),
+    version,
+    layout: {
+      kind: layout.kind,
+      root: layout.root,
+      guiIndexPath: layout.guiIndexPath,
+      runtimeStateRoot: layout.runtimeStateRoot,
+    },
+    commands,
+    activeInstance: {
+      id: activeInstance.id,
+      source: activeInstance.source,
+      vaultPath,
+      vaultExists,
+    },
+    checks,
+    featureReadiness,
+    summary,
+  };
+};
+
+export const formatDoctorReport = (report: DoctorReport): string => {
+  const lines = [
+    strong("TrenchClaw doctor"),
+    `${RUNNER_LOG_PREFIX} version: ${report.version}`,
+    `${RUNNER_LOG_PREFIX} mode: ${report.layout.kind}`,
+    `${RUNNER_LOG_PREFIX} app root: ${report.layout.root}`,
+    `${RUNNER_LOG_PREFIX} runtime state: ${report.layout.runtimeStateRoot}`,
+    `${RUNNER_LOG_PREFIX} summary: ${report.summary.ok} ok, ${report.summary.warn} warnings, ${report.summary.missing} missing, ${report.summary.blocking} blocking`,
+    "",
+    strong("Checks"),
+  ];
+
+  for (const check of report.checks) {
+    lines.push(`- [${DOCTOR_STATUS_LABELS[check.status]}] ${check.label}: ${check.details}`);
+    if (check.fixHint) {
+      lines.push(`  fix: ${check.fixHint}`);
+    }
+  }
+
+  lines.push("", strong("Feature Readiness"));
+  for (const feature of report.featureReadiness) {
+    lines.push(`- [${DOCTOR_STATUS_LABELS[feature.status]}] ${feature.label}: ${feature.details}`);
+  }
+
+  return lines.join("\n");
+};
+
+const runDoctor = (args: string[]): number => {
+  const report = collectDoctorReport();
+  if (args.includes("--json")) {
+    console.log(JSON.stringify(report, null, 2));
+  } else {
+    console.log(formatDoctorReport(report));
+  }
+  return report.summary.blocking > 0 ? 1 : 0;
 };
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value > 0 && value <= 65535;
@@ -480,12 +961,15 @@ const logOptionalToolDiagnostics = (): void => {
   if (!Bun.which("solana-keygen")) {
     missingTools.push("solana-keygen");
   }
+  if (!Bun.which("helius")) {
+    missingTools.push("helius");
+  }
   if (missingTools.length === 0) {
     return;
   }
 
   console.log(
-    `${RUNNER_LOG_PREFIX} optional tools missing: ${emphasize(missingTools.join(", "))} (only required for specific features)`,
+    `${RUNNER_LOG_PREFIX} optional tools missing: ${emphasize(missingTools.join(", "))} (only required for specific features; run ${strong("trenchclaw doctor")} for details)`,
   );
 };
 
@@ -493,6 +977,10 @@ const main = async (): Promise<void> => {
   const args = process.argv.slice(2);
   if (args.includes("--version") || args.includes("-V")) {
     console.log(resolveBinaryVersion());
+    return;
+  }
+  if (args[0] === "doctor" || args.includes("--doctor")) {
+    process.exitCode = runDoctor(args);
     return;
   }
   if (!existsSync(LAYOUT.guiIndexPath)) {
@@ -598,4 +1086,6 @@ const main = async (): Promise<void> => {
   await shutdownDone;
 };
 
-await main();
+if (import.meta.main) {
+  await main();
+}

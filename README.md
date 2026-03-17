@@ -31,10 +31,11 @@ TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It'
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
-We recommend setting up the following prerequisites:
-- helius api key
-- jupiter ultra key 
-- openrouter api key
+Current beta keys:
+
+- helius api key for helius-backed reads
+- jupiter ultra key for swap and trigger flows
+- openrouter or gateway api key for chat-driven workflows
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
@@ -49,21 +50,23 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - [x] Dexscreener data fetch setup
 - [x] Native Jupiter Ultra swaps
 - [x] Solana Kit tx builder
-- [ ] Transfer tokens
-- [x] Bash tool and Solana CLI
+- [x] Direct transfers (limited beta surface)
+- [x] Bash tool and optional CLI workflows
 - [x] Secure vault system for keys and secrets
 - [x] Protected filesystem boundaries
 - [x] Test suite
 - [x] Marketing and docs website
 - [x] Svelte GUI
 - [x] Runner CLI
-- [x] Model-triggered routines
+- [x] Queue and explicit scheduled routines
 - [ ] CI and release flow
 - [x] Public docs rollout
 - [ ] Wallet and research validation
 
 Quick links:
+
 - [Quickstart](https://trenchclaw.vercel.app/docs)
+- [Beta Capability Matrix](https://trenchclaw.vercel.app/docs/beta-capability-matrix)
 - [Runtime Architecture and Boundaries](#runtime-architecture-and-boundaries)
 - [Why TypeScript?](#why-typescript)
 - [Why Solana Kit](#why-solana-kit)
@@ -71,12 +74,14 @@ Quick links:
 
 WE ARE LOOKING FOR SPONSORSHIP. PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
 
-### THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT. 
+### THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT
 
 ---
+
 ## [Get Started](https://trenchclaw.vercel.app/docs)
 
 Use the docs for install and first-run:
+
 - [Getting Started](https://trenchclaw.vercel.app/docs/getting-started)
 
 ## Build + Release (Current Path)
@@ -130,7 +135,7 @@ TrenchClaw is designed as a constrained execution system, not a free-form chatbo
 
 ### 2) Execution plane (on-chain actions + off-chain helpers)
 
-- On-chain-capable actions live under `apps/trenchclaw/src/solana/actions/wallet-based/*` (wallet ops, transfers, swaps, privacy flows).
+- On-chain-capable actions live under `apps/trenchclaw/src/solana/actions/wallet-based/*` (wallet ops, transfers, swaps, and some not-yet-headline privacy flows).
 - Off-chain helper actions are explicit modules under `apps/trenchclaw/src/solana/actions/data-fetch/*`:
   - RPC reads (`getAccountInfo`, `getBalance`, `getMultipleAccounts`, `getTokenMetadata`, `getTokenPrice`, `getMarketData`)
   - External API reads (`api/dexscreener.ts`)
@@ -141,7 +146,7 @@ TrenchClaw is designed as a constrained execution system, not a free-form chatbo
 
 - Runtime settings normalize into two Jupiter profiles: `trading.jupiter.ultra` and `trading.jupiter.standard` (`apps/trenchclaw/src/runtime/load/loader.ts`).
 - Profile selection is derived from `trading.preferredSwap` / `trading.defaultSwapProfile`; Ultra enables Ultra quote/execute permissions, Standard enables standard quote/execute permissions.
-- Current tool catalog registration (`apps/trenchclaw/src/ai/tools/catalog.ts`) actively exposes Ultra path actions (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`) and privacy swap composition when signing permissions are satisfied.
+- Current runtime capability registration exposes the Ultra path (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`, `managedUltraSwap`) as the main shipped swap surface.
 - Standard RPC swap actions (`quoteSwap`, `executeSwap`) exist in `wallet-based/swap/rpc/*` as modular execution primitives, with parity wiring tracked in the roadmap.
 
 ### 4) Filesystem and secret boundaries
@@ -326,11 +331,13 @@ If you are evaluating Solana agent stacks today, the practical split is this: Tr
 TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for runtime jobs, receipts, policy/decision traces, market/cache data, and chat persistence (`conversations`, `chat_messages`). It keeps state local, restart-safe, and dependency-light.
 
 Schema is Zod-first and auto-synced on boot:
+
 - Row/table schema source of truth: `src/runtime/storage/sqlite-schema.ts`
 - Zod-to-SQL mapping + boot sync: `src/runtime/storage/sqlite-orm.ts`
 - Runtime prints a compact schema snapshot at boot for operator/model context
 
 Runtime log/data layout is split by purpose under `src/ai/brain/db/`:
+
 - `runtime/`: SQLite DB + runtime event files
 - `sessions/`: session index + JSONL transcript stream
 - `summaries/`: compact per-session markdown summaries
@@ -346,8 +353,8 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 ## What It Does
 
 - Registers and dispatches typed Solana actions with policy gates, retries, and idempotency
-- Composes actions into routines: DCA, swing, percentage, and sniper
-- Fires routines from triggers: timers, price thresholds, and on-chain events (pool creation, liquidity adds)
+- Ships managed wallet reads, wallet management, Dexscreener research, Jupiter Ultra swaps, and direct Jupiter Trigger order flows
+- Composes explicit action sequences, queued jobs, and narrow scheduled swap flows
 - Persists runtime state + chat history in Bun SQLite (restart-safe)
 - Auto-syncs SQLite schema from Zod table specs on boot (no manual version bump for additive changes)
 - Emits structured events on a typed bus consumed by CLI logs and future alerting
@@ -356,13 +363,23 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
 
+Current public beta does not promise a broad autonomous strategy engine yet. Privacy flows, broad trigger automation, and non-Ultra public swap paths should be treated as coming soon.
+
 ## Download Dependencies
 
-Use the runner bootstrap script to install or upgrade both dependencies to latest stable:
+Use the runner bootstrap script to install or upgrade the local development toolchain:
 
 ```bash
 sh ./apps/runner/scripts/bootstrap-deps.sh
 ```
+
+That dev helper manages:
+
+- Bun
+- Solana CLI
+- Helius CLI
+
+Public standalone installs do not require Bun, Solana CLI, or Helius CLI for first launch. Install those CLIs only when a workflow explicitly needs them.
 
 Manual equivalents (if you need them):
 
@@ -372,6 +389,9 @@ curl -fsSL https://bun.sh/install | bash
 
 # Solana CLI via Anza installer (macOS/Linux, stable channel)
 sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+
+# Helius CLI
+bun add -g helius-cli@latest
 ```
 
 Verify everything is installed:
@@ -379,6 +399,7 @@ Verify everything is installed:
 ```bash
 bun --version
 solana --version
+helius --version
 ```
 
 Update commands:
@@ -386,6 +407,7 @@ Update commands:
 ```bash
 bun upgrade
 agave-install update
+bun add -g helius-cli@latest
 ```
 
 ## Unified App Runner (Local)
@@ -399,12 +421,14 @@ bun run start
 ```
 
 What `bun run start` does:
+
 - Starts the dedicated runner (`apps/runner`) which then starts the core runtime process (`apps/trenchclaw runtime:start`)
 - Rebuilds missing `.runtime-state/generated/` artifacts on startup, and you can force a full refresh with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1`
 - Starts runtime API on localhost
 - Serves GUI from static `apps/frontends/gui/dist`
 - Proxies `/api/*` from GUI server to runtime server
 - Prompts `launch GUI now?` and opens browser after Enter (type `skip` to keep runtime CLI-only)
+- Supports `bun run start -- doctor` for local preflight checks
 
 Local development still uses Vite:
 
