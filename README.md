@@ -3,6 +3,7 @@
 </p>
 
 <p align="center">
+  <a href="./package.json"><img src="https://img.shields.io/badge/Version-0.0.0--beta.1-2563EB?style=for-the-badge" alt="Version 0.0.0-beta.1" /></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
   <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/badge/AI%20SDK-111827?style=for-the-badge" alt="AI SDK" /></a>
   <a href="https://x.com/mert"><img src="https://img.shields.io/badge/Teachings%20of%20Mert-000000?style=for-the-badge&logo=x&logoColor=white" alt="Teachings of Mert" /></a>
