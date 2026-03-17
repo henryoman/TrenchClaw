@@ -31,8 +31,8 @@ export const RPC_PROVIDER_OPTIONS: GuiRpcProviderOptionView[] = [
   {
     id: "helius",
     label: "Helius",
-    credentialLabel: "RPC API key",
-    placeholder: "Enter Helius API key",
+    credentialLabel: "RPC Provider Key",
+    placeholder: "Enter RPC provider key",
     mode: "api-key",
   },
   {
@@ -45,8 +45,8 @@ export const RPC_PROVIDER_OPTIONS: GuiRpcProviderOptionView[] = [
   {
     id: "shyft",
     label: "Shyft",
-    credentialLabel: "RPC API key",
-    placeholder: "Enter Shyft API key",
+    credentialLabel: "RPC Provider Key",
+    placeholder: "Enter RPC provider key",
     mode: "api-key",
   },
   {

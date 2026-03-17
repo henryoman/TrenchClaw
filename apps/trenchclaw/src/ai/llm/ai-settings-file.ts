@@ -1,14 +1,13 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
+import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
 import type { AiModelProvider } from "./model-catalog";
-import { parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
+import { parseStructuredFile, resolvePathFromModule, resolvePreferredPath } from "./shared";
 
 export const DEFAULT_LLM_MODEL = "anthropic/claude-sonnet-4.6";
 export const DEFAULT_LLM_PROVIDER: AiModelProvider = "openrouter";
 
-const DEFAULT_AI_SETTINGS_FILE = "../../../.runtime-state/runtime/ai.json";
-const LEGACY_AI_SETTINGS_FILE = "../../../.runtime-state/user/ai.json";
 const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";
 const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";
 const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
@@ -28,12 +27,14 @@ export const normalizeAiSettingsInput = (input: AiSettingsInput): AiSettings => 
 
 export const DEFAULT_AI_SETTINGS: AiSettings = normalizeAiSettingsInput({});
 
+const DEFAULT_AI_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "runtime", "ai.json");
+const LEGACY_AI_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "user", "ai.json");
+
 export const resolveAiSettingsPaths = async (): Promise<{ filePath: string; templatePath: string }> => ({
-  filePath: await resolvePreferredPathFromModule({
-    moduleUrl: import.meta.url,
-    preferredRelativePath: DEFAULT_AI_SETTINGS_FILE,
+  filePath: await resolvePreferredPath({
+    preferredPath: DEFAULT_AI_SETTINGS_FILE,
     envValues: [process.env[AI_SETTINGS_FILE_ENV]],
-    legacyRelativePaths: [LEGACY_AI_SETTINGS_FILE],
+    legacyPaths: [LEGACY_AI_SETTINGS_FILE],
   }),
   templatePath: resolvePathFromModule(
     import.meta.url,
