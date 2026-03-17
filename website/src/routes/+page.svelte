@@ -70,7 +70,8 @@
           TrenchClaw is a local Solana runtime with actions, wallets, routines, and a local GUI.
         </p>
         <p class="mt-4 max-w-2xl text-sm leading-7 text-foreground-soft">
-          The docs focus on the only public install path that is actually shipped right now.
+          Install from the release docs, then add Solana CLI, Helius CLI, and provider keys only for the workflows you
+          actually use.
         </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -116,7 +117,7 @@
         <div class="surface-card mt-5 grid gap-3 p-5">
           <div class="flex items-center justify-between">
             <span class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Install</span>
-            <span class="text-xs text-muted">Bootstrap to installer</span>
+            <span class="text-xs text-muted">Release installer</span>
           </div>
           {#each installTargets as target (target.label)}
             <div class="rounded-2xl border border-border-subtle bg-white/2 p-4">
@@ -124,7 +125,9 @@
                 <h2 class="text-sm font-semibold">{target.label}</h2>
                 <span class="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">copy + run</span>
               </div>
-              <code class="block overflow-x-auto font-mono text-xs leading-6 text-foreground-soft">{target.command}</code>
+              <code class="block overflow-x-auto whitespace-pre-wrap break-all font-mono text-[13px] leading-6 text-foreground">
+                {target.command}
+              </code>
             </div>
           {/each}
           <p class="text-xs leading-6 text-muted">
