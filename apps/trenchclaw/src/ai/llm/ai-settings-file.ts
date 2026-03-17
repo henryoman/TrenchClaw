@@ -28,13 +28,11 @@ export const normalizeAiSettingsInput = (input: AiSettingsInput): AiSettings => 
 export const DEFAULT_AI_SETTINGS: AiSettings = normalizeAiSettingsInput({});
 
 const DEFAULT_AI_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "runtime", "ai.json");
-const LEGACY_AI_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "user", "ai.json");
 
 export const resolveAiSettingsPaths = async (): Promise<{ filePath: string; templatePath: string }> => ({
   filePath: await resolvePreferredPath({
     preferredPath: DEFAULT_AI_SETTINGS_FILE,
     envValues: [process.env[AI_SETTINGS_FILE_ENV]],
-    legacyPaths: [LEGACY_AI_SETTINGS_FILE],
   }),
   templatePath: resolvePathFromModule(
     import.meta.url,
