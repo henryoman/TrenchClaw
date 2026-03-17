@@ -1,14 +1,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { isRecord, parseStructuredFile, resolvePathFromModule, resolvePreferredPathFromModule } from "./shared";
+import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
+import { isRecord, parseStructuredFile, resolvePreferredPath } from "./shared";
 import { loadVaultData } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
-const DEFAULT_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/runtime/settings.json";
-const LEGACY_COMPATIBILITY_SETTINGS_FILE = "../../../.runtime-state/user/settings.json";
-
 const RUNTIME_SETTINGS_FILE_ENV = "TRENCHCLAW_RUNTIME_SETTINGS_FILE";
 const LEGACY_USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
+
+const DEFAULT_COMPATIBILITY_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "runtime", "settings.json");
+const LEGACY_COMPATIBILITY_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "user", "settings.json");
 
 const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
   if (!isRecord(baseValue) || !isRecord(overlayValue)) {
@@ -222,17 +223,14 @@ const loadOptionalStructuredSettingsLayer = async (filePath: string | null): Pro
 
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
   const explicitLegacySettingsPath = process.env[LEGACY_USER_SETTINGS_FILE_ENV]?.trim();
-  const compatibilitySettingsPath = await resolvePreferredPathFromModule({
-    moduleUrl: import.meta.url,
-    preferredRelativePath: DEFAULT_COMPATIBILITY_SETTINGS_FILE,
+  const compatibilitySettingsPath = await resolvePreferredPath({
+    preferredPath: DEFAULT_COMPATIBILITY_SETTINGS_FILE,
     envValues: [process.env[RUNTIME_SETTINGS_FILE_ENV], process.env[LEGACY_USER_SETTINGS_FILE_ENV]],
-    legacyRelativePaths: [LEGACY_COMPATIBILITY_SETTINGS_FILE],
+    legacyPaths: [LEGACY_COMPATIBILITY_SETTINGS_FILE],
   });
-  const legacyCompatibilitySettingsPath = path.resolve(resolvePathFromModule(
-    import.meta.url,
-    LEGACY_COMPATIBILITY_SETTINGS_FILE,
-    explicitLegacySettingsPath,
-  ));
+  const legacyCompatibilitySettingsPath = path.resolve(
+    explicitLegacySettingsPath || LEGACY_COMPATIBILITY_SETTINGS_FILE,
+  );
 
   await ensureStructuredSettingsFileExists(compatibilitySettingsPath);
   const vaultPayload = await loadVaultData();

@@ -7,8 +7,16 @@ const RUNTIME_DIRECTORY = fileURLToPath(new URL(".", import.meta.url));
 const BRAIN_SOURCE_ROOT = "src/ai/brain";
 const RUNTIME_STATE_CONTRACT_ROOT = ".runtime-state";
 
-const normalizeEnvPath = (value: string): string =>
-  path.isAbsolute(value) ? path.resolve(value) : path.resolve(process.cwd(), value);
+const resolveAbsoluteEnvPath = (envKey: string, value: string): string => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error(`${envKey} must not be empty when set.`);
+  }
+  if (!path.isAbsolute(trimmed)) {
+    throw new Error(`${envKey} must be an absolute path. Received "${trimmed}".`);
+  }
+  return path.resolve(trimmed);
+};
 
 const normalizeContractPath = (value: string): string => value.trim().replaceAll("\\", "/").replace(/\/+$/, "");
 
@@ -21,8 +29,8 @@ export const resolveCoreAppRoot = (): string => {
   const envRoot = process.env.TRENCHCLAW_APP_ROOT?.trim();
   const releaseRoot = process.env.TRENCHCLAW_RELEASE_ROOT?.trim();
   const candidates = [
-    envRoot ? normalizeEnvPath(envRoot) : null,
-    releaseRoot ? path.join(normalizeEnvPath(releaseRoot), "core") : null,
+    envRoot ? resolveAbsoluteEnvPath("TRENCHCLAW_APP_ROOT", envRoot) : null,
+    releaseRoot ? path.join(resolveAbsoluteEnvPath("TRENCHCLAW_RELEASE_ROOT", releaseRoot), "core") : null,
     path.join(path.dirname(process.execPath), "core"),
     path.resolve(RUNTIME_DIRECTORY, "../.."),
     path.resolve(process.cwd(), "apps/trenchclaw"),
@@ -61,7 +69,7 @@ export const resolveRuntimeStateRoot = (): string => {
     return DEFAULT_RUNTIME_STATE_ROOT;
   }
 
-  return normalizeEnvPath(configuredRoot);
+  return resolveAbsoluteEnvPath("TRENCHCLAW_RUNTIME_STATE_ROOT", configuredRoot);
 };
 
 export const RUNTIME_STATE_ROOT = resolveRuntimeStateRoot();
