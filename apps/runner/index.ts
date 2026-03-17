@@ -462,9 +462,7 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
     path.join(LAYOUT.runtimeStateRoot, "generated/knowledge-manifest.md");
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE =
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE ||
-    process.env.TRENCHCLAW_USER_SETTINGS_FILE ||
-    path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json");
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json");
   process.env.TRENCHCLAW_AI_SETTINGS_FILE =
     process.env.TRENCHCLAW_AI_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/ai.json");
   process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE =

@@ -6,10 +6,8 @@ import { loadVaultData } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
 const RUNTIME_SETTINGS_FILE_ENV = "TRENCHCLAW_RUNTIME_SETTINGS_FILE";
-const LEGACY_USER_SETTINGS_FILE_ENV = "TRENCHCLAW_USER_SETTINGS_FILE";
 
 const DEFAULT_COMPATIBILITY_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "runtime", "settings.json");
-const LEGACY_COMPATIBILITY_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "user", "settings.json");
 
 const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
   if (!isRecord(baseValue) || !isRecord(overlayValue)) {
@@ -138,7 +136,6 @@ export interface ResolvedUserSettingsPayload {
   resolvedSettings: unknown;
   warnings: string[];
   compatibilitySettingsPath: string;
-  legacyCompatibilitySettingsPath: string | null;
   instanceTradingSettingsPath: string | null;
   activeInstanceId: string | null;
 }
@@ -158,8 +155,32 @@ const applyResolvedRpcFallbacks = (
   settings: unknown,
   vaultData: unknown,
 ): unknown => {
-  if (!isRecord(settings) || !isRecord(settings.rpc) || !isRecord(settings.rpc.providers)) {
+  if (!isRecord(settings)) {
     return settings;
+  }
+
+  const defaultHttpUrl = readVaultStringByPath(vaultData, "rpc/default/http-url");
+  const defaultWsUrl =
+    defaultHttpUrl
+      ? defaultHttpUrl.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:")
+      : undefined;
+  if (!defaultHttpUrl) {
+    return settings;
+  }
+
+  if (!isRecord(settings.rpc) || !isRecord(settings.rpc.providers)) {
+    return {
+      ...settings,
+      rpc: {
+        primaryRpc: "primary",
+        providers: {
+          primary: {
+            endpointRef: defaultHttpUrl,
+            ...(defaultWsUrl ? { wsEndpointRef: defaultWsUrl } : {}),
+          },
+        },
+      },
+    };
   }
 
   const rpcSettings = settings.rpc as Record<string, unknown>;
@@ -180,7 +201,6 @@ const applyResolvedRpcFallbacks = (
     typeof provider.wsEndpointRef === "string" && provider.wsEndpointRef.trim().length > 0
       ? provider.wsEndpointRef.trim()
       : undefined;
-  const defaultHttpUrl = readVaultStringByPath(vaultData, "rpc/default/http-url");
   const endpointRef =
     !requestedEndpointRef || isUnresolvedVaultRef(requestedEndpointRef)
       ? defaultHttpUrl
@@ -222,15 +242,10 @@ const loadOptionalStructuredSettingsLayer = async (filePath: string | null): Pro
 };
 
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
-  const explicitLegacySettingsPath = process.env[LEGACY_USER_SETTINGS_FILE_ENV]?.trim();
   const compatibilitySettingsPath = await resolvePreferredPath({
     preferredPath: DEFAULT_COMPATIBILITY_SETTINGS_FILE,
-    envValues: [process.env[RUNTIME_SETTINGS_FILE_ENV], process.env[LEGACY_USER_SETTINGS_FILE_ENV]],
-    legacyPaths: [LEGACY_COMPATIBILITY_SETTINGS_FILE],
+    envValues: [process.env[RUNTIME_SETTINGS_FILE_ENV]],
   });
-  const legacyCompatibilitySettingsPath = path.resolve(
-    explicitLegacySettingsPath || LEGACY_COMPATIBILITY_SETTINGS_FILE,
-  );
 
   await ensureStructuredSettingsFileExists(compatibilitySettingsPath);
   const vaultPayload = await loadVaultData();
@@ -238,11 +253,7 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
   const fileCache = new Map<string, unknown>();
 
   const rawPreferredCompatibilitySettings = await loadOptionalStructuredSettingsLayer(compatibilitySettingsPath);
-  const rawLegacyCompatibilitySettings =
-    legacyCompatibilitySettingsPath && path.resolve(compatibilitySettingsPath) !== legacyCompatibilitySettingsPath
-      ? await loadOptionalStructuredSettingsLayer(legacyCompatibilitySettingsPath)
-      : {};
-  const rawCompatibilitySettings = deepMerge(rawLegacyCompatibilitySettings, rawPreferredCompatibilitySettings);
+  const rawCompatibilitySettings = rawPreferredCompatibilitySettings;
 
   const preferredContext: ResolveContext = {
     vaultData: vaultPayload.vaultData,
@@ -254,23 +265,10 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     path.dirname(compatibilitySettingsPath),
     preferredContext,
   );
-  const resolvedLegacyCompatibilitySettings =
-    legacyCompatibilitySettingsPath && path.resolve(compatibilitySettingsPath) !== legacyCompatibilitySettingsPath
-      ? await resolveValue(
-        rawLegacyCompatibilitySettings,
-        path.dirname(legacyCompatibilitySettingsPath),
-        {
-          vaultData: vaultPayload.vaultData,
-          warnings,
-          fileCache,
-        },
-      )
-      : {};
-
-  const resolvedCompatibilitySettings = applyResolvedRpcFallbacks(deepMerge(
-    resolvedLegacyCompatibilitySettings,
+  const resolvedCompatibilitySettings = applyResolvedRpcFallbacks(
     resolvedPreferredCompatibilitySettings,
-  ), vaultPayload.vaultData);
+    vaultPayload.vaultData,
+  );
   const instanceTradingSettings = await loadInstanceTradingSettings();
   const rawSettings = {
     compatibility: rawCompatibilitySettings,
@@ -287,10 +285,6 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     resolvedSettings,
     warnings,
     compatibilitySettingsPath,
-    legacyCompatibilitySettingsPath:
-      legacyCompatibilitySettingsPath && path.resolve(compatibilitySettingsPath) !== legacyCompatibilitySettingsPath
-        ? legacyCompatibilitySettingsPath
-        : null,
     instanceTradingSettingsPath: instanceTradingSettings.settingsPath,
     activeInstanceId: instanceTradingSettings.instanceId,
   };
@@ -307,7 +301,6 @@ export const renderResolvedUserSettingsSection = async (): Promise<string> => {
     return `## Runtime Settings (Resolved)
 Source:
 - compatibility settings: ${payload.compatibilitySettingsPath}
-- legacy compatibility settings: ${payload.legacyCompatibilitySettingsPath ?? "none"}
 - instance trading settings: ${payload.instanceTradingSettingsPath ?? "none"}
 - active instance: ${payload.activeInstanceId ?? "none"}
 - vault: ${payload.vaultPath ?? "none"}

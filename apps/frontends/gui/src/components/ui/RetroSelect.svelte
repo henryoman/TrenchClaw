@@ -1,16 +1,31 @@
 <script lang="ts">
+  import { createEventDispatcher } from "svelte";
+
   export let value = "";
   export let disabled = false;
   export let chevronColor = "var(--tc-color-gray-3)";
   export let disabledChevronColor = "var(--tc-color-gray-1)";
   export let indicatorShape: "chevron" | "triangle" = "chevron";
+
+  const dispatch = createEventDispatcher<{
+    valueChange: { value: string };
+  }>();
 </script>
 
 <div
   class="retro-select-wrap"
   style={`--retro-select-chevron-color: ${chevronColor}; --retro-select-chevron-disabled-color: ${disabledChevronColor};`}
 >
-  <select bind:value {disabled} class="retro-select" on:change>
+  <select
+    bind:value
+    {disabled}
+    class="retro-select"
+    on:change={(event) => {
+      const nextValue = (event.currentTarget as HTMLSelectElement).value;
+      value = nextValue;
+      dispatch("valueChange", { value: nextValue });
+    }}
+  >
     <slot />
   </select>
   <span class="retro-select-chevron" aria-hidden="true">

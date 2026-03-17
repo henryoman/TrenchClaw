@@ -115,6 +115,8 @@
   let primaryRpcProviderIdDraft = "";
   let primaryRpcDirty = false;
 
+  type ValueInputEvent = CustomEvent<{ value: string }>;
+
   const createAiSettingsHydrationSignature = (): string =>
     JSON.stringify({
       aiSettings,
@@ -326,9 +328,8 @@
             indicatorShape="triangle"
             chevronColor="var(--tc-color-lime)"
             disabled={aiSettingsBusy}
-            on:change={(event) => {
-              const target = event.target as HTMLSelectElement;
-              handleAiProviderChange(target.value as GuiAiSettingsView["provider"]);
+            on:valueChange={(event) => {
+              handleAiProviderChange((event as ValueInputEvent).detail.value as GuiAiSettingsView["provider"]);
             }}
           >
             {#each selectableAiProviderOptions as providerOption}
@@ -348,9 +349,8 @@
             indicatorShape="triangle"
             chevronColor="var(--tc-color-lime)"
             disabled={aiSettingsBusy}
-            on:change={(event) => {
-              const target = event.target as HTMLSelectElement;
-              onAiSettingChange("model", target.value);
+            on:valueChange={(event) => {
+              onAiSettingChange("model", (event as ValueInputEvent).detail.value);
             }}
           >
             {#each selectableAiModelOptions as modelOption}
@@ -364,9 +364,8 @@
             value={aiSettingsDraft.temperature === null ? "" : String(aiSettingsDraft.temperature)}
             placeholder="Provider default"
             disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.target as HTMLInputElement;
-              const next = target.value.trim();
+            on:valueInput={(event) => {
+              const next = (event as ValueInputEvent).detail.value.trim();
               onAiSettingChange("temperature", next.length === 0 ? null : Number(next));
             }}
           />
@@ -377,9 +376,8 @@
             value={aiSettingsDraft.maxOutputTokens === null ? "" : String(aiSettingsDraft.maxOutputTokens)}
             placeholder="Runtime default"
             disabled={aiSettingsBusy}
-            on:input={(event) => {
-              const target = event.target as HTMLInputElement;
-              const next = target.value.trim();
+            on:valueInput={(event) => {
+              const next = (event as ValueInputEvent).detail.value.trim();
               onAiSettingChange("maxOutputTokens", next.length === 0 ? null : Number(next));
             }}
           />
@@ -416,9 +414,8 @@
             indicatorShape="triangle"
             chevronColor="var(--tc-color-lime)"
             disabled={secretsBusy}
-            on:change={(event) => {
-              const target = event.target as HTMLSelectElement;
-              handlePrimaryRpcProviderChange(target.value);
+            on:valueChange={(event) => {
+              handlePrimaryRpcProviderChange((event as ValueInputEvent).detail.value);
             }}
           >
             {#each rpcProviderOptions as providerOption}
@@ -448,9 +445,11 @@
             value={tradingSettingsDraft.defaultSwapProvider}
             indicatorShape="triangle"
             disabled={tradingSettingsBusy}
-            on:change={(event) => {
-              const target = event.target as HTMLSelectElement;
-              onTradingSettingChange("defaultSwapProvider", target.value as GuiTradingSettingsView["defaultSwapProvider"]);
+            on:valueChange={(event) => {
+              onTradingSettingChange(
+                "defaultSwapProvider",
+                (event as ValueInputEvent).detail.value as GuiTradingSettingsView["defaultSwapProvider"],
+              );
             }}
           >
             <option value="ultra">Ultra</option>
