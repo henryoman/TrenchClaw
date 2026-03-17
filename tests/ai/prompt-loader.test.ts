@@ -10,7 +10,6 @@ const ENV_KEYS = [
   "TRENCHCLAW_WORKSPACE_DIR",
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
-  "TRENCHCLAW_USER_SETTINGS_FILE",
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_ACTIVE_INSTANCE_ID",
 ] as const;
@@ -160,7 +159,6 @@ const writeTempFile = async (extension: "yaml" | "json", content: string): Promi
 beforeEach(async () => {
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile("yaml", TEST_BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempFile("json", "{}");
-  process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeTempFile("json", "{}");
   process.env.TRENCHCLAW_VAULT_FILE = await writeTempFile("json", JSON.stringify({}));
   process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
 });

@@ -44,7 +44,6 @@ const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
 const TEST_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
-  "TRENCHCLAW_USER_SETTINGS_FILE",
   "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
   "TRENCHCLAW_VAULT_FILE",
@@ -207,7 +206,6 @@ const writeTempStructuredFile = async (extension: "yaml" | "json", content: stri
 beforeEach(async () => {
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempStructuredFile("yaml", TEST_BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempStructuredFile("json", "{}");
-  process.env.TRENCHCLAW_USER_SETTINGS_FILE = await writeTempStructuredFile("json", "{}");
   delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
   delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
   delete process.env.TRENCHCLAW_VAULT_FILE;
