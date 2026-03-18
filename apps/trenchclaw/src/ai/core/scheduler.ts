@@ -12,7 +12,7 @@ import type {
 } from "../runtime/types";
 import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceQueueSqlitePath } from "../../runtime/instance-paths";
-import { RUNTIME_DB_ROOT, RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
+import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
 import type { ActionDispatcher } from "./dispatcher";
 
 export interface SchedulerDeps {

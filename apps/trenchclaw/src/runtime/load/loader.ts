@@ -9,7 +9,7 @@ import {
   resolveInstanceRuntimeSqlitePath,
   resolveInstanceSessionsRoot,
 } from "../instance-paths";
-import { resolveCoreRelativePath, resolveRuntimeStatePath } from "../runtime-paths";
+import { resolveCoreRelativePath } from "../runtime-paths";
 import { loadResolvedUserSettings } from "../../ai/llm/user-settings-loader";
 import { parseStructuredFile } from "../../ai/llm/shared";
 
