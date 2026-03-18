@@ -1,6 +1,6 @@
 {
   "provider": "openrouter",
-  "model": "anthropic/claude-sonnet-4.6",
+  "model": "openrouter/hunter-alpha",
   "defaultMode": "primary",
   "temperature": null,
   "maxOutputTokens": null

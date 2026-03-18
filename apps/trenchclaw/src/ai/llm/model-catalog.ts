@@ -30,11 +30,6 @@ export const AI_PROVIDER_OPTIONS = [
 
 export const AI_MODEL_CATALOG = [
   {
-    id: "anthropic/claude-sonnet-4.6",
-    label: "Claude Sonnet 4.6",
-    providers: BOTH_PROVIDERS,
-  },
-  {
     id: "openai/gpt-5.4",
     label: "GPT-5.4",
     providers: BOTH_PROVIDERS,

@@ -47,7 +47,7 @@
     { id: "gateway", label: "Vercel AI Gateway", description: "Use Vercel AI Gateway and show Gateway-supported models." },
   ];
   const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "openrouter";
-  const DEFAULT_AI_MODEL = "anthropic/claude-sonnet-4.6";
+  const DEFAULT_AI_MODEL = "openrouter/hunter-alpha";
   const SOLANA_RPC_OPTION_ID = "solana-rpc-url";
   const PROVIDER_KEY_OPTION_BY_ID: Record<GuiAiSettingsView["provider"], string> = {
     gateway: "vercel-ai-gateway-api-key",

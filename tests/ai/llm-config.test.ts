@@ -53,7 +53,7 @@ describe("resolveLlmProviderConfigFromEnv", () => {
   test("ignores provider env overrides", () => {
     process.env.TRENCHCLAW_AI_PROVIDER = "gateway";
     process.env.TRENCHCLAW_AI_API_KEY = "gateway-key";
-    process.env.TRENCHCLAW_AI_MODEL = "anthropic/claude-sonnet-4.6";
+    process.env.TRENCHCLAW_AI_MODEL = "openai/gpt-5.4";
 
     const resolved = resolveLlmProviderConfigFromEnv();
 
@@ -65,7 +65,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
   test("uses the configured model from ai.json and the OpenRouter key from vault.json", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "anthropic/claude-sonnet-4.6",
+      model: "openai/gpt-5.4",
       defaultMode: "primary",
       temperature: 0.2,
       maxOutputTokens: 2048,
@@ -82,7 +82,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
     expect(resolved).not.toBeNull();
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("anthropic/claude-sonnet-4.6");
+    expect(resolved?.model).toBe("openai/gpt-5.4");
     expect(resolved?.baseURL).toBe("https://openrouter.ai/api/v1");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
@@ -90,7 +90,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
   test("prefers gateway when both supported transports are configured", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "gateway",
-      model: "anthropic/claude-sonnet-4.6",
+      model: "openai/gpt-5.4",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -115,7 +115,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
   test("honors an explicit OpenRouter provider selection for a shared model", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "anthropic/claude-sonnet-4.6",
+      model: "openai/gpt-5.4",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -134,7 +134,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("anthropic/claude-sonnet-4.6");
+    expect(resolved?.model).toBe("openai/gpt-5.4");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 

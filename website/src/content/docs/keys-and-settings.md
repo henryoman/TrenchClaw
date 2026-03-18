@@ -98,7 +98,7 @@ Today that panel controls:
 The default runtime path is:
 
 - provider: `openrouter`
-- model: `anthropic/claude-sonnet-4.6`
+- model: `openai/gpt-5.4`
 
 ### Trading settings
 
@@ -118,7 +118,7 @@ For most beta users, the clean default is:
 
 1. Save `OpenRouter API Key`.
 2. Set AI provider to `OpenRouter`.
-3. Set model to `Claude Sonnet 4.6`.
+3. Set model to `GPT-5.4`.
 4. Leave RPC on a public Solana endpoint until you need more.
 5. Add Helius only when you want Helius-backed reads or swap history.
 6. Add Jupiter Ultra only when you want swap or trigger-order workflows.
@@ -140,7 +140,7 @@ Setup flow:
 4. Save the key into `OpenRouter API Key`.
 5. Open AI settings.
 6. Set provider to `OpenRouter`.
-7. Set model to `Claude Sonnet 4.6`.
+7. Set model to `GPT-5.4`.
 8. Save.
 9. Click `Test AI connection`.
 
