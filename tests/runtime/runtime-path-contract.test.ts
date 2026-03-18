@@ -43,7 +43,6 @@ const runModuleEval = async (
     },
     stdout: "pipe",
     stderr: "pipe",
-    stdin: "ignore",
   });
 
   const [stdout, stderr, exitCode] = await Promise.all([
