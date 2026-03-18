@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceAiSettingsPath } from "../../runtime/instance-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import type { AiModelProvider } from "./model-catalog";
@@ -36,11 +36,7 @@ const resolveAiSettingsFilePath = (): string => {
   }
 
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
-  if (!activeInstanceId) {
-    throw new Error("No active instance selected. AI settings are instance-scoped.");
-  }
-
-  return resolveInstanceAiSettingsPath(activeInstanceId);
+  return resolveInstanceAiSettingsPath(activeInstanceId ?? BOOTSTRAP_INSTANCE_ID);
 };
 
 export const resolveAiSettingsPaths = async (input?: {

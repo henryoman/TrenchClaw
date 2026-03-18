@@ -3,6 +3,7 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 
 import type { bootstrapRuntime as bootstrapRuntimeType } from "../trenchclaw/src/runtime/bootstrap";
+import { BOOTSTRAP_INSTANCE_ID } from "../trenchclaw/src/runtime/instance-state";
 import type { RuntimeSettingsProfile } from "../trenchclaw/src/runtime/load";
 import type { startRuntimeServer as startRuntimeServerType, RuntimeServerInfo } from "../trenchclaw/src/runtime/start-runtime-server";
 
@@ -173,8 +174,6 @@ const resolveLayout = (): ResolvedLayout => {
 };
 
 const LAYOUT = resolveLayout();
-const BOOTSTRAP_SCAFFOLD_INSTANCE_ID = "00";
-
 let runtimeImportsPromise: Promise<{
   bootstrapRuntime: typeof bootstrapRuntimeType;
   ensureInstanceLayout: (instanceId: string) => Promise<unknown>;
@@ -325,7 +324,7 @@ const resolveDoctorStateRootStatus = (runtimeStateRoot: string): {
 
 const isTwoDigitInstanceId = (value: string): boolean => /^\d{2}$/u.test(value.trim());
 const isVisibleInstanceId = (value: string): boolean =>
-  isTwoDigitInstanceId(value) && value.trim() !== BOOTSTRAP_SCAFFOLD_INSTANCE_ID;
+  isTwoDigitInstanceId(value) && value.trim() !== BOOTSTRAP_INSTANCE_ID;
 
 const resolveDoctorActiveInstance = (runtimeStateRoot: string, env: NodeJS.ProcessEnv): {
   id: string | null;
@@ -681,7 +680,7 @@ const canBindPort = async (host: string, port: number): Promise<boolean> => {
 };
 
 const resolveRuntimeBootstrapInstanceId = (): string =>
-  resolveDoctorActiveInstance(LAYOUT.runtimeStateRoot, process.env).id ?? BOOTSTRAP_SCAFFOLD_INSTANCE_ID;
+  resolveDoctorActiveInstance(LAYOUT.runtimeStateRoot, process.env).id ?? BOOTSTRAP_INSTANCE_ID;
 
 const ensureRuntimeBootstrapInstance = async (): Promise<string> => {
   const instanceId = resolveRuntimeBootstrapInstanceId();

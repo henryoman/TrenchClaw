@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceCompatibilitySettingsPath } from "../../runtime/instance-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import { isRecord, parseStructuredFile } from "./shared";
@@ -16,11 +16,7 @@ const resolveCompatibilitySettingsFilePath = (): string => {
   }
 
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
-  if (!activeInstanceId) {
-    throw new Error("No active instance selected. Compatibility settings are instance-scoped.");
-  }
-
-  return resolveInstanceCompatibilitySettingsPath(activeInstanceId);
+  return resolveInstanceCompatibilitySettingsPath(activeInstanceId ?? BOOTSTRAP_INSTANCE_ID);
 };
 
 const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
