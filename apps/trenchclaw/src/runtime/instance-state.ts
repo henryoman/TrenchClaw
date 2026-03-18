@@ -7,6 +7,8 @@ import type { GuiInstanceProfileView } from "@trenchclaw/types";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
 import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 
+export const BOOTSTRAP_INSTANCE_ID = "00";
+
 const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-instance.json");
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;

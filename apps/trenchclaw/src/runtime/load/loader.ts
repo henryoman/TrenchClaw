@@ -1,7 +1,7 @@
 import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
 import { assertResolvedRuntimeEndpoints } from "./resolved-runtime-endpoints";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
-import { resolveCurrentActiveInstanceIdSync } from "../instance-state";
+import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../instance-state";
 import {
   resolveInstanceMemoryLongTermFilePath,
   resolveInstanceMemoryRoot,
@@ -48,16 +48,7 @@ const resolveDefaultStoragePaths = (): {
   memoryDirectory: string;
   memoryLongTermFile: string;
 } => {
-  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
-  if (!activeInstanceId) {
-    return {
-      sqlitePath: resolveRuntimeStatePath("db/runtime.sqlite"),
-      queuePath: resolveRuntimeStatePath("db/queue/bunqueue.sqlite"),
-      sessionsDirectory: resolveRuntimeStatePath("db/sessions"),
-      memoryDirectory: resolveRuntimeStatePath("db/memory"),
-      memoryLongTermFile: resolveRuntimeStatePath("db/memory/MEMORY.md"),
-    };
-  }
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync() ?? BOOTSTRAP_INSTANCE_ID;
 
   return {
     sqlitePath: resolveInstanceRuntimeSqlitePath(activeInstanceId),
