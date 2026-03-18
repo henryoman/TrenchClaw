@@ -523,6 +523,7 @@ export const createRuntimeChatService = (
                 let firstPassMessages: UIMessage[] = validatedMessages;
                 let firstResponseMessage: UIMessage | undefined;
                 let streamSawToolActivity = false;
+                let streamFlushedToolActivity = false;
                 let firstPassSawTextAfterToolActivity = false;
                 const queuedPreToolChunks: UIMessageChunk[] = [];
                 const observedToolCalls = new Map<string, {
@@ -544,9 +545,9 @@ export const createRuntimeChatService = (
                   if (isReasoningChunk(chunk)) {
                     return;
                   }
-                  if (!streamSawToolActivity) {
+                  if (!streamFlushedToolActivity) {
                     if (uiChunkHasToolActivity(chunk)) {
-                      streamSawToolActivity = true;
+                      streamFlushedToolActivity = true;
                       flushQueuedPreToolChunks("all");
                     } else {
                       queuedPreToolChunks.push(chunk);

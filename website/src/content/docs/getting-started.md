@@ -22,7 +22,7 @@ The app does not ask you to install every optional dependency up front. Start wi
 For a clean first setup, use these defaults:
 
 - AI provider: `OpenRouter`
-- model: `openai/gpt-5.4`
+- model: `openrouter/hunter-alpha`
 - RPC: start with a public Solana RPC for basic first launch
 - Helius: add it only when you want enriched wallet reads or swap history
 - Jupiter Ultra API key: add it only when you want swaps or trigger orders
@@ -143,7 +143,7 @@ After you save your AI key:
 2. Save `OpenRouter API Key`.
 3. Open the AI settings panel.
 4. Choose `OpenRouter`.
-5. Choose `GPT-5.4`.
+5. Choose `Hunter Alpha`.
 6. Save.
 7. Click `Test AI connection`.
 

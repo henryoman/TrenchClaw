@@ -49,6 +49,20 @@ export const pipeModelFullStreamToUIMessageStream = async (
     const partType = typeof part.type === "string" ? part.type : "";
     let chunk: UIMessageChunk | null = null;
     switch (partType) {
+      case "text": {
+        const text = typeof part.text === "string" ? part.text : "";
+        if (!text) break;
+        const id = typeof part.id === "string" && part.id.length > 0 ? part.id : createUiTextPartId();
+        chunk = { type: "text-start", id };
+        observeChunk?.(chunk);
+        writeChunk(chunk);
+        chunk = { type: "text-delta", id, delta: text };
+        observeChunk?.(chunk);
+        writeChunk(chunk);
+        chunk = { type: "text-end", id };
+        activeTextPartIds.delete(id);
+        break;
+      }
       case "text-start": {
         const id = typeof part.id === "string" ? part.id : "";
         if (!id) break;

@@ -191,7 +191,7 @@ describe("instance discovery", () => {
       path.join(runtimeRoot, "instances/01/settings/ai.json"),
       `${JSON.stringify({
         provider: "openrouter",
-        model: "openai/gpt-5.4",
+        model: "openrouter/hunter-alpha",
         defaultMode: "primary",
         temperature: null,
         maxOutputTokens: null,
