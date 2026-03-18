@@ -1,16 +1,20 @@
-import { error } from '@sveltejs/kit';
-import { getDocBySlug, getDocsList } from '$lib/docs';
+import { error, redirect } from '@sveltejs/kit';
+import { getDocRouteEntries, resolveDocRequest } from '$lib/docs';
 
 export const prerender = true;
 
-export const entries = () => getDocsList().map((doc) => ({ slug: doc.slug }));
+export const entries = () => getDocRouteEntries();
 
 export const load = ({ params }) => {
-  const doc = getDocBySlug(params.slug);
+  const resolved = resolveDocRequest(params.slug);
 
-  if (!doc) {
+  if (resolved.type === 'redirect') {
+    throw redirect(307, resolved.location);
+  }
+
+  if (resolved.type === 'not-found') {
     throw error(404, 'Documentation page not found');
   }
 
-  return { doc, docs: getDocsList() };
+  return { doc: resolved.doc, docs: resolved.docs };
 };

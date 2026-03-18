@@ -35,10 +35,6 @@
       "model": "read"
     },
     {
-      "path": ".runtime-state/runtime/workspace",
-      "model": "write"
-    },
-    {
       "path": ".runtime-state/instances",
       "model": "write"
     },

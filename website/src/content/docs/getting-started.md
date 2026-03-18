@@ -1,140 +1,199 @@
 ---
 title: Getting Started
-description: Install the standalone release, set up only the keys and tools you actually need, and know where the local runtime and state live.
+description: Install the release, launch the beta correctly, use the recommended defaults, and get the app ready without guessing.
 order: 1
 featured: true
 ---
 
-## Get Started
+## What This Beta Actually Covers
 
-This guide covers the shipped install path, the current beta dependency story, and the local runtime layout.
+This beta is centered on a small set of workflows we can stand behind today:
 
-## Package Type
+- local runtime and local GUI boot
+- instance creation and sign-in
+- AI-backed chat workflows
+- managed wallet reads
+- Jupiter Ultra swap flows when you add the right key
 
-Current public builds ship as a standalone compiled binary named `trenchclaw`.
+The app does not ask you to install every optional dependency up front. Start with the release, confirm the app boots, then add only the keys and tools required by the workflows you actually want.
 
-- end users do not need Bun installed
-- GitHub Releases is the only installable binary distribution channel
+## Recommended Defaults
+
+For a clean first setup, use these defaults:
+
+- AI provider: `OpenRouter`
+- model: `anthropic/claude-sonnet-4.6`
+- RPC: start with a public Solana RPC for basic first launch
+- Helius: add it only when you want enriched wallet reads or swap history
+- Jupiter Ultra API key: add it only when you want swaps or trigger orders
+- optional CLIs: skip them until a workflow explicitly needs them
+
+TrenchClaw public builds ship as a standalone compiled binary named `trenchclaw`.
+
+- you do not need Bun for the release install path
+- GitHub Releases is the install channel for public binaries
 - writable runtime state lives outside the install tree
 
-## Supported Targets
+## Install The Release
 
-Published release artifacts are built for:
+Supported release targets today:
 
 - `darwin-arm64`
 - `linux-x64`
 - `linux-arm64`
 
-## Install TrenchClaw
-
-### Install on macOS
+### macOS
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | bash
 ```
 
-### Install on Linux
+### Linux
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash
 ```
 
-## Optional Workflow Prerequisites
+The installer:
 
-If you want TrenchClaw to install or update the optional external CLIs for you, run:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
-```
-
-Today that helper manages Solana CLI and Helius CLI. For Helius CLI it prefers `bun`, then `pnpm`, then `npm`, and prints manual follow-up commands if none of those package managers are installed.
-
-The current beta does not require those CLIs for baseline install or first launch. Install them only when a specific workflow or shell command asks for them.
-
-Make sure the following are set up before the matching workflows:
-
-- `Solana CLI` - optional shell and power-user tooling.
-
-  ```bash
-  sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
-  ```
-
-- `Helius CLI` - optional shell and power-user tooling.
-
-  ```bash
-  bun add -g helius-cli@latest
-  ```
-
-- `Helius API key` - required when you want Helius-backed wallet enrichment or swap-history reads.
-- `OpenRouter API key` - required for the default chat-driven workflow path, unless you switch to Gateway.
-- `Jupiter Ultra API key` - required for Jupiter Ultra swaps and trigger-order flows.
-
-Helius' current Node SDK is built on `@solana/kit`, so the Helius docs and the runtime's Solana stack now line up on the same client model when you need deeper RPC examples.
-
-If you already have a Helius API key, these are the most useful first-run CLI commands:
-
-```bash
-helius config set-api-key YOUR_API_KEY
-helius projects
-helius rpc <project-id>
-```
-
-Useful checks:
-
-```bash
-solana --version
-helius --version
-trenchclaw doctor
-```
-
-## What The Installer Does
-
-- fetches the real installer script from the TrenchClaw repository
-- resolves the latest GitHub Release tag or uses `TRENCHCLAW_VERSION`
-- downloads the matching platform tarball and `.sha256`
+- resolves the release version
+- downloads the right bundle and checksum
 - verifies the checksum before extraction
-- installs the app to `~/.local/share/trenchclaw/<version>/`
+- installs the app under `~/.local/share/trenchclaw/<version>/`
 - updates `~/.local/share/trenchclaw/current`
-- writes `~/.local/bin/trenchclaw`
+- writes the `trenchclaw` launcher into `~/.local/bin`
 
-The public installer does not install Bun, Solana CLI, Helius CLI, or any other external tool by default. Use the helper script when you want TrenchClaw to manage that optional toolchain for you.
-
-## Pin A Specific Release
-
-### Pin on macOS
+If you need to pin a specific release:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.1 bash
 ```
 
-### Pin on Linux
-
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.1 bash
 ```
 
-## Launch
+## Launch TrenchClaw
+
+Start the app with:
 
 ```bash
 trenchclaw
 ```
 
-After install, run:
+The runtime stays local by default.
+
+- runtime API: `127.0.0.1:4020`
+- GUI: `127.0.0.1:4173`
+
+If either port is occupied, TrenchClaw moves upward to the next available local port.
+
+## Run `trenchclaw doctor`
+
+After the first install, run:
 
 ```bash
 trenchclaw doctor
 ```
 
-That reports which keys, CLIs, and beta workflows are currently ready on this machine.
+`doctor` is the first thing to check when you are not sure what is missing. It reports:
 
-Default local ports:
+- whether the app bundle is healthy
+- whether the runtime state root is writable
+- whether an active instance exists
+- whether the active instance vault exists
+- whether AI, Helius, and Jupiter keys are configured
+- whether optional CLIs such as `solana` and `helius` are available
 
-- runtime API: `127.0.0.1:4020`
-- GUI: `127.0.0.1:4173`
+Run it again after you change keys, switch RPC setup, or install optional CLI tooling.
 
-If those ports are busy, TrenchClaw selects the next available local ports.
+## Create Or Sign Into An Instance
 
-## State Layout
+On first launch, use the GUI to create an instance or sign into an existing one.
+
+Creating an instance does the setup work you should not have to do by hand:
+
+- allocates the next local instance id such as `01`
+- writes the instance profile
+- creates the instance directory
+- creates the instance `vault.json`
+- creates the instance `settings/trading.json`
+- persists the active instance selection
+
+Signing into an existing instance also ensures the instance layout exists before the rest of the app uses it.
+
+Use the default `dangerous` profile only if you want trading paths available. If you are just inspecting the app, start conservatively.
+
+## Add Keys In The Right Order
+
+The easiest setup sequence is:
+
+1. Set your AI key first so chat can work.
+2. Leave RPC on a public Solana endpoint unless you specifically want Helius-backed reads.
+3. Add a Helius key only when you want Helius as your private RPC or want swap history.
+4. Add a Jupiter Ultra API key only when you are ready for swap or trigger-order workflows.
+
+For the exact file model and all key locations, use [Keys and Settings](/docs/keys-and-settings).
+
+## Test AI Connection
+
+After you save your AI key:
+
+1. Open the `Keys` panel.
+2. Save `OpenRouter API Key`.
+3. Open the AI settings panel.
+4. Choose `OpenRouter`.
+5. Choose `Claude Sonnet 4.6`.
+6. Save.
+7. Click `Test AI connection`.
+
+If the test fails, run `trenchclaw doctor` and confirm:
+
+- an active instance exists
+- the active instance vault exists
+- at least one AI key is present
+- the selected provider matches the key you actually saved
+
+## Optional CLI Tools
+
+Optional CLIs are not required for baseline launch.
+
+Use the helper only if you want TrenchClaw to install or update those external tools for you:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
+```
+
+Today that helper manages:
+
+- `Solana CLI`
+- `Helius CLI`
+
+You can also install them directly:
+
+```bash
+sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+```
+
+```bash
+bun add -g helius-cli@latest
+```
+
+Install them only when a shell workflow explicitly needs them.
+
+## First Workflows To Try
+
+Once the app is up and your AI connection passes:
+
+1. Use chat or the runtime UI to confirm the runtime is responding.
+2. Inspect the active instance and current readiness with `trenchclaw doctor`.
+3. If you already have managed wallets in the active instance, use managed wallet reads.
+4. Add Helius only if you want richer wallet reads or swap history.
+5. Add Jupiter Ultra only if you are ready to test swaps or trigger orders.
+
+For risky workflows, use devnet or small amounts first.
+
+## Where Local State Lives
 
 Readonly install root:
 
@@ -148,7 +207,7 @@ Readonly install root:
     release-metadata.json
 ```
 
-Writable state root:
+Writable state root for release installs:
 
 ```text
 ~/.trenchclaw/
@@ -169,30 +228,30 @@ Writable state root:
     keypairs/
 ```
 
+You do not need to create these files by hand. TrenchClaw creates the instance directories, vault file, and settings files for you and applies best-effort secure permissions as part of the app flow.
+
 ## Troubleshooting
 
 ### `trenchclaw: command not found`
 
-Reload your shell, or ensure `~/.local/bin` is on `PATH`:
+Reload your shell, or add `~/.local/bin` to `PATH`:
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Then open a new shell and retry.
+Then open a new shell and try again.
 
-### Release download fails
+### Missing optional tools
 
-Check:
+First launch is not blocked by missing `solana`, `solana-keygen`, or `helius`. Install them only when a workflow asks for them, then rerun `trenchclaw doctor`.
+
+### Download or checksum problems
+
+If install fails, check:
 
 - the GitHub Release exists
-- the target artifact for your platform exists
+- the artifact for your platform exists
 - the tag matches `TRENCHCLAW_VERSION` if you pinned one
 
-### Checksum verification fails
-
-The installer stops on checksum mismatch. Retry the install after confirming the release assets finished publishing correctly.
-
-### Optional external tools are missing
-
-First launch is not blocked by missing Solana CLI or Helius CLI tools. Install optional tools separately only when a specific feature or shell workflow asks for them, then rerun `trenchclaw doctor`.
+Checksum mismatches should stop the install. Treat that as a release issue, not something to bypass locally.

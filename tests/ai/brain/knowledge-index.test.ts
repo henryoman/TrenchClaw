@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { buildKnowledgeInventory, renderDirectoryTree } from "../../../apps/trenchclaw/src/ai/brain/knowledge/knowledge-tree";
+import { buildKnowledgeInventory, renderDirectoryTree } from "../../../apps/trenchclaw/src/lib/knowledge/knowledge-index";
 
 const createdDirectories: string[] = [];
 
@@ -13,9 +13,9 @@ afterEach(async () => {
   }
 });
 
-describe("knowledge tree helpers", () => {
+describe("knowledge index helpers", () => {
   test("builds a deterministic inventory for nested docs and skill packs", async () => {
-    const tempDir = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-knowledge-tree-"));
+    const tempDir = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-knowledge-index-"));
     createdDirectories.push(tempDir);
 
     await mkdir(path.join(tempDir, "deep-knowledge"), { recursive: true });

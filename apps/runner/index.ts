@@ -879,8 +879,6 @@ const ensureRuntimeStateLayout = (): void => {
     path.join(LAYOUT.runtimeStateRoot, "db/sessions"),
     path.join(LAYOUT.runtimeStateRoot, "db/memory"),
     path.join(LAYOUT.runtimeStateRoot, "runtime"),
-    path.join(LAYOUT.runtimeStateRoot, "runtime/workspace"),
-    path.join(LAYOUT.runtimeStateRoot, "runtime/workspace/routines"),
     path.join(LAYOUT.runtimeStateRoot, "instances"),
     path.join(LAYOUT.runtimeStateRoot, "generated"),
     path.join(LAYOUT.runtimeStateRoot, "protected/keypairs"),
@@ -941,9 +939,12 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     path.join(LAYOUT.coreAssetRoot, "src/ai/config/payload-manifest.json");
   process.env.TRENCHCLAW_KNOWLEDGE_DIR =
     process.env.TRENCHCLAW_KNOWLEDGE_DIR || path.join(bundledBrainRoot, "knowledge");
+  process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE =
+    process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE ||
+    path.join(LAYOUT.runtimeStateRoot, "generated/knowledge-index.md");
   process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
-    path.join(LAYOUT.runtimeStateRoot, "generated/knowledge-manifest.md");
+    process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE;
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE =
     process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json");
   process.env.TRENCHCLAW_AI_SETTINGS_FILE =

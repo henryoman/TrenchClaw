@@ -12,7 +12,7 @@ const renderToolList = (tools: RuntimeModelToolSnapshotEntry[]): string =>
     ? "- none"
     : tools
       .map((toolEntry) =>
-        `- \`${toolEntry.name}\` (${toolEntry.kind}, ${toolEntry.sideEffectLevel}) - ${toolEntry.routingHint}`)
+        `- \`${toolEntry.name}\` (${toolEntry.kind}, ${toolEntry.sideEffectLevel}, ${toolEntry.releaseReadinessStatus}) - ${toolEntry.routingHint}`)
       .join("\n");
 
 export const renderRuntimeActionCatalogTable = (snapshot: RuntimeCapabilitySnapshot): string =>
@@ -22,6 +22,7 @@ export const renderRuntimeActionCatalogTable = (snapshot: RuntimeCapabilitySnaps
       "category",
       "subcategory",
       "enabledNow",
+      "releaseReadiness",
       "requiresConfirmation",
       "inputSchema",
       "outputSchema",
@@ -31,6 +32,7 @@ export const renderRuntimeActionCatalogTable = (snapshot: RuntimeCapabilitySnaps
       entry.category,
       entry.subcategory ?? "",
       entry.enabledNow ? "yes" : "no",
+      entry.releaseReadinessStatus,
       entry.requiresConfirmation ? "yes" : "no",
       entry.hasInputSchema ? "yes" : "no",
       entry.hasOutputSchema ? "yes" : "no",
@@ -39,11 +41,12 @@ export const renderRuntimeActionCatalogTable = (snapshot: RuntimeCapabilitySnaps
 
 export const renderRuntimeModelToolCatalogTable = (snapshot: RuntimeCapabilitySnapshot): string =>
   toMarkdownTable(
-    ["toolName", "kind", "sideEffectLevel", "requiresConfirmation"],
+    ["toolName", "kind", "sideEffectLevel", "releaseReadiness", "requiresConfirmation"],
     snapshot.modelTools.map((entry) => [
       entry.name,
       entry.kind,
       entry.sideEffectLevel,
+      entry.releaseReadinessStatus,
       entry.requiresConfirmation ? "yes" : "no",
     ]),
   );

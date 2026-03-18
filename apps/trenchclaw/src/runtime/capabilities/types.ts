@@ -3,6 +3,7 @@ import type { RuntimeSettings } from "../load";
 import type { FilesystemPolicySummary } from "../security/filesystem-manifest";
 
 export type CapabilitySideEffectLevel = "read" | "write" | "execute";
+export type ReleaseReadinessStatus = "shipped-now" | "limited-beta" | "coming-soon";
 
 export interface RuntimeCapabilityPredicateContext {
   settings: RuntimeSettings;
@@ -16,6 +17,17 @@ export interface RuntimeCapabilityMetadata {
   exampleInput?: unknown;
   routingHint?: string;
   sideEffectLevel?: CapabilitySideEffectLevel;
+}
+
+export interface RuntimeReleaseReadinessDescriptor {
+  status: ReleaseReadinessStatus;
+  note: string;
+}
+
+export interface RuntimeComingSoonFeatureEntry extends RuntimeReleaseReadinessDescriptor {
+  id: string;
+  label: string;
+  aliases: readonly string[];
 }
 
 export interface RuntimeActionCapabilityDefinition extends RuntimeCapabilityMetadata {
@@ -44,6 +56,8 @@ export interface RuntimeCapabilitySnapshotBase {
   enabledNow: boolean;
   exposedToModel: boolean;
   toolDescription: string;
+  releaseReadinessStatus: ReleaseReadinessStatus;
+  releaseReadinessNote: string;
 }
 
 export interface RuntimeActionCapabilitySnapshotEntry extends RuntimeCapabilitySnapshotBase {
@@ -78,10 +92,13 @@ export interface RuntimeModelToolSnapshotEntry {
   requiresConfirmation: boolean;
   exampleInput?: unknown;
   toolDescription: string;
+  releaseReadinessStatus: ReleaseReadinessStatus;
+  releaseReadinessNote: string;
 }
 
 export interface RuntimeCapabilitySnapshot {
   actions: RuntimeActionCapabilitySnapshotEntry[];
   workspaceTools: WorkspaceToolCapabilitySnapshotEntry[];
   modelTools: RuntimeModelToolSnapshotEntry[];
+  comingSoonFeatures: RuntimeComingSoonFeatureEntry[];
 }

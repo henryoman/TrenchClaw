@@ -8,7 +8,10 @@ import {
   assertModelFilesystemReadAllowed,
   assertModelFilesystemWriteAllowed,
 } from "./security/filesystem-manifest";
-import { RUNTIME_WORKSPACE_ROOT } from "./runtime-paths";
+import {
+  INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
+  resolveActiveInstanceWorkspaceRootOrThrow,
+} from "./instance-workspace";
 
 interface WorkspaceBashOptions {
   workspaceRootDirectory: string;
@@ -23,14 +26,7 @@ const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
 const MAX_COMMAND_LENGTH = 8_000;
 const DEFAULT_ALLOW_MUTATING_COMMANDS = (process.env.TRENCHCLAW_WORKSPACE_BASH_ALLOW_MUTATIONS ?? "0") === "1";
 
-export const WORKSPACE_LAYOUT_DIRECTORIES = [
-  "strategies",
-  "configs",
-  "typescript",
-  "notes",
-  "scratch",
-  "output",
-] as const;
+export const WORKSPACE_LAYOUT_DIRECTORIES = INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES;
 
 const DANGEROUS_COMMAND_PATTERNS: RegExp[] = [
   /\bsudo\b/iu,
@@ -267,4 +263,4 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
   };
 };
 
-export const DEFAULT_WORKSPACE_BASH_ROOT = RUNTIME_WORKSPACE_ROOT;
+export const resolveDefaultWorkspaceBashRoot = (): string => resolveActiveInstanceWorkspaceRootOrThrow();

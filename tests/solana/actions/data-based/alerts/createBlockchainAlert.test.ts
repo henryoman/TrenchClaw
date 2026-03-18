@@ -16,7 +16,7 @@ afterEach(async () => {
 describe("createBlockchainAlertAction", () => {
   test("creates and stores an alert rule", async () => {
     const storageFilePath = path.resolve(
-      runtimeStatePath("runtime/workspace/strategies/.tests"),
+      runtimeStatePath("instances/01/workspace/strategies/.tests"),
       `alerts-${crypto.randomUUID()}.json`,
     );
     createdFiles.push(storageFilePath);

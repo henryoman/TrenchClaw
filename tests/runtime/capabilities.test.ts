@@ -201,6 +201,10 @@ describe("runtime capability snapshot", () => {
     expect(modelToolNames).toContain("workspaceReadFile");
     expect(modelToolNames).not.toContain("workspaceWriteFile");
     expect(modelToolNames).not.toContain("createWallets");
+    expect(snapshot.modelTools.find((toolEntry) => toolEntry.name === "workspaceReadFile")?.releaseReadinessStatus).toBe(
+      "shipped-now",
+    );
+    expect(snapshot.comingSoonFeatures.some((feature) => feature.id === "helius-sender")).toBe(true);
   });
 
   test("exposes Dexscreener model tools when trading is enabled", async () => {
@@ -268,5 +272,11 @@ describe("runtime capability snapshot", () => {
     const enabledSnapshot = await getRuntimeCapabilitySnapshot(enabledSettings);
     expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("transfer");
     expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("closeTokenAccount");
+    expect(enabledSnapshot.modelTools.find((toolEntry) => toolEntry.name === "transfer")?.releaseReadinessStatus).toBe(
+      "limited-beta",
+    );
+    expect(enabledSnapshot.modelTools.find((toolEntry) => toolEntry.name === "transfer")?.toolDescription).toContain(
+      "Release readiness: limited-beta.",
+    );
   });
 });

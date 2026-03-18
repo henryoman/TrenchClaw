@@ -4,7 +4,7 @@
   import type { Snippet } from 'svelte';
 
   import { docsThemeStorageKey } from '$lib/docs';
-  import type { DocHeading, DocListItem } from '$lib/docs';
+  import { splitDocsBySection, type DocHeading, type DocListItem } from '$lib/docs';
 
   import DocsNav from './DocsNav.svelte';
   import DocsToc from './DocsToc.svelte';
@@ -25,10 +25,14 @@
 
   let theme = $state<DocsTheme>('dark');
   const hasToc = $derived(toc.length > 0);
+  const navDocs = $derived([
+    ...splitDocsBySection(docs).primary,
+    ...splitDocsBySection(docs).reference,
+  ]);
   const layoutClass = $derived(
     hasToc
-      ? 'mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)_190px] lg:gap-8'
-      : 'mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[220px_minmax(0,1fr)] lg:gap-8',
+      ? 'mx-auto grid w-full max-w-[92rem] grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)_220px] lg:gap-8'
+      : 'mx-auto grid w-full max-w-[92rem] grid-cols-1 gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-8',
   );
 
   onMount(() => {
@@ -46,7 +50,7 @@
 
 <div class="docs-shell min-h-screen" data-docs-theme={theme}>
   <header class="docs-header">
-    <div class="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <div class="mx-auto flex w-full max-w-[92rem] items-center justify-between gap-4 px-4 py-3 sm:px-6">
       <a href={resolve('/', {})} class="docs-logo">TrenchClaw Docs</a>
       <nav class="flex items-center gap-3 text-sm">
         <button type="button" class="docs-theme-toggle" onclick={toggleTheme}>
@@ -78,7 +82,7 @@
               }
             }}
           >
-            {#each docs as doc (doc.slug)}
+            {#each navDocs as doc (doc.slug)}
               <option value={doc.slug}>{doc.title}</option>
             {/each}
           </select>

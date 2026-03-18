@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import { loadSystemPromptPayload, resetPromptLoaderCache } from "../../apps/trenchclaw/src/ai/llm/prompt-loader";
+import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
 
 const ENV_KEYS = [
   "TRENCHCLAW_PROMPT_MANIFEST_FILE",
   "TRENCHCLAW_AGENT_MODE",
-  "TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE",
+  "TRENCHCLAW_KNOWLEDGE_INDEX_FILE",
   "TRENCHCLAW_KNOWLEDGE_DIR",
   "TRENCHCLAW_WORKSPACE_DIR",
   "TRENCHCLAW_SETTINGS_BASE_FILE",
@@ -16,6 +17,7 @@ const ENV_KEYS = [
 
 const initialEnv = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]));
 const createdFiles: string[] = [];
+const originalFetch = globalThis.fetch;
 const TEST_BASE_SETTINGS_YAML = `
 configVersion: 1
 profile: dangerous
@@ -157,6 +159,22 @@ const writeTempFile = async (extension: "yaml" | "json", content: string): Promi
 };
 
 beforeEach(async () => {
+  resetSolPriceCacheForTests();
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.startsWith("https://api.dexscreener.com/")) {
+      return Response.json([
+        {
+          chainId: "solana",
+          pairAddress: "pair-sol-usdc",
+          quoteToken: { symbol: "USDC" },
+          priceUsd: "141.25",
+          liquidity: { usd: 250_000 },
+        },
+      ]);
+    }
+    return originalFetch(input, init);
+  }) as typeof globalThis.fetch;
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile("yaml", TEST_BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempFile("json", "{}");
   process.env.TRENCHCLAW_VAULT_FILE = await writeTempFile("json", JSON.stringify({}));
@@ -164,6 +182,8 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+  globalThis.fetch = originalFetch;
+  resetSolPriceCacheForTests();
   resetPromptLoaderCache();
   for (const key of ENV_KEYS) {
     const value = initialEnv[key];
@@ -188,12 +208,21 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("TrenchClaw System Kernel");
     expect(payload.systemPrompt).toContain("## Runtime Contract");
     expect(payload.systemPrompt).toContain("## Enabled Model Tools");
+    expect(payload.systemPrompt).toContain("## Release Readiness");
+    expect(payload.systemPrompt).toContain("## Live Runtime Context");
     expect(payload.systemPrompt).toContain("workspaceBash");
     expect(payload.systemPrompt).toContain("queryRuntimeStore");
     expect(payload.systemPrompt).toContain("queryInstanceMemory");
+    expect(payload.systemPrompt).toContain("Release readiness overrides bundled docs");
+    expect(payload.systemPrompt).toContain("Helius Sender integration");
+    expect(payload.systemPrompt).toContain("coming-soon");
+    expect(payload.systemPrompt).toContain("current time (UTC, exact minute):");
+    expect(payload.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
+    expect(payload.systemPrompt).toContain("same backend cache the GUI uses");
     expect(payload.systemPrompt).toContain("- active instance: 01");
     expect(payload.systemPrompt).toContain(process.env.TRENCHCLAW_VAULT_FILE ?? "");
     expect(payload.systemPrompt).toContain("workspaceReadFile");
+    expect(payload.systemPrompt).toContain(".runtime-state/generated/knowledge-index.md");
     expect(payload.systemPrompt).toContain(".runtime-state/generated/workspace-context.md");
     expect(payload.systemPrompt).not.toContain("## Prompt Assembly Order");
     expect(payload.systemPrompt).not.toContain("Source:");

@@ -20,7 +20,7 @@ This document explains which ignored/generated paths are part of the TrenchClaw 
 
 These are the paths a brand new local install needs. Some should be created eagerly, some can remain lazy.
 
-### Runtime-global
+### Current Runtime-global
 
 Must exist immediately or during first runtime boot:
 
@@ -30,8 +30,6 @@ Must exist immediately or during first runtime boot:
 - `.runtime-state/db/memory/`
 - `.runtime-state/db/queue/`
 - `.runtime-state/runtime/`
-- `.runtime-state/runtime/workspace/`
-- `.runtime-state/runtime/workspace/routines/`
 - `.runtime-state/instances/`
 - `.runtime-state/generated/`
 
@@ -40,7 +38,7 @@ Files created eagerly or on first access:
 - `.runtime-state/runtime/settings.json`
 - `.runtime-state/runtime/ai.json`
 - `.runtime-state/generated/workspace-context.md`
-- `.runtime-state/generated/knowledge-manifest.md`
+- `.runtime-state/generated/knowledge-index.md`
 
 Files created lazily by normal use:
 
@@ -51,7 +49,7 @@ Files created lazily by normal use:
 - `.runtime-state/db/system/*`
 - `.runtime-state/db/summary/*`
 
-### Per-instance
+### Current Per-instance
 
 For a newly created or first-signed-in instance `NN`, the runtime should ensure:
 
@@ -60,6 +58,8 @@ For a newly created or first-signed-in instance `NN`, the runtime should ensure:
 - `.runtime-state/instances/NN/keypairs/`
 - `.runtime-state/instances/NN/settings/`
 - `.runtime-state/instances/NN/settings/trading.json`
+- `.runtime-state/instances/NN/workspace/`
+- `.runtime-state/instances/NN/workspace/routines/`
 
 Created lazily later:
 
@@ -75,7 +75,6 @@ Created lazily later:
 - `.runtime-state/generated/`
 - `.runtime-state/runtime/settings.json`
 - `.runtime-state/runtime/ai.json`
-- `.runtime-state/runtime/workspace/`
 
 ### Per-instance
 
@@ -83,12 +82,12 @@ Created lazily later:
 - `.runtime-state/instances/<id>/vault.json`
 - `.runtime-state/instances/<id>/settings/trading.json`
 - `.runtime-state/instances/<id>/keypairs/`
+- `.runtime-state/instances/<id>/workspace/`
 - wallet libraries and managed wallet files under the instance keypair root
 
 ### Mixed behavior worth revisiting later
 
 - The SQLite runtime DB is global, but many records are logically instance-scoped via `instanceId`.
-- Runtime workspace is global, even though some workflows may later want per-instance workspaces.
 
 ## Rule Of Thumb
 

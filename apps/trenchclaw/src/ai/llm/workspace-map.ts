@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { renderDirectoryTree } from "../brain/knowledge/knowledge-tree";
+import { renderDirectoryTree } from "../../lib/knowledge/knowledge-index";
 
 export const renderWorkspaceMapSection = async (workspaceDir: string): Promise<string> => {
   const resolvedWorkspaceDir = path.resolve(workspaceDir);

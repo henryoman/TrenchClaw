@@ -165,7 +165,6 @@ knowledge/
 |-- bash-tool.md
 |-- helius-agents.md
 |-- KNOWLEDGE_MANIFEST.md
-|-- knowledge-tree.ts
 |-- runtime-reference.md
 |-- settings-reference.md
 |-- solana-cli.md

@@ -1,4 +1,7 @@
 export { getDocBySlug, getDocsList, getFeaturedDocs } from './catalog';
+export { legacyDocSlugMap, legacyDocSlugs, resolveCanonicalDocSlug } from './aliases';
+export { getDocRouteEntries, resolveDocRequest } from './routing';
+export { canonicalDocSlugs, getDocRouteEntrySlugs, primaryDocSlugs, referenceDocSlugs, splitDocsBySection } from './structure';
 export {
   docsSiteDescription,
   docsSiteTitle,

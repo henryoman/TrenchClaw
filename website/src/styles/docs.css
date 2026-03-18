@@ -228,6 +228,24 @@
   gap: 1rem;
 }
 
+.docs-index-section-title {
+  color: var(--docs-heading);
+  font-size: clamp(1.55rem, 3vw, 2.15rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin-top: 0.5rem;
+  max-width: 26ch;
+}
+
+.docs-index-section-intro {
+  color: var(--docs-text-soft);
+  font-size: 1rem;
+  line-height: 1.7;
+  margin-top: 0.85rem;
+  max-width: 64ch;
+}
+
 .docs-prereq-section {
   margin-top: 1.5rem;
 }
@@ -317,7 +335,7 @@
   font-size: 0.84rem;
   line-height: 1.7;
   margin-top: 0.9rem;
-  overflow-x: auto;
+  overflow: hidden;
   padding: 0.85rem 0.95rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -456,7 +474,7 @@
 }
 
 .docs-content {
-  max-width: 920px;
+  max-width: none;
   padding: 1.4rem 1.1rem 1.8rem;
 }
 
@@ -487,7 +505,7 @@
   font-size: 1.08rem;
   line-height: 1.72;
   margin: 1rem 0 1.6rem;
-  max-width: 62ch;
+  max-width: 68ch;
 }
 
 .docs-content h2 {
@@ -519,6 +537,13 @@
 
 .docs-content p {
   margin: 0.9rem 0;
+}
+
+.docs-content p,
+.docs-content ul,
+.docs-content ol,
+.docs-content blockquote {
+  max-width: 72ch;
 }
 
 .docs-content ul,
@@ -567,9 +592,10 @@
   border: 1px solid var(--docs-border);
   border-radius: 0.9rem;
   margin: 1rem 0;
-  overflow-x: auto;
-  padding: 2.3rem 1rem 1.05rem;
+  overflow: hidden;
+  padding: 2.3rem 1.1rem 1.05rem;
   position: relative;
+  width: 100%;
 }
 
 .docs-content pre::before {
@@ -592,6 +618,7 @@
   overflow-wrap: anywhere;
   padding: 0;
   white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .code-copy-button {

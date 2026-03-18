@@ -1,5 +1,6 @@
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
+import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
 
 const OPERATOR_KERNEL_PROMPT = [
@@ -212,15 +213,11 @@ const renderOperatorToolReference = (
   return lines.join("\n");
 };
 
-const renderOperatorKnowledgeFiles = (): string => [
-  "## Knowledge Files",
-  "- `src/ai/brain/knowledge/runtime-reference.md`: runtime architecture, bootstrap flow, capability exposure, state roots",
-  "- `src/ai/brain/knowledge/settings-reference.md`: provider selection, model settings, overlay order, vault lookup",
-  "- `src/ai/brain/knowledge/wallet-reference.md`: wallet organization, signing paths, managed wallet behavior",
-  "- `src/ai/brain/knowledge/deep-knowledge/solana/dexscreener/api-reference.md`: Dexscreener endpoint shapes and response fields",
-  "- `src/ai/brain/knowledge/deep-knowledge/solana/dexscreener/data-retreival-docs.md`: Dexscreener request flows and action usage",
-  "- `.runtime-state/generated/knowledge-manifest.md`: compact routing index for available knowledge files",
-  "- knowledge files are reference material; live tools and runtime state are higher authority",
+const renderOperatorKnowledgeIndex = (): string => [
+  "## Knowledge Index",
+  "- `.runtime-state/generated/knowledge-index.md`: compact folder and file breakdown for available knowledge, titles, and read-when guidance",
+  "- open specific docs only when the request needs them; do not preload full doc bodies in your reasoning",
+  "- knowledge files are reference material; live tools, release readiness, and runtime state are higher authority",
 ].join("\n");
 
 export const buildOperatorChatPrompt = async (input: {
@@ -228,7 +225,10 @@ export const buildOperatorChatPrompt = async (input: {
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
   toolNames: string[];
 }): Promise<string> => {
-  const walletSummary = await renderRuntimeWalletPromptSummary();
+  const [walletSummary, liveRuntimeContext] = await Promise.all([
+    renderRuntimeWalletPromptSummary(),
+    renderLiveRuntimeContextSection(),
+  ]);
 
   return [
     OPERATOR_KERNEL_PROMPT,
@@ -237,11 +237,12 @@ export const buildOperatorChatPrompt = async (input: {
       snapshot: input.capabilitySnapshot,
       toolNames: input.toolNames,
     }),
+    liveRuntimeContext,
     renderOperatorDecisionRules(),
     renderMemeCoinRoutine(),
     renderDexscreenerRoutingPlaybook(),
     renderOperatorToolReference(input.capabilitySnapshot, input.toolNames),
-    renderOperatorKnowledgeFiles(),
+    renderOperatorKnowledgeIndex(),
     "## Wallet Summary",
     walletSummary,
     [

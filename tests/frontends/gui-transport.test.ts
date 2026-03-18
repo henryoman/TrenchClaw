@@ -5,6 +5,7 @@ import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { RuntimeGuiTransport } from "../../apps/trenchclaw/src/runtime/gui-transport/runtime-gui-transport";
+import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const buildRuntime = (input?: {
@@ -198,6 +199,7 @@ describe("Runtime v1 API", () => {
   test("GET /api/gui/sol-price returns the cached runtime price and collapses burst refreshes", async () => {
     const originalFetch = globalThis.fetch;
     let upstreamCallCount = 0;
+    resetSolPriceCacheForTests();
 
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -243,6 +245,7 @@ describe("Runtime v1 API", () => {
       expect(secondPayload.priceUsd).toBe(141.25);
       expect(secondPayload.updatedAt).toBe(firstPayload.updatedAt);
     } finally {
+      resetSolPriceCacheForTests();
       globalThis.fetch = originalFetch;
     }
   });
