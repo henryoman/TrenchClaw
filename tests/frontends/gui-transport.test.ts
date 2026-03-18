@@ -661,7 +661,7 @@ describe("Runtime v1 API", () => {
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
       expect(initialPayload.settings.provider).toBe("openrouter");
-      expect(initialPayload.settings.model).toBe("anthropic/claude-sonnet-4.6");
+      expect(initialPayload.settings.model).toBe("openai/gpt-5.4");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
       expect(initialPayload.options.some((option) => option.id === "openrouter/hunter-alpha")).toBe(true);
       expect(initialPayload.options.find((option) => option.id === "openrouter/hunter-alpha")?.providers).toEqual(["openrouter"]);
@@ -672,7 +672,7 @@ describe("Runtime v1 API", () => {
         body: JSON.stringify({
           settings: {
             provider: "gateway",
-            model: "anthropic/claude-sonnet-4.6",
+            model: "openai/gpt-5.4",
             defaultMode: "primary",
             temperature: 0.4,
             maxOutputTokens: 2048,
@@ -686,7 +686,7 @@ describe("Runtime v1 API", () => {
         settings: { provider: string; model: string; maxOutputTokens: number | null };
       };
       expect(updatePayload.settings.provider).toBe("gateway");
-      expect(updatePayload.settings.model).toBe("anthropic/claude-sonnet-4.6");
+      expect(updatePayload.settings.model).toBe("openai/gpt-5.4");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
       expect(updatePayload.options.some((option) => option.id === "openrouter/hunter-alpha")).toBe(true);

@@ -191,7 +191,7 @@ describe("instance discovery", () => {
       path.join(runtimeRoot, "instances/01/settings/ai.json"),
       `${JSON.stringify({
         provider: "openrouter",
-        model: "anthropic/claude-sonnet-4.6",
+        model: "openai/gpt-5.4",
         defaultMode: "primary",
         temperature: null,
         maxOutputTokens: null,

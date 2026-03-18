@@ -7,7 +7,7 @@ import { assertInstanceSystemWritePath } from "../../runtime/security/write-scop
 import type { AiModelProvider } from "./model-catalog";
 import { parseStructuredFile, resolvePathFromModule } from "./shared";
 
-export const DEFAULT_LLM_MODEL = "anthropic/claude-sonnet-4.6";
+export const DEFAULT_LLM_MODEL = "openrouter/hunter-alpha";
 export const DEFAULT_LLM_PROVIDER: AiModelProvider = "openrouter";
 
 const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";
