@@ -54,11 +54,13 @@ If a tool name is not in the injected runtime tool catalog, it is not callable.
 
 ### Runtime state
 
-- `.runtime-state/runtime/ai.json`
-- `.runtime-state/runtime/settings.json`
 - `.runtime-state/instances/<id>/instance.json`
 - `.runtime-state/instances/<id>/vault.json`
+- `.runtime-state/instances/<id>/settings/ai.json`
+- `.runtime-state/instances/<id>/settings/settings.json`
 - `.runtime-state/instances/<id>/settings/trading.json`
+- `.runtime-state/instances/<id>/db/runtime.sqlite`
+- `.runtime-state/instances/<id>/db/queue.sqlite`
 
 ### Runtime code
 

@@ -3,6 +3,14 @@ import path from "node:path";
 
 import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
 import {
+  resolveInstanceDbRoot,
+  resolveInstanceMemoryRoot,
+  resolveInstanceSessionsRoot,
+  resolveInstanceShellHomeRoot,
+  resolveInstanceTmpRoot,
+  resolveInstanceToolBinRoot,
+} from "./instance-paths";
+import {
   INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
   resolveInstanceWorkspaceRoot,
 } from "./instance-workspace";
@@ -14,6 +22,10 @@ const INSTANCE_LAYOUT_DIRECTORIES = [
   "keypairs",
   "settings",
   "workspace",
+  "db",
+  "shell-home",
+  "tmp",
+  "tool-bin",
 ] as const;
 
 export interface EnsuredInstanceLayout {
@@ -56,6 +68,23 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
     }),
   )).filter((directoryPath): directoryPath is string => directoryPath != null);
 
+  const nestedInstanceDirectories = [
+    resolveInstanceSessionsRoot(instanceId),
+    resolveInstanceMemoryRoot(instanceId),
+    resolveInstanceDbRoot(instanceId),
+    resolveInstanceShellHomeRoot(instanceId),
+    resolveInstanceTmpRoot(instanceId),
+    resolveInstanceToolBinRoot(instanceId),
+  ];
+  const createdNestedDirectories = (await Promise.all(
+    nestedInstanceDirectories.map(async (directoryPath) => {
+      assertInstanceSystemWritePath(directoryPath, "initialize nested instance directory");
+      const existed = await directoryExists(directoryPath);
+      await mkdir(directoryPath, { recursive: true });
+      return existed ? null : directoryPath;
+    }),
+  )).filter((directoryPath): directoryPath is string => directoryPath != null);
+
   const createdFiles: string[] = [];
   const vaultPath = resolveInstanceVaultPath(instanceId);
   assertInstanceSystemWritePath(vaultPath, "initialize instance vault");
@@ -71,7 +100,7 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
 
   return {
     instanceRoot,
-    createdDirectories: [...createdDirectories, ...createdWorkspaceDirectories],
+    createdDirectories: [...createdDirectories, ...createdWorkspaceDirectories, ...createdNestedDirectories],
     createdFiles,
   };
 };

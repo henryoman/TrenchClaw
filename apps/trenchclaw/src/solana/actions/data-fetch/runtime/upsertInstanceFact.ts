@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
+import { createFactId, createIdempotencyKey } from "../../../../ai/runtime/types/ids";
 import type { StateStore } from "../../../../ai/runtime/types/state";
 import { normalizeFactKey, resolveInstanceId } from "./instance-memory-shared";
 
@@ -30,7 +31,7 @@ export const upsertInstanceFactAction: Action<UpsertInstanceFactInput, unknown> 
   inputSchema: upsertInstanceFactInputSchema,
   async execute(ctx, input) {
     const startedAt = Date.now();
-    const idempotencyKey = crypto.randomUUID();
+    const idempotencyKey = createIdempotencyKey();
     const store = asRuntimeStore(ctx.stateStore);
     if (!store) {
       return {
@@ -75,7 +76,7 @@ export const upsertInstanceFactAction: Action<UpsertInstanceFactInput, unknown> 
       factKey,
       includeExpired: true,
     });
-    const recordId = existing?.id ?? `fact-${crypto.randomUUID()}`;
+    const recordId = existing?.id ?? createFactId();
 
     store.saveInstanceFact({
       id: recordId,
@@ -107,4 +108,3 @@ export const upsertInstanceFactAction: Action<UpsertInstanceFactInput, unknown> 
     };
   },
 };
-

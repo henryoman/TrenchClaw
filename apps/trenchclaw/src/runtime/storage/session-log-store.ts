@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import { createSessionId, type SessionId } from "../../ai/runtime/types/ids";
 import { assertRuntimeSystemWritePath } from "../security/write-scope";
 import { resolveRuntimeContractPath } from "../runtime-paths";
 import { getLogIoWorkerClient } from "./log-io-worker";
@@ -7,7 +8,7 @@ import { getLogIoWorkerClient } from "./log-io-worker";
 type SessionMessageRole = "system" | "user" | "assistant" | "toolResult";
 
 interface SessionStoreEntry {
-  sessionId: string;
+  sessionId: SessionId;
   createdAt: string;
   updatedAt: string;
   messageCount: number;
@@ -24,7 +25,7 @@ interface SessionMessageRecord {
   type: "message";
   timestamp: string;
   sessionKey: string;
-  sessionId: string;
+  sessionId: SessionId;
   message: {
     role: SessionMessageRole;
     content: Array<{ type: "text"; text: string }>;
@@ -40,7 +41,7 @@ interface SessionMetaRecord {
   type: "session";
   timestamp: string;
   sessionKey: string;
-  sessionId: string;
+  sessionId: SessionId;
   source: string;
   metadata?: Record<string, unknown>;
 }
@@ -49,7 +50,7 @@ interface SessionEventRecord {
   type: "event";
   timestamp: string;
   sessionKey: string;
-  sessionId: string;
+  sessionId: SessionId;
   eventType: string;
   payload: unknown;
 }
@@ -67,13 +68,13 @@ export interface SessionLogStoreConfig {
 export interface ActiveSessionInfo {
   agentId: string;
   sessionKey: string;
-  sessionId: string;
+  sessionId: SessionId;
   sessionFilePath: string;
   source: string;
 }
 
 export interface ActiveSessionStats {
-  sessionId: string;
+  sessionId: SessionId;
   sessionKey: string;
   source: string;
   createdAt: string;
@@ -150,7 +151,7 @@ export class SessionLogStore {
       }
     }
 
-    const sessionId = crypto.randomUUID();
+    const sessionId = createSessionId();
     const sessionEntry: SessionStoreEntry = {
       sessionId,
       createdAt: now,

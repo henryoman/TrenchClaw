@@ -1,6 +1,14 @@
 import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
 import { assertResolvedRuntimeEndpoints } from "./resolved-runtime-endpoints";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
+import { resolveCurrentActiveInstanceIdSync } from "../instance-state";
+import {
+  resolveInstanceMemoryLongTermFilePath,
+  resolveInstanceMemoryRoot,
+  resolveInstanceQueueSqlitePath,
+  resolveInstanceRuntimeSqlitePath,
+  resolveInstanceSessionsRoot,
+} from "../instance-paths";
 import { resolveCoreRelativePath, resolveRuntimeStatePath } from "../runtime-paths";
 import { loadResolvedUserSettings } from "../../ai/llm/user-settings-loader";
 import { parseStructuredFile } from "../../ai/llm/shared";
@@ -32,6 +40,33 @@ const toBooleanValue = (value: unknown, fallback: boolean): boolean =>
 
 const toStringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
+
+const resolveDefaultStoragePaths = (): {
+  sqlitePath: string;
+  queuePath: string;
+  sessionsDirectory: string;
+  memoryDirectory: string;
+  memoryLongTermFile: string;
+} => {
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  if (!activeInstanceId) {
+    return {
+      sqlitePath: resolveRuntimeStatePath("db/runtime.sqlite"),
+      queuePath: resolveRuntimeStatePath("db/queue/bunqueue.sqlite"),
+      sessionsDirectory: resolveRuntimeStatePath("db/sessions"),
+      memoryDirectory: resolveRuntimeStatePath("db/memory"),
+      memoryLongTermFile: resolveRuntimeStatePath("db/memory/MEMORY.md"),
+    };
+  }
+
+  return {
+    sqlitePath: resolveInstanceRuntimeSqlitePath(activeInstanceId),
+    queuePath: resolveInstanceQueueSqlitePath(activeInstanceId),
+    sessionsDirectory: resolveInstanceSessionsRoot(activeInstanceId),
+    memoryDirectory: resolveInstanceMemoryRoot(activeInstanceId),
+    memoryLongTermFile: resolveInstanceMemoryLongTermFilePath(activeInstanceId),
+  };
+};
 
 const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
   if (!isRecord(baseValue) || !isRecord(overlayValue)) {
@@ -101,6 +136,7 @@ const normalizeRuntimeSettings = (
   const rpcProviders = isRecord(rpc.providers) ? rpc.providers : {};
   const tradingConfirmations = isRecord(trading.confirmations) ? trading.confirmations : {};
   const tradingLimits = isRecord(trading.limits) ? trading.limits : {};
+  const defaultStoragePaths = resolveDefaultStoragePaths();
   const primaryRpcName = toStringValue(rpc.primaryRpc, "primary");
   const primaryRpcProvider = isRecord(rpcProviders[primaryRpcName]) ? rpcProviders[primaryRpcName] : null;
 
@@ -270,24 +306,24 @@ const normalizeRuntimeSettings = (
     storage: {
       sqlite: {
         enabled: true,
-        path: resolveRuntimeStatePath("db/runtime.sqlite"),
+        path: defaultStoragePaths.sqlitePath,
         walMode: true,
         busyTimeoutMs: 5_000,
       },
       queue: {
-        path: resolveRuntimeStatePath("db/queue/bunqueue.sqlite"),
+        path: defaultStoragePaths.queuePath,
       },
       sessions: {
         enabled: true,
-        directory: resolveRuntimeStatePath("db/sessions"),
+        directory: defaultStoragePaths.sessionsDirectory,
         agentId: "trenchclaw",
         source: "cli",
         reuseSessionOnBoot: toBooleanValue(sessionsStorage.reuseSessionOnBoot, false),
       },
       memory: {
         enabled: true,
-        directory: resolveRuntimeStatePath("db/memory"),
-        longTermFile: resolveRuntimeStatePath("db/memory/MEMORY.md"),
+        directory: defaultStoragePaths.memoryDirectory,
+        longTermFile: defaultStoragePaths.memoryLongTermFile,
       },
       retention: {
         receiptsDays: 14,

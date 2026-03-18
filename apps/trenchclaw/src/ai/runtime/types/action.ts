@@ -1,5 +1,6 @@
 import type { ZodType } from "zod";
 import type { ActionContext } from "./context";
+import type { IdempotencyKey } from "./ids";
 import type { PolicyResult } from "./policy";
 
 export type ActionCategory = "data-based" | "wallet-based";
@@ -20,7 +21,7 @@ export interface ActionResult<TData = unknown> {
   txSignature?: string;
   durationMs: number;
   timestamp: number;
-  idempotencyKey: string;
+  idempotencyKey: IdempotencyKey;
   decisionTrace?: string[];
 }
 
@@ -31,7 +32,7 @@ export interface ActionStep<TInput = unknown> {
   input: TInput;
   dependsOn?: string;
   retryPolicy?: RetryPolicy;
-  idempotencyKey?: string;
+  idempotencyKey?: IdempotencyKey;
 }
 
 export interface Action<TInput = unknown, TOutput = unknown> {

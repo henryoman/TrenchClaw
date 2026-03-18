@@ -3,9 +3,10 @@
 Database file: configured by `storage.sqlite.path`.
 
 Runtime-validated TypeScript schema source:
-- `src/runtime/storage/sqlite-schema.ts` (Zod, single source of truth for SQLite table row shapes)
+- `src/runtime/storage/schema-primitives.ts` (shared ID/value primitives used across row + runtime schemas)
+- `src/runtime/storage/sqlite-schema.ts` (Zod row schemas for persisted SQLite rows)
 - `src/runtime/storage/schema.ts` (runtime payload/input schemas layered on top)
-- `src/runtime/storage/sqlite-orm.ts` (Zod-to-SQL mapping + boot-time schema sync)
+- `src/runtime/storage/sqlite-orm.ts` (declared SQL table/index contract, boot-time schema sync, and drift inspection)
 
 ## Runtime state
 

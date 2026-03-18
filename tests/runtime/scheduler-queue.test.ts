@@ -22,6 +22,7 @@ const createTestQueueDbPath = (): string =>
 
 afterEach(() => {
   delete process.env.DATA_PATH;
+  delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
   for (const dbPath of queueDbPaths.splice(0)) {
     void Bun.file(dbPath).delete().catch(() => {});
     void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
@@ -43,7 +44,8 @@ const waitForJobResult = async (
 };
 
 describe("Scheduler queue dispatch", () => {
-  test("defaults embedded queue storage to the runtime-state db directory", async () => {
+  test("defaults embedded queue storage to the active instance db directory", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
     const scheduler = new Scheduler(
       {
         stateStore: new InMemoryStateStore(),
@@ -62,7 +64,7 @@ describe("Scheduler queue dispatch", () => {
 
     scheduler.start();
     try {
-      expect(process.env.DATA_PATH).toBe(runtimeStatePath("db/queue/bunqueue.sqlite"));
+      expect(process.env.DATA_PATH).toBe(runtimeStatePath("instances/01/db/queue.sqlite"));
     } finally {
       await scheduler.stop();
     }

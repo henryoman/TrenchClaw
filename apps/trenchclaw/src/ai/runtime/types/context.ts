@@ -1,11 +1,12 @@
 import type { RuntimeEventBus } from "./events";
+import type { BotId, JobId } from "./ids";
 import type { Policy } from "./policy";
 import type { JobState, StateStore } from "./state";
 
 export type RuntimeActor = "user" | "agent" | "system";
 
 export interface RuntimeJobEnqueueRequest {
-  botId: string;
+  botId: BotId;
   routineName: string;
   config?: Record<string, unknown>;
   totalCycles?: number;
@@ -15,13 +16,13 @@ export interface RuntimeJobEnqueueRequest {
 export type RuntimeJobControlOperation = "pause" | "cancel" | "resume";
 
 export interface RuntimeJobControlRequest {
-  jobId: string;
+  jobId: JobId;
   operation: RuntimeJobControlOperation;
 }
 
 export interface JobMeta {
-  jobId?: string;
-  botId?: string;
+  jobId?: JobId;
+  botId?: BotId;
   cycle?: number;
 }
 

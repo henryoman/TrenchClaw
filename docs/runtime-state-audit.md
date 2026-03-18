@@ -24,30 +24,16 @@ These are the paths a brand new local install needs. Some should be created eage
 
 Must exist immediately or during first runtime boot:
 
-- `.runtime-state/db/`
-- `.runtime-state/db/events/`
-- `.runtime-state/db/sessions/`
-- `.runtime-state/db/memory/`
-- `.runtime-state/db/queue/`
 - `.runtime-state/runtime/`
 - `.runtime-state/instances/`
 - `.runtime-state/generated/`
+- `.runtime-state/protected/keypairs/`
 
 Files created eagerly or on first access:
 
-- `.runtime-state/runtime/settings.json`
-- `.runtime-state/runtime/ai.json`
+- `.runtime-state/runtime/vault.template.json`
 - `.runtime-state/generated/workspace-context.md`
 - `.runtime-state/generated/knowledge-index.md`
-
-Files created lazily by normal use:
-
-- `.runtime-state/db/runtime.sqlite`
-- `.runtime-state/db/queue/bunqueue.sqlite`
-- `.runtime-state/db/sessions/*`
-- `.runtime-state/db/memory/*`
-- `.runtime-state/db/system/*`
-- `.runtime-state/db/summary/*`
 
 ### Current Per-instance
 
@@ -57,37 +43,55 @@ For a newly created or first-signed-in instance `NN`, the runtime should ensure:
 - `.runtime-state/instances/NN/vault.json`
 - `.runtime-state/instances/NN/keypairs/`
 - `.runtime-state/instances/NN/settings/`
+- `.runtime-state/instances/NN/settings/ai.json`
+- `.runtime-state/instances/NN/settings/settings.json`
 - `.runtime-state/instances/NN/settings/trading.json`
 - `.runtime-state/instances/NN/workspace/`
 - `.runtime-state/instances/NN/workspace/routines/`
+- `.runtime-state/instances/NN/db/`
+- `.runtime-state/instances/NN/db/sessions/`
+- `.runtime-state/instances/NN/db/memory/`
+- `.runtime-state/instances/NN/shell-home/`
+- `.runtime-state/instances/NN/tmp/`
+- `.runtime-state/instances/NN/tool-bin/`
 
 Created lazily later:
 
+- `.runtime-state/instances/NN/db/runtime.sqlite`
+- `.runtime-state/instances/NN/db/queue.sqlite`
 - `.runtime-state/instances/NN/keypairs/wallet-library.jsonl`
 - `.runtime-state/instances/NN/keypairs/<group>/...`
-- any future per-instance workspace or notes paths
+- any future per-instance workspace, notes, or output paths
 
 ## Current Ownership Model
 
 ### Runtime-global
 
-- `.runtime-state/db/`
 - `.runtime-state/generated/`
-- `.runtime-state/runtime/settings.json`
-- `.runtime-state/runtime/ai.json`
+- `.runtime-state/runtime/vault.template.json`
+- `.runtime-state/protected/keypairs/`
 
 ### Per-instance
 
 - `.runtime-state/instances/<id>/instance.json`
 - `.runtime-state/instances/<id>/vault.json`
+- `.runtime-state/instances/<id>/settings/ai.json`
+- `.runtime-state/instances/<id>/settings/settings.json`
 - `.runtime-state/instances/<id>/settings/trading.json`
+- `.runtime-state/instances/<id>/db/runtime.sqlite`
+- `.runtime-state/instances/<id>/db/queue.sqlite`
+- `.runtime-state/instances/<id>/db/sessions/`
+- `.runtime-state/instances/<id>/db/memory/`
 - `.runtime-state/instances/<id>/keypairs/`
 - `.runtime-state/instances/<id>/workspace/`
+- `.runtime-state/instances/<id>/shell-home/`
+- `.runtime-state/instances/<id>/tmp/`
+- `.runtime-state/instances/<id>/tool-bin/`
 - wallet libraries and managed wallet files under the instance keypair root
 
 ### Mixed behavior worth revisiting later
 
-- The SQLite runtime DB is global, but many records are logically instance-scoped via `instanceId`.
+- Generated prompt/context artifacts remain shared across instances.
 
 ## Rule Of Thumb
 
@@ -101,15 +105,17 @@ That means:
 ### Keep shared
 
 - generated prompt/context artifacts
-- SQLite/system/session caches
 - knowledge manifests and default knowledge files
-- runtime-wide workspace artifacts that are intentionally shared across all instances
+- release metadata and bundled readonly assets
 
 ### Make per-instance
 
 - every vault secret
 - wallet private keys and signer material
+- AI provider/model settings
+- compatibility settings
 - trading preferences and execution defaults
+- runtime SQLite state, queue state, session state, and memory state
 - strategy files that describe what one instance should do
 - long-lived notes or workspace outputs that belong to one bot/operator
 - any state that can spend money, sign transactions, impersonate an operator, or materially change external side effects
@@ -144,9 +150,7 @@ A fresh instance must be able to sign in and work without manual file scaffoldin
 The remaining shared runtime bootstrap contract stays global:
 
 - generated prompt files
-- runtime DB roots
-- runtime settings
-- AI provider/model settings
+- vault template and protected placeholder files
 - shared knowledge manifests and shared default knowledge
 
 ## Bloat To Remove Or Avoid

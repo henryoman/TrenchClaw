@@ -211,11 +211,9 @@ Writable state root for release installs:
 
 ```text
 ~/.trenchclaw/
-  db/
   generated/
   runtime/
-    ai.json
-    settings.json
+    vault.template.json
   instances/
     active-instance.json
     <id>/
@@ -223,12 +221,23 @@ Writable state root for release installs:
       vault.json
       keypairs/
       settings/
+        ai.json
+        settings.json
         trading.json
+      workspace/
+      db/
+        runtime.sqlite
+        queue.sqlite
+        sessions/
+        memory/
+      shell-home/
+      tmp/
+      tool-bin/
   protected/
     keypairs/
 ```
 
-You do not need to create these files by hand. TrenchClaw creates the instance directories, vault file, and settings files for you and applies best-effort secure permissions as part of the app flow.
+You do not need to create these files by hand. TrenchClaw creates the instance directories, vault file, settings files, workspace, and instance-local DB/shell directories for you and applies best-effort secure permissions as part of the app flow.
 
 ## Troubleshooting
 

@@ -876,8 +876,6 @@ const ensureRuntimeStateLayout = (): void => {
   const directories = [
     path.join(LAYOUT.runtimeStateRoot, "db"),
     path.join(LAYOUT.runtimeStateRoot, "db/events"),
-    path.join(LAYOUT.runtimeStateRoot, "db/sessions"),
-    path.join(LAYOUT.runtimeStateRoot, "db/memory"),
     path.join(LAYOUT.runtimeStateRoot, "runtime"),
     path.join(LAYOUT.runtimeStateRoot, "instances"),
     path.join(LAYOUT.runtimeStateRoot, "generated"),
@@ -902,10 +900,6 @@ const ensureRuntimeStateLayout = (): void => {
   for (const placeholder of placeholders) {
     copyFileIfMissing(placeholder.source, placeholder.target);
   }
-
-  const aiTemplatePath = path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
-  copyFileIfMissing(aiTemplatePath, path.join(LAYOUT.runtimeStateRoot, "runtime/ai.json"));
-  writeFileIfMissing(path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json"), "{}\n");
 };
 
 const toSettingsFileName = (profile: RuntimeSettingsProfile): string =>
@@ -945,10 +939,6 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
     process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE;
-  process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE =
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json");
-  process.env.TRENCHCLAW_AI_SETTINGS_FILE =
-    process.env.TRENCHCLAW_AI_SETTINGS_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/ai.json");
   process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE =
     process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE ||
     path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");

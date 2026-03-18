@@ -14,6 +14,12 @@ import {
 } from "ai";
 import { z } from "zod";
 import { createActionContext } from "../ai/runtime/types/context";
+import {
+  createChatMessageId,
+  createConversationId,
+  createToolCallId,
+  createUiTextPartId,
+} from "../ai/runtime/types/ids";
 import type {
   ActionDispatcher,
   ActionRegistry,
@@ -70,7 +76,6 @@ interface RuntimeChatServiceOverrides {
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
-const DEFAULT_CHAT_ID_PREFIX = "chat";
 const CHAT_MODEL_STREAM_TIMEOUT = {
   totalMs: 45_000,
   stepMs: 25_000,
@@ -191,7 +196,7 @@ const extractUiMessageText = (message: UIMessage): string => {
   return "";
 };
 
-const createResponseMessageId = (): string => `msg-${crypto.randomUUID()}`;
+const createResponseMessageId = (): string => createChatMessageId();
 
 const assistantMessageHasToolActivity = (message: UIMessage | undefined): boolean => {
   if (!message || message.role !== "assistant") {
@@ -283,7 +288,7 @@ const writeAssistantTextMessage = (input: {
   finishReason?: "stop" | "length" | "content-filter" | "tool-calls" | "error" | "other";
 }): void => {
   const messageId = createResponseMessageId();
-  const textId = `text-${crypto.randomUUID()}`;
+  const textId = createUiTextPartId();
   input.writeChunk({ type: "start", messageId });
   input.writeChunk({ type: "text-start", id: textId });
   input.writeChunk({ type: "text-delta", id: textId, delta: input.text });
@@ -343,7 +348,7 @@ const replaceLastAssistantMessageWithText = (messages: UIMessage[], text: string
   return [
     ...nextMessages,
     {
-      id: `msg-${crypto.randomUUID()}`,
+      id: createChatMessageId(),
       role: "assistant",
       parts: [{ type: "text", text }] as UIMessage["parts"],
     },
@@ -367,7 +372,7 @@ const sanitizeConversationTitle = (title: string | undefined, fallbackMessages: 
 };
 
 const resolveChatId = (chatId: string | undefined): string =>
-  trimOrUndefinedValue(chatId) ?? `${DEFAULT_CHAT_ID_PREFIX}-${crypto.randomUUID()}`;
+  trimOrUndefinedValue(chatId) ?? createConversationId();
 
 const withChatHeaders = (headers: HeadersInit | undefined, chatId: string): Headers => {
   const merged = new Headers(headers);
@@ -623,7 +628,7 @@ const persistFinishedMessages = (
     const existingMessage = trimOrUndefinedValue(message.id) ? existingMessagesById.get(message.id) : undefined;
 
     deps.stateStore.saveChatMessage({
-      id: trimOrUndefinedValue(message.id) ?? `msg-${chatId}-${updatedAt + index}-${crypto.randomUUID()}`,
+      id: trimOrUndefinedValue(message.id) ?? createChatMessageId(`${chatId}-${updatedAt + index}`),
       conversationId: chatId,
       role: message.role,
       content,
@@ -648,7 +653,7 @@ const createDirectTextStreamResponse = (input: {
   originalMessages: UIMessage[];
   onFinish: (messages: UIMessage[]) => void;
 }): Response => {
-  const textId = `text-${crypto.randomUUID()}`;
+  const textId = createUiTextPartId();
   const stream = createUIMessageStream({
     originalMessages: input.originalMessages,
     execute: ({ writer }) => {
@@ -945,8 +950,8 @@ const createDirectToolResultStreamResponse = (input: {
   text: string;
   onFinish: (messages: UIMessage[]) => void;
 }): Response => {
-  const toolCallId = `tool-${crypto.randomUUID()}`;
-  const textId = `text-${crypto.randomUUID()}`;
+  const toolCallId = createToolCallId();
+  const textId = createUiTextPartId();
 
   const stream = createUIMessageStream({
     originalMessages: input.originalMessages,
@@ -1413,7 +1418,7 @@ export const createRuntimeChatService = (
                 const observedToolMessage =
                   observedToolParts.length > 0
                     ? {
-                        id: `msg-${crypto.randomUUID()}`,
+                        id: createChatMessageId(),
                         role: "assistant" as const,
                         parts: observedToolParts,
                       }
@@ -1421,7 +1426,7 @@ export const createRuntimeChatService = (
                 const executedToolParts = Array.from(executedToolResults.values()).map((result) =>
                   createToolPartFromStreamState({
                     toolName: result.actionName,
-                    toolCallId: `tool-${crypto.randomUUID()}`,
+                    toolCallId: createToolCallId(),
                     state: "output-available",
                     input: result.rawInput ?? null,
                     output: result.output,
@@ -1429,7 +1434,7 @@ export const createRuntimeChatService = (
                 const executedToolMessage =
                   executedToolParts.length > 0
                     ? {
-                        id: `msg-${crypto.randomUUID()}`,
+                        id: createChatMessageId(),
                         role: "assistant" as const,
                         parts: executedToolParts,
                       }
@@ -1476,7 +1481,7 @@ export const createRuntimeChatService = (
                   [
                     ...firstPassMessages,
                     {
-                      id: `msg-${crypto.randomUUID()}`,
+                      id: createChatMessageId(),
                       role: "user",
                       parts: [
                         {

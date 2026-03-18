@@ -1,38 +1,40 @@
+import type { BotId, IdempotencyKey, JobId } from "./ids";
+
 export type RuntimeEventMap = {
   "action:start": {
     actionName: string;
-    idempotencyKey: string;
+    idempotencyKey: IdempotencyKey;
     inputSummary?: string;
   };
   "action:success": {
     actionName: string;
-    idempotencyKey: string;
+    idempotencyKey: IdempotencyKey;
     durationMs: number;
     txSignature?: string;
   };
   "action:fail": {
     actionName: string;
-    idempotencyKey: string;
+    idempotencyKey: IdempotencyKey;
     error: string;
     retryable: boolean;
     attempts: number;
   };
   "action:retry": {
     actionName: string;
-    idempotencyKey: string;
+    idempotencyKey: IdempotencyKey;
     attempt: number;
     nextRetryMs: number;
   };
   "bot:start": {
-    botId: string;
+    botId: BotId;
     routineName: string;
   };
   "bot:pause": {
-    botId: string;
+    botId: BotId;
     reason?: string;
   };
   "bot:stop": {
-    botId: string;
+    botId: BotId;
     reason?: string;
     finalStats?: Record<string, number>;
   };
@@ -47,27 +49,27 @@ export type RuntimeEventMap = {
     reason?: string;
   };
   "queue:enqueue": {
-    jobId: string;
+    jobId: JobId;
     serialNumber?: number;
-    botId: string;
+    botId: BotId;
     routineName: string;
     queueSize: number;
     queuePosition: number;
     nextRunAt?: number;
   };
   "queue:dequeue": {
-    jobId: string;
+    jobId: JobId;
     serialNumber?: number;
-    botId: string;
+    botId: BotId;
     routineName: string;
     queueSize: number;
     queuePosition: number;
     waitMs: number;
   };
   "queue:complete": {
-    jobId: string;
+    jobId: JobId;
     serialNumber?: number;
-    botId: string;
+    botId: BotId;
     routineName: string;
     status: "pending" | "failed" | "stopped";
     durationMs: number;

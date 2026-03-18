@@ -75,6 +75,10 @@ describe("ensureInstanceLayout", () => {
       "keypairs",
       "settings",
       "workspace",
+      "db",
+      "shell-home",
+      "tmp",
+      "tool-bin",
       "strategies",
       "configs",
       "typescript",
@@ -82,6 +86,8 @@ describe("ensureInstanceLayout", () => {
       "scratch",
       "output",
       "routines",
+      "sessions",
+      "memory",
     ]);
     expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual(["trading.json", "vault.json"]);
     expect(result.second.createdDirectories).toEqual([]);

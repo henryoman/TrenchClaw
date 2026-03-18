@@ -12,11 +12,21 @@ import {
   INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
   resolveActiveInstanceWorkspaceRootOrThrow,
 } from "./instance-workspace";
+import { resolveCurrentActiveInstanceIdSync } from "./instance-state";
+import {
+  resolveInstanceShellHomeRoot,
+  resolveInstanceTmpRoot,
+  resolveInstanceToolBinRoot,
+} from "./instance-paths";
+import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 
 interface WorkspaceBashOptions {
   workspaceRootDirectory: string;
   readRootDirectory?: string;
   writeRootDirectory?: string;
+  shellHomeDirectory?: string;
+  tmpDirectory?: string;
+  toolBinDirectory?: string;
   actor?: "agent" | "user" | "system";
   commandTimeoutMs?: number;
   allowMutatingCommands?: boolean;
@@ -25,6 +35,16 @@ interface WorkspaceBashOptions {
 const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
 const MAX_COMMAND_LENGTH = 8_000;
 const DEFAULT_ALLOW_MUTATING_COMMANDS = (process.env.TRENCHCLAW_WORKSPACE_BASH_ALLOW_MUTATIONS ?? "0") === "1";
+const BASH_EXECUTABLE = process.platform === "win32" ? "bash" : "/bin/bash";
+const SAFE_SYSTEM_PATH_ENTRIES = [
+  path.dirname(process.execPath),
+  process.platform === "darwin" ? "/opt/homebrew/bin" : null,
+  "/usr/local/bin",
+  "/usr/bin",
+  "/bin",
+  "/usr/sbin",
+  "/sbin",
+].filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
 
 export const WORKSPACE_LAYOUT_DIRECTORIES = INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES;
 
@@ -101,10 +121,84 @@ const sanitizeCommand = (command: string): string => {
 const isMutatingCommand = (command: string): boolean =>
   MUTATING_COMMAND_PATTERNS.some((pattern) => pattern.test(command));
 
+const resolveInstanceIdFromWorkspaceRoot = (workspaceRootDirectory: string): string | null => {
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  if (activeInstanceId) {
+    return activeInstanceId;
+  }
+
+  const relativeToInstancesRoot = path.relative(RUNTIME_INSTANCE_ROOT, path.resolve(workspaceRootDirectory));
+  if (
+    !relativeToInstancesRoot
+    || relativeToInstancesRoot.startsWith("..")
+    || path.isAbsolute(relativeToInstancesRoot)
+  ) {
+    return null;
+  }
+
+  const [instanceId, firstChildDirectory] = relativeToInstancesRoot.split(path.sep);
+  return /^\d{2}$/u.test(instanceId ?? "") && firstChildDirectory === "workspace" ? instanceId : null;
+};
+
+const resolveWorkspaceSandboxDirectories = (options: WorkspaceBashOptions): {
+  shellHomeDirectory: string;
+  tmpDirectory: string;
+  toolBinDirectory: string;
+} => {
+  const shellHomeDirectory = options.shellHomeDirectory?.trim();
+  const tmpDirectory = options.tmpDirectory?.trim();
+  const toolBinDirectory = options.toolBinDirectory?.trim();
+  if (shellHomeDirectory && tmpDirectory && toolBinDirectory) {
+    return {
+      shellHomeDirectory: path.resolve(shellHomeDirectory),
+      tmpDirectory: path.resolve(tmpDirectory),
+      toolBinDirectory: path.resolve(toolBinDirectory),
+    };
+  }
+
+  const instanceId = resolveInstanceIdFromWorkspaceRoot(options.workspaceRootDirectory);
+  if (instanceId) {
+    return {
+      shellHomeDirectory: resolveInstanceShellHomeRoot(instanceId),
+      tmpDirectory: resolveInstanceTmpRoot(instanceId),
+      toolBinDirectory: resolveInstanceToolBinRoot(instanceId),
+    };
+  }
+
+  const workspaceRoot = path.resolve(options.workspaceRootDirectory);
+  return {
+    shellHomeDirectory: path.join(workspaceRoot, ".shell-home"),
+    tmpDirectory: path.join(workspaceRoot, ".tmp"),
+    toolBinDirectory: path.join(workspaceRoot, ".tool-bin"),
+  };
+};
+
+const buildSanitizedShellEnvironment = (input: {
+  bashRoot: string;
+  shellHomeDirectory: string;
+  tmpDirectory: string;
+  toolBinDirectory: string;
+}): Record<string, string> => {
+  const pathEntries = [...new Set([input.toolBinDirectory, ...SAFE_SYSTEM_PATH_ENTRIES])];
+  return {
+    HOME: input.shellHomeDirectory,
+    TMPDIR: input.tmpDirectory,
+    PATH: pathEntries.join(path.delimiter),
+    LANG: process.env.LANG?.trim() || "en_US.UTF-8",
+    LC_ALL: process.env.LC_ALL?.trim() || process.env.LANG?.trim() || "en_US.UTF-8",
+    PWD: input.bashRoot,
+    SHELL: BASH_EXECUTABLE,
+  };
+};
+
 class HostWorkspaceSandbox {
   private readonly bashRoot: string;
   private readonly readRoot: string;
   private readonly writeRoot: string;
+  private readonly shellHomeDirectory: string;
+  private readonly tmpDirectory: string;
+  private readonly toolBinDirectory: string;
+  private readonly env: Record<string, string>;
   private readonly actor: "agent" | "user" | "system";
   private readonly commandTimeoutMs: number;
   private readonly allowMutatingCommands: boolean;
@@ -113,6 +207,16 @@ class HostWorkspaceSandbox {
     this.bashRoot = path.resolve(options.workspaceRootDirectory);
     this.readRoot = path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory);
     this.writeRoot = path.resolve(options.writeRootDirectory ?? options.workspaceRootDirectory);
+    const sandboxDirectories = resolveWorkspaceSandboxDirectories(options);
+    this.shellHomeDirectory = sandboxDirectories.shellHomeDirectory;
+    this.tmpDirectory = sandboxDirectories.tmpDirectory;
+    this.toolBinDirectory = sandboxDirectories.toolBinDirectory;
+    this.env = buildSanitizedShellEnvironment({
+      bashRoot: this.bashRoot,
+      shellHomeDirectory: this.shellHomeDirectory,
+      tmpDirectory: this.tmpDirectory,
+      toolBinDirectory: this.toolBinDirectory,
+    });
     this.actor = options.actor ?? "agent";
     this.commandTimeoutMs = Math.max(1_000, Math.trunc(options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS));
     this.allowMutatingCommands = options.allowMutatingCommands ?? DEFAULT_ALLOW_MUTATING_COMMANDS;
@@ -133,12 +237,17 @@ class HostWorkspaceSandbox {
       reason: "execute workspace bash command",
     });
 
-    await mkdir(this.bashRoot, { recursive: true });
-    const child = Bun.spawn(["bash", "-lc", sanitizedCommand], {
+    await Promise.all([
+      mkdir(this.bashRoot, { recursive: true }),
+      mkdir(this.shellHomeDirectory, { recursive: true }),
+      mkdir(this.tmpDirectory, { recursive: true }),
+      mkdir(this.toolBinDirectory, { recursive: true }),
+    ]);
+    const child = Bun.spawn([BASH_EXECUTABLE, "--noprofile", "--norc", "-lc", sanitizedCommand], {
       cwd: this.bashRoot,
       stdout: "pipe",
       stderr: "pipe",
-      env: process.env,
+      env: this.env,
     });
 
     let timeoutId: ReturnType<typeof setTimeout> | undefined;

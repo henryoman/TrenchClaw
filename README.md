@@ -329,8 +329,10 @@ TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for runtime jobs, receipts,
 
 Schema is Zod-first and auto-synced on boot:
 
-- Row/table schema source of truth: `src/runtime/storage/sqlite-schema.ts`
-- Zod-to-SQL mapping + boot sync: `src/runtime/storage/sqlite-orm.ts`
+- Shared storage primitives + ID/value schemas: `src/runtime/storage/schema-primitives.ts`
+- Runtime row schemas: `src/runtime/storage/sqlite-schema.ts`
+- Runtime payload/state schemas: `src/runtime/storage/schema.ts`
+- SQL table/index contract + boot sync + drift inspection: `src/runtime/storage/sqlite-orm.ts`
 - Runtime prints a compact schema snapshot at boot for operator/model context
 
 Runtime log/data layout is split by purpose under `src/ai/brain/db/`:
@@ -353,7 +355,7 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Ships managed wallet reads, wallet management, Dexscreener research, Jupiter Ultra swaps, and direct Jupiter Trigger order flows
 - Composes explicit action sequences, queued jobs, and narrow scheduled swap flows
 - Persists runtime state + chat history in Bun SQLite (restart-safe)
-- Auto-syncs SQLite schema from Zod table specs on boot (no manual version bump for additive changes)
+- Auto-syncs SQLite schema from declared table specs on boot and warns when existing DB columns drift from the contract
 - Emits structured events on a typed bus consumed by CLI logs and future alerting
 - Exposes an operator control surface through the CLI
 - Keeps agent knowledge (soul, rules, skills, outside context) in `src/ai/brain/`, loaded by orchestration in `src/ai/`

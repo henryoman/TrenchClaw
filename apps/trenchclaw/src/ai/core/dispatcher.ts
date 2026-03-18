@@ -5,11 +5,13 @@ import type {
   ActionContext,
   ActionStep,
   DispatchResult,
+  IdempotencyKey,
   PolicyEngineContract,
   RetryPolicy,
   RuntimeEventBus,
   StateStore,
 } from "../runtime/types";
+import { createIdempotencyKey } from "../runtime/types";
 
 const DEFAULT_RETRY_POLICY: RetryPolicy = {
   maxAttempts: 1,
@@ -33,7 +35,7 @@ export class ActionDispatcher {
       throw new Error(`Action "${step.actionName}" is not registered`);
     }
 
-    const idempotencyKey = step.idempotencyKey ?? crypto.randomUUID();
+    const idempotencyKey = step.idempotencyKey ?? createIdempotencyKey();
     const cached = this.deps.stateStore.getReceipt(idempotencyKey);
     if (cached?.ok) {
       return { results: [cached], policyHits: [] };
@@ -120,7 +122,7 @@ export class ActionDispatcher {
     action: Action,
     ctx: ActionContext,
     step: ActionStep,
-    idempotencyKey: string,
+    idempotencyKey: IdempotencyKey,
   ): Promise<ActionResult> {
     const retry = step.retryPolicy ?? DEFAULT_RETRY_POLICY;
     const maxAttempts = Math.max(1, retry.maxAttempts);

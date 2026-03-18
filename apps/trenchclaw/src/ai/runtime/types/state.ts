@@ -1,11 +1,22 @@
 import type { ActionResult } from "./action";
+import type {
+  BotId,
+  ChatMessageId,
+  ConversationId,
+  FactId,
+  FactKey,
+  IdempotencyKey,
+  InstanceId,
+  JobId,
+  SessionId,
+} from "./ids";
 
 export type JobStatus = "pending" | "running" | "paused" | "stopped" | "failed";
 
 export interface JobState {
-  id: string;
+  id: JobId;
   serialNumber?: number;
-  botId: string;
+  botId: BotId;
   routineName: string;
   status: JobStatus;
   config: Record<string, unknown>;
@@ -25,8 +36,8 @@ export interface JobState {
 export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
 
 export interface ConversationState {
-  id: string;
-  sessionId?: string;
+  id: ConversationId;
+  sessionId?: SessionId;
   title?: string;
   summary?: string;
   createdAt: number;
@@ -34,8 +45,8 @@ export interface ConversationState {
 }
 
 export interface ChatMessageState {
-  id: string;
-  conversationId: string;
+  id: ChatMessageId;
+  conversationId: ConversationId;
   role: ChatMessageRole;
   content: string;
   metadata?: Record<string, unknown>;
@@ -43,20 +54,20 @@ export interface ChatMessageState {
 }
 
 export interface InstanceFactState {
-  id: string;
-  instanceId: string;
-  factKey: string;
+  id: FactId;
+  instanceId: InstanceId;
+  factKey: FactKey;
   factValue: unknown;
   confidence: number;
   source: string;
-  sourceMessageId?: string;
+  sourceMessageId?: ChatMessageId;
   createdAt: number;
   updatedAt: number;
   expiresAt?: number;
 }
 
 export interface InstanceProfileState {
-  instanceId: string;
+  instanceId: InstanceId;
   displayName?: string;
   summary?: string;
   tradingStyle?: string;
@@ -69,7 +80,7 @@ export interface InstanceProfileState {
 }
 
 export interface InstanceMemoryBundle {
-  instanceId: string;
+  instanceId: InstanceId;
   profile: InstanceProfileState | null;
   facts: InstanceFactState[];
   factMap: Record<string, unknown>;
@@ -105,36 +116,36 @@ export interface RuntimeKnowledgeSurface {
 
 export interface StateStore {
   saveJob(job: JobState): void;
-  getJob(id: string): JobState | null;
+  getJob(id: JobId): JobState | null;
   getJobBySerialNumber(serialNumber: number): JobState | null;
-  listJobs(filter?: { status?: JobStatus; botId?: string }): JobState[];
-  updateJobStatus(id: string, status: JobStatus, meta?: Partial<JobState>): void;
+  listJobs(filter?: { status?: JobStatus; botId?: BotId }): JobState[];
+  updateJobStatus(id: JobId, status: JobStatus, meta?: Partial<JobState>): void;
   reserveJobSerialNumber(): number;
   tryStartJob(input: {
-    id: string;
+    id: JobId;
     expectedCycle: number;
     leaseOwner?: string;
     leaseExpiresAt?: number;
   }): JobState | null;
   saveReceipt(receipt: ActionResult): void;
-  getReceipt(idempotencyKey: string): ActionResult | null;
+  getReceipt(idempotencyKey: IdempotencyKey): ActionResult | null;
   getRecentReceipts(limit: number): ActionResult[];
   saveConversation(conversation: ConversationState): void;
-  getConversation(id: string): ConversationState | null;
+  getConversation(id: ConversationId): ConversationState | null;
   listConversations(limit?: number): ConversationState[];
-  deleteConversation(id: string): boolean;
+  deleteConversation(id: ConversationId): boolean;
   saveChatMessage(message: ChatMessageState): void;
-  listChatMessages(conversationId: string, limit?: number): ChatMessageState[];
+  listChatMessages(conversationId: ConversationId, limit?: number): ChatMessageState[];
   saveInstanceProfile(profile: InstanceProfileState): void;
-  getInstanceProfile(instanceId: string): InstanceProfileState | null;
+  getInstanceProfile(instanceId: InstanceId): InstanceProfileState | null;
   saveInstanceFact(fact: InstanceFactState): void;
   listInstanceFacts(input: {
-    instanceId: string;
+    instanceId: InstanceId;
     limit?: number;
     includeExpired?: boolean;
-    keyPrefix?: string;
+    keyPrefix?: FactKey | string;
   }): InstanceFactState[];
-  getInstanceFact(input: { instanceId: string; factKey: string; includeExpired?: boolean }): InstanceFactState | null;
+  getInstanceFact(input: { instanceId: InstanceId; factKey: FactKey; includeExpired?: boolean }): InstanceFactState | null;
   searchRuntimeText(input: {
     query: string;
     scope?: RuntimeSearchScope;

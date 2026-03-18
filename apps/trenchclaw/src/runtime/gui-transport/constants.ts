@@ -1,8 +1,6 @@
-import path from "node:path";
 import type { GuiPublicRpcOptionView, GuiRpcProviderOptionView, GuiSecretOptionView } from "@trenchclaw/types";
 import {
   RUNTIME_INSTANCE_ROOT,
-  RUNTIME_NO_READ_ROOT,
   resolveCoreRelativePath,
 } from "../runtime-paths";
 
@@ -15,8 +13,6 @@ export const CORS_HEADERS = {
   "access-control-allow-headers": "content-type,accept",
 };
 export const INSTANCE_DIRECTORY = RUNTIME_INSTANCE_ROOT;
-export const NO_READ_DIRECTORY = RUNTIME_NO_READ_ROOT;
-export const AI_SETTINGS_FILE_PATH = path.join(NO_READ_DIRECTORY, "ai.json");
 export const AI_SETTINGS_TEMPLATE_FILE_PATH = resolveCoreRelativePath("src/ai/config/ai.template.json");
 export const VAULT_TEMPLATE_FILE_PATH = resolveCoreRelativePath("src/ai/config/vault.template.json");
 export const DISPATCH_TEST_DEFAULT_WAIT_MS = 4000;

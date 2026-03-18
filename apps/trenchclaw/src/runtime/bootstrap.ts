@@ -4,6 +4,9 @@ import type { Action } from "../ai/runtime/types/action";
 import {
   ActionDispatcher,
   ActionRegistry,
+  createChatMessageId,
+  createJobId,
+  createRuntimeConversationId,
   createRuntimeGateway,
   createActionContext,
   resolveLlmRuntimeBinding,
@@ -638,7 +641,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     const recentConversation = stateStore
       .listConversations(100)
       .find((conversation) => (activeInstanceId ? conversation.sessionId === activeInstanceId : true));
-    const conversationId = recentConversation?.id ?? `runtime-${activeInstanceId ?? "global"}`;
+    const conversationId = recentConversation?.id ?? createRuntimeConversationId(activeInstanceId);
 
     stateStore.saveConversation({
       id: conversationId,
@@ -649,7 +652,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       updatedAt: now,
     });
     stateStore.saveChatMessage({
-      id: `msg-runtime-${crypto.randomUUID()}`,
+      id: createChatMessageId("runtime"),
       conversationId,
       role: "system",
       content,
@@ -671,7 +674,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     const now = Date.now();
     const executeAtUnixMs = normalizeExecuteAtUnixMs(input.executeAtUnixMs, now);
     const job: JobState = {
-      id: crypto.randomUUID(),
+      id: createJobId(),
       serialNumber: stateStore.reserveJobSerialNumber(),
       botId: input.botId,
       routineName: input.routineName,

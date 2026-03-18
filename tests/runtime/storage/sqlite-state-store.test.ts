@@ -3,6 +3,10 @@ import { Database } from "bun:sqlite";
 import path from "node:path";
 
 import type { ActionResult } from "../../../apps/trenchclaw/src/ai/runtime/types/action";
+import {
+  getSqliteTableContractViolationsSnapshot,
+  inspectSqliteSchema,
+} from "../../../apps/trenchclaw/src/runtime/storage/sqlite-orm";
 import { sqliteTables } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-schema";
 import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import { runtimeStatePath } from "../../helpers/core-paths";
@@ -227,6 +231,10 @@ describe("SqliteStateStore", () => {
     db.close(false);
   });
 
+  test("sqlite table specs stay aligned with row schemas", () => {
+    expect(getSqliteTableContractViolationsSnapshot()).toEqual([]);
+  });
+
   test("auto-sync adds missing columns on existing tables", () => {
     const dbPath = createTestDbPath("trenchclaw-auto-sync");
     dbPaths.push(dbPath);
@@ -297,6 +305,38 @@ describe("SqliteStateStore", () => {
     expect(syncReport.addedColumns.includes("jobs.lease_expires_at")).toBe(true);
     expect(syncReport.addedColumns.includes("jobs.last_error")).toBe(true);
     store.close();
+  });
+
+  test("schema inspection warns when an existing column contract drifts", () => {
+    const dbPath = createTestDbPath("trenchclaw-schema-drift");
+    dbPaths.push(dbPath);
+
+    const seedDb = new Database(dbPath, { create: true, strict: true });
+    seedDb.exec(`
+      CREATE TABLE conversations (
+        id TEXT PRIMARY KEY,
+        session_id TEXT,
+        title TEXT,
+        summary TEXT,
+        created_at TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+    `);
+    seedDb.close(false);
+
+    const store = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const syncReport = store.getSchemaSyncReport();
+    expect(syncReport.warnings.some((warning) => warning.includes("conversations.created_at"))).toBe(true);
+    store.close();
+
+    const db = new Database(dbPath, { readonly: true, strict: true });
+    const inspection = inspectSqliteSchema(db);
+    expect(inspection.mismatchedColumns).toContain("conversations.created_at");
+    db.close(false);
   });
 
   test("recovers interrupted running jobs on restart", () => {

@@ -96,13 +96,14 @@ describe("runtime path contract", () => {
         console.log(JSON.stringify(payload));
       `,
       {
+        TRENCHCLAW_ACTIVE_INSTANCE_ID: "01",
         TRENCHCLAW_RUNTIME_STATE_ROOT: runtimeRoot,
       },
     );
 
     expect(result.exitCode).toBe(0);
     const payload = JSON.parse(result.stdout) as { filePath: string };
-    expect(payload.filePath).toBe(path.join(runtimeRoot, "runtime", "ai.json"));
+    expect(payload.filePath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "ai.json"));
   });
 
   test("resolves compatibility settings under the configured runtime root", async () => {
@@ -114,13 +115,14 @@ describe("runtime path contract", () => {
         console.log(JSON.stringify({ compatibilitySettingsPath: payload.compatibilitySettingsPath }));
       `,
       {
+        TRENCHCLAW_ACTIVE_INSTANCE_ID: "01",
         TRENCHCLAW_RUNTIME_STATE_ROOT: runtimeRoot,
       },
     );
 
     expect(result.exitCode).toBe(0);
     const payload = JSON.parse(result.stdout) as { compatibilitySettingsPath: string };
-    expect(payload.compatibilitySettingsPath).toBe(path.join(runtimeRoot, "runtime", "settings.json"));
+    expect(payload.compatibilitySettingsPath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "settings.json"));
   });
 
   test("resolves relative queue paths under the configured runtime root", async () => {
@@ -131,6 +133,7 @@ describe("runtime path contract", () => {
         console.log(mod.resolveQueueDataPath("db/queue/custom.sqlite"));
       `,
       {
+        TRENCHCLAW_ACTIVE_INSTANCE_ID: "01",
         TRENCHCLAW_RUNTIME_STATE_ROOT: runtimeRoot,
       },
     );

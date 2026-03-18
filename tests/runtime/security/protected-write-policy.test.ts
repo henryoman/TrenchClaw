@@ -62,7 +62,7 @@ describe("protected-write-policy", () => {
   },
   "rules": [
     {
-      "path": ".runtime-state/db/sessions",
+      "path": ".runtime-state/instances",
       "model": "read"
     }
   ]
@@ -72,7 +72,7 @@ describe("protected-write-policy", () => {
     await expect(
       assertProtectedReadAllowed({
         actor: "agent",
-        targetPath: ".runtime-state/db/sessions/sessions.json",
+        targetPath: ".runtime-state/instances/01/db/sessions/sessions.json",
         operation: "read session index",
       }),
     ).resolves.toBeUndefined();
