@@ -12,6 +12,7 @@ const INSTANCES_MODULE_URL = pathToFileURL(
 const INSTANCE_STATE_MODULE_URL = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/runtime/instance-state.ts"),
 ).href;
+const BUN_BINARY = Bun.which("bun") ?? process.execPath;
 
 const createdRuntimeRoots: string[] = [];
 
@@ -58,7 +59,7 @@ const runScriptJson = async <T>(input: {
 }): Promise<T> => {
   const processHandle = Bun.spawn({
     cmd: [
-      process.execPath,
+      BUN_BINARY,
       "-e",
       input.script,
     ],
@@ -190,8 +191,8 @@ describe("instance discovery", () => {
     await writeFile(
       path.join(runtimeRoot, "runtime/ai.json"),
       `${JSON.stringify({
-        provider: "gateway",
-        model: "test-model",
+        provider: "openrouter",
+        model: "anthropic/claude-sonnet-4.6",
         defaultMode: "primary",
         temperature: null,
         maxOutputTokens: null,
