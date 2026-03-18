@@ -209,6 +209,12 @@ export const streamRuntimeEvents = (context: RuntimeGuiDomainContext, signal?: A
         );
       }
 
+      unsubscribers.push(
+        context.onActivity(() => {
+          pushEvent("activity", getActivity(context));
+        }),
+      );
+
       if (signal) {
         if (signal.aborted) {
           closeStream();

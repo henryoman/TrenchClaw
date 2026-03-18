@@ -242,6 +242,56 @@ describe("Runtime v1 API", () => {
     await reader.cancel();
   });
 
+  test("GET /api/gui/events pushes live activity updates after addActivity", async () => {
+    const runtime = buildRuntime();
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+
+    const abortController = new AbortController();
+    const response = await handler(
+      new Request("http://localhost/api/gui/events", {
+        method: "GET",
+        signal: abortController.signal,
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).not.toBeNull();
+
+    const reader = response.body!.getReader();
+    let payloadText = "";
+    for (let index = 0; index < 8; index += 1) {
+      const chunk = await reader.read();
+      if (chunk.done) {
+        break;
+      }
+      payloadText += new TextDecoder().decode(chunk.value);
+      if (payloadText.includes("event: activity")) {
+        break;
+      }
+    }
+
+    transport.addActivity("chat", "Streaming prompt received (1 message)");
+
+    let updatedPayloadText = "";
+    for (let index = 0; index < 8; index += 1) {
+      const chunk = await reader.read();
+      if (chunk.done) {
+        break;
+      }
+      updatedPayloadText += new TextDecoder().decode(chunk.value);
+      if (updatedPayloadText.includes("Streaming prompt received (1 message)")) {
+        break;
+      }
+    }
+
+    expect(updatedPayloadText).toContain("event: activity");
+    expect(updatedPayloadText).toContain("Streaming prompt received (1 message)");
+
+    abortController.abort();
+    await reader.cancel();
+  });
+
   test("GET /api/gui/sol-price returns the cached runtime price and collapses burst refreshes", async () => {
     const originalFetch = globalThis.fetch;
     let upstreamCallCount = 0;
@@ -661,7 +711,7 @@ describe("Runtime v1 API", () => {
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
       expect(initialPayload.settings.provider).toBe("openrouter");
-      expect(initialPayload.settings.model).toBe("openai/gpt-5.4");
+      expect(initialPayload.settings.model).toBe("openrouter/hunter-alpha");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
       expect(initialPayload.options.some((option) => option.id === "openrouter/hunter-alpha")).toBe(true);
       expect(initialPayload.options.find((option) => option.id === "openrouter/hunter-alpha")?.providers).toEqual(["openrouter"]);

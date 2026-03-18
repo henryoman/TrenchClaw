@@ -183,7 +183,7 @@ const applyDefaultEnv = async (): Promise<void> => {
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
   process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
     provider: "openrouter",
-    model: "openai/gpt-5.4",
+    model: "openrouter/hunter-alpha",
     defaultMode: "primary",
     temperature: null,
     maxOutputTokens: null,

@@ -45,9 +45,10 @@ export const replaceLastAssistantMessageWithText = (messages: UIMessage[], text:
     if (message?.role !== "assistant") {
       continue;
     }
+    const preservedParts = message.parts.filter((part) => part.type !== "text" && part.type !== "reasoning");
     nextMessages[index] = {
       ...message,
-      parts: [{ type: "text", text }] as UIMessage["parts"],
+      parts: [...preservedParts, { type: "text", text }] as UIMessage["parts"],
     };
     return nextMessages;
   }

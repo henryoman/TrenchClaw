@@ -16,6 +16,7 @@ const createMessageId = (): string => createChatMessageId("activity");
 
 export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
   private readonly activity: GuiActivityEntry[] = [];
+  private readonly activityListeners = new Set<() => void>();
   private readonly unsubscribers: Array<() => void> = [];
   private activeInstance: GuiInstanceProfileView | null = null;
   private activeChatId: string | null = null;
@@ -56,6 +57,16 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
     if (this.activity.length > MAX_ACTIVITY_ITEMS) {
       this.activity.splice(0, this.activity.length - MAX_ACTIVITY_ITEMS);
     }
+    for (const listener of this.activityListeners) {
+      listener();
+    }
+  }
+
+  onActivity(listener: () => void): () => void {
+    this.activityListeners.add(listener);
+    return () => {
+      this.activityListeners.delete(listener);
+    };
   }
 
   getActivityEntries(limit: number): GuiActivityEntry[] {

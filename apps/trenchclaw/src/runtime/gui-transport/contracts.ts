@@ -12,6 +12,7 @@ export interface RuntimeGuiDomainContext {
   getActiveChatId(): string | null;
   setActiveChatId(chatId: string | null): void;
   addActivity(source: GuiActivityEntry["source"], summary: string): void;
+  onActivity(listener: () => void): () => void;
   listInstanceConversations(limit?: number): GuiConversationView[];
   resolveDefaultChatId(): string;
   getActivityEntries(limit: number): GuiActivityEntry[];

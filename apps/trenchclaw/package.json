@@ -23,7 +23,7 @@
     "wallet:vanity": "bun run src/solana/actions/wallet-based/create-wallets/create-vanity-wallet.ts"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.10",
+    "@types/bun": "^1.3.11",
     "oxlint": "^1.56.0",
     "typescript": "^5.9.3"
   },

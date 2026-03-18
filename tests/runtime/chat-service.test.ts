@@ -2030,6 +2030,21 @@ describe("RuntimeChatService", () => {
       .listChatMessages("chat-tool-recovery-1", 10)
       .filter((message) => message.role === "assistant");
     expect(assistantMessages.at(-1)?.content).toContain("Top volume meme coin today is BONK.");
+    const uiParts = assistantMessages.at(-1)?.metadata?.uiParts as Array<Record<string, unknown>> | undefined;
+    expect(Array.isArray(uiParts)).toBe(true);
+    expect(
+      uiParts?.some((part) =>
+        part.type === "tool-echo"
+        && part.toolCallId === "tool-call-1"
+        && part.state === "output-available",
+      ),
+    ).toBe(true);
+    expect(
+      uiParts?.some((part) =>
+        part.type === "text"
+        && part.text === "Top volume meme coin today is BONK.",
+      ),
+    ).toBe(true);
   });
 
   test("resolves tool-only wallet-content success from streamed tool output without a second model pass", async () => {
