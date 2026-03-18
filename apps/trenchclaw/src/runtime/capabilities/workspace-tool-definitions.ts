@@ -26,9 +26,9 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_READ_FILE_TOOL_NAME,
-    description: "Read an exact source, config, markdown, JSON, or generated artifact file from the core app workspace.",
-    purpose: "Open a known file path directly when you need file contents instead of structured runtime data.",
-    routingHint: "you already know the file path and need the file contents, especially for source, docs, configs, or generated artifacts",
+    description: "Read an exact markdown, JSON, config, or generated artifact file from the runtime workspace only.",
+    purpose: "Open a known runtime workspace file path directly when you need file contents instead of structured runtime data.",
+    routingHint: "you already know the runtime workspace file path and need its file contents, especially for notes, configs, scratch files, or generated artifacts",
     sideEffectLevel: "read",
     tags: ["workspace", "filesystem", "read", "docs"],
     exampleInput: {
