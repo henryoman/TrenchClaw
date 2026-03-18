@@ -10,6 +10,7 @@ const USER_SETTINGS_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/
 const SCHEDULER_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/core/scheduler.ts";
 
 const createdDirectories = new Set<string>();
+const BUN_BINARY = Bun.which("bun") ?? process.execPath;
 
 const makeTempDirectory = async (): Promise<string> => {
   const directoryPath = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-runtime-contract-"));
@@ -21,7 +22,7 @@ const runModuleEval = async (
   script: string,
   env: Record<string, string | undefined>,
 ): Promise<{ exitCode: number | null; stdout: string; stderr: string }> => {
-  const proc = Bun.spawn([process.execPath, "--eval", script], {
+  const proc = Bun.spawn([BUN_BINARY, "--eval", script], {
     cwd: REPO_ROOT,
     env: {
       ...process.env,

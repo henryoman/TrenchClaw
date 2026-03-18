@@ -282,11 +282,18 @@ rpc:
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
-network:
-  rpcUrl: ftp://rpc.example
-  wsUrl: wss://ws.example
 `);
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({
+      rpc: {
+        primaryRpc: "primary",
+        providers: {
+          primary: {
+            endpointRef: "ftp://rpc.example",
+            wsEndpointRef: "wss://ws.example",
+          },
+        },
+      },
+    });
     delete process.env.TRENCHCLAW_VAULT_FILE;
 
     await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("must use one of http:, https:");
@@ -296,11 +303,18 @@ network:
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
-network:
-  rpcUrl: \${RPC_URL}
-  wsUrl: \${WS_URL}
 `);
-    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({
+      rpc: {
+        primaryRpc: "primary",
+        providers: {
+          primary: {
+            endpointRef: "${RPC_URL}",
+            wsEndpointRef: "${WS_URL}",
+          },
+        },
+      },
+    });
     await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("cannot be parsed as a URL");
   });
 
