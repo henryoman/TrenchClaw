@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdtemp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -12,7 +13,15 @@ const INSTANCES_MODULE_URL = pathToFileURL(
 const INSTANCE_STATE_MODULE_URL = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/runtime/instance-state.ts"),
 ).href;
-const BUN_BINARY = Bun.which("bun") ?? process.execPath;
+const resolveBunBinary = (): string => {
+  const preferredInstallPath = process.env.BUN_INSTALL
+    ? path.join(process.env.BUN_INSTALL, "bin", process.platform === "win32" ? "bun.exe" : "bun")
+    : null;
+  const candidates = [preferredInstallPath, process.execPath, Bun.which("bun"), "bun"];
+  return candidates.find((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0
+    && (candidate === "bun" || existsSync(candidate))) ?? "bun";
+};
+const BUN_BINARY = resolveBunBinary();
 
 const createdRuntimeRoots: string[] = [];
 

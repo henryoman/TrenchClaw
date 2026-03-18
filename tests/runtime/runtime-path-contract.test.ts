@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -10,7 +11,15 @@ const USER_SETTINGS_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/
 const SCHEDULER_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/core/scheduler.ts";
 
 const createdDirectories = new Set<string>();
-const BUN_BINARY = Bun.which("bun") ?? process.execPath;
+const resolveBunBinary = (): string => {
+  const preferredInstallPath = process.env.BUN_INSTALL
+    ? path.join(process.env.BUN_INSTALL, "bin", process.platform === "win32" ? "bun.exe" : "bun")
+    : null;
+  const candidates = [preferredInstallPath, process.execPath, Bun.which("bun"), "bun"];
+  return candidates.find((candidate): candidate is string => typeof candidate === "string" && candidate.length > 0
+    && (candidate === "bun" || existsSync(candidate))) ?? "bun";
+};
+const BUN_BINARY = resolveBunBinary();
 
 const makeTempDirectory = async (): Promise<string> => {
   const directoryPath = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-runtime-contract-"));
