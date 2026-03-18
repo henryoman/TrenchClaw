@@ -1,63 +1,75 @@
 import { z } from "zod";
 
-const nonEmpty = z.string().trim().min(1);
-const unixMs = z.number().int().nonnegative();
-const nonNegativeInt = z.number().int().nonnegative();
+import {
+  botIdSchema,
+  chatMessageIdSchema,
+  confidenceSchema,
+  conversationIdSchema,
+  factIdSchema,
+  factKeySchema,
+  idempotencyKeySchema,
+  instanceIdSchema,
+  jobIdSchema,
+  nonEmptyTrimmedStringSchema,
+  nonNegativeIntegerSchema,
+  sessionIdSchema,
+  unixMillisecondsSchema,
+} from "./schema-primitives";
 
 export const sqliteJobStatusSchema = z.enum(["pending", "running", "paused", "stopped", "failed"]);
 export const sqliteChatRoleSchema = z.enum(["system", "user", "assistant", "tool"]);
 
 export const sqliteSchemaMigrationRowSchema = z.object({
   version: z.number().int(),
-  applied_at: unixMs,
+  applied_at: unixMillisecondsSchema,
 });
 
 export const sqliteJobRowSchema = z.object({
-  id: nonEmpty,
-  serial_number: nonNegativeInt.nullable(),
-  bot_id: nonEmpty,
-  routine_name: nonEmpty,
+  id: jobIdSchema,
+  serial_number: nonNegativeIntegerSchema.nullable(),
+  bot_id: botIdSchema,
+  routine_name: nonEmptyTrimmedStringSchema,
   status: sqliteJobStatusSchema,
   config_json: z.string(),
-  next_run_at: nonNegativeInt.nullable(),
-  last_run_at: nonNegativeInt.nullable(),
-  cycles_completed: nonNegativeInt,
-  total_cycles: nonNegativeInt.nullable(),
+  next_run_at: nonNegativeIntegerSchema.nullable(),
+  last_run_at: nonNegativeIntegerSchema.nullable(),
+  cycles_completed: nonNegativeIntegerSchema,
+  total_cycles: nonNegativeIntegerSchema.nullable(),
   last_result_json: z.string().nullable(),
-  attempt_count: nonNegativeInt.nullable(),
+  attempt_count: nonNegativeIntegerSchema.nullable(),
   lease_owner: z.string().nullable(),
-  lease_expires_at: nonNegativeInt.nullable(),
+  lease_expires_at: nonNegativeIntegerSchema.nullable(),
   last_error: z.string().nullable(),
-  created_at: unixMs,
-  updated_at: unixMs,
+  created_at: unixMillisecondsSchema,
+  updated_at: unixMillisecondsSchema,
 });
 
 export const sqliteActionReceiptRowSchema = z.object({
-  idempotency_key: nonEmpty,
+  idempotency_key: idempotencyKeySchema,
   payload_json: z.string(),
-  timestamp: unixMs,
+  timestamp: unixMillisecondsSchema,
 });
 
 export const sqliteConversationRowSchema = z.object({
-  id: nonEmpty,
-  session_id: z.string().nullable(),
+  id: conversationIdSchema,
+  session_id: sessionIdSchema.nullable(),
   title: z.string().nullable(),
   summary: z.string().nullable(),
-  created_at: unixMs,
-  updated_at: unixMs,
+  created_at: unixMillisecondsSchema,
+  updated_at: unixMillisecondsSchema,
 });
 
 export const sqliteChatMessageRowSchema = z.object({
-  id: nonEmpty,
-  conversation_id: nonEmpty,
+  id: chatMessageIdSchema,
+  conversation_id: conversationIdSchema,
   role: sqliteChatRoleSchema,
   content: z.string(),
   metadata_json: z.string().nullable(),
-  created_at: unixMs,
+  created_at: unixMillisecondsSchema,
 });
 
 export const sqliteInstanceProfileRowSchema = z.object({
-  instance_id: nonEmpty,
+  instance_id: instanceIdSchema,
   display_name: z.string().nullable(),
   summary: z.string().nullable(),
   trading_style: z.string().nullable(),
@@ -65,40 +77,40 @@ export const sqliteInstanceProfileRowSchema = z.object({
   preferred_assets_json: z.string().nullable(),
   disliked_assets_json: z.string().nullable(),
   metadata_json: z.string().nullable(),
-  created_at: unixMs,
-  updated_at: unixMs,
+  created_at: unixMillisecondsSchema,
+  updated_at: unixMillisecondsSchema,
 });
 
 export const sqliteInstanceFactRowSchema = z.object({
-  id: nonEmpty,
-  instance_id: nonEmpty,
-  fact_key: nonEmpty,
+  id: factIdSchema,
+  instance_id: instanceIdSchema,
+  fact_key: factKeySchema,
   fact_value_json: z.string(),
-  confidence: z.number(),
-  source: nonEmpty,
+  confidence: confidenceSchema,
+  source: nonEmptyTrimmedStringSchema,
   source_message_id: z.string().nullable(),
-  created_at: unixMs,
-  updated_at: unixMs,
-  expires_at: nonNegativeInt.nullable(),
+  created_at: unixMillisecondsSchema,
+  updated_at: unixMillisecondsSchema,
+  expires_at: nonNegativeIntegerSchema.nullable(),
 });
 
 export const sqliteMarketInstrumentRowSchema = z.object({
-  id: nonNegativeInt,
-  chain: nonEmpty,
-  address: nonEmpty,
+  id: nonNegativeIntegerSchema,
+  chain: nonEmptyTrimmedStringSchema,
+  address: nonEmptyTrimmedStringSchema,
   symbol: z.string().nullable(),
   name: z.string().nullable(),
-  decimals: nonNegativeInt.nullable(),
-  created_at: unixMs,
-  updated_at: unixMs,
+  decimals: nonNegativeIntegerSchema.nullable(),
+  created_at: unixMillisecondsSchema,
+  updated_at: unixMillisecondsSchema,
 });
 
 export const sqliteOhlcvBarRowSchema = z.object({
-  instrument_id: nonNegativeInt,
-  source: nonEmpty,
-  interval: nonEmpty,
-  open_time: unixMs,
-  close_time: unixMs,
+  instrument_id: nonNegativeIntegerSchema,
+  source: nonEmptyTrimmedStringSchema,
+  interval: nonEmptyTrimmedStringSchema,
+  open_time: unixMillisecondsSchema,
+  close_time: unixMillisecondsSchema,
   open: z.number(),
   high: z.number(),
   low: z.number(),
@@ -106,30 +118,30 @@ export const sqliteOhlcvBarRowSchema = z.object({
   volume: z.number().nullable(),
   trades: z.number().int().nullable(),
   vwap: z.number().nullable(),
-  fetched_at: unixMs,
+  fetched_at: unixMillisecondsSchema,
   raw_json: z.string().nullable(),
 });
 
 export const sqliteMarketSnapshotRowSchema = z.object({
-  id: nonEmpty,
-  instrument_id: nonNegativeInt,
-  source: nonEmpty,
-  snapshot_type: nonEmpty,
+  id: nonEmptyTrimmedStringSchema,
+  instrument_id: nonNegativeIntegerSchema,
+  source: nonEmptyTrimmedStringSchema,
+  snapshot_type: nonEmptyTrimmedStringSchema,
   data_json: z.string(),
-  timestamp: unixMs,
+  timestamp: unixMillisecondsSchema,
 });
 
 export const sqliteHttpCacheRowSchema = z.object({
-  cache_key: nonEmpty,
-  source: nonEmpty,
-  endpoint: nonEmpty,
-  request_hash: nonEmpty,
+  cache_key: nonEmptyTrimmedStringSchema,
+  source: nonEmptyTrimmedStringSchema,
+  endpoint: nonEmptyTrimmedStringSchema,
+  request_hash: nonEmptyTrimmedStringSchema,
   response_json: z.string(),
   status_code: z.number().int(),
   etag: z.string().nullable(),
   last_modified: z.string().nullable(),
-  fetched_at: unixMs,
-  expires_at: nonNegativeInt.nullable(),
+  fetched_at: unixMillisecondsSchema,
+  expires_at: nonNegativeIntegerSchema.nullable(),
 });
 
 export const sqliteTables = {
