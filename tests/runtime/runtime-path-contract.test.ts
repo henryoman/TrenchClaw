@@ -33,7 +33,8 @@ const runModuleEval = async (
   script: string,
   env: Record<string, string | undefined>,
 ): Promise<{ exitCode: number | null; stdout: string; stderr: string }> => {
-  const proc = Bun.spawn(SHELL_COMMAND, {
+  const proc = Bun.spawn({
+    cmd: SHELL_COMMAND,
     cwd: REPO_ROOT,
     env: {
       ...process.env,
