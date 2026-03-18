@@ -36,6 +36,10 @@ export default defineConfig({
         target: runtimeUrl,
         changeOrigin: true,
       },
+      "/v1": {
+        target: runtimeUrl,
+        changeOrigin: true,
+      },
     },
   },
 });

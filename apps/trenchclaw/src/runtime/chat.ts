@@ -239,6 +239,13 @@ const uiChunkHasVisibleText = (chunk: UIMessageChunk): boolean => {
   return false;
 };
 
+const getTextChunkId = (chunk: UIMessageChunk): string | null => {
+  if (chunk.type === "text-start" || chunk.type === "text-delta" || chunk.type === "text-end") {
+    return typeof chunk.id === "string" && chunk.id.length > 0 ? chunk.id : null;
+  }
+  return null;
+};
+
 const isSuppressiblePreToolChunk = (chunk: UIMessageChunk): boolean =>
   chunk.type === "text-start"
   || chunk.type === "text-delta"
@@ -261,6 +268,12 @@ const uiChunkHasToolActivity = (chunk: UIMessageChunk): boolean =>
   || chunk.type === "tool-output-error"
   || chunk.type === "tool-output-denied"
   || chunk.type === "tool-approval-request";
+
+const isRecoverableToolOnlyStreamError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("Received text-end for missing text part")
+    || message.includes("Received text-delta for missing text part");
+};
 
 const pipeUIMessageStream = async (
   stream: ReadableStream<UIMessageChunk>,
@@ -1314,6 +1327,7 @@ export const createRuntimeChatService = (
                 let streamSawToolActivity = false;
                 let firstPassSawTextAfterToolActivity = false;
                 const queuedPreToolChunks: UIMessageChunk[] = [];
+                const suppressedPreToolTextPartIds = new Set<string>();
                 const observedToolCalls = new Map<string, {
                   toolName: string;
                   input?: unknown;
@@ -1322,6 +1336,10 @@ export const createRuntimeChatService = (
                 const flushQueuedPreToolChunks = (mode: "all" | "structural-only"): void => {
                   for (const queuedChunk of queuedPreToolChunks) {
                     if (mode === "structural-only" && isSuppressiblePreToolChunk(queuedChunk)) {
+                      const textChunkId = getTextChunkId(queuedChunk);
+                      if (textChunkId) {
+                        suppressedPreToolTextPartIds.add(textChunkId);
+                      }
                       continue;
                     }
                     writer.write(queuedChunk);
@@ -1338,7 +1356,7 @@ export const createRuntimeChatService = (
                     firstResponseMessage = responseMessage;
                   },
                 });
-                await Promise.all([
+                const [consumeResult, pipeResult] = await Promise.allSettled([
                   firstResult.consumeStream(),
                   pipeUIMessageStream(firstPassStream, (chunk) => {
                     if (isReasoningChunk(chunk)) {
@@ -1352,6 +1370,14 @@ export const createRuntimeChatService = (
                         queuedPreToolChunks.push(chunk);
                         return;
                       }
+                    }
+                    const textChunkId = getTextChunkId(chunk);
+                    if (
+                      textChunkId
+                      && chunk.type !== "text-start"
+                      && suppressedPreToolTextPartIds.has(textChunkId)
+                    ) {
+                      return;
                     }
                     writer.write(chunk);
                   }, (chunk) => {
@@ -1386,11 +1412,27 @@ export const createRuntimeChatService = (
                       }
                     }),
                 ]);
+                if (consumeResult.status === "rejected") {
+                  throw consumeResult.reason;
+                }
+                if (pipeResult.status === "rejected") {
+                  if (!(streamSawToolActivity && isRecoverableToolOnlyStreamError(pipeResult.reason))) {
+                    throw pipeResult.reason;
+                  }
+                }
                 if (queuedPreToolChunks.length > 0) {
                   flushQueuedPreToolChunks("all");
                 }
 
-                const completedAssistantMessage = firstResponseMessage ?? findLatestAssistantMessage(firstPassMessages);
+                const recoveredFirstPassMessages =
+                  firstPassMessages.length > validatedMessages.length
+                    ? firstPassMessages
+                    : [
+                        ...validatedMessages,
+                        ...(observedToolMessage ? [observedToolMessage] : []),
+                        ...(executedToolMessage ? [executedToolMessage] : []),
+                      ];
+                const completedAssistantMessage = firstResponseMessage ?? findLatestAssistantMessage(recoveredFirstPassMessages);
                 const completedAssistantHasToolActivity = assistantMessageHasToolActivity(completedAssistantMessage);
                 const completedAssistantHasTextAfterToolActivity = assistantMessageHasTextAfterToolActivity(completedAssistantMessage);
                 const firstPassHadToolActivity = streamSawToolActivity || completedAssistantHasToolActivity;
@@ -1479,7 +1521,7 @@ export const createRuntimeChatService = (
 
                 const followUpMessages = await convertMessages(
                   [
-                    ...firstPassMessages,
+                    ...recoveredFirstPassMessages,
                     {
                       id: createChatMessageId(),
                       role: "user",
