@@ -111,11 +111,7 @@ const validateRelease = async (args: CliArgs): Promise<ReleaseValidationResult> 
   if (args.prerelease !== null && args.prerelease !== prerelease) {
     throw new Error(`Prerelease flag mismatch: release tag ${tag} requires prerelease=${prerelease}`);
   }
-
-  const parsedTag = parseVersion(tag);
-  if (parsedTag.major !== 0 || parsedTag.minor !== 0 || parsedTag.patch !== 0 || parsedTag.beta === null) {
-    throw new Error(`Release tag ${tag} must stay on the 0.0.0-beta.N track for now.`);
-  }
+  parseVersion(tag);
 
   if (await tagExists(tag)) {
     throw new Error(`Git tag already exists: ${tag}`);

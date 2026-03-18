@@ -2,7 +2,7 @@
 
 TrenchClaw has one public shipping path: GitHub Releases publishing standalone `trenchclaw` binaries.
 
-The current public release page uses GitHub-generated notes from the release workflow. Files under `releases/` are optional internal drafts unless and until the workflow is updated to publish them.
+The public release page now uses the drafted markdown file under `releases/<version>.md` for the release body.
 
 ## What Gets Published
 
@@ -33,33 +33,44 @@ Trigger:
 
 - `workflow_dispatch`
 
+Workflow input:
+
+- `release_mode=manual` publishes the current committed version and uses `releases/<version>.md`
+- `release_mode=patch` auto-bumps the next patch version and uses GitHub-generated notes
+- `release_mode=minor` auto-bumps the next minor version and uses GitHub-generated notes
+- prerelease tracks like `0.0.0-beta.N` should use `manual` mode until you intentionally move onto a stable release train
+
 Release/version gate:
 
-- workflow computes the next version from `package.json`
+- `manual` mode uses the current version already present in `package.json`
+- `patch` and `minor` mode compute the next version from `package.json`
 - the repo stays on `0.0.0-beta.N` for now
-- each release increments only the beta number
 - the workflow fails if the Git tag already exists
+- `manual` mode fails if `releases/<package-version>.md` is missing
 
 Job behavior:
 
-1. `prepare_release` computes the next version with `bun run version:next`.
-2. `prepare_release` validates the tag with `bun run release:validate`.
-3. `prepare_release` runs `bun run lint`, `bun run typecheck`, and `bun run test`.
-4. `prepare_release` writes the new `package.json` version, commits it, tags it, and pushes both commit and tag.
-5. `build_release` runs once per target platform against the new tag.
-6. Each matrix job builds readonly assets with `bun run app:build`.
-7. Each matrix job packages one tarball with `bun run release:package`.
-8. Each matrix job smoke-tests the packaged tarball with `bun run release:smoke -- --artifact-path ...`.
-9. `publish` downloads all packaged artifacts and creates the GitHub Release.
-10. The GitHub Release uses `generate_release_notes: true`, so the published release page currently uses GitHub-generated notes from the changes since the previous release.
+1. `prepare_release` resolves the release plan from `release_mode`.
+2. `manual` mode validates the current package version and requires `releases/<package-version>.md`.
+3. `patch` and `minor` mode compute the next version with `bun run version:next -- --strategy ...`.
+4. `prepare_release` runs `bun run lint`, `bun run typecheck`, and `bun run test`.
+5. `patch` and `minor` mode write the new `package.json` version, commit it, and push the commit.
+6. `prepare_release` creates and pushes the git tag for the chosen release version.
+7. `build_release` runs once per target platform against that tag.
+8. Each matrix job builds readonly assets with `bun run app:build`.
+9. Each matrix job packages one tarball with `bun run release:package`.
+10. Each matrix job smoke-tests the packaged tarball with `bun run release:smoke -- --artifact-path ...`.
+11. `publish` downloads all packaged artifacts and creates the GitHub Release.
+12. `manual` mode publishes `releases/<package-version>.md`; `patch` and `minor` mode use GitHub-generated notes.
 
 Release note categories are configured by [`.github/release.yml`](/Volumes/T9/cursor/TrenchClaw/.github/release.yml).
 
 ## Release Notes
 
-- GitHub release auto-notes are the public release message today
-- `scripts/generate-release-notes.ts` is useful for commit-window inspection and drafting
-- if you keep `releases/<version>.md`, treat it as an internal draft unless the workflow is changed to publish it
+- `manual` mode publishes `releases/<version>.md` as the public release body
+- `patch` and `minor` mode publish GitHub-generated release notes from the tagged commit window
+- `scripts/generate-release-notes.ts` is still useful for drafting or reviewing the auto-notes window
+- the workflow fails closed if a required drafted notes file is missing
 
 ## Public Beta Message
 
@@ -84,5 +95,12 @@ Until a specific tagged asset URL is ready to promote, use the GitHub Releases p
 For local verification before dispatching the workflow:
 
 ```bash
-bun run version:next
+# manual/current version release
+bun run release:build -- --version v0.0.0-beta.1
+
+# preview the next stable patch release
+bun run version:next -- --strategy patch --current 0.1.0
+
+# preview the next stable minor release
+bun run version:next -- --strategy minor --current 0.1.0
 ```
