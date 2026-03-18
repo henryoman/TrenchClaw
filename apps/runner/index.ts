@@ -881,14 +881,6 @@ const copyFileIfMissing = (source: string, target: string): void => {
   writeFileSync(target, readFileSync(source));
 };
 
-const writeFileIfMissing = (target: string, contents: string): void => {
-  if (existsSync(target)) {
-    return;
-  }
-  mkdirSync(path.dirname(target), { recursive: true });
-  writeFileSync(target, contents, "utf8");
-};
-
 const ensureRuntimeStateLayout = (): void => {
   const directories = [
     path.join(LAYOUT.runtimeStateRoot, "db"),
