@@ -4,18 +4,19 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-const REPO_ROOT = "/Volumes/T9/cursor/TrenchClaw";
+const WORKSPACE_ROOT = path.resolve(import.meta.dir, "../..");
+const CORE_APP_ROOT = path.join(WORKSPACE_ROOT, "apps/trenchclaw");
 const RUNTIME_PATHS_MODULE = pathToFileURL(
-  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/runtime/runtime-paths.ts",
+  path.join(CORE_APP_ROOT, "src/runtime/runtime-paths.ts"),
 ).href;
 const AI_SETTINGS_MODULE = pathToFileURL(
-  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/llm/ai-settings-file.ts",
+  path.join(CORE_APP_ROOT, "src/ai/llm/ai-settings-file.ts"),
 ).href;
 const USER_SETTINGS_MODULE = pathToFileURL(
-  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/llm/user-settings-loader.ts",
+  path.join(CORE_APP_ROOT, "src/ai/llm/user-settings-loader.ts"),
 ).href;
 const SCHEDULER_MODULE = pathToFileURL(
-  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/core/scheduler.ts",
+  path.join(CORE_APP_ROOT, "src/ai/core/scheduler.ts"),
 ).href;
 
 const createdDirectories = new Set<string>();
@@ -35,7 +36,7 @@ const runModuleEval = async (
 ): Promise<{ exitCode: number | null; stdout: string; stderr: string }> => {
   const proc = Bun.spawn({
     cmd: SHELL_COMMAND,
-    cwd: REPO_ROOT,
+    cwd: WORKSPACE_ROOT,
     env: {
       ...process.env,
       ...env,
