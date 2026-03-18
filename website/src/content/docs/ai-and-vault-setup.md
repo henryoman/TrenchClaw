@@ -15,28 +15,13 @@ featured: true
 
 ### Blockchain
 
-- default Solana RPC URL
-- Helius HTTP URL
-- Helius WS URL
-- Helius API key
-- QuickNode HTTP URL
-- QuickNode WS URL
-- QuickNode API key
-- Solana Vibe Station API key
-- Chainstack API key
-- Temporal API key
+- default Solana RPC credential
 - Jupiter Ultra API key
-- Ultra signer private key
-- Ultra signer private key encoding
 
 ### AI
 
 - OpenRouter API key
 - Vercel AI Gateway API key
-- OpenAI API key
-- Anthropic API key
-- Google AI API key
-- OpenAI-compatible API key
 
 ## RPC Setup
 
@@ -51,7 +36,7 @@ Built-in public presets:
 
 ## Helius Setup
 
-If you want Helius-backed wallet reads and swap history:
+If you want richer Helius-backed wallet reads and early swap-history support:
 
 1. Open the secrets or vault panel.
 2. Set `Private RPC credential`.
@@ -100,6 +85,7 @@ The AI check depends on:
 - the model string matches the provider's expected identifier
 - the GUI AI test succeeds
 - a simple chat request succeeds after setup
+- `trenchclaw doctor` reports the relevant keys and workflows as ready
 
 ## Troubleshooting
 

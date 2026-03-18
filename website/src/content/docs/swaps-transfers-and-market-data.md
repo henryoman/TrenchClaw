@@ -1,18 +1,30 @@
 ---
 title: Swaps, Transfers, and Market Data
-description: Use the shipped execution and research features without confusing them with roadmap-only swap or trigger surfaces.
+description: Use the real beta swap and research surfaces without confusing them with weaker or roadmap-only flows.
 order: 6
 ---
 
 ## Shipped Surfaces
 
-- direct transfers
-- privacy transfer paths
-- devnet airdrop
-- Jupiter Ultra quote and execution flows
 - managed-wallet Ultra swaps
-- recent swap history
+- Jupiter Ultra quote and execution flows
 - Dexscreener market-data queries
+- direct Jupiter Trigger order flows
+
+## Limited Beta Surfaces
+
+- `transfer`
+- `closeTokenAccount`
+- `getSwapHistory`
+
+These surfaces are wired, but they are not as strongly proven as the main wallet-read, Dexscreener, and Jupiter Ultra flows.
+
+## Coming Soon
+
+- `privacyTransfer`
+- `privacyAirdrop`
+- `privacySwap`
+- broad autonomous strategy and trigger automation
 
 ## Live Swap Path
 
@@ -24,15 +36,15 @@ Exposed Ultra actions:
 - `ultraExecuteSwap`
 - `ultraSwap`
 - `managedUltraSwap`
-- `privacySwap`
 
 Standard or RPC swap files in the repo are not the current public swap path.
 
 ## Transfers
 
 - `transfer`
-- `privacyTransfer`
-- `privacyAirdrop`
+- `closeTokenAccount`
+
+Treat direct transfer flows as a narrower beta surface than Ultra swaps. Use them carefully and verify balances before and after execution.
 
 ## Devnet Airdrop
 
@@ -43,6 +55,8 @@ Standard or RPC swap files in the repo are not the current public swap path.
 `getSwapHistory` is available for recent swap activity on a wallet.
 
 It uses Helius enhanced transaction history, so a Helius API key must be configured in the active instance vault.
+
+This is useful for research and verification, but it is not one of the strongest headline beta surfaces yet.
 
 ## Dexscreener
 
@@ -66,9 +80,12 @@ This is research tooling, not execution tooling.
 - runtime notional limits
 - confirmation settings for dangerous actions
 - the currently active Ultra-related settings
+- Helius vault credentials for `getSwapHistory`
+- Jupiter Ultra API key for Ultra swaps and trigger orders
 
 ## Usage Notes
 
 - use quote paths before execution when possible
 - verify balances and recent history after high-impact actions
 - use market-data and swap-history features for research and verification
+- use `trenchclaw doctor` when a workflow depends on missing keys or CLI tooling

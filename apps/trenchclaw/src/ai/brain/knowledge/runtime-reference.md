@@ -67,4 +67,5 @@ If you need runtime truth:
 
 1. trust the injected capability appendix
 2. trust injected resolved settings
-3. inspect exact source files only when needed
+3. use workspace tools only inside `.runtime-state/runtime/workspace/`
+4. do not treat core repo source files as part of the runtime workspace tool surface

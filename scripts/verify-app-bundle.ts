@@ -1,9 +1,9 @@
 #!/usr/bin/env bun
 
-import { readdir, stat } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { hasBlockedBundlePath } from "./lib/release-bundle-filter";
+import { hasBlockedBundleContent, hasBlockedBundlePath } from "./lib/release-bundle-filter";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const DEFAULT_BUNDLE_ROOT = path.join(REPO_ROOT, "dist", "app");
@@ -81,6 +81,17 @@ const run = async (): Promise<void> => {
     const violation = hasBlockedBundlePath(relPath);
     if (violation) {
       violations.push(violation);
+    }
+
+    const absolutePath = path.join(bundleRoot, relPath);
+    try {
+      const content = await readFile(absolutePath, "utf8");
+      const contentViolation = hasBlockedBundleContent(relPath, content);
+      if (contentViolation) {
+        violations.push(contentViolation);
+      }
+    } catch {
+      // Ignore non-text files.
     }
   }
 
