@@ -8,13 +8,14 @@ import type {
   GuiUpsertSecretRequest,
 } from "@trenchclaw/types";
 import { safeValidateUIMessages, type UIMessage } from "ai";
+import { createChatMessageId } from "../../ai/runtime/types/ids";
 import { tradingPreferencesSchema } from "../load/trading-settings";
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 const toUserMessage = (text: string): UIMessage => ({
-  id: `msg-${crypto.randomUUID()}`,
+  id: createChatMessageId(),
   role: "user",
   parts: [{ type: "text", text }],
 });
@@ -32,7 +33,7 @@ export const parseUiChatRequest = async (
       return null;
     }
 
-    const id = typeof value.id === "string" && value.id.trim().length > 0 ? value.id.trim() : `msg-${crypto.randomUUID()}`;
+    const id = typeof value.id === "string" && value.id.trim().length > 0 ? value.id.trim() : createChatMessageId();
     if (Array.isArray(value.parts)) {
       return {
         id,

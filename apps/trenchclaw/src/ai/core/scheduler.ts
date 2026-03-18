@@ -10,6 +10,8 @@ import type {
   RuntimeEventBus,
   StateStore,
 } from "../runtime/types";
+import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveInstanceQueueSqlitePath } from "../../runtime/instance-paths";
 import { RUNTIME_DB_ROOT, RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
 import type { ActionDispatcher } from "./dispatcher";
 
@@ -289,7 +291,10 @@ function configureEmbeddedBunqueueDataPath(dataPath: string | undefined): void {
 export function resolveQueueDataPath(dataPath: string | undefined): string {
   const normalized = dataPath?.trim();
   if (!normalized) {
-    return path.join(RUNTIME_DB_ROOT, "queue", "bunqueue.sqlite");
+    const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+    return activeInstanceId
+      ? resolveInstanceQueueSqlitePath(activeInstanceId)
+      : path.join(RUNTIME_DB_ROOT, "queue", "bunqueue.sqlite");
   }
   return path.isAbsolute(normalized) ? normalized : path.resolve(RUNTIME_STATE_ROOT, normalized);
 }

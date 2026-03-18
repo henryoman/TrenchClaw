@@ -152,6 +152,7 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
+  "TRENCHCLAW_AI_SETTINGS_FILE",
   "TRENCHCLAW_BOOT_REFRESH_CONTEXT",
   "TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE",
   "TRENCHCLAW_VAULT_FILE",
@@ -180,9 +181,23 @@ const writeJson = async (content: unknown): Promise<string> => {
 const applyDefaultEnv = async (): Promise<void> => {
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
+  process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
+    provider: "openrouter",
+    model: "anthropic/claude-sonnet-4.6",
+    defaultMode: "primary",
+    temperature: null,
+    maxOutputTokens: null,
+  });
+  process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+    llm: {
+      openrouter: {
+        "api-key": "test-openrouter-key",
+      },
+    },
+  });
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
   delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
   delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
-  delete process.env.TRENCHCLAW_VAULT_FILE;
   delete process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE;
 };
 

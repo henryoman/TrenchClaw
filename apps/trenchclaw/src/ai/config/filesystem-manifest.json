@@ -15,10 +15,6 @@
       "model": "read"
     },
     {
-      "path": ".runtime-state/db/sessions",
-      "model": "read"
-    },
-    {
       "path": ".runtime-state/db/system",
       "model": "read"
     },
@@ -28,10 +24,6 @@
     },
     {
       "path": ".runtime-state/db/summaries",
-      "model": "read"
-    },
-    {
-      "path": ".runtime-state/db/memory",
       "model": "read"
     },
     {

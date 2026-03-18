@@ -53,6 +53,15 @@ describe("workspace bash tools", () => {
     expect(pwd.exitCode).toBe(0);
     expect(pwd.stdout.trim()).toBe(workspaceRoot);
 
+    const envDetails = (await bashTool.execute({
+      command: "printf '%s\\n%s\\n%s\\n' \"$HOME\" \"$TMPDIR\" \"$PATH\"",
+    })) as { exitCode: number; stdout: string };
+    const [homePath, tmpPath, pathValue] = envDetails.stdout.trim().split("\n");
+    expect(envDetails.exitCode).toBe(0);
+    expect(homePath).toBe(runtimeStatePath("instances/01/shell-home"));
+    expect(tmpPath).toBe(runtimeStatePath("instances/01/tmp"));
+    expect(pathValue.split(path.delimiter)[0]).toBe(runtimeStatePath("instances/01/tool-bin"));
+
     await expect(bashTool.execute({ command: "sudo ls" })).rejects.toThrow();
   });
 

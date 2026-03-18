@@ -3,6 +3,7 @@ import type {
   GuiConversationView,
   GuiInstanceProfileView,
 } from "@trenchclaw/types";
+import { createChatMessageId, createInstanceConversationId } from "../../ai/runtime/types/ids";
 import type { RuntimeBootstrap } from "../bootstrap";
 import { MAX_ACTIVITY_ITEMS } from "./constants";
 import type { RuntimeGuiDomainContext } from "./contracts";
@@ -11,7 +12,7 @@ import { streamChat } from "./domains/chat";
 import type { UIMessage } from "ai";
 import { readPersistedActiveInstanceSync } from "../instance-state";
 
-const createMessageId = (): string => crypto.randomUUID();
+const createMessageId = (): string => createChatMessageId("activity");
 
 export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
   private readonly activity: GuiActivityEntry[] = [];
@@ -97,10 +98,10 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
     }
 
     if (this.activeInstance) {
-      this.activeChatId = `instance-${this.activeInstance.localInstanceId}-${crypto.randomUUID()}`;
+      this.activeChatId = createInstanceConversationId(this.activeInstance.localInstanceId);
       return this.activeChatId;
     }
-    this.activeChatId = `chat-${crypto.randomUUID()}`;
+    this.activeChatId = createInstanceConversationId("global");
     return this.activeChatId;
   }
 

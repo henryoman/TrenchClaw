@@ -51,7 +51,7 @@ export const assertWritePathInRoots = (input: {
 export const assertRuntimeSystemWritePath = (targetPath: string, operation: string): void => {
   assertWritePathInRoots({
     targetPath,
-    roots: RUNTIME_SYSTEM_WRITE_ROOTS,
+    roots: [...RUNTIME_SYSTEM_WRITE_ROOTS, ...INSTANCE_SYSTEM_WRITE_ROOTS],
     scope: "runtime-system-write",
     operation,
   });

@@ -1,13 +1,41 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveInstanceCompatibilitySettingsPath } from "../../runtime/instance-paths";
 import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
+import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import { isRecord, parseStructuredFile, resolvePreferredPath } from "./shared";
 import { loadVaultData } from "./vault-file";
 import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
 
 const RUNTIME_SETTINGS_FILE_ENV = "TRENCHCLAW_RUNTIME_SETTINGS_FILE";
 
-const DEFAULT_COMPATIBILITY_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "runtime", "settings.json");
+const LEGACY_COMPATIBILITY_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "runtime", "settings.json");
+
+const resolveCompatibilitySettingsTargetPaths = (): {
+  preferredFilePath: string;
+  legacyPaths: string[];
+  hasInstanceScopedDefault: boolean;
+} => {
+  const configuredPath = process.env[RUNTIME_SETTINGS_FILE_ENV]?.trim();
+  if (configuredPath) {
+    return {
+      preferredFilePath: configuredPath,
+      legacyPaths: [],
+      hasInstanceScopedDefault: false,
+    };
+  }
+
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  const preferredFilePath = activeInstanceId
+    ? resolveInstanceCompatibilitySettingsPath(activeInstanceId)
+    : LEGACY_COMPATIBILITY_SETTINGS_FILE;
+  return {
+    preferredFilePath,
+    legacyPaths: activeInstanceId ? [LEGACY_COMPATIBILITY_SETTINGS_FILE] : [],
+    hasInstanceScopedDefault: activeInstanceId != null,
+  };
+};
 
 const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
   if (!isRecord(baseValue) || !isRecord(overlayValue)) {
@@ -140,11 +168,18 @@ export interface ResolvedUserSettingsPayload {
   activeInstanceId: string | null;
 }
 
-const ensureStructuredSettingsFileExists = async (filePath: string): Promise<void> => {
+const ensureStructuredSettingsFileExists = async (
+  filePath: string,
+  options?: { assertInstanceScopedWrite?: boolean },
+): Promise<void> => {
   const targetPath = path.resolve(filePath);
   const file = Bun.file(targetPath);
   if (await file.exists()) {
     return;
+  }
+
+  if (options?.assertInstanceScopedWrite) {
+    assertInstanceSystemWritePath(targetPath, "initialize compatibility settings file");
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
@@ -242,12 +277,15 @@ const loadOptionalStructuredSettingsLayer = async (filePath: string | null): Pro
 };
 
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
+  const targetPaths = resolveCompatibilitySettingsTargetPaths();
   const compatibilitySettingsPath = await resolvePreferredPath({
-    preferredPath: DEFAULT_COMPATIBILITY_SETTINGS_FILE,
-    envValues: [process.env[RUNTIME_SETTINGS_FILE_ENV]],
+    preferredPath: targetPaths.preferredFilePath,
+    legacyPaths: targetPaths.legacyPaths,
   });
 
-  await ensureStructuredSettingsFileExists(compatibilitySettingsPath);
+  await ensureStructuredSettingsFileExists(compatibilitySettingsPath, {
+    assertInstanceScopedWrite: targetPaths.hasInstanceScopedDefault,
+  });
   const vaultPayload = await loadVaultData();
   const warnings: string[] = [];
   const fileCache = new Map<string, unknown>();

@@ -186,9 +186,9 @@ describe("instance discovery", () => {
       })}\n`,
       "utf8",
     );
-    await mkdir(path.join(runtimeRoot, "runtime"), { recursive: true });
+    await mkdir(path.join(runtimeRoot, "instances/01/settings"), { recursive: true });
     await writeFile(
-      path.join(runtimeRoot, "runtime/ai.json"),
+      path.join(runtimeRoot, "instances/01/settings/ai.json"),
       `${JSON.stringify({
         provider: "openrouter",
         model: "anthropic/claude-sonnet-4.6",

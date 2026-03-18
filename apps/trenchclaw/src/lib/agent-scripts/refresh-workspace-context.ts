@@ -118,7 +118,9 @@ const renderImportantWorkspacePaths = (): string =>
     .map((relativePath) => `- \`${CONTEXT_ROOT_LABEL}/${relativePath}/\``)
     .concat([
       "- `.runtime-state/generated/knowledge-index.md`",
-      "- `.runtime-state/db/runtime.sqlite`",
+      "- `.runtime-state/instances/<id>/settings/ai.json`",
+      "- `.runtime-state/instances/<id>/settings/settings.json`",
+      "- `.runtime-state/instances/<id>/db/runtime.sqlite`",
     ])
     .join("\n");
 
