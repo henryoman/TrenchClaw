@@ -1,8 +1,12 @@
 import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 
+import { ensureAiSettingsFileExists } from "../ai/llm/ai-settings-file";
+import { ensureCompatibilitySettingsFileExists } from "../ai/llm/user-settings-loader";
 import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
 import {
+  resolveInstanceAiSettingsPath,
+  resolveInstanceCompatibilitySettingsPath,
   resolveInstanceDbRoot,
   resolveInstanceMemoryRoot,
   resolveInstanceSessionsRoot,
@@ -96,6 +100,20 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
   const tradingSettingsPath = resolveInstanceTradingSettingsPath(instanceId);
   if (!(await Bun.file(tradingSettingsPath).exists())) {
     createdFiles.push(await writeInstanceTradingSettings(instanceId, {}));
+  }
+
+  const aiSettingsPath = resolveInstanceAiSettingsPath(instanceId);
+  const ensuredAiSettings = await ensureAiSettingsFileExists({ filePath: aiSettingsPath });
+  if (ensuredAiSettings.initializedFromTemplate) {
+    createdFiles.push(aiSettingsPath);
+  }
+
+  const compatibilitySettingsPath = resolveInstanceCompatibilitySettingsPath(instanceId);
+  const compatibilitySettingsFile = Bun.file(compatibilitySettingsPath);
+  const compatibilitySettingsExisted = await compatibilitySettingsFile.exists();
+  await ensureCompatibilitySettingsFileExists(compatibilitySettingsPath);
+  if (!compatibilitySettingsExisted) {
+    createdFiles.push(compatibilitySettingsPath);
   }
 
   return {

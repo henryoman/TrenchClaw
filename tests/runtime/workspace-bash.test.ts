@@ -60,7 +60,9 @@ describe("workspace bash tools", () => {
     expect(envDetails.exitCode).toBe(0);
     expect(homePath).toBe(runtimeStatePath("instances/01/shell-home"));
     expect(tmpPath).toBe(runtimeStatePath("instances/01/tmp"));
-    expect(pathValue.split(path.delimiter)[0]).toBe(runtimeStatePath("instances/01/tool-bin"));
+    const resolvedPathValue = pathValue ?? "";
+    expect(resolvedPathValue.length).toBeGreaterThan(0);
+    expect(resolvedPathValue.split(path.delimiter)[0]).toBe(runtimeStatePath("instances/01/tool-bin"));
 
     await expect(bashTool.execute({ command: "sudo ls" })).rejects.toThrow();
   });

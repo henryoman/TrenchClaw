@@ -89,7 +89,12 @@ describe("ensureInstanceLayout", () => {
       "sessions",
       "memory",
     ]);
-    expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual(["trading.json", "vault.json"]);
+    expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual([
+      "ai.json",
+      "settings.json",
+      "trading.json",
+      "vault.json",
+    ]);
     expect(result.second.createdDirectories).toEqual([]);
     expect(result.second.createdFiles).toEqual([]);
   });
