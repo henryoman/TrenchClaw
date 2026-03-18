@@ -8,11 +8,24 @@ import type {
   InstanceProfileState,
   JobState,
 } from "../../ai/runtime/types/state";
+import {
+  botIdSchema,
+  confidenceSchema,
+  conversationIdSchema,
+  factIdSchema,
+  factKeySchema,
+  idempotencyKeySchema,
+  instanceIdSchema,
+  jobIdSchema,
+  nonEmptyTrimmedStringSchema,
+  nonNegativeIntegerSchema,
+  positiveIntegerSchema,
+  sessionIdSchema,
+  unixMillisecondsSchema,
+} from "./schema-primitives";
 import { sqliteJobStatusSchema } from "./sqlite-schema";
 
-const nonEmpty = z.string().trim().min(1);
-const unixMs = z.number().int().nonnegative();
-const optionalUnixMs = unixMs.optional();
+const optionalUnixMs = unixMillisecondsSchema.optional();
 const jsonRecord = z.record(z.string(), z.unknown());
 
 export const runtimeJobStatusSchema = sqliteJobStatusSchema;
@@ -25,172 +38,172 @@ export const actionResultSchema: z.ZodType<ActionResult> = z.object({
   retryable: z.boolean(),
   txSignature: z.string().optional(),
   durationMs: z.number().nonnegative(),
-  timestamp: unixMs,
-  idempotencyKey: nonEmpty,
+  timestamp: unixMillisecondsSchema,
+  idempotencyKey: idempotencyKeySchema,
   decisionTrace: z.array(z.string()).optional(),
 });
 
 export const jobStateSchema: z.ZodType<JobState> = z.object({
-  id: nonEmpty,
-  serialNumber: z.number().int().positive().optional(),
-  botId: nonEmpty,
-  routineName: nonEmpty,
+  id: jobIdSchema,
+  serialNumber: positiveIntegerSchema.optional(),
+  botId: botIdSchema,
+  routineName: nonEmptyTrimmedStringSchema,
   status: runtimeJobStatusSchema,
   config: jsonRecord,
   nextRunAt: optionalUnixMs,
   lastRunAt: optionalUnixMs,
-  cyclesCompleted: z.number().int().nonnegative(),
-  totalCycles: z.number().int().nonnegative().optional(),
+  cyclesCompleted: nonNegativeIntegerSchema,
+  totalCycles: nonNegativeIntegerSchema.optional(),
   lastResult: actionResultSchema.optional(),
-  attemptCount: z.number().int().nonnegative().optional(),
-  leaseOwner: nonEmpty.optional(),
+  attemptCount: nonNegativeIntegerSchema.optional(),
+  leaseOwner: nonEmptyTrimmedStringSchema.optional(),
   leaseExpiresAt: optionalUnixMs,
   lastError: z.string().optional(),
-  createdAt: unixMs,
-  updatedAt: unixMs,
+  createdAt: unixMillisecondsSchema,
+  updatedAt: unixMillisecondsSchema,
 });
 
 export const chatMessageRoleSchema = z.enum(["system", "user", "assistant", "tool"]);
 
 export const conversationStateSchema: z.ZodType<ConversationState> = z.object({
-  id: nonEmpty,
-  sessionId: nonEmpty.optional(),
+  id: conversationIdSchema,
+  sessionId: sessionIdSchema.optional(),
   title: z.string().optional(),
   summary: z.string().optional(),
-  createdAt: unixMs,
-  updatedAt: unixMs,
+  createdAt: unixMillisecondsSchema,
+  updatedAt: unixMillisecondsSchema,
 });
 
 export const chatMessageStateSchema: z.ZodType<ChatMessageState> = z.object({
-  id: nonEmpty,
-  conversationId: nonEmpty,
+  id: nonEmptyTrimmedStringSchema,
+  conversationId: conversationIdSchema,
   role: chatMessageRoleSchema,
   content: z.string(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  createdAt: unixMs,
+  createdAt: unixMillisecondsSchema,
 });
 
 export const instanceProfileStateSchema: z.ZodType<InstanceProfileState> = z.object({
-  instanceId: nonEmpty,
+  instanceId: instanceIdSchema,
   displayName: z.string().optional(),
   summary: z.string().optional(),
   tradingStyle: z.string().optional(),
   riskTolerance: z.string().optional(),
-  preferredAssets: z.array(nonEmpty).optional(),
-  dislikedAssets: z.array(nonEmpty).optional(),
+  preferredAssets: z.array(nonEmptyTrimmedStringSchema).optional(),
+  dislikedAssets: z.array(nonEmptyTrimmedStringSchema).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  createdAt: unixMs,
-  updatedAt: unixMs,
+  createdAt: unixMillisecondsSchema,
+  updatedAt: unixMillisecondsSchema,
 });
 
 export const instanceFactStateSchema: z.ZodType<InstanceFactState> = z.object({
-  id: nonEmpty,
-  instanceId: nonEmpty,
-  factKey: nonEmpty,
+  id: factIdSchema,
+  instanceId: instanceIdSchema,
+  factKey: factKeySchema,
   factValue: z.unknown(),
-  confidence: z.number().min(0).max(1),
-  source: nonEmpty,
-  sourceMessageId: nonEmpty.optional(),
-  createdAt: unixMs,
-  updatedAt: unixMs,
-  expiresAt: unixMs.optional(),
+  confidence: confidenceSchema,
+  source: nonEmptyTrimmedStringSchema,
+  sourceMessageId: nonEmptyTrimmedStringSchema.optional(),
+  createdAt: unixMillisecondsSchema,
+  updatedAt: unixMillisecondsSchema,
+  expiresAt: unixMillisecondsSchema.optional(),
 });
 
 export const sqliteStateStoreConfigSchema = z.object({
-  path: nonEmpty,
+  path: nonEmptyTrimmedStringSchema,
   walMode: z.boolean(),
-  busyTimeoutMs: z.number().int().nonnegative(),
+  busyTimeoutMs: nonNegativeIntegerSchema,
 });
 
 export const marketInstrumentInputSchema = z.object({
-  chain: nonEmpty,
-  address: nonEmpty,
-  symbol: nonEmpty.optional(),
-  name: nonEmpty.optional(),
-  decimals: z.number().int().nonnegative().optional(),
+  chain: nonEmptyTrimmedStringSchema,
+  address: nonEmptyTrimmedStringSchema,
+  symbol: nonEmptyTrimmedStringSchema.optional(),
+  name: nonEmptyTrimmedStringSchema.optional(),
+  decimals: nonNegativeIntegerSchema.optional(),
 });
 
 export const ohlcvBarInputSchema = z.object({
-  openTime: unixMs,
-  closeTime: unixMs,
+  openTime: unixMillisecondsSchema,
+  closeTime: unixMillisecondsSchema,
   open: z.number(),
   high: z.number(),
   low: z.number(),
   close: z.number(),
   volume: z.number().optional(),
-  trades: z.number().int().nonnegative().optional(),
+  trades: nonNegativeIntegerSchema.optional(),
   vwap: z.number().optional(),
   raw: z.unknown().optional(),
-  fetchedAt: unixMs.optional(),
+  fetchedAt: unixMillisecondsSchema.optional(),
 });
 
 export const saveOhlcvBarsInputSchema = z.object({
   instrument: marketInstrumentInputSchema,
-  source: nonEmpty,
-  interval: nonEmpty,
+  source: nonEmptyTrimmedStringSchema,
+  interval: nonEmptyTrimmedStringSchema,
   bars: z.array(ohlcvBarInputSchema).min(1),
 });
 
 export const ohlcvBarRecordSchema = z.object({
-  chain: nonEmpty,
-  address: nonEmpty,
-  source: nonEmpty,
-  interval: nonEmpty,
-  openTime: unixMs,
-  closeTime: unixMs,
+  chain: nonEmptyTrimmedStringSchema,
+  address: nonEmptyTrimmedStringSchema,
+  source: nonEmptyTrimmedStringSchema,
+  interval: nonEmptyTrimmedStringSchema,
+  openTime: unixMillisecondsSchema,
+  closeTime: unixMillisecondsSchema,
   open: z.number(),
   high: z.number(),
   low: z.number(),
   close: z.number(),
   volume: z.number().optional(),
-  trades: z.number().int().nonnegative().optional(),
+  trades: nonNegativeIntegerSchema.optional(),
   vwap: z.number().optional(),
-  fetchedAt: unixMs,
+  fetchedAt: unixMillisecondsSchema,
   raw: z.unknown().optional(),
 });
 
 export const marketSnapshotInputSchema = z.object({
   instrument: marketInstrumentInputSchema,
-  source: nonEmpty,
-  snapshotType: nonEmpty,
+  source: nonEmptyTrimmedStringSchema,
+  snapshotType: nonEmptyTrimmedStringSchema,
   data: z.unknown(),
-  timestamp: unixMs.optional(),
+  timestamp: unixMillisecondsSchema.optional(),
 });
 
 export const marketSnapshotRecordSchema = z.object({
-  id: nonEmpty,
-  chain: nonEmpty,
-  address: nonEmpty,
-  source: nonEmpty,
-  snapshotType: nonEmpty,
+  id: nonEmptyTrimmedStringSchema,
+  chain: nonEmptyTrimmedStringSchema,
+  address: nonEmptyTrimmedStringSchema,
+  source: nonEmptyTrimmedStringSchema,
+  snapshotType: nonEmptyTrimmedStringSchema,
   data: z.unknown(),
-  timestamp: unixMs,
+  timestamp: unixMillisecondsSchema,
 });
 
 export const httpCacheEntryInputSchema = z.object({
-  cacheKey: nonEmpty,
-  source: nonEmpty,
-  endpoint: nonEmpty,
-  requestHash: nonEmpty,
+  cacheKey: nonEmptyTrimmedStringSchema,
+  source: nonEmptyTrimmedStringSchema,
+  endpoint: nonEmptyTrimmedStringSchema,
+  requestHash: nonEmptyTrimmedStringSchema,
   response: z.unknown(),
   statusCode: z.number().int(),
-  etag: nonEmpty.optional(),
-  lastModified: nonEmpty.optional(),
-  fetchedAt: unixMs.optional(),
-  expiresAt: unixMs.optional(),
+  etag: nonEmptyTrimmedStringSchema.optional(),
+  lastModified: nonEmptyTrimmedStringSchema.optional(),
+  fetchedAt: unixMillisecondsSchema.optional(),
+  expiresAt: unixMillisecondsSchema.optional(),
 });
 
 export const httpCacheEntryRecordSchema = z.object({
-  cacheKey: nonEmpty,
-  source: nonEmpty,
-  endpoint: nonEmpty,
-  requestHash: nonEmpty,
+  cacheKey: nonEmptyTrimmedStringSchema,
+  source: nonEmptyTrimmedStringSchema,
+  endpoint: nonEmptyTrimmedStringSchema,
+  requestHash: nonEmptyTrimmedStringSchema,
   response: z.unknown(),
   statusCode: z.number().int(),
-  etag: nonEmpty.optional(),
-  lastModified: nonEmpty.optional(),
-  fetchedAt: unixMs,
-  expiresAt: unixMs.optional(),
+  etag: nonEmptyTrimmedStringSchema.optional(),
+  lastModified: nonEmptyTrimmedStringSchema.optional(),
+  fetchedAt: unixMillisecondsSchema,
+  expiresAt: unixMillisecondsSchema.optional(),
 });
 
 export const runtimeRetentionInputSchema = z.object({

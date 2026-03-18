@@ -1,5 +1,6 @@
 export * from "./sqlite-state-store";
 export * from "./schema";
+export * from "./schema-primitives";
 export * from "./sqlite-schema";
 export * from "./sqlite-orm";
 export * from "./session-log-store";
