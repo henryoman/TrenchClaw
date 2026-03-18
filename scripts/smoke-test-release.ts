@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { mkdtemp, mkdir, rm, stat } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -97,6 +97,32 @@ const main = async (): Promise<void> => {
 
   if ((exitCode ?? 1) !== 0) {
     throw new Error(`Smoke test failed with exit code ${exitCode ?? 1}`);
+  }
+
+  const requiredGeneratedFiles = [
+    path.join(runtimeStateRoot, "runtime", "ai.json"),
+    path.join(runtimeStateRoot, "runtime", "settings.json"),
+    path.join(runtimeStateRoot, "runtime", "vault.template.json"),
+    path.join(runtimeStateRoot, "protected", "keypairs", ".keep"),
+  ];
+  for (const filePath of requiredGeneratedFiles) {
+    const fileStat = await stat(filePath).catch(() => null);
+    if (!fileStat?.isFile()) {
+      throw new Error(`Smoke test missing generated first-run file: ${filePath}`);
+    }
+  }
+
+  const aiSettings = JSON.parse(await readFile(path.join(runtimeStateRoot, "runtime", "ai.json"), "utf8")) as {
+    provider?: unknown;
+    model?: unknown;
+  };
+  if (typeof aiSettings.provider !== "string" || typeof aiSettings.model !== "string") {
+    throw new Error("Smoke test generated ai.json without the expected default AI settings shape");
+  }
+
+  const runtimeSettingsRaw = await readFile(path.join(runtimeStateRoot, "runtime", "settings.json"), "utf8");
+  if (runtimeSettingsRaw.trim() !== "{}") {
+    throw new Error("Smoke test expected runtime/settings.json to be generated as an empty object");
   }
 
   await rm(extractRoot, { recursive: true, force: true });

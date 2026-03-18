@@ -905,6 +905,8 @@ const ensureRuntimeStateLayout = (): void => {
     copyFileIfMissing(placeholder.source, placeholder.target);
   }
 
+  const aiTemplatePath = path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
+  copyFileIfMissing(aiTemplatePath, path.join(LAYOUT.runtimeStateRoot, "runtime/ai.json"));
   writeFileIfMissing(path.join(LAYOUT.runtimeStateRoot, "runtime/settings.json"), "{}\n");
 };
 
