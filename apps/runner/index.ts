@@ -173,25 +173,30 @@ const resolveLayout = (): ResolvedLayout => {
 };
 
 const LAYOUT = resolveLayout();
+const BOOTSTRAP_SCAFFOLD_INSTANCE_ID = "00";
 
 let runtimeImportsPromise: Promise<{
   bootstrapRuntime: typeof bootstrapRuntimeType;
+  ensureInstanceLayout: (instanceId: string) => Promise<unknown>;
   resolveRuntimeSettingsProfile: () => RuntimeSettingsProfile;
   startRuntimeServer: typeof startRuntimeServerType;
 }> | null = null;
 
 const loadRuntimeImports = async (): Promise<{
   bootstrapRuntime: typeof bootstrapRuntimeType;
+  ensureInstanceLayout: (instanceId: string) => Promise<unknown>;
   resolveRuntimeSettingsProfile: () => RuntimeSettingsProfile;
   startRuntimeServer: typeof startRuntimeServerType;
 }> => {
   if (!runtimeImportsPromise) {
     runtimeImportsPromise = Promise.all([
       import("../trenchclaw/src/runtime/bootstrap"),
+      import("../trenchclaw/src/runtime/instance-layout"),
       import("../trenchclaw/src/runtime/load"),
       import("../trenchclaw/src/runtime/start-runtime-server"),
-    ]).then(([bootstrapModule, loadModule, serverModule]) => ({
+    ]).then(([bootstrapModule, instanceLayoutModule, loadModule, serverModule]) => ({
       bootstrapRuntime: bootstrapModule.bootstrapRuntime,
+      ensureInstanceLayout: instanceLayoutModule.ensureInstanceLayout,
       resolveRuntimeSettingsProfile: loadModule.resolveRuntimeSettingsProfile,
       startRuntimeServer: serverModule.startRuntimeServer,
     }));
@@ -319,13 +324,15 @@ const resolveDoctorStateRootStatus = (runtimeStateRoot: string): {
 };
 
 const isTwoDigitInstanceId = (value: string): boolean => /^\d{2}$/u.test(value.trim());
+const isVisibleInstanceId = (value: string): boolean =>
+  isTwoDigitInstanceId(value) && value.trim() !== BOOTSTRAP_SCAFFOLD_INSTANCE_ID;
 
 const resolveDoctorActiveInstance = (runtimeStateRoot: string, env: NodeJS.ProcessEnv): {
   id: string | null;
   source: "env" | "active-instance" | "single-instance" | "none";
 } => {
   const fromEnv = env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim();
-  if (fromEnv && isTwoDigitInstanceId(fromEnv)) {
+  if (fromEnv && isVisibleInstanceId(fromEnv)) {
     return { id: fromEnv, source: "env" };
   }
 
@@ -333,7 +340,7 @@ const resolveDoctorActiveInstance = (runtimeStateRoot: string, env: NodeJS.Proce
   const activeInstancePath = path.join(instanceRoot, "active-instance.json");
   const persisted = readJsonObjectSync(activeInstancePath);
   const persistedId = typeof persisted?.localInstanceId === "string" ? persisted.localInstanceId.trim() : "";
-  if (persistedId && isTwoDigitInstanceId(persistedId)) {
+  if (persistedId && isVisibleInstanceId(persistedId)) {
     return { id: persistedId, source: "active-instance" };
   }
 
@@ -343,7 +350,7 @@ const resolveDoctorActiveInstance = (runtimeStateRoot: string, env: NodeJS.Proce
 
   try {
     const instanceIds = readdirSync(instanceRoot, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory() && isTwoDigitInstanceId(entry.name))
+      .filter((entry) => entry.isDirectory() && isVisibleInstanceId(entry.name))
       .map((entry) => entry.name)
       .toSorted((left, right) => left.localeCompare(right));
     if (instanceIds.length === 1) {
@@ -673,6 +680,16 @@ const canBindPort = async (host: string, port: number): Promise<boolean> => {
   }
 };
 
+const resolveRuntimeBootstrapInstanceId = (): string =>
+  resolveDoctorActiveInstance(LAYOUT.runtimeStateRoot, process.env).id ?? BOOTSTRAP_SCAFFOLD_INSTANCE_ID;
+
+const ensureRuntimeBootstrapInstance = async (): Promise<string> => {
+  const instanceId = resolveRuntimeBootstrapInstanceId();
+  const { ensureInstanceLayout } = await loadRuntimeImports();
+  await ensureInstanceLayout(instanceId);
+  return instanceId;
+};
+
 const findAvailablePort = async (host: string, preferredPort: number, label: string): Promise<number> => {
   const firstPort = ensureValidPort(preferredPort, label);
   const maxPort = Math.min(65535, firstPort + 200);
@@ -944,6 +961,8 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
   process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
     process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/vault.template.json");
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID =
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim() || resolveRuntimeBootstrapInstanceId();
 };
 
 const logOptionalToolDiagnostics = (): void => {
@@ -992,6 +1011,7 @@ const main = async (): Promise<void> => {
   const guiUrl = `http://${RUNTIME_HOST}:${guiPort}`;
 
   await configureRuntimeEnvironment(runtimePort, guiUrl);
+  await ensureRuntimeBootstrapInstance();
 
   console.log(`${RUNNER_LOG_PREFIX} mode: ${LAYOUT.kind}`);
   console.log(`${RUNNER_LOG_PREFIX} runtime state: ${LAYOUT.runtimeStateRoot}`);

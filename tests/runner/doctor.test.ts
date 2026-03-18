@@ -101,4 +101,20 @@ describe("collectDoctorReport", () => {
     expect(report.featureReadiness.find((feature) => feature.id === "cli-shell-workflows")?.status).toBe("ok");
     expect(formatDoctorReport(report)).toContain("TrenchClaw doctor");
   });
+
+  test("ignores the reserved bootstrap scaffold instance when resolving active instance health", async () => {
+    const layout = await createLayout();
+    await Bun.$`mkdir -p ${path.join(layout.runtimeStateRoot, "instances", "00", "settings")}`.quiet();
+    await Bun.$`mkdir -p ${path.join(layout.runtimeStateRoot, "instances", "00", "workspace")}`.quiet();
+    await Bun.write(path.join(layout.runtimeStateRoot, "instances", "00", "settings", "settings.json"), "{}\n");
+
+    const report = collectDoctorReport({
+      layout,
+      version: "test-version",
+      which: () => null,
+      env: {},
+    });
+
+    expect(report.checks.find((check) => check.id === "active-instance")?.status).not.toBe("ok");
+  });
 });

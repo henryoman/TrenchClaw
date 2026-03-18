@@ -3,10 +3,9 @@ import path from "node:path";
 import { z } from "zod";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceAiSettingsPath } from "../../runtime/instance-paths";
-import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import type { AiModelProvider } from "./model-catalog";
-import { parseStructuredFile, resolvePathFromModule, resolvePreferredPath } from "./shared";
+import { parseStructuredFile, resolvePathFromModule } from "./shared";
 
 export const DEFAULT_LLM_MODEL = "anthropic/claude-sonnet-4.6";
 export const DEFAULT_LLM_PROVIDER: AiModelProvider = "openrouter";
@@ -30,52 +29,34 @@ export const normalizeAiSettingsInput = (input: AiSettingsInput): AiSettings => 
 
 export const DEFAULT_AI_SETTINGS: AiSettings = normalizeAiSettingsInput({});
 
-const LEGACY_AI_SETTINGS_FILE = path.join(RUNTIME_STATE_ROOT, "runtime", "ai.json");
-
-const resolveAiSettingsTargetPaths = (): {
-  preferredFilePath: string;
-  legacyPaths: string[];
-  hasInstanceScopedDefault: boolean;
-} => {
+const resolveAiSettingsFilePath = (): string => {
   const configuredPath = process.env[AI_SETTINGS_FILE_ENV]?.trim();
   if (configuredPath) {
-    return {
-      preferredFilePath: configuredPath,
-      legacyPaths: [],
-      hasInstanceScopedDefault: false,
-    };
+    return configuredPath;
   }
 
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
-  const preferredFilePath = activeInstanceId
-    ? resolveInstanceAiSettingsPath(activeInstanceId)
-    : LEGACY_AI_SETTINGS_FILE;
-  return {
-    preferredFilePath,
-    legacyPaths: activeInstanceId ? [LEGACY_AI_SETTINGS_FILE] : [],
-    hasInstanceScopedDefault: activeInstanceId != null,
-  };
+  if (!activeInstanceId) {
+    throw new Error("No active instance selected. AI settings are instance-scoped.");
+  }
+
+  return resolveInstanceAiSettingsPath(activeInstanceId);
 };
 
-export const resolveAiSettingsPaths = async (): Promise<{
+export const resolveAiSettingsPaths = async (input?: {
+  filePath?: string;
+  templatePath?: string;
+}): Promise<{
   filePath: string;
-  preferredFilePath: string;
   templatePath: string;
-}> => {
-  const targetPaths = resolveAiSettingsTargetPaths();
-  return {
-    filePath: await resolvePreferredPath({
-      preferredPath: targetPaths.preferredFilePath,
-      legacyPaths: targetPaths.legacyPaths,
-    }),
-    preferredFilePath: targetPaths.preferredFilePath,
-    templatePath: resolvePathFromModule(
-      import.meta.url,
-      DEFAULT_AI_SETTINGS_TEMPLATE_FILE,
-      process.env[AI_SETTINGS_TEMPLATE_FILE_ENV],
-    ),
-  };
-};
+}> => ({
+  filePath: path.resolve(input?.filePath ?? resolveAiSettingsFilePath()),
+  templatePath: path.resolve(input?.templatePath ?? resolvePathFromModule(
+    import.meta.url,
+    DEFAULT_AI_SETTINGS_TEMPLATE_FILE,
+    process.env[AI_SETTINGS_TEMPLATE_FILE_ENV],
+  )),
+});
 
 const parseAiSettingsValue = (value: unknown): AiSettings => {
   const direct = aiSettingsSchema.safeParse(value);
@@ -86,8 +67,18 @@ const parseAiSettingsValue = (value: unknown): AiSettings => {
   return normalizeAiSettingsInput({});
 };
 
-export const ensureAiSettingsFileExists = async (): Promise<{ initializedFromTemplate: boolean; filePath: string; templatePath: string }> => {
-  const { filePath, preferredFilePath, templatePath } = await resolveAiSettingsPaths();
+const assertAiSettingsWritePath = (targetPath: string): void => {
+  if (process.env[AI_SETTINGS_FILE_ENV]?.trim()) {
+    return;
+  }
+  assertInstanceSystemWritePath(targetPath, "initialize AI settings file");
+};
+
+export const ensureAiSettingsFileExists = async (input?: {
+  filePath?: string;
+  templatePath?: string;
+}): Promise<{ initializedFromTemplate: boolean; filePath: string; templatePath: string }> => {
+  const { filePath, templatePath } = await resolveAiSettingsPaths(input);
   const targetPath = path.resolve(filePath);
 
   try {
@@ -102,13 +93,8 @@ export const ensureAiSettingsFileExists = async (): Promise<{ initializedFromTem
     }
   }
 
-  const createPath = path.resolve(preferredFilePath);
-  const targetPaths = resolveAiSettingsTargetPaths();
-  if (targetPaths.hasInstanceScopedDefault) {
-    assertInstanceSystemWritePath(createPath, "initialize AI settings file");
-  }
-
-  await mkdir(path.dirname(createPath), { recursive: true, mode: 0o700 });
+  assertAiSettingsWritePath(targetPath);
+  await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
 
   let content = `${JSON.stringify(DEFAULT_AI_SETTINGS, null, 2)}\n`;
   try {
@@ -120,14 +106,14 @@ export const ensureAiSettingsFileExists = async (): Promise<{ initializedFromTem
   }
 
   const parsed = parseAiSettingsValue(JSON.parse(content));
-  await writeFile(createPath, `${JSON.stringify(parsed, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+  await writeFile(targetPath, `${JSON.stringify(parsed, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   try {
-    await chmod(createPath, 0o600);
+    await chmod(targetPath, 0o600);
   } catch {
     // Best-effort only.
   }
 
-  return { initializedFromTemplate: true, filePath: createPath, templatePath: path.resolve(templatePath) };
+  return { initializedFromTemplate: true, filePath: targetPath, templatePath: path.resolve(templatePath) };
 };
 
 export const loadAiSettings = async (): Promise<{ filePath: string; templatePath: string; initializedFromTemplate: boolean; settings: AiSettings }> => {
@@ -140,10 +126,9 @@ export const loadAiSettings = async (): Promise<{ filePath: string; templatePath
 };
 
 export const writeAiSettings = async (input: AiSettingsInput): Promise<{ filePath: string; settings: AiSettings }> => {
-  const { preferredFilePath } = await resolveAiSettingsPaths();
-  const targetPath = path.resolve(preferredFilePath);
-  const targetPaths = resolveAiSettingsTargetPaths();
-  if (targetPaths.hasInstanceScopedDefault) {
+  const { filePath } = await resolveAiSettingsPaths();
+  const targetPath = path.resolve(filePath);
+  if (!process.env[AI_SETTINGS_FILE_ENV]?.trim()) {
     assertInstanceSystemWritePath(targetPath, "write AI settings file");
   }
   await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });

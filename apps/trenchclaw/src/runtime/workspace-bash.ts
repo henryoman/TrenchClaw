@@ -137,7 +137,10 @@ const resolveInstanceIdFromWorkspaceRoot = (workspaceRootDirectory: string): str
   }
 
   const [instanceId, firstChildDirectory] = relativeToInstancesRoot.split(path.sep);
-  return /^\d{2}$/u.test(instanceId ?? "") && firstChildDirectory === "workspace" ? instanceId : null;
+  if (!instanceId || firstChildDirectory !== "workspace" || !/^\d{2}$/u.test(instanceId)) {
+    return null;
+  }
+  return instanceId;
 };
 
 const resolveWorkspaceSandboxDirectories = (options: WorkspaceBashOptions): {

@@ -102,6 +102,10 @@ const main = async (): Promise<void> => {
   const requiredGeneratedFiles = [
     path.join(runtimeStateRoot, "runtime", "vault.template.json"),
     path.join(runtimeStateRoot, "protected", "keypairs", ".keep"),
+    path.join(runtimeStateRoot, "instances", "00", "vault.json"),
+    path.join(runtimeStateRoot, "instances", "00", "settings", "ai.json"),
+    path.join(runtimeStateRoot, "instances", "00", "settings", "settings.json"),
+    path.join(runtimeStateRoot, "instances", "00", "settings", "trading.json"),
   ];
   for (const filePath of requiredGeneratedFiles) {
     const fileStat = await stat(filePath).catch(() => null);

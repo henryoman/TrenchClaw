@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="./package.json"><img src="https://img.shields.io/badge/Version-0.0.0--beta.1-2563EB?style=for-the-badge" alt="Version 0.0.0-beta.1" /></a>
+  <a href="./package.json"><img src="https://img.shields.io/badge/Version-0.0.0--beta.2-2563EB?style=for-the-badge" alt="Version 0.0.0-beta.2" /></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun" /></a>
   <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/badge/AI%20SDK-111827?style=for-the-badge" alt="AI SDK" /></a>
   <a href="https://x.com/mert"><img src="https://img.shields.io/badge/Teachings%20of%20Mert-000000?style=for-the-badge&logo=x&logoColor=white" alt="Teachings of Mert" /></a>
@@ -90,10 +90,10 @@ Public releases ship as standalone compiled `trenchclaw` binaries. Bun is requir
 
 ```bash
 # local verification
-bun run release:build -- --version v0.0.0-beta.1 --run-checks
+bun run release:build -- --version v0.0.0-beta.2 --run-checks
 
 # review the release body that will be published
-# releases/0.0.0-beta.1.md
+# releases/0.0.0-beta.2.md
 ```
 
 Release publishing is manual only through the GitHub Actions `Release` workflow (`workflow_dispatch`).
@@ -101,7 +101,7 @@ Release publishing is manual only through the GitHub Actions `Release` workflow 
 - `release_mode=manual` publishes the current committed version and uses `releases/<version>.md`
 - `release_mode=patch` auto-bumps the next patch version and uses GitHub-generated notes
 - `release_mode=minor` auto-bumps the next minor version and uses GitHub-generated notes
-- prerelease versions like `0.0.0-beta.1` should stay on `manual` mode until you intentionally cut a stable line
+- prerelease versions like `0.0.0-beta.2` should stay on `manual` mode until you intentionally cut a stable line
 
 ```mermaid
 flowchart LR

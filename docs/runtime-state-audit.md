@@ -126,12 +126,16 @@ Vaults are per-instance only.
 
 - Active/default vault path in workspace mode: `.runtime-state/instances/<id>/vault.json`
 - No shared runtime vault fallback
+- No shared runtime `ai.json` fallback
+- No shared runtime `settings.json` fallback
 - No shared secret overlay
 - `TRENCHCLAW_VAULT_FILE` remains an explicit override for tests and controlled manual runs only
 
 Practical consequence:
 
 - LLM keys are per-instance
+- AI provider/model settings are per-instance
+- compatibility settings are per-instance
 - RPC provider keys are per-instance
 - Jupiter keys are per-instance
 - signer keys are per-instance
