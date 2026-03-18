@@ -2,15 +2,26 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const REPO_ROOT = "/Volumes/T9/cursor/TrenchClaw";
-const RUNTIME_PATHS_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/runtime/runtime-paths.ts";
-const AI_SETTINGS_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/llm/ai-settings-file.ts";
-const USER_SETTINGS_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/llm/user-settings-loader.ts";
-const SCHEDULER_MODULE = "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/core/scheduler.ts";
+const RUNTIME_PATHS_MODULE = pathToFileURL(
+  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/runtime/runtime-paths.ts",
+).href;
+const AI_SETTINGS_MODULE = pathToFileURL(
+  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/llm/ai-settings-file.ts",
+).href;
+const USER_SETTINGS_MODULE = pathToFileURL(
+  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/llm/user-settings-loader.ts",
+).href;
+const SCHEDULER_MODULE = pathToFileURL(
+  "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/core/scheduler.ts",
+).href;
 
 const createdDirectories = new Set<string>();
-const BUN_COMMAND = process.platform === "win32" ? ["bun.exe"] : ["/usr/bin/env", "bun"];
+const SHELL_COMMAND = process.platform === "win32"
+  ? ["cmd.exe", "/d", "/s", "/c", "bun --eval \"%TRENCHCLAW_TEST_SCRIPT%\""]
+  : ["/bin/bash", "-lc", "bun --eval \"$TRENCHCLAW_TEST_SCRIPT\""];
 
 const makeTempDirectory = async (): Promise<string> => {
   const directoryPath = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-runtime-contract-"));
@@ -22,11 +33,12 @@ const runModuleEval = async (
   script: string,
   env: Record<string, string | undefined>,
 ): Promise<{ exitCode: number | null; stdout: string; stderr: string }> => {
-  const proc = Bun.spawn([...BUN_COMMAND, "--eval", script], {
+  const proc = Bun.spawn(SHELL_COMMAND, {
     cwd: REPO_ROOT,
     env: {
       ...process.env,
       ...env,
+      TRENCHCLAW_TEST_SCRIPT: script,
     },
     stdout: "pipe",
     stderr: "pipe",
