@@ -23,6 +23,28 @@ const toUserMessage = (text: string): UIMessage => ({
 export const parseUiChatRequest = async (
   request: Request,
 ): Promise<{ messages: UIMessage[]; chatId?: string; conversationTitle?: string; metadata?: Record<string, unknown> } | null> => {
+  const toSafeTextParts = (value: unknown): UIMessage["parts"] => {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const parts: UIMessage["parts"] = [];
+    for (const part of value) {
+      if (!isRecord(part) || part.type !== "text" || typeof part.text !== "string") {
+        continue;
+      }
+      const text = part.text.trim();
+      if (!text) {
+        continue;
+      }
+      parts.push({
+        type: "text",
+        text,
+      });
+    }
+    return parts;
+  };
+
   const toUiMessage = (value: unknown): UIMessage | null => {
     if (!isRecord(value)) {
       return null;
@@ -34,11 +56,12 @@ export const parseUiChatRequest = async (
     }
 
     const id = typeof value.id === "string" && value.id.trim().length > 0 ? value.id.trim() : createChatMessageId();
-    if (Array.isArray(value.parts)) {
+    const safeParts = toSafeTextParts(value.parts);
+    if (safeParts.length > 0) {
       return {
         id,
         role,
-        parts: value.parts as UIMessage["parts"],
+        parts: safeParts,
       };
     }
 

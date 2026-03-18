@@ -2032,6 +2032,102 @@ describe("RuntimeChatService", () => {
     expect(assistantMessages.at(-1)?.content).toContain("Top volume meme coin today is BONK.");
   });
 
+  test("ignores suppressed pre-tool text chunks before fallback second pass", async () => {
+    const stateStore = new InMemoryStateStore();
+    let generateInvocationCount = 0;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry: new ActionRegistry(),
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStream: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage?: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) =>
+            createUIMessageStream({
+              originalMessages: options?.originalMessages,
+              onFinish: (event) => {
+                options?.onFinish?.({
+                  ...event,
+                  responseMessage: undefined,
+                });
+              },
+              execute: ({ writer }) => {
+                writer.write({ type: "start", messageId: "assistant-suppressed-tool-pass-1" });
+                writer.write({ type: "text-start", id: "pretool-text-1" });
+                writer.write({ type: "text-delta", id: "pretool-text-1", delta: "Let me check. " });
+                writer.write({ type: "start-step" });
+                writer.write({
+                  type: "tool-input-start",
+                  toolCallId: "tool-call-suppressed-1",
+                  toolName: "queryRuntimeStore",
+                });
+                writer.write({
+                  type: "tool-input-available",
+                  toolCallId: "tool-call-suppressed-1",
+                  toolName: "queryRuntimeStore",
+                  input: { request: { type: "listConversations", limit: 3 } },
+                });
+                writer.write({
+                  type: "tool-output-available",
+                  toolCallId: "tool-call-suppressed-1",
+                  output: { ok: true, data: { requestType: "listConversations", result: [] } },
+                });
+                writer.write({ type: "text-end", id: "pretool-text-1" });
+                writer.write({ type: "finish-step" });
+                writer.write({ type: "finish", finishReason: "stop" });
+              },
+            }),
+          consumeStream: async () => {},
+        })) as never,
+        generateText: (async () => {
+          generateInvocationCount += 1;
+          return {
+            text: "Recovered fallback summary after suppressed pre-tool narration.",
+            finishReason: "stop",
+            usage: undefined,
+          };
+        }) as never,
+      },
+    );
+
+    const response = await service.stream(
+      [
+        {
+          id: "user-suppressed-tool-recovery-1",
+          role: "user",
+          parts: [{ type: "text", text: "check runtime state" }],
+        },
+      ],
+      { chatId: "chat-suppressed-tool-recovery-1" },
+    );
+
+    await response.text();
+
+    expect(generateInvocationCount).toBe(1);
+    const assistantMessages = stateStore
+      .listChatMessages("chat-suppressed-tool-recovery-1", 10)
+      .filter((message) => message.role === "assistant");
+    expect(assistantMessages.at(-1)?.content).toContain("Recovered fallback summary after suppressed pre-tool narration.");
+  });
+
   test("resolves tool-only wallet-content success from streamed tool output without a second model pass", async () => {
     const registry = new ActionRegistry();
     registry.register({

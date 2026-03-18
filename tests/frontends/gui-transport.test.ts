@@ -135,6 +135,52 @@ describe("Runtime v1 API", () => {
     expect(payload.error.message).toContain("Invalid chat payload");
   });
 
+  test("POST /v1/chat/stream tolerates malformed non-text parts by sanitizing them", async () => {
+    let capturedMessages: UIMessage[] = [];
+    const runtime = buildRuntime({
+      streamImpl: async (messages) => {
+        capturedMessages = messages;
+        return new Response("event: done\ndata: [DONE]\n\n", {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        });
+      },
+    });
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+
+    const response = await handler(
+      new Request("http://localhost/v1/chat/stream", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "assistant",
+              parts: [
+                { type: "step-start" },
+                { type: "text", text: "hello there" },
+                { type: "reasoning", text: "ignore this" },
+              ],
+            },
+            {
+              role: "user",
+              parts: [{ type: "text", text: "continue" }],
+            },
+          ],
+          chatId: "chat-v1-sanitize",
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(capturedMessages).toHaveLength(2);
+    expect(capturedMessages[0]?.role).toBe("assistant");
+    expect(capturedMessages[0]?.parts).toEqual([{ type: "text", text: "hello there" }]);
+    expect(capturedMessages[1]?.role).toBe("user");
+    expect(capturedMessages[1]?.parts).toEqual([{ type: "text", text: "continue" }]);
+  });
+
   test("GET /v1/health and /v1/runtime are available", async () => {
     const runtime = buildRuntime();
     const transport = new RuntimeGuiTransport(runtime);
