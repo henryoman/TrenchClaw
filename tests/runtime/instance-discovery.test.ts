@@ -12,7 +12,9 @@ const INSTANCES_MODULE_URL = pathToFileURL(
 const INSTANCE_STATE_MODULE_URL = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/runtime/instance-state.ts"),
 ).href;
-const BUN_COMMAND = process.platform === "win32" ? ["bun.exe"] : ["/usr/bin/env", "bun"];
+const SHELL_COMMAND = process.platform === "win32"
+  ? ["cmd.exe", "/d", "/s", "/c", "bun -e \"%TRENCHCLAW_TEST_SCRIPT%\""]
+  : ["/bin/bash", "-lc", "bun -e \"$TRENCHCLAW_TEST_SCRIPT\""];
 
 const createdRuntimeRoots: string[] = [];
 
@@ -58,16 +60,13 @@ const runScriptJson = async <T>(input: {
   env?: Record<string, string>;
 }): Promise<T> => {
   const processHandle = Bun.spawn({
-    cmd: [
-      ...BUN_COMMAND,
-      "-e",
-      input.script,
-    ],
+    cmd: SHELL_COMMAND,
     cwd: WORKSPACE_ROOT,
     env: {
       ...process.env,
       TRENCHCLAW_APP_ROOT: CORE_APP_ROOT,
       TRENCHCLAW_RUNTIME_STATE_ROOT: input.runtimeRoot,
+      TRENCHCLAW_TEST_SCRIPT: input.script,
       ...input.env,
     },
     stdout: "pipe",
