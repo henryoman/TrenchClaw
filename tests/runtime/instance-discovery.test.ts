@@ -12,7 +12,7 @@ const INSTANCES_MODULE_URL = pathToFileURL(
 const INSTANCE_STATE_MODULE_URL = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/runtime/instance-state.ts"),
 ).href;
-const BUN_BINARY = process.platform === "win32" ? "bun.exe" : "bun";
+const BUN_COMMAND = process.platform === "win32" ? ["bun.exe"] : ["/usr/bin/env", "bun"];
 
 const createdRuntimeRoots: string[] = [];
 
@@ -59,7 +59,7 @@ const runScriptJson = async <T>(input: {
 }): Promise<T> => {
   const processHandle = Bun.spawn({
     cmd: [
-      BUN_BINARY,
+      ...BUN_COMMAND,
       "-e",
       input.script,
     ],
