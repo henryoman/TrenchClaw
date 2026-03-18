@@ -11,6 +11,7 @@ import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore, createActi
 import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
 import { createRuntimeChatService as createRuntimeChatServiceBase } from "../../apps/trenchclaw/src/runtime/chat";
 import { loadRuntimeSettings, resolvePrimaryRuntimeEndpoints } from "../../apps/trenchclaw/src/runtime/load";
+import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
 import { SqliteStateStore } from "../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import {
   WORKSPACE_BASH_TOOL_NAME,
@@ -53,6 +54,7 @@ const TEST_ENV_KEYS = [
 ] as const;
 const initialEnv = Object.fromEntries(TEST_ENV_KEYS.map((key) => [key, process.env[key]]));
 const createdConfigFiles: string[] = [];
+const originalFetch = globalThis.fetch;
 const TEST_BASE_SETTINGS_YAML = `
 configVersion: 1
 profile: dangerous
@@ -204,6 +206,22 @@ const writeTempStructuredFile = async (extension: "yaml" | "json", content: stri
 };
 
 beforeEach(async () => {
+  resetSolPriceCacheForTests();
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    if (url.startsWith("https://api.dexscreener.com/")) {
+      return Response.json([
+        {
+          chainId: "solana",
+          pairAddress: "pair-sol-usdc",
+          quoteToken: { symbol: "USDC" },
+          priceUsd: "141.25",
+          liquidity: { usd: 250_000 },
+        },
+      ]);
+    }
+    return originalFetch(input, init);
+  }) as typeof globalThis.fetch;
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempStructuredFile("yaml", TEST_BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempStructuredFile("json", "{}");
   delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
@@ -337,6 +355,8 @@ const createRuntimeChatService = (
   );
 
 afterEach(() => {
+  globalThis.fetch = originalFetch;
+  resetSolPriceCacheForTests();
   for (const dbPath of sqliteDbPaths.splice(0)) {
     void Bun.file(dbPath).delete().catch(() => {});
     void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
@@ -931,6 +951,7 @@ describe("RuntimeChatService", () => {
     const capabilitySnapshot: RuntimeCapabilitySnapshot = {
       actions: [],
       workspaceTools: [],
+      comingSoonFeatures: [],
       modelTools: [
         {
           kind: "action",
@@ -943,6 +964,8 @@ describe("RuntimeChatService", () => {
           requiresConfirmation: false,
           exampleInput: { value: 1 },
           toolDescription: "enabled action",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
         },
       ],
     };
@@ -992,6 +1015,7 @@ describe("RuntimeChatService", () => {
     const capabilitySnapshot: RuntimeCapabilitySnapshot = {
       actions: [],
       workspaceTools: [],
+      comingSoonFeatures: [],
       modelTools: [
         {
           kind: "action",
@@ -1004,6 +1028,8 @@ describe("RuntimeChatService", () => {
           requiresConfirmation: false,
           exampleInput: { query: "jobs" },
           toolDescription: "query runtime store",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
         },
         {
           kind: "action",
@@ -1016,6 +1042,8 @@ describe("RuntimeChatService", () => {
           requiresConfirmation: false,
           exampleInput: {},
           toolDescription: "custom action",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
         },
         {
           kind: "action",
@@ -1028,6 +1056,8 @@ describe("RuntimeChatService", () => {
           requiresConfirmation: true,
           exampleInput: { destination: "dest", amount: "0.1" },
           toolDescription: "transfer funds",
+          releaseReadinessStatus: "limited-beta",
+          releaseReadinessNote: "Limited beta.",
         },
         {
           kind: "action",
@@ -1040,6 +1070,8 @@ describe("RuntimeChatService", () => {
           requiresConfirmation: true,
           exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", mintAddress: "mint" },
           toolDescription: "close token account",
+          releaseReadinessStatus: "limited-beta",
+          releaseReadinessNote: "Limited beta.",
         },
         {
           kind: "workspace-tool",
@@ -1052,6 +1084,8 @@ describe("RuntimeChatService", () => {
           requiresConfirmation: false,
           exampleInput: { path: "README.md" },
           toolDescription: "workspace read",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
         },
       ],
     };
@@ -1100,6 +1134,7 @@ describe("RuntimeChatService", () => {
       capabilitySnapshot: {
         actions: [],
         workspaceTools: [],
+        comingSoonFeatures: [],
         modelTools: [
           {
             kind: "action",
@@ -1112,6 +1147,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: {},
             toolDescription: "runtime store",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "action",
@@ -1124,6 +1161,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: true,
             exampleInput: { destination: "dest", amount: "0.1" },
             toolDescription: "transfer funds",
+            releaseReadinessStatus: "limited-beta",
+            releaseReadinessNote: "Limited beta.",
           },
           {
             kind: "action",
@@ -1136,6 +1175,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: true,
             exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", mintAddress: "mint" },
             toolDescription: "close token account",
+            releaseReadinessStatus: "limited-beta",
+            releaseReadinessNote: "Limited beta.",
           },
         ],
       },
@@ -1159,6 +1200,9 @@ describe("RuntimeChatService", () => {
     }
 
     expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane: `closeTokenAccount`, `transfer`");
+    expect(execution.systemPrompt).toContain("## Live Runtime Context");
+    expect(execution.systemPrompt).toContain("current time (UTC, exact minute):");
+    expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
   });
 
   test("keeps the operator gateway prompt and tool list compact", async () => {
@@ -1166,6 +1210,7 @@ describe("RuntimeChatService", () => {
       capabilitySnapshot: {
         actions: [],
         workspaceTools: [],
+        comingSoonFeatures: [],
         modelTools: [
           {
             kind: "action",
@@ -1178,6 +1223,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: {},
             toolDescription: "wallet contents",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "action",
@@ -1190,6 +1237,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: {},
             toolDescription: "runtime store",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "workspace-tool",
@@ -1202,6 +1251,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: { path: "README.md" },
             toolDescription: "workspace read",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
         ],
       },
@@ -1227,7 +1278,7 @@ describe("RuntimeChatService", () => {
     expect(execution.maxToolSteps).toBeUndefined();
     expect(execution.toolNames).toEqual(["getManagedWalletContents", "queryRuntimeStore"]);
     expect(execution.toolNames).not.toContain(WORKSPACE_READ_FILE_TOOL_NAME);
-    expect(execution.systemPrompt).toContain("## Knowledge Files");
+    expect(execution.systemPrompt).toContain("## Knowledge Index");
   });
 
   test("includes Dexscreener discovery and market-data actions in the normal operator payload", async () => {
@@ -1235,6 +1286,7 @@ describe("RuntimeChatService", () => {
       capabilitySnapshot: {
         actions: [],
         workspaceTools: [],
+        comingSoonFeatures: [],
         modelTools: [
           {
             kind: "action",
@@ -1247,6 +1299,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: {},
             toolDescription: "latest token profiles",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "action",
@@ -1259,6 +1313,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: {},
             toolDescription: "top token boosts",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "action",
@@ -1271,6 +1327,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: { tokenAddresses: ["So11111111111111111111111111111111111111112"] },
             toolDescription: "tokens by chain",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "action",
@@ -1283,6 +1341,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: { pairAddress: "pair111111111111111111111111111111111111111" },
             toolDescription: "pair by pair address",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "action",
@@ -1295,6 +1355,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: { tokenAddress: "So11111111111111111111111111111111111111112" },
             toolDescription: "token pairs by token address",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
           {
             kind: "action",
@@ -1307,6 +1369,8 @@ describe("RuntimeChatService", () => {
             requiresConfirmation: false,
             exampleInput: { query: "BONK" },
             toolDescription: "search pairs",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
           },
         ],
       },

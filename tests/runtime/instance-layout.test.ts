@@ -71,7 +71,18 @@ describe("ensureInstanceLayout", () => {
       `,
     });
 
-    expect(result.first.createdDirectories.map((directoryPath) => path.basename(directoryPath))).toEqual(["keypairs", "settings"]);
+    expect(result.first.createdDirectories.map((directoryPath) => path.basename(directoryPath))).toEqual([
+      "keypairs",
+      "settings",
+      "workspace",
+      "strategies",
+      "configs",
+      "typescript",
+      "notes",
+      "scratch",
+      "output",
+      "routines",
+    ]);
     expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual(["trading.json", "vault.json"]);
     expect(result.second.createdDirectories).toEqual([]);
     expect(result.second.createdFiles).toEqual([]);

@@ -2,6 +2,7 @@ import type { Action } from "../../ai/runtime/types/action";
 import type { RuntimeSettings } from "../load";
 import { summarizeFilesystemPolicy } from "../security/filesystem-manifest";
 import { runtimeActionCapabilityDefinitions } from "./action-definitions";
+import { getRuntimeComingSoonFeatures, getToolReleaseReadinessDescriptor } from "./release-readiness";
 import { workspaceToolCapabilityDefinitions } from "./workspace-tool-definitions";
 import type {
   CapabilitySideEffectLevel,
@@ -64,6 +65,8 @@ const buildToolDescription = (input: {
   routingHint: string;
   sideEffectLevel: CapabilitySideEffectLevel;
   requiresConfirmation: boolean;
+  releaseReadinessStatus: string;
+  releaseReadinessNote: string;
   exampleInput?: unknown;
 }): string => {
   const parts = [
@@ -71,6 +74,7 @@ const buildToolDescription = (input: {
     `Why: ${input.purpose.trim().replace(/\.$/u, "")}.`,
     `Use this when ${input.routingHint.trim().replace(/\.$/u, "")}.`,
     `Side effects: ${input.sideEffectLevel}.`,
+    `Release readiness: ${input.releaseReadinessStatus}. ${input.releaseReadinessNote.trim().replace(/\.$/u, "")}.`,
   ];
   const exampleInput = formatExampleInput(input.exampleInput);
   if (exampleInput) {
@@ -95,6 +99,7 @@ const toActionSnapshotEntry = async (
   const routingHint = (definition.routingHint ?? definition.purpose).trim();
   const sideEffectLevel = inferActionSideEffectLevel(definition);
   const requiresConfirmation = definition.requiresUserConfirmation === true;
+  const releaseReadiness = getToolReleaseReadinessDescriptor(action.name);
   return {
     kind: "action",
     name: action.name,
@@ -114,12 +119,16 @@ const toActionSnapshotEntry = async (
     requiresConfirmation,
     chatExposed: definition.chatExposed !== false,
     exposedToModel,
+    releaseReadinessStatus: releaseReadiness.status,
+    releaseReadinessNote: releaseReadiness.note,
     toolDescription: buildToolDescription({
       description: definition.description,
       purpose: definition.purpose,
       routingHint,
       sideEffectLevel,
       requiresConfirmation,
+      releaseReadinessStatus: releaseReadiness.status,
+      releaseReadinessNote: releaseReadiness.note,
       exampleInput: definition.exampleInput,
     }),
     action,
@@ -135,6 +144,7 @@ const toWorkspaceToolSnapshotEntry = async (
   const enabledBySettings = definition.enabledBySettings(predicateContext);
   const routingHint = (definition.routingHint ?? definition.purpose).trim();
   const sideEffectLevel = inferWorkspaceSideEffectLevel(definition);
+  const releaseReadiness = getToolReleaseReadinessDescriptor(definition.name);
   return {
     kind: "workspace-tool",
     name: definition.name,
@@ -148,12 +158,16 @@ const toWorkspaceToolSnapshotEntry = async (
     enabledNow: enabledBySettings,
     chatExposed: definition.chatExposed !== false,
     exposedToModel: definition.chatExposed !== false && enabledBySettings,
+    releaseReadinessStatus: releaseReadiness.status,
+    releaseReadinessNote: releaseReadiness.note,
     toolDescription: buildToolDescription({
       description: definition.description,
       purpose: definition.purpose,
       routingHint,
       sideEffectLevel,
       requiresConfirmation: false,
+      releaseReadinessStatus: releaseReadiness.status,
+      releaseReadinessNote: releaseReadiness.note,
       exampleInput: definition.exampleInput,
     }),
   };
@@ -213,6 +227,8 @@ export const getRuntimeCapabilitySnapshot = async (settings: RuntimeSettings): P
         requiresConfirmation: entry.requiresConfirmation,
         exampleInput: entry.exampleInput,
         toolDescription: entry.toolDescription,
+        releaseReadinessStatus: entry.releaseReadinessStatus,
+        releaseReadinessNote: entry.releaseReadinessNote,
       })),
     ...diagnosticsWorkspaceTools
       .filter((entry) => entry.exposedToModel)
@@ -227,6 +243,8 @@ export const getRuntimeCapabilitySnapshot = async (settings: RuntimeSettings): P
         requiresConfirmation: false,
         exampleInput: entry.exampleInput,
         toolDescription: entry.toolDescription,
+        releaseReadinessStatus: entry.releaseReadinessStatus,
+        releaseReadinessNote: entry.releaseReadinessNote,
       })),
   ].toSorted(compareByName);
 
@@ -234,6 +252,7 @@ export const getRuntimeCapabilitySnapshot = async (settings: RuntimeSettings): P
     actions: includedActions,
     workspaceTools: diagnosticsWorkspaceTools,
     modelTools,
+    comingSoonFeatures: getRuntimeComingSoonFeatures(),
   };
 };
 

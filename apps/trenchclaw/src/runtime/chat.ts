@@ -23,10 +23,10 @@ import type {
 import type { RuntimeGateway } from "../ai/gateway";
 import {
   createWorkspaceBashTools,
-  DEFAULT_WORKSPACE_BASH_ROOT,
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
+  resolveDefaultWorkspaceBashRoot,
 } from "./workspace-bash";
 import type { RuntimeCapabilitySnapshot } from "./capabilities";
 import type { RuntimeLogger } from "./logging/runtime-logger";
@@ -70,7 +70,6 @@ interface RuntimeChatServiceOverrides {
 const toToolDescription = (actionName: string, category: string, subcategory?: string): string =>
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
-const DEFAULT_WORKSPACE_ROOT_DIRECTORY = DEFAULT_WORKSPACE_BASH_ROOT;
 const DEFAULT_CHAT_ID_PREFIX = "chat";
 const CHAT_MODEL_STREAM_TIMEOUT = {
   totalMs: 45_000,
@@ -86,6 +85,8 @@ const RUNTIME_WORKSPACE_TOOL_NAMES = [
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
 ] as const;
+const resolveWorkspaceRootDirectory = (workspaceRootDirectory?: string): string =>
+  workspaceRootDirectory ?? resolveDefaultWorkspaceBashRoot();
 const WALLET_MUTATION_INTENT_TOKENS = [
   "transfer",
   "send",
@@ -990,8 +991,7 @@ export const createRuntimeChatService = (
   const convertMessages = overrides.convertToModelMessages ?? convertToModelMessages;
   const streamWithModel = overrides.streamText ?? streamText;
   const generateWithModel = overrides.generateText ?? generateText;
-  const workspaceRootDirectory = deps.workspaceRootDirectory ?? DEFAULT_WORKSPACE_ROOT_DIRECTORY;
-  let workspaceToolPromise: Promise<Record<string, unknown>> | null = null;
+  const workspaceToolPromises = new Map<string, Promise<Record<string, unknown>>>();
 
   const listToolNames = (): string[] => deps.gateway.listToolNames("operator-chat");
 
@@ -1224,10 +1224,14 @@ export const createRuntimeChatService = (
       );
       if (needsWorkspaceTools) {
         const workspaceToolsStartedAt = Date.now();
-        workspaceToolPromise ??= createWorkspaceBashTools({
-          workspaceRootDirectory,
-          actor: "agent",
-        });
+        const workspaceRootDirectory = resolveWorkspaceRootDirectory(deps.workspaceRootDirectory);
+        const workspaceToolPromise =
+          workspaceToolPromises.get(workspaceRootDirectory) ??
+          createWorkspaceBashTools({
+            workspaceRootDirectory,
+            actor: "agent",
+          });
+        workspaceToolPromises.set(workspaceRootDirectory, workspaceToolPromise);
         const loadedWorkspaceTools = await workspaceToolPromise;
         for (const [toolName, workspaceTool] of Object.entries(loadedWorkspaceTools)) {
           if (enabledToolNames && !enabledToolNames.has(toolName)) {
@@ -1238,6 +1242,7 @@ export const createRuntimeChatService = (
         deps.logger?.info("chat:workspace_tools_ready", {
           chatId,
           durationMs: Date.now() - workspaceToolsStartedAt,
+          workspaceRootDirectory,
         });
       }
 

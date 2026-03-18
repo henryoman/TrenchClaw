@@ -39,17 +39,17 @@ Important directories:
 - `.runtime-state/runtime/`
   - `ai.json`
   - `settings.json`
-  - `workspace/`
 
 - `.runtime-state/instances/<id>/`
   - `instance.json`
   - `vault.json`
   - `settings/trading.json`
   - `keypairs/`
+  - `workspace/`
 
 - `.runtime-state/generated/`
   - `workspace-context.md`
-  - `knowledge-manifest.md`
+  - `knowledge-index.md`
 
 - `.runtime-state/db/`
   - sqlite and runtime log/state files
@@ -66,6 +66,9 @@ Important directories:
 If you need runtime truth:
 
 1. trust the injected capability appendix
-2. trust injected resolved settings
-3. use workspace tools only inside `.runtime-state/runtime/workspace/`
-4. do not treat core repo source files as part of the runtime workspace tool surface
+2. trust the injected live runtime context section for the current clock and shared backend SOL price snapshot
+3. trust the injected release-readiness section over bundled docs, knowledge files, or source references
+4. trust injected resolved settings
+5. use workspace tools only inside `.runtime-state/instances/<active-id>/workspace/`
+6. do not treat core repo source files as part of the runtime workspace tool surface
+7. if a feature is not listed as shipped or limited beta, describe it as coming soon instead of guessing

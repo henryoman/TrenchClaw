@@ -1,9 +1,14 @@
 import { fileURLToPath } from "node:url";
-import { getRuntimeCapabilitySnapshot, renderRuntimeToolContractSection } from "../../runtime/capabilities";
+import {
+  getRuntimeCapabilitySnapshot,
+  renderRuntimeReleaseReadinessSection,
+  renderRuntimeToolContractSection,
+} from "../../runtime/capabilities";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { loadRuntimeSettings } from "../../runtime/load";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
+import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
 import { resolveVaultFile } from "./vault-file";
 
 const SYSTEM_PROMPT_FILE = "../config/system.md";
@@ -77,10 +82,11 @@ const renderProfileMeaning = (profile: string): string => {
 
 const renderRuntimeContract = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const [capabilitySnapshot, filesystemPolicy, walletSummary] = await Promise.all([
+  const [capabilitySnapshot, filesystemPolicy, walletSummary, liveRuntimeContext] = await Promise.all([
     getRuntimeCapabilitySnapshot(settings),
     summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
     renderRuntimeWalletPromptSummary(),
+    renderLiveRuntimeContextSection(),
   ]);
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
   const vault = resolveVaultFile({ activeInstanceId });
@@ -106,6 +112,10 @@ const renderRuntimeContract = async (): Promise<string> => {
     "",
     renderRuntimeToolContractSection(capabilitySnapshot),
     "",
+    renderRuntimeReleaseReadinessSection(capabilitySnapshot),
+    "",
+    liveRuntimeContext,
+    "",
     "## Wallet Summary",
     walletSummary,
     "",
@@ -114,7 +124,7 @@ const renderRuntimeContract = async (): Promise<string> => {
     "- `src/runtime/chat.ts`",
     "- `src/runtime/capabilities/`",
     "- `src/ai/config/system.md`",
-    "- `.runtime-state/generated/knowledge-manifest.md`",
+    "- `.runtime-state/generated/knowledge-index.md`",
     "- `.runtime-state/generated/workspace-context.md`",
     "",
     "Use `workspaceReadFile` only for exact runtime-workspace reads when you know the path.",

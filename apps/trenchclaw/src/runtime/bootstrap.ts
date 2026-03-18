@@ -40,7 +40,7 @@ import {
 } from "./load";
 import { createRuntimeLogger, type RuntimeLogger } from "./logging/runtime-logger";
 import { refreshWorkspaceContext } from "../lib/agent-scripts/refresh-workspace-context";
-import { refreshKnowledgeManifest } from "../lib/agent-scripts/refresh-knowledge-manifest";
+import { refreshKnowledgeIndex } from "../lib/agent-scripts/refresh-knowledge-index";
 import {
   MemoryLogStore,
   SessionLogStore,
@@ -59,7 +59,7 @@ const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserC
 const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "managedUltraSwap", "privacySwap"]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
 const GENERATED_WORKSPACE_CONTEXT_PATH = path.join(RUNTIME_GENERATED_ROOT, "workspace-context.md");
-const GENERATED_KNOWLEDGE_MANIFEST_PATH = path.join(RUNTIME_GENERATED_ROOT, "knowledge-manifest.md");
+const GENERATED_KNOWLEDGE_INDEX_PATH = path.join(RUNTIME_GENERATED_ROOT, "knowledge-index.md");
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
@@ -104,14 +104,14 @@ const runBootContextRefresh = async (logger: RuntimeLogger): Promise<void> => {
   const refreshContext = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_CONTEXT", false);
   const refreshKnowledge = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE", true);
   const missingWorkspaceContext = !(await generatedArtifactExists(GENERATED_WORKSPACE_CONTEXT_PATH));
-  const missingKnowledgeManifest = !(await generatedArtifactExists(GENERATED_KNOWLEDGE_MANIFEST_PATH));
+  const missingKnowledgeIndex = !(await generatedArtifactExists(GENERATED_KNOWLEDGE_INDEX_PATH));
 
   if (refreshContext || missingWorkspaceContext) {
     await runBootstrapTask(logger, "refresh-workspace-context", refreshWorkspaceContext);
   }
 
-  if (refreshKnowledge || missingKnowledgeManifest) {
-    await runBootstrapTask(logger, "refresh-knowledge-manifest", refreshKnowledgeManifest);
+  if (refreshKnowledge || missingKnowledgeIndex) {
+    await runBootstrapTask(logger, "refresh-knowledge-index", refreshKnowledgeIndex);
   }
 };
 

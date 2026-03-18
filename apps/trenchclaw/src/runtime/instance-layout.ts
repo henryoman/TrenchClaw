@@ -2,6 +2,10 @@ import { mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
+import {
+  INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
+  resolveInstanceWorkspaceRoot,
+} from "./instance-workspace";
 import { resolveInstanceTradingSettingsPath, writeInstanceTradingSettings } from "./load/trading-settings";
 import { resolveInstanceDirectoryPath } from "./instance-state";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
@@ -9,6 +13,7 @@ import { assertInstanceSystemWritePath } from "./security/write-scope";
 const INSTANCE_LAYOUT_DIRECTORIES = [
   "keypairs",
   "settings",
+  "workspace",
 ] as const;
 
 export interface EnsuredInstanceLayout {
@@ -40,6 +45,17 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
     }),
   )).filter((directoryPath): directoryPath is string => directoryPath != null);
 
+  const workspaceRoot = resolveInstanceWorkspaceRoot(instanceId);
+  const createdWorkspaceDirectories = (await Promise.all(
+    INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES.map(async (directoryName) => {
+      const directoryPath = path.join(workspaceRoot, directoryName);
+      assertInstanceSystemWritePath(directoryPath, `initialize instance workspace ${directoryName} directory`);
+      const existed = await directoryExists(directoryPath);
+      await mkdir(directoryPath, { recursive: true });
+      return existed ? null : directoryPath;
+    }),
+  )).filter((directoryPath): directoryPath is string => directoryPath != null);
+
   const createdFiles: string[] = [];
   const vaultPath = resolveInstanceVaultPath(instanceId);
   assertInstanceSystemWritePath(vaultPath, "initialize instance vault");
@@ -55,7 +71,7 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
 
   return {
     instanceRoot,
-    createdDirectories,
+    createdDirectories: [...createdDirectories, ...createdWorkspaceDirectories],
     createdFiles,
   };
 };

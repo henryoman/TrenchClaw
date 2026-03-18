@@ -404,7 +404,7 @@ wallet:
 
     const runtime = await bootstrapRuntime();
     const alertsFile = path.resolve(
-      runtimeStatePath("runtime/workspace/strategies/.tests"),
+      runtimeStatePath("instances/01/workspace/strategies/.tests"),
       `bootstrap-alerts-${crypto.randomUUID()}.json`,
     );
     try {
@@ -503,12 +503,12 @@ wallet:
     process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = "0";
     process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = "0";
     await Bun.file(runtimeStatePath("generated/workspace-context.md")).delete().catch(() => {});
-    await Bun.file(runtimeStatePath("generated/knowledge-manifest.md")).delete().catch(() => {});
+    await Bun.file(runtimeStatePath("generated/knowledge-index.md")).delete().catch(() => {});
 
     const runtime = await bootstrapRuntime();
     try {
       expect(await Bun.file(runtimeStatePath("generated/workspace-context.md")).exists()).toBe(true);
-      expect(await Bun.file(runtimeStatePath("generated/knowledge-manifest.md")).exists()).toBe(true);
+      expect(await Bun.file(runtimeStatePath("generated/knowledge-index.md")).exists()).toBe(true);
     } finally {
       runtime.stop();
     }

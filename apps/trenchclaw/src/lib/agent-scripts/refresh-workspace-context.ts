@@ -117,7 +117,7 @@ const renderImportantWorkspacePaths = (): string =>
     .filter((relativePath) => existsSync(join(APP_ROOT_DIR, relativePath)))
     .map((relativePath) => `- \`${CONTEXT_ROOT_LABEL}/${relativePath}/\``)
     .concat([
-      "- `.runtime-state/generated/knowledge-manifest.md`",
+      "- `.runtime-state/generated/knowledge-index.md`",
       "- `.runtime-state/db/runtime.sqlite`",
     ])
     .join("\n");
@@ -154,7 +154,7 @@ This file is generated. Refresh with:
 ## Workspace Scope
 This file intentionally omits the full directory tree to avoid prompt bloat.
 
-Use \`.runtime-state/generated/knowledge-manifest.md\` for documentation inventory and workspace tools for exact path discovery.
+Use \`.runtime-state/generated/knowledge-index.md\` for documentation inventory and workspace tools for exact path discovery.
 
 Important paths:
 ${importantWorkspacePaths}

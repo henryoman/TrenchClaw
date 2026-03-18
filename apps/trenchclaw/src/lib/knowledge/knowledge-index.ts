@@ -58,7 +58,7 @@ export interface KnowledgeInventory {
 type KnowledgeDocMetadata = Omit<KnowledgeDocEntry, "path">;
 
 const KNOWLEDGE_WORKSPACE_ROOT = "src/ai/brain/knowledge";
-const MANIFEST_AND_TOOLING_FILES = new Set(["KNOWLEDGE_MANIFEST.md", "knowledge-tree.ts"]);
+const INDEX_AND_SUPPORT_FILES = new Set(["KNOWLEDGE_MANIFEST.md"]);
 const DOC_FILE_EXTENSIONS = new Set([".md", ".txt"]);
 
 const CORE_DOC_METADATA = new Map<string, KnowledgeDocMetadata>([
@@ -392,7 +392,7 @@ const resolveKnownDocMetadata = (relativePath: string): KnowledgeDocMetadata | n
 
 const isDocFile = (relativePath: string): boolean => {
   const extension = path.extname(relativePath);
-  return DOC_FILE_EXTENSIONS.has(extension) && !MANIFEST_AND_TOOLING_FILES.has(path.basename(relativePath));
+  return DOC_FILE_EXTENSIONS.has(extension) && !INDEX_AND_SUPPORT_FILES.has(path.basename(relativePath));
 };
 
 const walkFiles = async (targetDir: string, relativeDir = ""): Promise<string[]> => {
@@ -560,46 +560,48 @@ export const renderKnowledgeRoutingSummary = async (targetDir: string): Promise<
   ].join("\n");
 };
 
-export const renderKnowledgeManifestMarkdown = async (
+export const renderKnowledgeIndexMarkdown = async (
   targetDir: string,
   generatedAt: string,
 ): Promise<string> => {
   const inventory = await buildKnowledgeInventory(targetDir);
   const coreDocRows = inventory.coreDocs.map((entry) => [
     `\`${entry.path}\``,
+    entry.title,
     entry.kind,
     entry.priority,
-    entry.authority,
     entry.readWhen,
   ]);
   const deepDocRows = inventory.deepDocs.map((entry) => [
     `\`${entry.path}\``,
+    entry.title,
     entry.topics.join(", "),
-    entry.priority,
     entry.readWhen,
   ]);
   const skillPackRows = inventory.skillPacks.map((entry) => [
     `\`${entry.path}\``,
+    entry.title,
     String(entry.referenceCount),
     entry.topics.join(", "),
     entry.readWhen,
   ]);
   const supportDocRows = inventory.supportDocs.map((entry) => [
     `\`${entry.path}\``,
+    entry.title,
     entry.kind,
     entry.readWhen,
   ]);
 
-  return `# Knowledge Manifest
+  return `# Knowledge Index
 
 Generated at: ${generatedAt}
 Root: ${KNOWLEDGE_WORKSPACE_ROOT}
 
-Use this manifest to choose the smallest correct doc set before opening files.
+Use this index to see what knowledge exists before opening any specific file.
 
 ## Routing Rules
 
-- Treat the live runtime contract, enabled tool allowlist, and resolved settings as higher authority than docs.
+- Treat the live runtime contract, enabled tool allowlist, release readiness, and resolved settings as higher authority than docs.
 - Start with repo-authored reference docs for runtime, settings, wallet, and workspace behavior.
 - Use repo-authored guides for local workflows, command patterns, and integration shortcuts.
 - Escalate to deep vendor references only when exact API/provider detail is required.
@@ -607,19 +609,19 @@ Use this manifest to choose the smallest correct doc set before opening files.
 
 ## Core Docs
 
-${renderDocTable(["path", "kind", "priority", "authority", "read when"], coreDocRows)}
+${renderDocTable(["path", "title", "kind", "priority", "read when"], coreDocRows)}
 
 ## Deep References
 
-${renderDocTable(["path", "topics", "priority", "read when"], deepDocRows)}
+${renderDocTable(["path", "title", "topics", "read when"], deepDocRows)}
 
 ## Skill Packs
 
-${renderDocTable(["path", "refs", "topics", "read when"], skillPackRows)}
+${renderDocTable(["path", "title", "refs", "topics", "read when"], skillPackRows)}
 
 ## Support Files
 
-${renderDocTable(["path", "kind", "read when"], supportDocRows)}
+${renderDocTable(["path", "title", "kind", "read when"], supportDocRows)}
 
 ## Directory Tree
 

@@ -2,7 +2,7 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { RoutinePlanner } from "../../ai/runtime/types/scheduler";
-import { RUNTIME_WORKSPACE_ROUTINES_ROOT } from "../../runtime/runtime-paths";
+import { resolveActiveInstanceWorkspaceRoutinesRootOrThrow } from "../../runtime/instance-workspace";
 import { createWalletsRoutine } from "./create-wallets";
 
 const retryPolicySchema = z.object({
@@ -72,8 +72,6 @@ const workspaceRoutineDefinitionSchema = z
   })
   .passthrough();
 
-const WORKSPACE_ROUTINES_DIRECTORY = RUNTIME_WORKSPACE_ROUTINES_ROOT;
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
 
@@ -88,7 +86,7 @@ const normalizeRoutineLookupName = (routineName: string): string => {
 
 const resolveWorkspaceRoutineFilePath = (routineName: string): string => {
   const safeRoutineName = workspaceRoutineNameSchema.parse(normalizeRoutineLookupName(routineName));
-  return path.join(WORKSPACE_ROUTINES_DIRECTORY, `${safeRoutineName}.routine.json`);
+  return path.join(resolveActiveInstanceWorkspaceRoutinesRootOrThrow(), `${safeRoutineName}.routine.json`);
 };
 
 const readWorkspaceRoutineDefinition = async (routineName: string) => {
