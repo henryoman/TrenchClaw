@@ -27,13 +27,13 @@
     "@sveltejs/kit": "^2.55.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "marked": "^17.0.4",
-    "svelte": "^5.53.12"
+    "svelte": "^5.54.0"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.1",
+    "@tailwindcss/vite": "^4.2.2",
     "oxlint": "^1.56.0",
     "svelte-check": "^4.4.5",
-    "tailwindcss": "^4.2.1",
+    "tailwindcss": "^4.2.2",
     "typescript": "^5.9.3",
     "vite": "^8.0.0"
   }
