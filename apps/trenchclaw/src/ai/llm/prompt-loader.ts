@@ -117,7 +117,7 @@ const renderRuntimeContract = async (): Promise<string> => {
     "- `.runtime-state/generated/knowledge-manifest.md`",
     "- `.runtime-state/generated/workspace-context.md`",
     "",
-    "Use `workspaceReadFile` for exact source, config, doc, and generated-artifact reads when you know the path.",
+    "Use `workspaceReadFile` only for exact runtime-workspace reads when you know the path.",
     "Use `queryRuntimeStore` and `queryInstanceMemory` for structured runtime state instead of reading files when a structured action exists.",
   ].join("\n");
 };

@@ -8,7 +8,7 @@ import {
   assertModelFilesystemReadAllowed,
   assertModelFilesystemWriteAllowed,
 } from "./security/filesystem-manifest";
-import { CORE_APP_ROOT, RUNTIME_WORKSPACE_ROOT } from "./runtime-paths";
+import { RUNTIME_WORKSPACE_ROOT } from "./runtime-paths";
 
 interface WorkspaceBashOptions {
   workspaceRootDirectory: string;
@@ -115,7 +115,7 @@ class HostWorkspaceSandbox {
 
   constructor(options: WorkspaceBashOptions) {
     this.bashRoot = path.resolve(options.workspaceRootDirectory);
-    this.readRoot = path.resolve(options.readRootDirectory ?? CORE_APP_ROOT);
+    this.readRoot = path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory);
     this.writeRoot = path.resolve(options.writeRootDirectory ?? options.workspaceRootDirectory);
     this.actor = options.actor ?? "agent";
     this.commandTimeoutMs = Math.max(1_000, Math.trunc(options.commandTimeoutMs ?? DEFAULT_COMMAND_TIMEOUT_MS));
@@ -231,7 +231,7 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
       `Only run commands from ${bashRootDirectory}.`,
       "Do not use parent traversal or absolute paths.",
       "Use workspaceBash only for simple local inspection inside the runtime workspace.",
-      "Use workspaceReadFile for exact source, doc, config, or generated-artifact reads.",
+      "Use workspaceReadFile only for exact runtime workspace file reads.",
       "Use workspaceWriteFile for exact runtime workspace edits.",
     ].join(" "),
     onBeforeBashCall: ({ command }) => ({
@@ -253,8 +253,8 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
     }),
     [WORKSPACE_READ_FILE_TOOL_NAME]: wrapTool({
       description:
-        `Read an exact file from the core app workspace rooted at ${path.resolve(options.readRootDirectory ?? CORE_APP_ROOT)}. ` +
-        "Prefer this when you already know the file path and need source, docs, config, or generated artifact contents. " +
+        `Read an exact file from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. ` +
+        "Prefer this when you already know the runtime workspace file path and need notes, configs, generated artifacts, or other runtime workspace contents. " +
         "Protected vault and keypair files are blocked from direct reads.",
       rawTool: rawReadTool,
     }),

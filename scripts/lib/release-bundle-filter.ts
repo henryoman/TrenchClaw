@@ -2,6 +2,13 @@ import path from "node:path";
 
 const toPosixPath = (value: string): string => value.split(path.sep).join("/");
 
+const HOST_PATH_SNIPPETS = [
+  "/Users/",
+  "/home/",
+  "C:/Users/",
+  "C:\\Users\\",
+] as const;
+
 export const shouldBundleBrainFile = (trackedFile: string): boolean => {
   const relativeToBrain = path.posix.relative("apps/trenchclaw/src/ai/brain", toPosixPath(trackedFile));
   if (!relativeToBrain || relativeToBrain.startsWith("..")) {
@@ -77,6 +84,18 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
   }
   if (normalized.startsWith("core/src/ai/brain/knowledge/skills/") && fileName.endsWith(".sh")) {
     return `skill installer scripts should not be bundled: ${normalized}`;
+  }
+
+  return null;
+};
+
+export const hasBlockedBundleContent = (relativeBundlePath: string, content: string): string | null => {
+  const normalizedPath = toPosixPath(relativeBundlePath);
+
+  for (const snippet of HOST_PATH_SNIPPETS) {
+    if (content.includes(snippet)) {
+      return `host-specific absolute path leaked into bundle file ${normalizedPath}`;
+    }
   }
 
   return null;
