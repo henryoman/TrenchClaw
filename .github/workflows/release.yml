@@ -2,6 +2,16 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      release_mode:
+        description: Release mode
+        required: true
+        type: choice
+        default: manual
+        options:
+          - manual
+          - patch
+          - minor
 
 permissions:
   contents: write
@@ -14,9 +24,11 @@ jobs:
   prepare_release:
     runs-on: ubuntu-latest
     outputs:
-      release_tag: ${{ steps.next_version.outputs.next_tag }}
-      prerelease: ${{ steps.next_version.outputs.prerelease }}
-      package_version: ${{ steps.next_version.outputs.next_version }}
+      release_tag: ${{ steps.release_plan.outputs.release_tag }}
+      prerelease: ${{ steps.release_plan.outputs.prerelease }}
+      package_version: ${{ steps.release_plan.outputs.package_version }}
+      release_notes_mode: ${{ steps.release_plan.outputs.release_notes_mode }}
+      release_notes_path: ${{ steps.release_plan.outputs.release_notes_path }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,14 +43,44 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Resolve next version
-        id: next_version
+      - name: Resolve release plan
+        id: release_plan
         run: |
-          bun run version:next -- --github-output "$GITHUB_OUTPUT"
+          RELEASE_MODE="${{ github.event.inputs.release_mode }}"
+          case "$RELEASE_MODE" in
+            manual)
+              bun run release:validate -- --github-output "$GITHUB_OUTPUT"
+              PACKAGE_VERSION="$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")"
+              BODY_PATH="releases/${PACKAGE_VERSION}.md"
+              if [ ! -f "$BODY_PATH" ]; then
+                echo "Missing drafted release notes: $BODY_PATH" >&2
+                exit 1
+              fi
+              echo "release_notes_mode=draft" >> "$GITHUB_OUTPUT"
+              echo "release_notes_path=$BODY_PATH" >> "$GITHUB_OUTPUT"
+              ;;
+            patch|minor)
+              bun run version:next -- --strategy "$RELEASE_MODE" --github-output "$GITHUB_OUTPUT"
+              NEXT_TAG="$(awk -F= '/^next_tag=/{print $2}' "$GITHUB_OUTPUT" | tail -n1)"
+              NEXT_VERSION="$(awk -F= '/^next_version=/{print $2}' "$GITHUB_OUTPUT" | tail -n1)"
+              bun run release:validate -- --version "$NEXT_TAG" --prerelease false
+              RELEASE_TAG="$NEXT_TAG"
+              PACKAGE_VERSION="$NEXT_VERSION"
+              echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
+              echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
+              echo "prerelease=false" >> "$GITHUB_OUTPUT"
+              echo "release_notes_mode=auto" >> "$GITHUB_OUTPUT"
+              echo "release_notes_path=" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Unsupported release mode: $RELEASE_MODE" >&2
+              exit 1
+              ;;
+          esac
 
       - name: Validate release tag
         run: |
-          bun run release:validate -- --version "${{ steps.next_version.outputs.next_tag }}" --prerelease "${{ steps.next_version.outputs.prerelease }}"
+          bun run release:validate -- --version "${{ steps.release_plan.outputs.release_tag }}" --prerelease "${{ steps.release_plan.outputs.prerelease }}"
 
       - name: Validate workspace
         run: |
@@ -46,19 +88,24 @@ jobs:
           bun run typecheck
           bun run test
 
-      - name: Apply release version
+      - name: Apply auto version bump
+        if: ${{ github.event.inputs.release_mode == 'patch' || github.event.inputs.release_mode == 'minor' }}
         run: |
-          TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply
+          TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply -- --strategy "${{ github.event.inputs.release_mode }}"
 
-      - name: Commit version bump
+      - name: Commit auto version bump
+        if: ${{ github.event.inputs.release_mode == 'patch' || github.event.inputs.release_mode == 'minor' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json
-          git commit -m "chore(release): ${{ steps.next_version.outputs.next_tag }}"
-          git tag "${{ steps.next_version.outputs.next_tag }}"
+          git commit -m "chore(release): ${{ steps.release_plan.outputs.release_tag }}"
           git push origin "HEAD:${{ github.ref_name }}"
-          git push origin "${{ steps.next_version.outputs.next_tag }}"
+
+      - name: Create release tag
+        run: |
+          git tag "${{ steps.release_plan.outputs.release_tag }}"
+          git push origin "${{ steps.release_plan.outputs.release_tag }}"
 
   build_release:
     needs: prepare_release
@@ -98,6 +145,8 @@ jobs:
           bun run bundle:verify
 
       - name: Package standalone artifact
+        env:
+          TRENCHCLAW_RELEASE_SKIP_SMOKE: "1"
         run: |
           bun run release:package -- --version "${{ needs.prepare_release.outputs.release_tag }}" --output-root "dist/release" --target "${{ matrix.compileTarget }}"
 
@@ -120,6 +169,11 @@ jobs:
       - build_release
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare_release.outputs.release_tag }}
+
       - name: Download packaged artifacts
         uses: actions/download-artifact@v4
         with:
@@ -127,7 +181,21 @@ jobs:
           merge-multiple: true
           path: dist/release
 
-      - name: Publish GitHub release
+      - name: Publish manual GitHub release
+        if: ${{ needs.prepare_release.outputs.release_notes_mode == 'draft' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare_release.outputs.release_tag }}
+          name: ${{ needs.prepare_release.outputs.release_tag }}
+          body_path: ${{ needs.prepare_release.outputs.release_notes_path }}
+          prerelease: ${{ needs.prepare_release.outputs.prerelease }}
+          files: |
+            dist/release/*.tar.gz
+            dist/release/*.sha256
+            dist/release/*.release-metadata.json
+
+      - name: Publish auto-notes GitHub release
+        if: ${{ needs.prepare_release.outputs.release_notes_mode == 'auto' }}
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare_release.outputs.release_tag }}

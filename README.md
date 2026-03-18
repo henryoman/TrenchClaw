@@ -90,21 +90,18 @@ Public releases ship as standalone compiled `trenchclaw` binaries. Bun is requir
 
 ```bash
 # local verification
-bun run app:clean
-bun run app:build
-bun run bundle:verify
+bun run release:build -- --version v0.0.0-beta.1 --run-checks
 
-# package release artifact + checksums
-bun run release:package -- --version v0.0.0-beta.1
-
-# generate release notes from commits since last release tag
-bun run release:notes -- --version v0.0.0-beta.1 --output dist/release/release-notes.md
-
-# dry-run next beta version
-bun run version:next
+# review the release body that will be published
+# releases/0.0.0-beta.1.md
 ```
 
-Release publishing is manual only through the GitHub Actions `Release` workflow (`workflow_dispatch`), and the repo stays on the `0.0.0-beta.N` track for now.
+Release publishing is manual only through the GitHub Actions `Release` workflow (`workflow_dispatch`).
+
+- `release_mode=manual` publishes the current committed version and uses `releases/<version>.md`
+- `release_mode=patch` auto-bumps the next patch version and uses GitHub-generated notes
+- `release_mode=minor` auto-bumps the next minor version and uses GitHub-generated notes
+- prerelease versions like `0.0.0-beta.1` should stay on `manual` mode until you intentionally cut a stable line
 
 ```mermaid
 flowchart LR

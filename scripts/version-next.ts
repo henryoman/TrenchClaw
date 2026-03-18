@@ -34,10 +34,10 @@ const parseArgs = (argv: string[]): CliArgs => {
     const arg = argv[index];
     if (arg === "--strategy") {
       const value = argv[index + 1];
-      if (!value || value !== "beta") {
-        throw new Error('Invalid --strategy value. Expected "beta".');
+      if (!value || (value !== "beta" && value !== "patch" && value !== "minor")) {
+        throw new Error('Invalid --strategy value. Expected "beta", "patch", or "minor".');
       }
-      strategy = "beta";
+      strategy = value;
       index += 1;
       continue;
     }
@@ -102,7 +102,7 @@ const main = async (): Promise<void> => {
   }
 
   const payload = {
-    strategy: "beta",
+    strategy: args.strategy,
     apply: args.apply,
     currentVersion,
     nextVersion,
