@@ -81,4 +81,18 @@ describe("workspace bash tools", () => {
 
     await expect(readTool.execute({ path: "notes/from-bash.txt" })).rejects.toThrow();
   });
+
+  test("blocks workspace file reads outside the runtime workspace root", async () => {
+    const workspaceRoot = path.join(TEST_ROOT, crypto.randomUUID());
+    createdPaths.push(workspaceRoot);
+    const tools = await createWorkspaceBashTools({
+      workspaceRootDirectory: workspaceRoot,
+      actor: "agent",
+    });
+    const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
+
+    await expect(readTool.execute({ path: "../outside.txt" })).rejects.toThrow(
+      "resolves outside allowed root",
+    );
+  });
 });

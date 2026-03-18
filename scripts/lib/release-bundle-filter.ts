@@ -1,4 +1,5 @@
 import path from "node:path";
+import os from "node:os";
 
 const toPosixPath = (value: string): string => value.split(path.sep).join("/");
 
@@ -77,6 +78,42 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
   }
   if (normalized.startsWith("core/src/ai/brain/knowledge/skills/") && fileName.endsWith(".sh")) {
     return `skill installer scripts should not be bundled: ${normalized}`;
+  }
+
+  return null;
+};
+
+const normalizeNeedle = (value: string): string | null => {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  return trimmed.split(path.sep).join("/");
+};
+
+const defaultBlockedContentNeedles = (): string[] => {
+  const needles = [
+    normalizeNeedle(os.homedir()),
+    normalizeNeedle(process.cwd()),
+  ].filter((value): value is string => typeof value === "string" && value.length > 1);
+
+  return [...new Set(needles)];
+};
+
+export const hasBlockedBundleContent = (
+  relativeBundlePath: string,
+  content: string,
+  options?: { blockedNeedles?: string[] },
+): string | null => {
+  const normalizedPath = toPosixPath(relativeBundlePath);
+  const normalizedContent = content.replaceAll(path.sep, "/");
+  const blockedNeedles = options?.blockedNeedles?.length ? options.blockedNeedles : defaultBlockedContentNeedles();
+
+  for (const needle of blockedNeedles) {
+    const normalizedNeedle = normalizeNeedle(needle);
+    if (normalizedNeedle && normalizedContent.includes(normalizedNeedle)) {
+      return `host-specific absolute path leaked into bundle file ${normalizedPath}`;
+    }
   }
 
   return null;

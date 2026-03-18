@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { hasBlockedBundlePath, shouldBundleBrainFile } from "../../scripts/lib/release-bundle-filter";
+import { hasBlockedBundleContent, hasBlockedBundlePath, shouldBundleBrainFile } from "../../scripts/lib/release-bundle-filter";
 
 describe("release-bundle-filter", () => {
   test("excludes runtime and secrets from brain bundle", () => {
@@ -21,5 +21,29 @@ describe("release-bundle-filter", () => {
     );
     expect(hasBlockedBundlePath("core/src/ai/brain/db/runtime.sqlite")).toContain("runtime db/state file present");
     expect(hasBlockedBundlePath("core/src/ai/brain/knowledge/runtime-reference.md")).toBeNull();
+  });
+
+  test("flags host-specific absolute paths in bundled file contents", () => {
+    expect(
+      hasBlockedBundleContent(
+        "core/src/ai/brain/knowledge/example.md",
+        "debug path: /Users/henryoman/project",
+        { blockedNeedles: ["/Users/henryoman"] },
+      ),
+    ).toContain("host-specific absolute path");
+    expect(
+      hasBlockedBundleContent(
+        "core/src/ai/brain/knowledge/example.md",
+        "runtime root: /home/tester/app",
+        { blockedNeedles: ["/Users/henryoman"] },
+      ),
+    ).toBeNull();
+    expect(
+      hasBlockedBundleContent(
+        "core/src/ai/brain/knowledge/example.md",
+        "safe relative path: .runtime-state/runtime",
+        { blockedNeedles: ["/Users/henryoman"] },
+      ),
+    ).toBeNull();
   });
 });
