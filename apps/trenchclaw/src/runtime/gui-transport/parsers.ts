@@ -9,12 +9,6 @@ import type {
 } from "@trenchclaw/types";
 import { safeValidateUIMessages, type UIMessage } from "ai";
 import { tradingPreferencesSchema } from "../load/trading-settings";
-import { DISPATCH_TEST_DEFAULT_WAIT_MS, DISPATCH_TEST_MAX_WAIT_MS } from "./constants";
-
-export interface DispatcherTestRequest {
-  message: string;
-  waitMs: number;
-}
 
 export const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -186,28 +180,6 @@ export const parseSignInRequest = async (request: Request): Promise<GuiSignInIns
     }
     const userPin = typeof payload.userPin === "string" && payload.userPin.trim().length > 0 ? payload.userPin.trim() : undefined;
     return { localInstanceId, userPin };
-  } catch {
-    return null;
-  }
-};
-
-export const parseDispatcherTestRequest = async (request: Request): Promise<DispatcherTestRequest | null> => {
-  try {
-    const payload = await request.json();
-    if (!isRecord(payload)) {
-      return {
-        message: "dispatcher-test",
-        waitMs: DISPATCH_TEST_DEFAULT_WAIT_MS,
-      };
-    }
-
-    const message =
-      typeof payload.message === "string" && payload.message.trim().length > 0
-        ? payload.message.trim()
-        : "dispatcher-test";
-    const waitMsRaw = typeof payload.waitMs === "number" ? payload.waitMs : DISPATCH_TEST_DEFAULT_WAIT_MS;
-    const waitMs = Math.max(0, Math.min(DISPATCH_TEST_MAX_WAIT_MS, Math.trunc(waitMsRaw)));
-    return { message, waitMs };
   } catch {
     return null;
   }

@@ -4,13 +4,12 @@ import { createHash } from "node:crypto";
 import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { DEFAULT_RELEASE_COMPILE_TARGETS } from "./lib/release-build-plan";
 import { normalizeTarget, resolveHostPlatformTarget, shouldSmokeCompileTargetOnHost } from "./lib/release-platform";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const DEFAULT_BUNDLE_ROOT = path.join(REPO_ROOT, "dist", "app");
 const DEFAULT_RELEASE_ROOT = path.join(REPO_ROOT, "dist", "release");
-const DEFAULT_TARGETS = ["bun-darwin-arm64", "bun-linux-x64", "bun-linux-arm64"] as const;
-
 interface CliArgs {
   version: string;
   bundleRoot: string;
@@ -77,7 +76,7 @@ const parseArgs = (argv: string[]): CliArgs => {
     version: version.trim(),
     bundleRoot,
     outputRoot,
-    targets: targets.length > 0 ? targets : [...DEFAULT_TARGETS],
+    targets: targets.length > 0 ? targets : [...DEFAULT_RELEASE_COMPILE_TARGETS],
   };
 };
 
@@ -181,6 +180,7 @@ const packageTarget = async (input: {
   const checksum = await sha256File(artifactPath);
   await writeFile(`${artifactPath}.sha256`, `${checksum}  ${artifactName}\n`, "utf8");
   await writeFile(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  await rm(targetRoot, { recursive: true, force: true });
 
   console.log(`[package-app-release] created ${artifactPath}`);
   console.log(`[package-app-release] wrote ${artifactPath}.sha256`);
@@ -195,11 +195,17 @@ const smokeTestArtifact = async (artifactPath: string): Promise<void> => {
   await run([process.execPath, "run", "scripts/smoke-test-release.ts", "--artifact-path", artifactPath]);
 };
 
+const shouldSkipSmokeTest = (): boolean => {
+  const configured = process.env.TRENCHCLAW_RELEASE_SKIP_SMOKE?.trim().toLowerCase();
+  return configured === "1" || configured === "true";
+};
+
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
   const version = await resolveVersion(args.version);
   const commit = await runCapture(["git", "rev-parse", "--short", "HEAD"]);
   const hostTarget = resolveHostPlatformTarget();
+  const skipSmokeTest = shouldSkipSmokeTest();
 
   await run([
     process.execPath,
@@ -209,6 +215,7 @@ const main = async (): Promise<void> => {
     args.bundleRoot,
   ]);
 
+  await rm(args.outputRoot, { recursive: true, force: true });
   await mkdir(args.outputRoot, { recursive: true });
 
   const metadata: ReleaseArtifactMetadata[] = [];
@@ -223,14 +230,16 @@ const main = async (): Promise<void> => {
     });
     const { artifactPath, ...artifactMetadata } = packaged;
     metadata.push(artifactMetadata);
-    if (shouldSmokeCompileTargetOnHost(compileTarget) && !smokedArtifact) {
+    if (!skipSmokeTest && shouldSmokeCompileTargetOnHost(compileTarget) && !smokedArtifact) {
       console.log(`[package-app-release] smoke testing ${path.basename(artifactPath)} on ${hostTarget}`);
       await smokeTestArtifact(artifactPath);
       smokedArtifact = true;
     }
   }
   if (!smokedArtifact) {
-    if (hostTarget) {
+    if (skipSmokeTest) {
+      console.log("[package-app-release] skipped smoke test: disabled by TRENCHCLAW_RELEASE_SKIP_SMOKE");
+    } else if (hostTarget) {
       console.log(`[package-app-release] skipped smoke test: no artifact for host target ${hostTarget}`);
     } else {
       console.log(`[package-app-release] skipped smoke test: unsupported host ${process.platform}-${process.arch}`);

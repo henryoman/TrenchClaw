@@ -3,6 +3,11 @@
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  RELEASE_CONFIG_ASSET_PATHS,
+  RELEASE_PLACEHOLDER_ASSET_PATHS,
+  RELEASE_RUNTIME_ASSET_PATHS,
+} from "./lib/release-build-plan";
 import { hasBlockedBundleContent, hasBlockedBundlePath } from "./lib/release-bundle-filter";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -69,10 +74,10 @@ const run = async (): Promise<void> => {
 
   const requiredPaths = [
     "gui/index.html",
-    "core/src/ai/config/vault.template.json",
-    "core/src/ai/config/ai.template.json",
-    "core/src/ai/brain/protected/keypairs/.keep",
-    "core/src/runtime/gui-transport/router.ts",
+    ...RELEASE_CONFIG_ASSET_PATHS.map((relativePath) => `core/${relativePath}`),
+    ...RELEASE_PLACEHOLDER_ASSET_PATHS.map((relativePath) => `core/${relativePath}`),
+    ...RELEASE_RUNTIME_ASSET_PATHS.map((relativePath) => `core/${relativePath}`),
+    "build-manifest.json",
   ];
 
   const violations: string[] = [];

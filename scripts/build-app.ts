@@ -3,12 +3,22 @@
 import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  RELEASE_BUILD_COMMANDS,
+  RELEASE_CONFIG_ASSET_PATHS,
+  RELEASE_PLACEHOLDER_ASSET_PATHS,
+  RELEASE_RUNTIME_ASSET_PATHS,
+  resolveReleaseBrainExcludePrefixes,
+  resolveReleasePlanSnapshot,
+} from "./lib/release-build-plan";
 import { shouldBundleBrainFile } from "./lib/release-bundle-filter";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
-const OUTPUT_ROOT = path.join(REPO_ROOT, "dist", "app");
-const GUI_OUTPUT_ROOT = path.join(OUTPUT_ROOT, "gui");
-const CORE_OUTPUT_ROOT = path.join(OUTPUT_ROOT, "core");
+const DEFAULT_OUTPUT_ROOT = path.join(REPO_ROOT, "dist", "app");
+
+interface CliArgs {
+  outputRoot: string;
+}
 
 const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
   const [bin, ...args] = command;
@@ -26,6 +36,24 @@ const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
   if (code !== 0) {
     throw new Error(`Command failed (${code}): ${command.join(" ")}`);
   }
+};
+
+const parseArgs = (argv: string[]): CliArgs => {
+  let outputRoot = DEFAULT_OUTPUT_ROOT;
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--output-root") {
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Missing value for --output-root");
+      }
+      outputRoot = path.resolve(value);
+      i += 1;
+    }
+  }
+
+  return { outputRoot };
 };
 
 const runCapture = async (command: string[], cwd = REPO_ROOT): Promise<string> => {
@@ -115,8 +143,20 @@ const resolveBuildMetadata = async (): Promise<{
   };
 };
 
-const copyReleaseBrainAssets = async (): Promise<void> => {
+const copyRelativeFile = async (input: {
+  sourceRoot: string;
+  targetRoot: string;
+  relativePath: string;
+}): Promise<void> => {
+  const source = path.join(input.sourceRoot, input.relativePath);
+  const target = path.join(input.targetRoot, input.relativePath);
+  await mkdir(path.dirname(target), { recursive: true });
+  await cp(source, target);
+};
+
+const copyReleaseBrainAssets = async (coreOutputRoot: string): Promise<void> => {
   let trackedFiles: string[] = [];
+  const excludedPrefixes = resolveReleaseBrainExcludePrefixes();
   try {
     const raw = await runCapture([
       "git",
@@ -138,7 +178,7 @@ const copyReleaseBrainAssets = async (): Promise<void> => {
   }
 
   for (const trackedFile of trackedFiles) {
-    if (!shouldBundleBrainFile(trackedFile)) {
+    if (!shouldBundleBrainFile(trackedFile, { excludedPrefixes })) {
       continue;
     }
     const source = path.join(REPO_ROOT, trackedFile);
@@ -146,23 +186,30 @@ const copyReleaseBrainAssets = async (): Promise<void> => {
       continue;
     }
     const relativePath = path.relative("apps/trenchclaw", trackedFile);
-    const target = path.join(CORE_OUTPUT_ROOT, relativePath);
+    const target = path.join(coreOutputRoot, relativePath);
     await mkdir(path.dirname(target), { recursive: true });
     await cp(source, target);
   }
 };
 
-const copyReleaseConfigAssets = async (): Promise<void> => {
-  await cp(path.join(REPO_ROOT, "apps/trenchclaw/src/ai/config"), path.join(CORE_OUTPUT_ROOT, "src/ai/config"), {
-    recursive: true,
-  });
+const copyReleaseConfigAssets = async (coreOutputRoot: string): Promise<void> => {
+  for (const relativePath of RELEASE_CONFIG_ASSET_PATHS) {
+    await copyRelativeFile({
+      sourceRoot: path.join(REPO_ROOT, "apps/trenchclaw"),
+      targetRoot: coreOutputRoot,
+      relativePath,
+    });
+  }
 };
 
-const copyReleaseRuntimeAssets = async (): Promise<void> => {
-  const routerSource = path.join(REPO_ROOT, "apps/trenchclaw/src/runtime/gui-transport/router.ts");
-  const routerTarget = path.join(CORE_OUTPUT_ROOT, "src/runtime/gui-transport/router.ts");
-  await mkdir(path.dirname(routerTarget), { recursive: true });
-  await cp(routerSource, routerTarget);
+const copyReleaseRuntimeAssets = async (coreOutputRoot: string): Promise<void> => {
+  for (const relativePath of RELEASE_RUNTIME_ASSET_PATHS) {
+    await copyRelativeFile({
+      sourceRoot: path.join(REPO_ROOT, "apps/trenchclaw"),
+      targetRoot: coreOutputRoot,
+      relativePath,
+    });
+  }
 };
 
 const ensurePlaceholderFile = async (filePath: string, contents = ""): Promise<void> => {
@@ -170,25 +217,63 @@ const ensurePlaceholderFile = async (filePath: string, contents = ""): Promise<v
   await writeFile(filePath, contents, "utf8");
 };
 
+const writeBundleManifest = async (outputRoot: string, buildMetadata: {
+  version: string;
+  commit: string;
+}): Promise<void> => {
+  const files = await listFilesRecursive(outputRoot);
+  const manifest = await Promise.all(files.map(async (absolutePath) => ({
+    path: path.relative(outputRoot, absolutePath).split(path.sep).join("/"),
+    sizeBytes: Bun.file(absolutePath).size,
+  })));
+
+  await writeFile(
+    path.join(outputRoot, "build-manifest.json"),
+    `${JSON.stringify(
+      {
+        version: buildMetadata.version,
+        commit: buildMetadata.commit,
+        generatedAt: new Date().toISOString(),
+        buildPlan: resolveReleasePlanSnapshot(),
+        fileCount: manifest.length,
+        files: manifest.toSorted((left, right) => left.path.localeCompare(right.path)),
+      },
+      null,
+      2,
+    )}\n`,
+    "utf8",
+  );
+};
+
 const main = async (): Promise<void> => {
+  const args = parseArgs(process.argv.slice(2));
+  const outputRoot = args.outputRoot;
+  const guiOutputRoot = path.join(outputRoot, "gui");
+  const coreOutputRoot = path.join(outputRoot, "core");
+
   console.log("[build-app] cleaning old output");
-  await rm(OUTPUT_ROOT, { recursive: true, force: true });
+  await rm(outputRoot, { recursive: true, force: true });
 
   const buildMetadata = await resolveBuildMetadata();
   process.env.TRENCHCLAW_BUILD_VERSION = buildMetadata.version;
   process.env.TRENCHCLAW_BUILD_COMMIT = buildMetadata.commit;
   console.log(`[build-app] build metadata version=${buildMetadata.version} commit=${buildMetadata.commit}`);
+  console.log(`[build-app] command bundle=${RELEASE_BUILD_COMMANDS.bundle}`);
+  console.log(`[build-app] command verify=${RELEASE_BUILD_COMMANDS.verify}`);
+  console.log(`[build-app] command package=${RELEASE_BUILD_COMMANDS.package}`);
 
   console.log("[build-app] building GUI assets");
   await run(["bun", "run", "--cwd", "apps/frontends/gui", "build"]);
 
   console.log("[build-app] assembling release assets");
-  await mkdir(OUTPUT_ROOT, { recursive: true });
-  await cp(path.join(REPO_ROOT, "apps/frontends/gui/dist"), GUI_OUTPUT_ROOT, { recursive: true });
-  await copyReleaseBrainAssets();
-  await copyReleaseConfigAssets();
-  await copyReleaseRuntimeAssets();
-  await ensurePlaceholderFile(path.join(CORE_OUTPUT_ROOT, "src/ai/brain/protected/keypairs/.keep"));
+  await mkdir(outputRoot, { recursive: true });
+  await cp(path.join(REPO_ROOT, "apps/frontends/gui/dist"), guiOutputRoot, { recursive: true });
+  await copyReleaseBrainAssets(coreOutputRoot);
+  await copyReleaseConfigAssets(coreOutputRoot);
+  await copyReleaseRuntimeAssets(coreOutputRoot);
+  for (const relativePath of RELEASE_PLACEHOLDER_ASSET_PATHS) {
+    await ensurePlaceholderFile(path.join(coreOutputRoot, relativePath));
+  }
 
   const metadata = {
     version: buildMetadata.version,
@@ -199,7 +284,8 @@ const main = async (): Promise<void> => {
       core: "core",
     },
   };
-  await writeFile(path.join(OUTPUT_ROOT, "build-metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  await writeFile(path.join(outputRoot, "build-metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  await writeBundleManifest(outputRoot, buildMetadata);
 
   const notes = `# TrenchClaw Release Assets
 
@@ -215,11 +301,12 @@ Excluded intentionally:
 - runtime databases, sessions, logs, and memory files
 - local vault contents and wallet library data
 - wallet keypairs beyond placeholder files
+- test files, coverage output, and source maps
 - skill installer shell scripts under knowledge/skills
 `;
-  await writeFile(path.join(OUTPUT_ROOT, "README.md"), notes, "utf8");
+  await writeFile(path.join(outputRoot, "README.md"), notes, "utf8");
 
-  console.log(`[build-app] done -> ${OUTPUT_ROOT}`);
+  console.log(`[build-app] done -> ${outputRoot}`);
 };
 
 await main();

@@ -3,13 +3,21 @@ import os from "node:os";
 
 const toPosixPath = (value: string): string => value.split(path.sep).join("/");
 
-export const shouldBundleBrainFile = (trackedFile: string): boolean => {
+export const shouldBundleBrainFile = (
+  trackedFile: string,
+  options?: { excludedPrefixes?: string[] },
+): boolean => {
   const relativeToBrain = path.posix.relative("apps/trenchclaw/src/ai/brain", toPosixPath(trackedFile));
   if (!relativeToBrain || relativeToBrain.startsWith("..")) {
     return false;
   }
 
   const fileName = path.posix.basename(relativeToBrain).toLowerCase();
+  const excludedPrefixes = (options?.excludedPrefixes ?? []).map((prefix) => prefix.trim()).filter((prefix) => prefix.length > 0);
+
+  if (excludedPrefixes.some((prefix) => relativeToBrain === prefix || relativeToBrain.startsWith(`${prefix}/`))) {
+    return false;
+  }
 
   if (relativeToBrain === "protected/no-read/vault.json") {
     return false;
@@ -78,6 +86,24 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
   }
   if (normalized.startsWith("core/src/ai/brain/knowledge/skills/") && fileName.endsWith(".sh")) {
     return `skill installer scripts should not be bundled: ${normalized}`;
+  }
+  if (
+    normalized.includes("/tests/")
+    || normalized.startsWith("tests/")
+    || normalized.includes("/__tests__/")
+    || fileName.includes(".test.")
+    || fileName.includes(".spec.")
+  ) {
+    return `test-only file should not be bundled: ${normalized}`;
+  }
+  if (normalized.includes("/coverage/") || normalized.startsWith("coverage/")) {
+    return `coverage output should not be bundled: ${normalized}`;
+  }
+  if (lower.endsWith(".map")) {
+    return `source map should not be bundled in release assets: ${normalized}`;
+  }
+  if (fileName === ".ds_store") {
+    return `desktop metadata file should not be bundled: ${normalized}`;
   }
 
   return null;

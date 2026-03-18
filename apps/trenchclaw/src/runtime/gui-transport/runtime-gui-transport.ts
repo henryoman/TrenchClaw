@@ -8,9 +8,7 @@ import { MAX_ACTIVITY_ITEMS } from "./constants";
 import type { RuntimeGuiDomainContext } from "./contracts";
 import { createGuiApiHandler } from "./router";
 import { streamChat } from "./domains/chat";
-import { runDispatcherQueueTest } from "./domains/tests";
 import type { UIMessage } from "ai";
-import type { DispatcherTestRequest } from "./parsers";
 import { readPersistedActiveInstanceSync } from "../instance-state";
 
 const createMessageId = (): string => crypto.randomUUID();
@@ -125,15 +123,6 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
 
   async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string; abortSignal?: AbortSignal }): Promise<Response> {
     return streamChat(this, messages, input);
-  }
-
-  async runDispatcherQueueTest(input: DispatcherTestRequest): Promise<{
-    jobId: string;
-    completed: boolean;
-    status: string;
-    result: unknown;
-  }> {
-    return runDispatcherQueueTest(this, input);
   }
 
   createApiHandler(): (request: Request) => Promise<Response> {

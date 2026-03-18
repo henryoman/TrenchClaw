@@ -4,7 +4,6 @@ import {
   parseUpdateAiSettingsRequest,
   parseCreateInstanceRequest,
   parseDeleteSecretRequest,
-  parseDispatcherTestRequest,
   parseSignInRequest,
   parseUpdateTradingSettingsRequest,
   parseUiChatRequest,
@@ -18,7 +17,6 @@ import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
 import { getSolPrice } from "./domains/sol-price";
 import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
-import { runDispatcherQueueTest } from "./domains/tests";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
@@ -117,19 +115,6 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
         return Response.json({ ok: true }, { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "POST" && url.pathname === "/api/gui/tests/dispatcher") {
-      const payload = await parseDispatcherTestRequest(request);
-      if (!payload) {
-        return Response.json({ error: "Invalid dispatcher test payload" }, { status: 400, headers: CORS_HEADERS });
-      }
-
-      try {
-        return Response.json(await runDispatcherQueueTest(context, payload), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
       }
     }
 
