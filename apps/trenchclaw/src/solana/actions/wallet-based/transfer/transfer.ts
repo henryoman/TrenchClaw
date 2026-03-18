@@ -23,8 +23,6 @@ import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../lib/rpc/u
 import { loadManagedWalletSigner } from "../../../lib/wallet/wallet-signer";
 import { walletGroupNameSchema, walletNameSchema } from "../../../lib/wallet/wallet-types";
 
-const LAMPORTS_PER_SOL = 1_000_000_000;
-
 const SYSTEM_PROGRAM_ID = "11111111111111111111111111111111";
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
