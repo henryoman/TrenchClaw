@@ -31,37 +31,33 @@ TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It'
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
-Current beta keys:
-
-- helius api key for helius-backed reads
-- jupiter ultra key for swap and trigger flows
-- openrouter or gateway api key for chat-driven workflows
+Current beta keys: helius api key for helius-backed reads, jupiter ultra key for swap and trigger flows, and an OpenRouter or Gateway API key for chat-driven workflows.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
-## v0.0.1 Feature Checklist
+## v0.1.0 Feature Checklist
 
-- [x] create Bun runtime monorepo
-- [x] SQLite storage
-- [x] Structured logging
-- [x] Raw file read/write
-- [x] Wallet creation and organization
-- [x] RPC based data fetching
-- [x] Dexscreener data fetch setup
-- [x] Native Jupiter Ultra swaps
-- [x] Solana Kit tx builder
-- [x] Direct transfers (limited beta surface)
-- [x] Bash tool and optional CLI workflows
-- [x] Secure vault system for keys and secrets
-- [x] Protected filesystem boundaries
-- [x] Test suite
-- [x] Marketing and docs website
-- [x] Svelte GUI
-- [x] Runner CLI
-- [x] Queue and explicit scheduled routines
-- [ ] CI and release flow
-- [x] Public docs rollout
-- [ ] Wallet and research validation
+- [x] AI chat with OpenRouter or Vercel AI Gateway
+- [x] Local instance sign-in, vault, and key management
+- [x] Managed wallet creation and organization
+- [x] Managed wallet balance and holdings reads
+- [x] Swap history and Helius-backed enriched reads
+- [x] Dexscreener token discovery and market data
+- [x] Jupiter Ultra swaps from managed wallets (limited beta)
+- [x] Scheduled Ultra swaps and simple DCA plans (limited beta)
+- [x] Jupiter Trigger orders and cancellations (limited beta)
+- [x] Direct transfers, token account cleanup, and privacy flows (limited beta)
+- [x] Runtime memory, queue, and conversation history
+- [x] Desktop GUI for chat, wallets, keys, settings, activity, and runtime status
+- [ ] Schedule tab polish and full automation UX
+- [ ] Broader strategy automation and multi-step bots beyond today's queueable beta flows
+- [ ] Non-Ultra / standard swap support
+- [ ] Alerts and monitoring that feel complete in the product
+- [ ] Portfolio, PnL, and operator risk controls
+- [ ] Simulation, paper trading, and backtesting
+- [ ] Helius Sender, Laserstream, and broader webhook/streaming integrations
+- [ ] DFlow and Phantom SDK integrations
+- [ ] Release pipeline, CI quality gates, and broader wallet/research validation
 
 Quick links:
 
@@ -434,34 +430,6 @@ Local development still uses Vite:
 ```bash
 bun run gui:dev
 ```
-
----
-
-## v1.0 Feature Checklist
-
-- [ ] Simulation and paper trading
-- [ ] Metrics and tracing
-- [ ] Trigger engine (time, price, on-chain)
-- [ ] Live routine execution (DCA, swing, % buy/sell, sniper)
-- [ ] Non-Ultra RPC swap parity
-- [ ] Production-safe trigger scheduling
-- [ ] Retry/restart idempotency
-- [ ] Multi-wallet support with limits
-- [ ] Portfolio and PnL tracking
-- [ ] Risk controls (size, slippage, drawdown)
-- [ ] Runtime and trade alerts
-- [ ] Operator controls (pause, resume, kill switch)
-- [ ] External API controls (auth, rate limits, typed contracts)
-- [ ] Production key management and rotation
-- [ ] Storage maintenance and backup/restore
-- [ ] Historical market data ingestion
-- [ ] Reproducible backtests and simulations
-- [ ] Performance and execution reporting
-- [ ] Solana data source redundancy
-- [ ] Failure recovery and dead-letter handling
-- [ ] Full test coverage (unit/integration/scenario/soak)
-- [ ] Release workflow and CI quality gates
-- [] Privacy transfer via Privacy Cash
 
 ---
 
