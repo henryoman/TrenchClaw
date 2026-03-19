@@ -36,6 +36,7 @@ const buffersEqual = (left: Uint8Array, right: Uint8Array): boolean => {
 const moveFileIfNeeded = async (input: {
   sourcePath: string;
   destinationPath: string;
+  preserveDestinationOnConflict?: boolean;
 }): Promise<number> => {
   if (!(await fileExists(input.sourcePath))) {
     return 0;
@@ -45,6 +46,10 @@ const moveFileIfNeeded = async (input: {
   if (await fileExists(input.destinationPath)) {
     const destinationContent = await readFile(input.destinationPath);
     if (!buffersEqual(sourceContent, destinationContent)) {
+      if (input.preserveDestinationOnConflict) {
+        await unlink(input.sourcePath);
+        return 0;
+      }
       throw new Error(`Refusing to overwrite "${input.destinationPath}" with legacy content from "${input.sourcePath}".`);
     }
     await unlink(input.sourcePath);
@@ -123,8 +128,9 @@ export const migrateLegacyRuntimeState = async (): Promise<RuntimeResetReport | 
   const movedFiles =
     (await Promise.all(legacyVaultSources.map((sourcePath) =>
       moveFileIfNeeded({
-      sourcePath,
-      destinationPath: resolveInstanceVaultPath(targetInstanceId),
+        sourcePath,
+        destinationPath: resolveInstanceVaultPath(targetInstanceId),
+        preserveDestinationOnConflict: true,
       })
     ))).reduce((total, moved) => total + moved, 0)
     + await moveLegacyWallets(targetInstanceId);
