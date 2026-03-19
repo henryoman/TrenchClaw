@@ -24,10 +24,10 @@ Use `"injected"` for extension-only flows (no appId needed). Add `"google"` and/
 ## Installation
 
 ```bash
-npm install @phantom/browser-sdk
+bun add @phantom/browser-sdk
 
 # For Solana support
-npm install @solana/kit @solana-program/system @solana-program/compute-budget
+bun add @solana/kit @solana-program/system @solana-program/compute-budget
 ```
 
 ## Quick Start Template
@@ -35,7 +35,7 @@ npm install @solana/kit @solana-program/system @solana-program/compute-budget
 Generate a project with the Phantom Embedded JS Starter:
 
 ```bash
-npx -y create-solana-dapp@latest -t solana-foundation/templates/community/phantom-embedded-js
+bunx create-solana-dapp@latest -t solana-foundation/templates/community/phantom-embedded-js
 ```
 
 ## SDK Initialization

@@ -148,9 +148,9 @@ await Bun.secrets.set({
 // Or if you prefer without an object
 await Bun.secrets.set("my-app.com", "github-token", "ghp_xxxxxxxxxxxxxxxxxxxx");
 
-// Store npm registry token (instead of ~/.npmrc)
+// Store package registry token (instead of a registry rc file)
 await Bun.secrets.set({
-  service: "npm-registry",
+  service: "package-registry",
   name: "https://registry.npmjs.org",
   value: "npm_xxxxxxxxxxxxxxxxxxxx",
 });
@@ -316,7 +316,7 @@ Unlike environment variables, `Bun.secrets`:
    This API is slow, you probably still need to use a config file for some things.
 
 3. **Use for local development tools**:
-   * ✅ CLI tools (gh, npm, docker, kubectl)
+   * ✅ CLI tools (gh, bun, docker, kubectl)
    * ✅ Local development servers
    * ✅ Personal API keys for testing
    * ❌ Production servers (use proper secret management)

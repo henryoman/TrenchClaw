@@ -7,7 +7,7 @@ import { assertInstanceSystemWritePath } from "../../runtime/security/write-scop
 import type { AiModelProvider } from "./model-catalog";
 import { parseStructuredFile, resolvePathFromModule } from "./shared";
 
-export const DEFAULT_LLM_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
+export const DEFAULT_LLM_MODEL = "openai/gpt-5.4-nano";
 export const DEFAULT_LLM_PROVIDER: AiModelProvider = "openrouter";
 
 const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";

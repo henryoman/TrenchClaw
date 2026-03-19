@@ -7,12 +7,12 @@ description: CLI tools for Svelte 5 documentation lookup and code analysis. MUST
 
 ## CLI Tools
 
-You have access to `@sveltejs/mcp` CLI for Svelte-specific assistance. Use these commands via `npx`:
+You have access to `@sveltejs/mcp` CLI for Svelte-specific assistance. Use these commands via `bunx`:
 
 ### List Documentation Sections
 
 ```bash
-npx @sveltejs/mcp list-sections
+bunx @sveltejs/mcp list-sections
 ```
 
 Lists all available Svelte 5 and SvelteKit documentation sections with titles and paths.
@@ -20,7 +20,7 @@ Lists all available Svelte 5 and SvelteKit documentation sections with titles an
 ### Get Documentation
 
 ```bash
-npx @sveltejs/mcp get-documentation "<section1>,<section2>,..."
+bunx @sveltejs/mcp get-documentation "<section1>,<section2>,..."
 ```
 
 Retrieves full documentation for specified sections. Use after `list-sections` to fetch relevant docs.
@@ -28,7 +28,7 @@ Retrieves full documentation for specified sections. Use after `list-sections` t
 **Example:**
 
 ```bash
-npx @sveltejs/mcp get-documentation "$state,$derived,$effect"
+bunx @sveltejs/mcp get-documentation "$state,$derived,$effect"
 ```
 
 ### Validation

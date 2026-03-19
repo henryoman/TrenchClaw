@@ -9,7 +9,7 @@ const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const KNOWLEDGE_SKILLS_DEST = path.join(REPO_ROOT, "apps/trenchclaw/src/ai/brain/knowledge/skills");
 
 const INSTALLER_PATH = path.join(
-  process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex"),
+  process.env.AGENTS_HOME ?? path.join(os.homedir(), ".agents"),
   "skills/.system/skill-installer/scripts/install-skill-from-github.py",
 );
 
@@ -49,7 +49,7 @@ const run = async (): Promise<void> => {
     await access(INSTALLER_PATH);
   } catch {
     console.error(`Skill installer not found: ${INSTALLER_PATH}`);
-    console.error("Install or expose the skill-installer under $CODEX_HOME/skills/.system first.");
+    console.error("Install or expose the skill-installer under $AGENTS_HOME/skills/.system first.");
     process.exit(1);
   }
 

@@ -191,7 +191,7 @@ describe("instance discovery", () => {
       path.join(runtimeRoot, "instances/01/settings/ai.json"),
       `${JSON.stringify({
         provider: "openrouter",
-        model: "nvidia/nemotron-3-super-120b-a12b:free",
+        model: "openai/gpt-5.4-nano",
         defaultMode: "primary",
         temperature: null,
         maxOutputTokens: null,

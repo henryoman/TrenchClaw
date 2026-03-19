@@ -35,6 +35,11 @@ export const AI_MODEL_CATALOG = [
     providers: BOTH_PROVIDERS,
   },
   {
+    id: "openai/gpt-5.4-nano",
+    label: "GPT-5.4 Nano",
+    providers: OPENROUTER_ONLY,
+  },
+  {
     id: "google/gemini-3.1-pro-preview",
     label: "Gemini 3.1 Pro Preview",
     providers: BOTH_PROVIDERS,

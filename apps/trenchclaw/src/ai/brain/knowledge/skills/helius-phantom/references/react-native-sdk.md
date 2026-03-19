@@ -23,16 +23,16 @@ React Native does not support the `"injected"` provider (no browser extension on
 ## Installation
 
 ```bash
-npm install @phantom/react-native-sdk
+bun add @phantom/react-native-sdk
 
 # Expo peer dependencies
-npx expo install expo-secure-store expo-web-browser expo-auth-session expo-router react-native-svg
+bunx expo install expo-secure-store expo-web-browser expo-auth-session expo-router react-native-svg
 
 # Required polyfill
-npm install react-native-get-random-values
+bun add react-native-get-random-values
 
 # For Solana support
-npm install @solana/kit @solana-program/system @solana-program/compute-budget
+bun add @solana/kit @solana-program/system @solana-program/compute-budget
 ```
 
 ## Critical Setup
@@ -312,5 +312,5 @@ See `references/frontend-security.md` for backend proxy patterns.
 - **`react-native-get-random-values` not imported first** — the app will crash on startup. This polyfill must be the very first import in your entry file.
 - **Using `signAndSendTransaction` instead of `signTransaction` + Helius Sender** — use `signTransaction` to sign, then POST to `https://sender.helius-rpc.com/fast`. See `references/transactions.md`.
 - **Missing `appId`** — required for Google/Apple providers. Get it from phantom.com/portal.
-- **Auth redirect not working** — verify `scheme` in app.json matches config, ensure all Expo plugins are configured, run `npx expo prebuild` after changes.
+- **Auth redirect not working** — verify `scheme` in app.json matches config, ensure all Expo plugins are configured, run `bunx expo prebuild` after changes.
 - **Hardcoding API keys in mobile code** — mobile app binaries can be decompiled. Always use a backend proxy for Helius API calls.

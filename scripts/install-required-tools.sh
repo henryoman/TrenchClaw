@@ -63,7 +63,6 @@ print_manual_helius_install_help() {
   info "Install one of these package managers, then rerun this helper or install Helius CLI manually:"
   info "  bun add -g ${HELIUS_PACKAGE_NAME}@latest"
   info "  pnpm add -g ${HELIUS_PACKAGE_NAME}@latest"
-  info "  npm install -g ${HELIUS_PACKAGE_NAME}@latest"
 }
 
 install_or_update_solana() {
@@ -110,12 +109,10 @@ install_or_update_helius() {
     ensure_path_in_shell_profiles "$BUN_BIN_DIR"
   elif need_cmd pnpm; then
     installer="pnpm"
-  elif need_cmd npm; then
-    installer="npm"
   fi
 
   if [ -z "$installer" ]; then
-    info "Skipping Helius CLI install/update because Bun, pnpm, and npm are unavailable."
+    info "Skipping Helius CLI install/update because Bun and pnpm are unavailable."
     print_manual_helius_install_help
     return 0
   fi
@@ -136,9 +133,6 @@ install_or_update_helius() {
       ;;
     pnpm)
       pnpm add -g "${HELIUS_PACKAGE_NAME}@latest" || fail "pnpm failed to install ${HELIUS_PACKAGE_NAME}"
-      ;;
-    npm)
-      npm install -g "${HELIUS_PACKAGE_NAME}@latest" || fail "npm failed to install ${HELIUS_PACKAGE_NAME}"
       ;;
   esac
 

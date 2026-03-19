@@ -5,29 +5,29 @@ SKILL_NAME="svm"
 SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Default: install to personal skills
-TARGET_BASE="$HOME/.claude/skills"
+TARGET_BASE="$HOME/.agents/skills"
 MODE="personal"
 
 usage() {
   echo "Usage: ./install.sh [OPTIONS]"
   echo ""
-  echo "Install the SVM skill for Claude Code."
+  echo "Install the SVM skill into .agents/skills."
   echo ""
   echo "Options:"
-  echo "  --project     Install to current project (.claude/skills/) instead of personal"
+  echo "  --project     Install to current project (.agents/skills/) instead of personal"
   echo "  --path PATH   Install to a custom path"
   echo "  --help        Show this help message"
   echo ""
   echo "Examples:"
-  echo "  ./install.sh              # Install to ~/.claude/skills/svm/"
-  echo "  ./install.sh --project    # Install to ./.claude/skills/svm/"
+  echo "  ./install.sh              # Install to ~/.agents/skills/svm/"
+  echo "  ./install.sh --project    # Install to ./.agents/skills/svm/"
   echo "  ./install.sh --path /tmp  # Install to /tmp/svm/"
 }
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --project)
-      TARGET_BASE=".claude/skills"
+      TARGET_BASE=".agents/skills"
       MODE="project"
       shift
       ;;
@@ -68,7 +68,7 @@ echo "SVM skill installed to $TARGET ($MODE)"
 echo ""
 echo "Next steps:"
 echo "  1. Install the Helius MCP server (if not already):"
-echo "     claude mcp add helius npx helius-mcp@latest"
+echo "     Add an MCP server named 'helius' that runs 'bunx helius-mcp@latest'"
 echo ""
 echo "  2. No API key required — all tools fetch from public sources."
 echo ""

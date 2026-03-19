@@ -25,7 +25,7 @@ Full instructions: https://dashboard.helius.dev/agents.md
 Programmatically create accounts and get API keys via CLI:
 
 ```bash
-npm install -g helius-cli
+bun add -g helius-cli
 ```
 
 ### Step 2: Generate Keypair
@@ -237,7 +237,7 @@ AI agent documentation, including programmatic signup, API guidance, MCP skills,
 - Phantom Skill: https://www.helius.dev/docs/agents/skills/phantom.md
 - DFlow Trading Skill: https://www.helius.dev/docs/agents/skills/dflow.md
 - SVM Skill: https://www.helius.dev/docs/agents/skills/svm.md
-- Claude Code Plugin: https://www.helius.dev/docs/agents/claude-code-plugin.md
+- Helius Plugin Bundle: https://www.helius.dev/docs/agents/mcp.md
 - TypeScript SDK for Agents: https://www.helius.dev/docs/agents/typescript-sdk.md
 - Rust SDK for Agents: https://www.helius.dev/docs/agents/rust-sdk.md
 

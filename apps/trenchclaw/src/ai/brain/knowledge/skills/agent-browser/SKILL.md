@@ -1,7 +1,7 @@
 ---
 name: agent-browser
 description: Browser automation CLI for AI agents. Use when the user needs to interact with websites, including navigating pages, filling forms, clicking buttons, taking screenshots, extracting data, testing web apps, or automating any browser task. Triggers include requests to "open a website", "fill out a form", "click a button", "take a screenshot", "scrape data from a page", "test this web app", "login to a site", "automate browser actions", or any task requiring programmatic web interaction.
-allowed-tools: Bash(npx agent-browser:*), Bash(agent-browser:*)
+allowed-tools: Bash(bunx agent-browser:*), Bash(agent-browser:*)
 ---
 
 # Browser Automation with agent-browser
@@ -260,7 +260,7 @@ agent-browser -p ios screenshot mobile.png
 agent-browser -p ios close
 ```
 
-**Requirements:** macOS with Xcode, Appium (`npm install -g appium && appium driver install xcuitest`)
+**Requirements:** macOS with Xcode, Appium (`bun add -g appium && bunx appium driver install xcuitest`)
 
 **Real devices:** Works with physical iOS devices if pre-configured. Use `--device "<UDID>"` where UDID is from `xcrun xctrace list devices`.
 

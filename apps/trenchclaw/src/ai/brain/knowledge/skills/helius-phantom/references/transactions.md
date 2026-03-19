@@ -20,7 +20,7 @@ For extension wallets (`"injected"` provider), use this pattern for optimal land
 ## Dependencies
 
 ```bash
-npm install @solana/kit @solana-program/system @solana-program/compute-budget @solana-program/token @solana-program/associated-token
+bun add @solana/kit @solana-program/system @solana-program/compute-budget @solana-program/token @solana-program/associated-token
 ```
 
 ## SOL Transfer

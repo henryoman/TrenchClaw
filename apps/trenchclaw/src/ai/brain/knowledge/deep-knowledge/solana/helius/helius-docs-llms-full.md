@@ -25,7 +25,7 @@ Full instructions: https://dashboard.helius.dev/agents.md
 Programmatically create accounts and get API keys via CLI:
 
 ```bash
-npm install -g helius-cli
+bun add -g helius-cli
 ```
 
 ### Step 2: Generate Keypair

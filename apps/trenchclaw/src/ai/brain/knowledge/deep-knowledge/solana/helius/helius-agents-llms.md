@@ -26,7 +26,7 @@ Get an API key from https://dashboard.helius.dev or programmatically via the Hel
 
 The Helius MCP server is the recommended way for AI agents to interact with Helius. It provides 60+ tools with structured inputs/outputs — the AI calls tools directly rather than spawning shell commands and parsing output. Use the CLI only for shell scripts, CI/CD, or when MCP is not available.
 
-- MCP: Structured tool calls, built-in signup (`generateKeypair` → `agenticSignup`), works with Claude Code, Codex, Cursor, VS Code, Claude Desktop, Windsurf, and any MCP-compatible tool
+- MCP: Structured tool calls, built-in signup (`generateKeypair` → `agenticSignup`), works with Codex, Cursor, VS Code, ChatGPT, Windsurf, and any MCP-compatible tool
 - CLI: Shell commands with `--json` output, for terminal workflows and automation scripts
 
 ## Pages
@@ -44,7 +44,7 @@ Full reference for all 95+ Helius CLI commands organized by category: account ma
 https://www.helius.dev/docs/agents/cli/commands.md
 
 ### Helius MCP
-MCP server for Helius (`helius-mcp` npm package). 60+ tools for querying the blockchain, sending transactions, managing webhooks, streaming data, wallet analysis, and autonomous account signup. Install: `claude mcp add helius npx helius-mcp@latest`
+MCP server for Helius (`helius-mcp` package). 60+ tools for querying the blockchain, sending transactions, managing webhooks, streaming data, wallet analysis, and autonomous account signup. Install by adding an MCP server named `helius` that runs `bunx helius-mcp@latest`.
 https://www.helius.dev/docs/agents/mcp.md
 
 ### MCP Tool Catalog
@@ -52,28 +52,27 @@ Full catalog of 60+ tools available in the Helius MCP server organized by catego
 https://www.helius.dev/docs/agents/mcp/tools.md
 
 ### Skills Overview
-Model-agnostic instruction sets that teach AI assistants how to build on Solana using Helius. Skills provide routing logic, correct SDK patterns, deep reference files, and rules that prevent common mistakes. Each skill ships with pre-built system prompt variants for OpenAI API, Claude API, Codex CLI, Cursor, and ChatGPT. Four skills available: Build (general Solana dev), Phantom (frontend dApps), DFlow (trading apps), SVM (protocol internals).
+Model-agnostic instruction sets that teach AI assistants how to build on Solana using Helius. Skills provide routing logic, correct SDK patterns, deep reference files, and rules that prevent common mistakes. Each skill ships with pre-built system prompt variants for OpenAI API, Codex CLI, Cursor, and ChatGPT. Four skills available: Build (general Solana dev), Phantom (frontend dApps), DFlow (trading apps), SVM (protocol internals).
 https://www.helius.dev/docs/agents/skills/overview.md
 
 ### Build Skill
-Core Helius skill. Makes your AI assistant an expert Solana developer with routing to the right MCP tools and reference files for DAS API, Sender, WebSockets, LaserStream, Webhooks, Wallet API, Enhanced Transactions, onboarding, and Solana knowledge. Requires `helius-mcp`. Claude Code: `/helius:build` (plugin) or standalone. Codex: `$helius`. API/Cursor: use `prompts/openai.developer.md`, `claude.system.md`, or `full.md`.
+Core Helius skill. Makes your AI assistant an expert Solana developer with routing to the right MCP tools and reference files for DAS API, Sender, WebSockets, LaserStream, Webhooks, Wallet API, Enhanced Transactions, onboarding, and Solana knowledge. Requires `helius-mcp`. Plugin command: `/helius:build` where supported. Codex: `$helius`. API/Cursor: use `prompts/openai.developer.md` or `full.md`.
 https://www.helius.dev/docs/agents/skills/build.md
 
 ### Phantom Skill
-Frontend dApp skill combining Phantom Connect SDK (React, React Native, browser) with Helius infrastructure. Covers wallet connection, transaction signing, token gating, NFT minting, crypto payments, portfolio display, real-time updates, and secure frontend architecture. Requires `helius-mcp`. Claude Code: `/helius:phantom`. Codex: `$helius-phantom`. API/Cursor: use pre-built system prompt variants.
+Frontend dApp skill combining Phantom Connect SDK (React, React Native, browser) with Helius infrastructure. Covers wallet connection, transaction signing, token gating, NFT minting, crypto payments, portfolio display, real-time updates, and secure frontend architecture. Requires `helius-mcp`. Plugin command: `/helius:phantom` where supported. Codex: `$helius-phantom`. API/Cursor: use pre-built system prompt variants.
 https://www.helius.dev/docs/agents/skills/phantom.md
 
 ### DFlow Trading Skill
-Trading skill combining DFlow APIs (spot swaps, prediction markets, real-time streaming, Proof KYC) with Helius infrastructure (Sender, priority fees, DAS, WebSockets, LaserStream, Wallet API). Requires `helius-mcp` + DFlow MCP. Claude Code: `/helius:dflow`. Codex: `$helius-dflow`. API/Cursor: use pre-built system prompt variants.
+Trading skill combining DFlow APIs (spot swaps, prediction markets, real-time streaming, Proof KYC) with Helius infrastructure (Sender, priority fees, DAS, WebSockets, LaserStream, Wallet API). Requires `helius-mcp` + DFlow MCP. Plugin command: `/helius:dflow` where supported. Codex: `$helius-dflow`. API/Cursor: use pre-built system prompt variants.
 https://www.helius.dev/docs/agents/skills/dflow.md
 
 ### SVM Skill
-Solana protocol expert skill. Explains SVM execution engine, account model, consensus (PoH, Tower BFT, Turbine), transactions and fee markets, validator economics, data layer, program development, and token extensions. Uses Helius blog, SIMDs, and Agave/Firedancer source code via MCP tools. No API key required. Claude Code: `/helius:svm`. Codex: `$svm`. API/Cursor: use pre-built system prompt variants.
+Solana protocol expert skill. Explains SVM execution engine, account model, consensus (PoH, Tower BFT, Turbine), transactions and fee markets, validator economics, data layer, program development, and token extensions. Uses Helius blog, SIMDs, and Agave/Firedancer source code via MCP tools. No API key required. Plugin command: `/helius:svm` where supported. Codex: `$svm`. API/Cursor: use pre-built system prompt variants.
 https://www.helius.dev/docs/agents/skills/svm.md
 
-### Claude Code Plugin
-All-in-one Claude Code plugin. Bundles Helius MCP server (auto-starts `helius-mcp@latest`), DFlow MCP server (auto-starts `pond.dflow.net/mcp`), Build skill (`/helius:build`), Phantom skill (`/helius:phantom`), DFlow skill (`/helius:dflow`), and SVM skill (`/helius:svm`) with deep reference files. Install: `/plugin marketplace add helius-labs/core-ai` then `/plugin install helius@helius-labs`.
-https://www.helius.dev/docs/agents/claude-code-plugin.md
+### Helius Plugin Bundle
+All-in-one Helius plugin bundle. Bundles the Helius MCP server (auto-starts `helius-mcp@latest`), DFlow MCP server (auto-starts `pond.dflow.net/mcp`), Build skill (`/helius:build`), Phantom skill (`/helius:phantom`), DFlow skill (`/helius:dflow`), and SVM skill (`/helius:svm`) with deep reference files.
 
 ### TypeScript SDK
 Overview of the Helius TypeScript SDK (`helius-sdk` v2.x). Installation, quick start, client options, namespaces, and programmatic Auth signup.
@@ -102,7 +101,7 @@ https://www.helius.dev/docs/agents/rust-sdk/api-reference.md
 ## Quick Start: Agent Signup
 
 ```bash
-npm install -g helius-cli
+bun add -g helius-cli
 helius keygen
 # Fund wallet: 1 USDC + ~0.001 SOL
 helius signup --json

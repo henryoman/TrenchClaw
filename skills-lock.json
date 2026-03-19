@@ -2,7 +2,7 @@
   "version": 1,
   "skills": {
     "Bun SQLite": {
-      "source": "secondsky/claude-skills",
+      "source": "secondsky/agent-skills",
       "sourceType": "github",
       "computedHash": "8aee71ab2c086f4c721baa25e16e417fd46d1fb619b70031bab7749a5cf57657"
     },

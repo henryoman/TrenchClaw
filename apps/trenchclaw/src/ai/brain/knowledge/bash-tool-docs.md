@@ -1,5 +1,5 @@
 <!--
-This file is distributed as dist/AGENTS.md in the npm package.
+This file is distributed as dist/AGENTS.md in the published package.
 It provides instructions for AI agents using bash-tool in their projects.
 The build process copies this file to dist/AGENTS.md (removing this comment).
 -->

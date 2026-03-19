@@ -45,7 +45,7 @@ import { weatherTool } from '../tools/weather-tool';
 import { calculatorTool } from '../tools/calculator-tool';
 
 export const myAgent = new ToolLoopAgent({
-  model: 'anthropic/claude-sonnet-4',
+  model: 'openai/gpt-5.4-mini',
   instructions: 'You are a helpful assistant.',
   tools: {
     weather: weatherTool,
