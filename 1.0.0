@@ -1,0 +1,79 @@
+# 1.0.0
+
+Scratchpad for everything we want to keep organized beyond the current README feature checklist.
+
+Use this as the dumping ground for post-beta ideas, bigger 1.0 candidates, and random features we do not want to lose before they turn into a proper roadmap.
+
+## Already implied outside the current README checklist
+
+- GUI/mobile surfaces planned for 1.0
+- Full parity for standard swap paths beyond the current Jupiter Ultra-first flow
+- Broader strategy automation beyond today's queue jobs and scheduled routines
+- Future alerting built off the structured runtime event bus
+- Public-facing strategy engine once the current beta automation surface matures
+- Any additional runtime/operator UX work that goes beyond the current v0.1.0 checklist
+
+## Add to the eventual roadmap
+
+### Trading / execution
+- Backtester
+- Strategy simulator / dry-run mode
+- Expanded non-Ultra swap support
+- Better automation builder / routine composer
+- Multi-step strategy engine
+- Smarter trigger workflows
+- DCA management improvements
+- Better scheduling controls and visibility
+- Performance analytics / trade stats
+- PnL tracking
+
+### Meteora / LP / staking stuff
+- Meteora DLMM integration
+- Meteora DLMM position management
+- Meteora DLMM staking / rewards flows
+- LP position analytics
+- Yield dashboards
+- SOL staking flows
+- Liquid staking / LST support
+- Restaking / validator strategy ideas
+
+### Wallet / account management
+- Better wallet creation UX
+- Better wallet rename / grouping UX
+- Bulk wallet operations
+- Wallet labeling / tagging / notes
+- Safer vault management flows
+- Better transfer planning tools
+
+### Research / operator tooling
+- Better market research workspace
+- Token watchlists
+- Portfolio views
+- Wallet intelligence / monitoring
+- Alerts / notifications
+- Session summaries / operator reports
+- Sharable strategy presets
+
+### AI / runtime
+- More autonomous agent loops
+- Better gatekeeper / safety controls
+- More granular policy controls
+- Runtime explainability / decision trace UI
+- Tool approval workflows
+- Memory improvements
+- Better conversation-to-action workflows
+
+### Surfaces / integrations
+- Telegram connector
+- Mobile app surface
+- Better desktop operator workflows
+- External notification integrations
+- Additional exchange / protocol integrations
+
+## Parking lot
+
+Drop any random idea here first, then sort it later into:
+- must ship before 1.0
+- nice-to-have 1.x work
+- experimental / unsafe
+- research only
