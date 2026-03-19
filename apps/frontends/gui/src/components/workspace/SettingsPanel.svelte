@@ -47,7 +47,7 @@
     { id: "gateway", label: "Vercel AI Gateway", description: "Use Vercel AI Gateway and show Gateway-supported models." },
   ];
   const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "openrouter";
-  const DEFAULT_AI_MODEL = "openrouter/hunter-alpha";
+  const DEFAULT_AI_MODEL = "nvidia/nemotron-3-super-120b-a12b:free";
   const SOLANA_RPC_OPTION_ID = "solana-rpc-url";
   const PROVIDER_KEY_OPTION_BY_ID: Record<GuiAiSettingsView["provider"], string> = {
     gateway: "vercel-ai-gateway-api-key",
@@ -104,6 +104,16 @@
     quickBuyPresets: [],
     customPresets: [],
   };
+  const SCHEDULE_ACTION_OPTIONS = [
+    {
+      value: "scheduleManagedUltraSwap",
+      label: "Managed Ultra swap",
+    },
+    {
+      value: "scheduleManagedTriggerOrder",
+      label: "Managed trigger order",
+    },
+  ] as const;
 
   let aiSettingsDraft: GuiAiSettingsView = { ...DEFAULT_AI_SETTINGS };
   let tradingSettingsDraft: GuiTradingSettingsView = { ...DEFAULT_TRADING_SETTINGS };
@@ -223,7 +233,7 @@
     const normalized: GuiTradingSettingsView = {
       ...tradingSettingsDraft,
       defaultAmountUnit: "ui",
-      scheduleActionName: "scheduleManagedUltraSwap",
+      scheduleActionName: tradingSettingsDraft.scheduleActionName.trim() || DEFAULT_TRADING_SETTINGS.scheduleActionName,
       quickBuyPresets: [...tradingSettingsDraft.quickBuyPresets],
       customPresets: [...tradingSettingsDraft.customPresets],
     };
@@ -454,6 +464,21 @@
           >
             <option value="ultra">Ultra</option>
             <option value="standard">RPC (Coming soon)</option>
+          </RetroSelect>
+        </RetroField>
+
+        <RetroField label="Default scheduled action">
+          <RetroSelect
+            value={tradingSettingsDraft.scheduleActionName}
+            indicatorShape="triangle"
+            disabled={tradingSettingsBusy}
+            on:valueChange={(event) => {
+              onTradingSettingChange("scheduleActionName", (event as ValueInputEvent).detail.value);
+            }}
+          >
+            {#each SCHEDULE_ACTION_OPTIONS as option}
+              <option value={option.value}>{option.label}</option>
+            {/each}
           </RetroSelect>
         </RetroField>
 

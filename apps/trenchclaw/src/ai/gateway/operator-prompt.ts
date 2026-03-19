@@ -22,6 +22,10 @@ const MUTATING_OPERATOR_TOOLS = new Set([
   "createWallets",
   "renameWallets",
   "managedUltraSwap",
+  "scheduleManagedUltraSwap",
+  "managedTriggerOrder",
+  "scheduleManagedTriggerOrder",
+  "managedTriggerCancelOrders",
 ]);
 
 const renderOperatorProfileSummary = (input: {
@@ -71,6 +75,11 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     useWhen: "the user asks about recent swap activity for a wallet",
     avoidWhen: "the user is asking for current balances or market prices",
     inputAdvice: "Provide a concrete wallet address and optional limit.",
+  },
+  getTriggerOrders: {
+    useWhen: "the user asks about open limit orders, pending trigger orders, or trigger-order history for a wallet",
+    avoidWhen: "the user is asking for current balances, token prices, or wants to place or cancel an order instead",
+    inputAdvice: "Use `orderStatus`, optional wallet filters, and pass `inputCoin` or `outputCoin` only when the user narrowed the order set.",
   },
   getDexscreenerLatestTokenProfiles: {
     useWhen: "the user asks what is new, newly listed, freshly discovered, or you need an initial discovery pass before ranking candidate tokens",
@@ -126,6 +135,21 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     useWhen: "the user explicitly wants to swap through Jupiter Ultra using a managed wallet and you know walletGroup, walletName, inputCoin, outputCoin, amount, and confirmation token if policy requires it",
     avoidWhen: "the user did not explicitly request a swap, the managed wallet is unknown, or the confirmation token is missing when policy requires it",
     inputAdvice: "Use `walletGroup`, `walletName`, `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required.",
+  },
+  managedTriggerOrder: {
+    useWhen: "the user explicitly wants to place a limit or trigger order from a managed wallet and you know walletGroup, walletName, inputCoin, outputCoin, makingAmount, and exactly one of limitPrice or takingAmount",
+    avoidWhen: "the user only wants to inspect orders, has not chosen the managed wallet, or the order terms are still ambiguous",
+    inputAdvice: "Use `walletGroup`, `walletName`, `inputCoin`, `outputCoin`, `makingAmount`, and either `limitPrice` or `takingAmount`.",
+  },
+  scheduleManagedTriggerOrder: {
+    useWhen: "the user explicitly wants a managed trigger order placed later or wants the order split into evenly spaced trigger-order installments",
+    avoidWhen: "the user wants the order placed immediately or has not provided a concrete schedule",
+    inputAdvice: "Use the same order fields as `managedTriggerOrder`, plus `schedule.kind` and either `executeAtUnixMs` or a DCA interval/end time.",
+  },
+  managedTriggerCancelOrders: {
+    useWhen: "the user explicitly wants to cancel one or more pending trigger orders from a managed wallet and you know the wallet and order id set",
+    avoidWhen: "the user has not identified the target orders yet or only wants to inspect what is currently open",
+    inputAdvice: "Use `walletGroup`, `walletName`, and either `order` or `orders`.",
   },
 };
 

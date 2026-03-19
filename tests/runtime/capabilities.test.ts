@@ -279,4 +279,28 @@ describe("runtime capability snapshot", () => {
       "Release readiness: limited-beta.",
     );
   });
+
+  test("exposes scheduled trigger-order tools when Jupiter Trigger orders are enabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML
+        .replace("trading:\n  enabled: false", "trading:\n  enabled: true")
+        .replace(
+          "    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
+          "    trigger:\n      enabled: true\n      allowOrders: true\n      allowExecutions: true\n      allowCancellations: true\n    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
+        ),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
+
+    expect(modelToolNames).toContain("getTriggerOrders");
+    expect(modelToolNames).toContain("managedTriggerOrder");
+    expect(modelToolNames).toContain("scheduleManagedTriggerOrder");
+    expect(modelToolNames).toContain("managedTriggerCancelOrders");
+    expect(snapshot.modelTools.find((toolEntry) => toolEntry.name === "scheduleManagedTriggerOrder")?.releaseReadinessStatus).toBe(
+      "limited-beta",
+    );
+  });
 });

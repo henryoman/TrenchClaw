@@ -131,7 +131,7 @@ describe("runtime path contract", () => {
     expect(result.exitCode).toBe(0);
     const payload = JSON.parse(result.stdout) as { filePath: string; model: string };
     expect(payload.filePath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "ai.json"));
-    expect(payload.model).toBe("openrouter/hunter-alpha");
+    expect(payload.model).toBe("nvidia/nemotron-3-super-120b-a12b:free");
   });
 
   test("resolves compatibility settings under the configured runtime root", async () => {
