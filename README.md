@@ -35,6 +35,10 @@ Current beta keys: helius api key for helius-backed reads, jupiter ultra key for
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
+## Translations
+
+- [日本語 / Japanese](./README.ja.md)
+
 ## v0.1.0 Feature Checklist
 
 - [x] AI chat with OpenRouter or Vercel AI Gateway
