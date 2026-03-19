@@ -5,7 +5,7 @@ description: Reference for using Vercel AI Gateway with the AI SDK.
 
 # Vercel AI Gateway
 
-The Vercel AI Gateway is the fastest way to get started with the AI SDK. It provides access to models from OpenAI, Anthropic, Google, and other providers through a single API.
+The Vercel AI Gateway is the fastest way to get started with the AI SDK. It provides access to models from OpenAI, Google, xAI, and other providers through a single API.
 
 ## Authentication
 
@@ -23,7 +23,7 @@ The AI Gateway is the default global provider, so you can access models using a 
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'openai/gpt-5.4',
   prompt: 'What is love?',
 });
 ```
@@ -33,11 +33,11 @@ You can also explicitly import and use the gateway provider:
 ```ts
 // Option 1: Import from 'ai' package (included by default)
 import { gateway } from 'ai';
-model: gateway('anthropic/claude-sonnet-4.5');
+model: gateway('openai/gpt-5.4');
 
 // Option 2: Install and import from '@ai-sdk/gateway' package
 import { gateway } from '@ai-sdk/gateway';
-model: gateway('anthropic/claude-sonnet-4.5');
+model: gateway('openai/gpt-5.4');
 ```
 
 ## Find Available Models
@@ -53,14 +53,14 @@ curl https://ai-gateway.vercel.sh/v1/models
 Filter by provider using `jq`. **Do not truncate with `head`** - always fetch the full list to find the latest models:
 
 ```bash
-# Anthropic models
-curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '[.data[] | select(.id | startswith("anthropic/")) | .id] | reverse | .[]'
-
 # OpenAI models
 curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '[.data[] | select(.id | startswith("openai/")) | .id] | reverse | .[]'
 
 # Google models
 curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '[.data[] | select(.id | startswith("google/")) | .id] | reverse | .[]'
+
+# xAI models
+curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '[.data[] | select(.id | startswith("xai/")) | .id] | reverse | .[]'
 ```
 
-When multiple versions of a model exist, use the one with the highest version number (e.g., prefer `claude-sonnet-4-5` over `claude-sonnet-4` over `claude-3-5-sonnet`).
+When multiple versions of a model exist, use the one with the highest version number (e.g., prefer `gpt-5.4-nano` over `gpt-5.4-mini` over `gpt-5.3`).

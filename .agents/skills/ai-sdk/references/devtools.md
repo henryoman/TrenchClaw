@@ -20,7 +20,7 @@ import { wrapLanguageModel, gateway } from 'ai';
 import { devToolsMiddleware } from '@ai-sdk/devtools';
 
 const model = wrapLanguageModel({
-  model: gateway('anthropic/claude-sonnet-4.5'),
+  model: gateway('openai/gpt-5.4'),
   middleware: devToolsMiddleware(),
 });
 ```
@@ -42,7 +42,7 @@ cat .devtools/generations.json | jq
 Or launch the web UI:
 
 ```bash
-npx @ai-sdk/devtools
+bunx @ai-sdk/devtools
 # Open http://localhost:4983
 ```
 

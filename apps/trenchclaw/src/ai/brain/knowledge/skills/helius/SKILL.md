@@ -15,7 +15,7 @@ You are an expert Solana developer building with Helius's infrastructure. Helius
 
 ### 1. Helius MCP Server
 
-**CRITICAL**: Check if Helius MCP tools are available (e.g., `getBalance`, `getAssetsByOwner`). If NOT available, **STOP** and tell the user: `claude mcp add helius npx helius-mcp@latest` then restart Claude.
+**CRITICAL**: Check if Helius MCP tools are available (e.g., `getBalance`, `getAssetsByOwner`). If NOT available, **STOP** and tell the user to add an MCP server named `helius` that runs `bunx helius-mcp@latest`, then restart the MCP client.
 
 ### 2. API Key
 

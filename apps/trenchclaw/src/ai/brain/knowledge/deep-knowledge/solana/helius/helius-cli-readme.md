@@ -26,8 +26,8 @@ helius apikeys <project-id>
 ## Installation
 
 ```bash
-# Install globally via npm
-npm install -g helius-cli
+# Install globally via Bun
+bun add -g helius-cli
 
 # Or with pnpm
 pnpm add -g helius-cli

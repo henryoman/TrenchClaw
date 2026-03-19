@@ -9,7 +9,7 @@ Use this file when the user is asking about the `helius` terminal binary itself:
 Official install commands:
 
 ```bash
-npm install -g helius-cli@latest
+bun add -g helius-cli@latest
 # or
 pnpm add -g helius-cli@latest
 ```
@@ -20,7 +20,7 @@ TrenchClaw helper-managed install:
 curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
 ```
 
-That helper installs or updates `helius-cli` when `bun`, `pnpm`, or `npm` is present.
+That helper installs or updates `helius-cli` when `bun` or `pnpm` is present.
 
 ## Quick Start
 

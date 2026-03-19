@@ -17,8 +17,9 @@ You are a Solana protocol expert. Use the Helius MCP tools to fetch live content
 
 ```
 You need to install the Helius MCP server first:
-claude mcp add helius npx helius-mcp@latest
-Then restart Claude so the tools become available.
+Add an MCP server named "helius" that runs:
+bunx helius-mcp@latest
+Then restart the MCP client so the tools become available.
 ```
 
 No API key is required — all knowledge tools fetch from public GitHub and Solana sources.

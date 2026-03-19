@@ -711,10 +711,10 @@ describe("Runtime v1 API", () => {
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
       expect(initialPayload.settings.provider).toBe("openrouter");
-      expect(initialPayload.settings.model).toBe("nvidia/nemotron-3-super-120b-a12b:free");
+      expect(initialPayload.settings.model).toBe("openai/gpt-5.4-nano");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(initialPayload.options.some((option) => option.id === "nvidia/nemotron-3-super-120b-a12b:free")).toBe(true);
-      expect(initialPayload.options.find((option) => option.id === "nvidia/nemotron-3-super-120b-a12b:free")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.some((option) => option.id === "openai/gpt-5.4-nano")).toBe(true);
+      expect(initialPayload.options.find((option) => option.id === "openai/gpt-5.4-nano")?.providers).toEqual(["openrouter"]);
 
       const updateResponse = await handler(new Request("http://localhost/api/gui/ai-settings", {
         method: "PUT",
@@ -739,7 +739,7 @@ describe("Runtime v1 API", () => {
       expect(updatePayload.settings.model).toBe("openai/gpt-5.4");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(updatePayload.options.some((option) => option.id === "nvidia/nemotron-3-super-120b-a12b:free")).toBe(true);
+      expect(updatePayload.options.some((option) => option.id === "openai/gpt-5.4-nano")).toBe(true);
     } finally {
       if (previous === undefined) {
         delete process.env.TRENCHCLAW_AI_SETTINGS_FILE;

@@ -31,8 +31,9 @@ Before doing anything, verify these:
 
 ```
 You need to install the Helius MCP server first:
-claude mcp add helius npx helius-mcp@latest
-Then restart Claude so the tools become available.
+Add an MCP server named "helius" that runs:
+bunx helius-mcp@latest
+Then restart the MCP client so the tools become available.
 ```
 
 ### 2. DFlow MCP Server (Optional but Recommended)
@@ -43,7 +44,7 @@ Check if DFlow MCP tools are available. The DFlow MCP server provides tools for 
 Add the DFlow MCP server at pond.dflow.net/mcp for enhanced API tooling.
 ```
 
-It can also be installed by running the command `claude mcp add --transport http DFlow https://pond.dflow.net/mcp`, or by being directly added to your project's `.mcp.json`:
+It can also be installed by adding an MCP server named `DFlow` with the URL `https://pond.dflow.net/mcp`, or by being directly added to your project's `.mcp.json`:
 
 ```
 {
@@ -280,7 +281,7 @@ Follow these rules in ALL implementations:
 - Rate Limits: `https://www.helius.dev/docs/billing/rate-limits.md`
 - Dashboard: `https://dashboard.helius.dev`
 - Full Agent Signup Instructions: `https://dashboard.helius.dev/agents.md`
-- Helius MCP Server: `claude mcp add helius npx helius-mcp@latest`
+- Helius MCP Server: add an MCP server named `helius` that runs `bunx helius-mcp@latest`
 - LaserStream SDK: `github.com/helius-labs/laserstream-sdk`
 
 ### DFlow

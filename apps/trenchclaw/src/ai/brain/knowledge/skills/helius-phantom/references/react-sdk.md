@@ -24,9 +24,9 @@ Use `"injected"` for extension-only flows (no appId needed). Add `"google"` and/
 ## Installation
 
 ```bash
-npm install @phantom/react-sdk
+bun add @phantom/react-sdk
 # For Solana support
-npm install @solana/kit @solana-program/system @solana-program/compute-budget
+bun add @solana/kit @solana-program/system @solana-program/compute-budget
 ```
 
 ## PhantomProvider Configuration

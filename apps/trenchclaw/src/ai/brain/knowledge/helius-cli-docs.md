@@ -11,7 +11,7 @@ Use this file for high-signal Helius operations: wallet creation, funding, trans
 curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
 
 # Manual Helius CLI install (official)
-npm install -g helius-cli@latest
+bun add -g helius-cli@latest
 
 # Manual Helius CLI install (also works if Bun or pnpm is present)
 # bun add -g helius-cli@latest

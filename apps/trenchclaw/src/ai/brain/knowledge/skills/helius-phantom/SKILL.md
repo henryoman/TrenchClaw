@@ -31,8 +31,9 @@ Before doing anything, verify these:
 
 ```
 You need to install the Helius MCP server first:
-claude mcp add helius npx helius-mcp@latest
-Then restart Claude so the tools become available.
+Add an MCP server named "helius" that runs:
+bunx helius-mcp@latest
+Then restart the MCP client so the tools become available.
 ```
 
 ### 2. API Key
@@ -320,12 +321,12 @@ Follow these rules in ALL implementations:
 ### Phantom
 - Phantom Portal: `https://phantom.com/portal`
 - Phantom Developer Docs: `https://docs.phantom.com`
-- @phantom/react-sdk (npm): `https://www.npmjs.com/package/@phantom/react-sdk`
-- @phantom/browser-sdk (npm): `https://www.npmjs.com/package/@phantom/browser-sdk`
-- @phantom/react-native-sdk (npm): `https://www.npmjs.com/package/@phantom/react-native-sdk`
+- Package: `@phantom/react-sdk`
+- Package: `@phantom/browser-sdk`
+- Package: `@phantom/react-native-sdk`
 - Phantom SDK Examples: `https://github.com/nicholasgws/phantom-connect-example`
 - Phantom Sandbox: `https://sandbox.phantom.dev`
-- @solana/kit (npm): `https://www.npmjs.com/package/@solana/kit`
+- Package: `@solana/kit`
 
 ### Helius
 - Helius Docs: `https://www.helius.dev/docs`
@@ -335,7 +336,7 @@ Follow these rules in ALL implementations:
 - Rate Limits: `https://www.helius.dev/docs/billing/rate-limits.md`
 - Dashboard: `https://dashboard.helius.dev`
 - Full Agent Signup Instructions: `https://dashboard.helius.dev/agents.md`
-- Helius MCP Server: `claude mcp add helius npx helius-mcp@latest`
+- Helius MCP Server: add an MCP server named `helius` that runs `bunx helius-mcp@latest`
 - Orb Explorer: `https://orbmarkets.io`
 
 ## Common Pitfalls

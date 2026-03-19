@@ -12,7 +12,7 @@ Using an MCP-compatible AI tool? The Helius MCP server is still the recommended 
 ## Installation
 
 ```bash
-npm install -g helius-cli
+bun add -g helius-cli
 ```
 
 ## Quick Start - Existing Users
