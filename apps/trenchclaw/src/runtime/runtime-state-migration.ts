@@ -81,17 +81,16 @@ const moveLegacyWallets = async (targetInstanceId: string): Promise<number> => {
   const legacyKeypairsRoot = path.join(LEGACY_PROTECTED_ROOT, "keypairs");
   const instanceKeypairsRoot = path.join(resolveInstanceDirectoryPath(targetInstanceId), "keypairs");
   const sourceFiles = await listFilesRecursively(legacyKeypairsRoot);
-  let movedFiles = 0;
 
-  for (const sourcePath of sourceFiles) {
+  const movedFiles = await Promise.all(sourceFiles.map((sourcePath) => {
     const relativePath = path.relative(legacyKeypairsRoot, sourcePath);
-    movedFiles += await moveFileIfNeeded({
+    return moveFileIfNeeded({
       sourcePath,
       destinationPath: path.join(instanceKeypairsRoot, relativePath),
     });
-  }
+  }));
 
-  return movedFiles;
+  return movedFiles.reduce((total, moved) => total + moved, 0);
 };
 
 const cleanupLegacyRoot = async (rootDir: string): Promise<boolean> => {
@@ -115,19 +114,20 @@ export const migrateLegacyRuntimeState = async (): Promise<RuntimeResetReport | 
 
   await ensureInstanceLayout(targetInstanceId);
 
-  let movedFiles = 0;
   const legacyVaultSources = [
     path.join(resolveInstanceDirectoryPath(targetInstanceId), "vault.json"),
     path.join(LEGACY_RUNTIME_ROOT, "vault.json"),
     path.join(LEGACY_USER_ROOT, "vault.json"),
   ];
-  for (const sourcePath of legacyVaultSources) {
-    movedFiles += await moveFileIfNeeded({
+
+  const movedFiles =
+    (await Promise.all(legacyVaultSources.map((sourcePath) =>
+      moveFileIfNeeded({
       sourcePath,
       destinationPath: resolveInstanceVaultPath(targetInstanceId),
-    });
-  }
-  movedFiles += await moveLegacyWallets(targetInstanceId);
+      })
+    ))).reduce((total, moved) => total + moved, 0)
+    + await moveLegacyWallets(targetInstanceId);
 
   const clearedRoots = (
     await Promise.all(legacyRoots.map(async (rootDir) => (await cleanupLegacyRoot(rootDir) ? rootDir : null)))

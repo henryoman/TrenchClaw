@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceAiSettingsPath } from "../../runtime/instance-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import type { AiModelProvider } from "./model-catalog";
@@ -58,7 +58,7 @@ export const resolveAiSettingsPaths = async (input?: {
 const parseAiSettingsValue = (value: unknown): AiSettings => {
   const direct = aiSettingsSchema.safeParse(value);
   if (direct.success) {
-    return normalizeAiSettingsInput(direct.data);
+    return direct.data;
   }
 
   return normalizeAiSettingsInput({});
