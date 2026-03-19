@@ -38,25 +38,24 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 ## v0.1.0 Feature Checklist
 
 - [x] AI chat with OpenRouter or Vercel AI Gateway
-- [x] Local instance sign-in, vault, and key management
-- [x] Managed wallet creation and organization
-- [x] Managed wallet balance and holdings reads
-- [x] Swap history and Helius-backed enriched reads
-- [x] Dexscreener token discovery and market data
-- [x] Jupiter Ultra swaps from managed wallets (limited beta)
-- [x] Scheduled Ultra swaps and simple DCA plans (limited beta)
-- [x] Direct transfers, token account cleanup, and privacy flows (limited beta)
+- [x] Local instance sign-in, vault, and trading settings
+- [x] Managed wallet reads for balances and holdings
+- [x] Wallet creation, grouping, and renaming
+- [x] Helius-enriched reads and swap history
+- [x] Dexscreener market and token research
+- [x] Jupiter Ultra swaps
+- [x] Jupiter Trigger API flows
+- [x] Queue jobs, scheduled Ultra swaps, and action sequences
+- [x] Direct transfers and token account cleanup
 - [x] Runtime memory, queue, and conversation history
 - [x] Desktop GUI for chat, wallets, keys, settings, activity, and runtime status
-- [ ] Schedule tab polish and full automation UX
-- [ ] Broader strategy automation and multi-step bots beyond today's queueable beta flows
-- [ ] Non-Ultra / standard swap support
-- [ ] Alerts and monitoring that feel complete in the product
-- [ ] Portfolio, PnL, and operator risk controls
-- [ ] Simulation, paper trading, and backtesting
-- [ ] Helius Sender, Laserstream, and broader webhook/streaming integrations
-- [ ] DFlow and Phantom SDK integrations
-- [ ] Release pipeline, CI quality gates, and broader wallet/research validation
+- [ ] Dedicated GUI flows for wallet creation and renaming
+- [ ] Full runtime settings editor in the GUI
+- [ ] Better schedule and automation UX
+- [ ] Standard swap paths beyond Jupiter Ultra
+- [ ] Telegram chat connector
+- [ ] Add gatekeeper settings option
+- [ ] Scheduled agent loops
 
 Quick links:
 
