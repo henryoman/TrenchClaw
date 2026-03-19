@@ -1205,7 +1205,7 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
   });
 
-  test("routes trigger-order tools through the operator prompt guidance", async () => {
+  test("routes scheduled managed Ultra swaps through the operator prompt guidance", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {
         actions: [],
@@ -1214,57 +1214,29 @@ describe("RuntimeChatService", () => {
         modelTools: [
           {
             kind: "action",
-            name: "getTriggerOrders",
-            description: "list trigger orders",
-            purpose: "inspect open limit orders",
-            routingHint: "inspect trigger orders",
-            sideEffectLevel: "read",
+            name: "managedUltraSwap",
+            description: "place managed ultra swap",
+            purpose: "place a managed Ultra swap",
+            routingHint: "place managed Ultra swap",
+            sideEffectLevel: "write",
             enabledNow: true,
-            requiresConfirmation: false,
-            exampleInput: { orderStatus: "active" },
-            toolDescription: "list trigger orders",
+            requiresConfirmation: true,
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", inputCoin: "SOL", outputCoin: "USDC", amount: "0.1" },
+            toolDescription: "place managed Ultra swap",
             releaseReadinessStatus: "limited-beta",
             releaseReadinessNote: "Limited beta.",
           },
           {
             kind: "action",
-            name: "managedTriggerOrder",
-            description: "place managed trigger order",
-            purpose: "place a managed limit order",
-            routingHint: "place managed trigger order",
+            name: "scheduleManagedUltraSwap",
+            description: "schedule managed Ultra swap",
+            purpose: "schedule a managed Ultra swap",
+            routingHint: "schedule managed Ultra swap",
             sideEffectLevel: "write",
             enabledNow: true,
             requiresConfirmation: true,
-            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", inputCoin: "SOL", outputCoin: "USDC", makingAmount: "0.1", limitPrice: "210" },
-            toolDescription: "place managed trigger order",
-            releaseReadinessStatus: "limited-beta",
-            releaseReadinessNote: "Limited beta.",
-          },
-          {
-            kind: "action",
-            name: "scheduleManagedTriggerOrder",
-            description: "schedule managed trigger order",
-            purpose: "schedule a managed trigger order",
-            routingHint: "schedule managed trigger order",
-            sideEffectLevel: "write",
-            enabledNow: true,
-            requiresConfirmation: true,
-            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", inputCoin: "SOL", outputCoin: "USDC", makingAmount: "0.1", limitPrice: "210", schedule: { kind: "once", executeAtUnixMs: 1_767_000_000_000 } },
-            toolDescription: "schedule managed trigger order",
-            releaseReadinessStatus: "limited-beta",
-            releaseReadinessNote: "Limited beta.",
-          },
-          {
-            kind: "action",
-            name: "managedTriggerCancelOrders",
-            description: "cancel managed trigger orders",
-            purpose: "cancel managed trigger orders",
-            routingHint: "cancel managed trigger orders",
-            sideEffectLevel: "write",
-            enabledNow: true,
-            requiresConfirmation: true,
-            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", orders: ["order-1"] },
-            toolDescription: "cancel managed trigger orders",
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", inputCoin: "SOL", outputCoin: "USDC", amount: "0.1", schedule: { kind: "once", executeAtUnixMs: 1_767_000_000_000 } },
+            toolDescription: "schedule managed Ultra swap",
             releaseReadinessStatus: "limited-beta",
             releaseReadinessNote: "Limited beta.",
           },
@@ -1278,10 +1250,10 @@ describe("RuntimeChatService", () => {
         {
           id: "user-trigger-summary-1",
           role: "user",
-          parts: [{ type: "text", text: "set a limit order later and show my open orders" }],
+          parts: [{ type: "text", text: "schedule a managed swap for later" }],
         },
       ],
-      userMessage: "set a limit order later and show my open orders",
+      userMessage: "schedule a managed swap for later",
     });
 
     expect(execution.kind).toBe("llm");
@@ -1290,12 +1262,10 @@ describe("RuntimeChatService", () => {
     }
 
     expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane:");
-    expect(execution.systemPrompt).toContain("`managedTriggerOrder`");
-    expect(execution.systemPrompt).toContain("`scheduleManagedTriggerOrder`");
-    expect(execution.systemPrompt).toContain("`managedTriggerCancelOrders`");
-    expect(execution.systemPrompt).toContain("open limit orders, pending trigger orders, or trigger-order history");
-    expect(execution.systemPrompt).toContain("place a limit or trigger order from a managed wallet");
-    expect(execution.systemPrompt).toContain("same order fields as `managedTriggerOrder`, plus `schedule.kind`");
+    expect(execution.systemPrompt).toContain("`managedUltraSwap`");
+    expect(execution.systemPrompt).toContain("`scheduleManagedUltraSwap`");
+    expect(execution.systemPrompt).toContain("the user explicitly wants to swap through Jupiter Ultra using a managed wallet");
+    expect(execution.systemPrompt).toContain("schedule a managed Ultra swap");
   });
 
   test("keeps the operator gateway prompt and tool list compact", async () => {

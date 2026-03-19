@@ -4,7 +4,7 @@ import type { IdempotencyKey } from "./ids";
 import type { PolicyResult } from "./policy";
 
 export type ActionCategory = "data-based" | "wallet-based";
-export type ActionSubcategory = "read-only" | "swap" | "transfer" | "mint" | "trigger";
+export type ActionSubcategory = "read-only" | "swap" | "transfer" | "mint";
 
 export interface RetryPolicy {
   maxAttempts: number;

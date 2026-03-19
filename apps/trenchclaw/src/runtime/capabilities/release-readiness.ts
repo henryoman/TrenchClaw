@@ -60,7 +60,7 @@ const toolReleaseReadinessByName: Record<string, RuntimeReleaseReadinessDescript
   ),
   ...mapToolNames(
     ["enqueueRuntimeJob", "manageRuntimeJob"],
-    LIMITED_BETA("Basic queueing is available now, but broad automation and strategy orchestration are still coming soon."),
+    LIMITED_BETA("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
   ),
   ...mapToolNames(
     ["getSwapHistory", "transfer", "closeTokenAccount", "privacyTransfer", "privacyAirdrop", "privacySwap"],
@@ -69,17 +69,6 @@ const toolReleaseReadinessByName: Record<string, RuntimeReleaseReadinessDescript
   ...mapToolNames(
     ["ultraQuoteSwap", "ultraExecuteSwap", "managedUltraSwap", "scheduleManagedUltraSwap", "ultraSwap"],
     LIMITED_BETA("Jupiter Ultra swap flows are available now, but still limited beta surfaces with a narrower supported scope."),
-  ),
-  ...mapToolNames(
-    [
-      "getTriggerOrders",
-      "triggerOrder",
-      "managedTriggerOrder",
-      "scheduleManagedTriggerOrder",
-      "triggerCancelOrders",
-      "managedTriggerCancelOrders",
-    ],
-    LIMITED_BETA("Trigger-order flows are available now, but still limited beta surfaces rather than broad automation."),
   ),
   ...mapToolNames(
     ["createBlockchainAlert"],
@@ -128,7 +117,7 @@ const comingSoonFeatures: RuntimeComingSoonFeatureEntry[] = [
     label: "Broad strategy automation beyond today's queueable beta surfaces",
     aliases: ["automation", "strategies", "strategy engine", "bots", "routines"],
     status: "coming-soon",
-    note: "Basic queueing exists now, but broad multi-step strategy automation should still be described as coming soon.",
+    note: "Scheduled jobs exist now, but broad multi-step strategy automation should still be described as coming soon.",
   },
   {
     id: "non-ultra-swap-surfaces",

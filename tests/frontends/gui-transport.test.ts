@@ -814,7 +814,7 @@ describe("Runtime v1 API", () => {
       expect(updatePayload.settings.defaultSwapProvider).toBe("standard");
       expect(updatePayload.settings.defaultSwapMode).toBe("ExactOut");
       expect(updatePayload.settings.defaultAmountUnit).toBe("percent");
-      expect(updatePayload.settings.scheduleActionName).toBe("scheduleManagedTriggerOrder");
+      expect(updatePayload.settings.scheduleActionName).toBe("scheduleManagedUltraSwap");
     } finally {
       if (previousActiveInstanceId === undefined) {
         delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;

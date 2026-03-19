@@ -4,8 +4,6 @@ const USER_PROTECTED_PATH_PREFIXES = [
   "trading.limits",
   "trading.preferences",
   "trading.jupiter.ultra.allowExecutions",
-  "trading.jupiter.trigger.allowExecutions",
-  "trading.jupiter.trigger.allowCancellations",
   "trading.jupiter.standard.allowExecutions",
   "agent.dangerously",
   "agent.internetAccess",

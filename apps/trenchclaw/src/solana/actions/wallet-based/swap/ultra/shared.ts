@@ -46,7 +46,7 @@ const quotePairSchema = z.object({
   coinAliases: z.record(z.string(), z.string()).optional(),
 });
 
-export const ultraQuoteInputSchema = quotePairSchema.and(amountInputSchema);
+export const ultraQuoteInputSchema = quotePairSchema.extend(amountInputSchema.shape);
 
 export const ultraExecuteInputSchema = z.object({
   requestId: z.string().min(1),

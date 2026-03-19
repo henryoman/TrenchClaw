@@ -194,7 +194,7 @@ Use the CLI for shell scripts and operator debugging. Inside TrenchClaw, prefer 
 
 Helius-specific / closely related action entry points:
 
-- `src/solana/actions/agentic-signup/helius.ts`
+- `examples/helius-agentic-signup.ts`
 - `src/solana/actions/data-fetch/index.ts`
 - `src/solana/actions/data-fetch/rpc/getBalance.ts`
 - `src/solana/actions/data-fetch/rpc/getAccountInfo.ts`

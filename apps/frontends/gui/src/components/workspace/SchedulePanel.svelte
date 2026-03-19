@@ -54,7 +54,7 @@
     <tbody>
       {#if jobs.length === 0}
         <tr>
-          <td colspan="5">coming soon.</td>
+          <td colspan="5">No scheduled jobs.</td>
         </tr>
       {:else}
         {#each jobs as job (job.serialNumber ?? job.id)}
