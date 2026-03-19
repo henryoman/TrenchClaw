@@ -3,7 +3,7 @@
 ## Current Baseline
 
 - Root version source of truth: `package.json -> version`
-- Current baseline: `0.0.0-beta.2`
+- Current baseline: `0.0.0-beta.3`
 
 ## Increment Rules
 

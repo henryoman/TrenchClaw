@@ -1,5 +1,5 @@
 import type { UIMessage, UIMessageChunk } from "ai";
-import { createToolCallId, createUiTextPartId } from "../../ai/runtime/types/ids";
+import { createUiTextPartId } from "../../ai/runtime/types/ids";
 import { createResponseMessageId, toRuntimeChatErrorMessage } from "./utils";
 
 export const uiChunkHasVisibleText = (chunk: UIMessageChunk): boolean => {

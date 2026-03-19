@@ -60,7 +60,6 @@ import {
   createResponseMessageId,
   extractUiMessageText,
   findLatestAssistantMessage,
-  isRecord,
   resolveChatId,
   serializeForLog,
   serializeForToolCache,
