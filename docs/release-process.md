@@ -96,7 +96,7 @@ For local verification before dispatching the workflow:
 
 ```bash
 # manual/current version release
-bun run release:build -- --version v0.0.0-beta.3
+bun run release:build -- --version v0.0.0-beta.4
 
 # preview the next stable patch release
 bun run version:next -- --strategy patch --current 0.1.0

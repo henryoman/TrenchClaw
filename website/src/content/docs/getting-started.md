@@ -22,7 +22,7 @@ The app does not ask you to install every optional dependency up front. Start wi
 For a clean first setup, use these defaults:
 
 - AI provider: `OpenRouter`
-- model: `openrouter/hunter-alpha`
+- model: `openai/gpt-5.4-nano`
 - RPC: start with a public Solana RPC for basic first launch
 - Helius: add it only when you want enriched wallet reads or swap history
 - Jupiter Ultra API key: add it only when you want swaps or trigger orders
@@ -66,11 +66,11 @@ The installer:
 If you need to pin a specific release:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.3 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.4 bash
 ```
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.3 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.4 bash
 ```
 
 ## Launch TrenchClaw
@@ -143,7 +143,7 @@ After you save your AI key:
 2. Save `OpenRouter API Key`.
 3. Open the AI settings panel.
 4. Choose `OpenRouter`.
-5. Choose `Hunter Alpha`.
+5. Choose `GPT-5.4 Nano`.
 6. Save.
 7. Click `Test AI connection`.
 
