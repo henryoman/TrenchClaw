@@ -1205,6 +1205,99 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
   });
 
+  test("routes trigger-order tools through the operator prompt guidance", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "getTriggerOrders",
+            description: "list trigger orders",
+            purpose: "inspect open limit orders",
+            routingHint: "inspect trigger orders",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { orderStatus: "active" },
+            toolDescription: "list trigger orders",
+            releaseReadinessStatus: "limited-beta",
+            releaseReadinessNote: "Limited beta.",
+          },
+          {
+            kind: "action",
+            name: "managedTriggerOrder",
+            description: "place managed trigger order",
+            purpose: "place a managed limit order",
+            routingHint: "place managed trigger order",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", inputCoin: "SOL", outputCoin: "USDC", makingAmount: "0.1", limitPrice: "210" },
+            toolDescription: "place managed trigger order",
+            releaseReadinessStatus: "limited-beta",
+            releaseReadinessNote: "Limited beta.",
+          },
+          {
+            kind: "action",
+            name: "scheduleManagedTriggerOrder",
+            description: "schedule managed trigger order",
+            purpose: "schedule a managed trigger order",
+            routingHint: "schedule managed trigger order",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", inputCoin: "SOL", outputCoin: "USDC", makingAmount: "0.1", limitPrice: "210", schedule: { kind: "once", executeAtUnixMs: 1_767_000_000_000 } },
+            toolDescription: "schedule managed trigger order",
+            releaseReadinessStatus: "limited-beta",
+            releaseReadinessNote: "Limited beta.",
+          },
+          {
+            kind: "action",
+            name: "managedTriggerCancelOrders",
+            description: "cancel managed trigger orders",
+            purpose: "cancel managed trigger orders",
+            routingHint: "cancel managed trigger orders",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", orders: ["order-1"] },
+            toolDescription: "cancel managed trigger orders",
+            releaseReadinessStatus: "limited-beta",
+            releaseReadinessNote: "Limited beta.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-trigger-summary-1",
+          role: "user",
+          parts: [{ type: "text", text: "set a limit order later and show my open orders" }],
+        },
+      ],
+      userMessage: "set a limit order later and show my open orders",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane:");
+    expect(execution.systemPrompt).toContain("`managedTriggerOrder`");
+    expect(execution.systemPrompt).toContain("`scheduleManagedTriggerOrder`");
+    expect(execution.systemPrompt).toContain("`managedTriggerCancelOrders`");
+    expect(execution.systemPrompt).toContain("open limit orders, pending trigger orders, or trigger-order history");
+    expect(execution.systemPrompt).toContain("place a limit or trigger order from a managed wallet");
+    expect(execution.systemPrompt).toContain("same order fields as `managedTriggerOrder`, plus `schedule.kind`");
+  });
+
   test("keeps the operator gateway prompt and tool list compact", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {

@@ -50,6 +50,11 @@ export const AI_MODEL_CATALOG = [
     providers: OPENROUTER_ONLY,
   },
   {
+    id: "nvidia/nemotron-3-super-120b-a12b:free",
+    label: "Nemotron 3 Super 120B A12B Free",
+    providers: OPENROUTER_ONLY,
+  },
+  {
     id: "openrouter/free",
     label: "OpenRouter Free",
     providers: OPENROUTER_ONLY,

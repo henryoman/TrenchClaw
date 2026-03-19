@@ -183,7 +183,7 @@ const applyDefaultEnv = async (): Promise<void> => {
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
   process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
     provider: "openrouter",
-    model: "openrouter/hunter-alpha",
+    model: "nvidia/nemotron-3-super-120b-a12b:free",
     defaultMode: "primary",
     temperature: null,
     maxOutputTokens: null,

@@ -75,6 +75,7 @@ const toolReleaseReadinessByName: Record<string, RuntimeReleaseReadinessDescript
       "getTriggerOrders",
       "triggerOrder",
       "managedTriggerOrder",
+      "scheduleManagedTriggerOrder",
       "triggerCancelOrders",
       "managedTriggerCancelOrders",
     ],

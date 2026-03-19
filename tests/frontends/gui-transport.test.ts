@@ -711,10 +711,10 @@ describe("Runtime v1 API", () => {
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
       expect(initialPayload.settings.provider).toBe("openrouter");
-      expect(initialPayload.settings.model).toBe("openrouter/hunter-alpha");
+      expect(initialPayload.settings.model).toBe("nvidia/nemotron-3-super-120b-a12b:free");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(initialPayload.options.some((option) => option.id === "openrouter/hunter-alpha")).toBe(true);
-      expect(initialPayload.options.find((option) => option.id === "openrouter/hunter-alpha")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.some((option) => option.id === "nvidia/nemotron-3-super-120b-a12b:free")).toBe(true);
+      expect(initialPayload.options.find((option) => option.id === "nvidia/nemotron-3-super-120b-a12b:free")?.providers).toEqual(["openrouter"]);
 
       const updateResponse = await handler(new Request("http://localhost/api/gui/ai-settings", {
         method: "PUT",
@@ -739,7 +739,7 @@ describe("Runtime v1 API", () => {
       expect(updatePayload.settings.model).toBe("openai/gpt-5.4");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(updatePayload.options.some((option) => option.id === "openrouter/hunter-alpha")).toBe(true);
+      expect(updatePayload.options.some((option) => option.id === "nvidia/nemotron-3-super-120b-a12b:free")).toBe(true);
     } finally {
       if (previous === undefined) {
         delete process.env.TRENCHCLAW_AI_SETTINGS_FILE;
@@ -792,7 +792,7 @@ describe("Runtime v1 API", () => {
             defaultSwapProvider: "standard",
             defaultSwapMode: "ExactOut",
             defaultAmountUnit: "percent",
-            scheduleActionName: "scheduleManagedUltraSwap",
+            scheduleActionName: "scheduleManagedTriggerOrder",
             quickBuyPresets: [],
             customPresets: [],
           },
@@ -802,13 +802,19 @@ describe("Runtime v1 API", () => {
       const updatePayload = (await updateResponse.json()) as {
         instanceId: string;
         filePath: string;
-        settings: { defaultSwapProvider: string; defaultSwapMode: string; defaultAmountUnit: string };
+        settings: {
+          defaultSwapProvider: string;
+          defaultSwapMode: string;
+          defaultAmountUnit: string;
+          scheduleActionName: string;
+        };
       };
       expect(updatePayload.instanceId).toBe(instanceId);
       expect(updatePayload.filePath).toContain(`/instances/${instanceId}/settings/trading.json`);
       expect(updatePayload.settings.defaultSwapProvider).toBe("standard");
       expect(updatePayload.settings.defaultSwapMode).toBe("ExactOut");
       expect(updatePayload.settings.defaultAmountUnit).toBe("percent");
+      expect(updatePayload.settings.scheduleActionName).toBe("scheduleManagedTriggerOrder");
     } finally {
       if (previousActiveInstanceId === undefined) {
         delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
