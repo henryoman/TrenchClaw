@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { mkdir, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 import { loadSystemPromptPayload, resetPromptLoaderCache } from "../../apps/trenchclaw/src/ai/llm/prompt-loader";
 import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
+import { runtimeStatePath } from "../helpers/core-paths";
 
 const ENV_KEYS = [
   "TRENCHCLAW_PROMPT_MANIFEST_FILE",
@@ -158,6 +161,34 @@ const writeTempFile = async (extension: "yaml" | "json", content: string): Promi
   return target;
 };
 
+const ensurePersistedInstance = async (instanceId = "01"): Promise<string> => {
+  const instancesRoot = runtimeStatePath("instances");
+  const instancePath = path.join(instancesRoot, instanceId);
+  await mkdir(instancePath, { recursive: true });
+  await writeFile(
+    path.join(instancesRoot, "active-instance.json"),
+    `${JSON.stringify({ localInstanceId: instanceId }, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(instancePath, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: `instance-${instanceId}`,
+        localInstanceId: instanceId,
+        userPin: null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-19T00:00:00.000Z",
+        updatedAt: "2026-03-19T00:00:00.000Z",
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  return instancePath;
+};
+
 beforeEach(async () => {
   resetSolPriceCacheForTests();
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -179,9 +210,10 @@ beforeEach(async () => {
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempFile("json", "{}");
   process.env.TRENCHCLAW_VAULT_FILE = await writeTempFile("json", JSON.stringify({}));
   process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+  await ensurePersistedInstance("01");
 });
 
-afterEach(() => {
+afterEach(async () => {
   globalThis.fetch = originalFetch;
   resetSolPriceCacheForTests();
   resetPromptLoaderCache();
@@ -194,8 +226,10 @@ afterEach(() => {
     process.env[key] = value;
   }
   for (const filePath of createdFiles.splice(0)) {
-    void Bun.file(filePath).delete().catch(() => {});
+    await Bun.file(filePath).delete().catch(() => {});
   }
+  await rm(runtimeStatePath("instances", "01"), { recursive: true, force: true });
+  await rm(runtimeStatePath("instances", "active-instance.json"), { force: true });
 });
 
 describe("loadSystemPromptPayload", () => {

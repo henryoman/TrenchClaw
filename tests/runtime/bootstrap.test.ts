@@ -401,7 +401,7 @@ runtime:
       expect(runtime.settings.agent.enabled).toBe(false);
       expect(runtime.settings.runtime.scheduler.tickMs).toBe(1000);
     } finally {
-      runtime.stop();
+      await runtime.stop();
     }
   });
 
@@ -434,7 +434,7 @@ wallet:
       expect(result.results[0]?.ok).toBe(false);
       expect(result.results[0]?.error).toContain("disabled by runtime settings");
     } finally {
-      runtime.stop();
+      await runtime.stop();
     }
   });
 
@@ -466,7 +466,7 @@ wallet:
       expect(notice?.content).toContain("Scheduled actionSequence for bot-scheduled");
       expect(notice?.content).toContain("T");
     } finally {
-      runtime.stop();
+      await runtime.stop();
     }
   });
 
@@ -519,7 +519,7 @@ wallet:
       expect(Array.isArray(persisted)).toBe(true);
       expect(persisted).toHaveLength(1);
     } finally {
-      runtime.stop();
+      await runtime.stop();
       await Bun.$`rm -f ${alertsFile}`.quiet();
     }
   });
@@ -566,7 +566,7 @@ wallet:
         expect(unblockedByToken.results[0]?.error ?? "").not.toContain("requires explicit user confirmation");
       }
     } finally {
-      runtime.stop();
+      await runtime.stop();
     }
   });
 
@@ -582,7 +582,7 @@ wallet:
       expect(await Bun.file(generatedStatePath("workspace-context.md")).exists()).toBe(true);
       expect(await Bun.file(generatedStatePath("knowledge-index.md")).exists()).toBe(true);
     } finally {
-      runtime.stop();
+      await runtime.stop();
     }
   });
 
@@ -595,7 +595,7 @@ wallet:
       expect(Array.isArray(description.gatewayLanes)).toBe(true);
       expect(description.gatewayLanes?.some((lane) => lane.lane === "operator-chat")).toBe(true);
     } finally {
-      runtime.stop();
+      await runtime.stop();
     }
   });
 });

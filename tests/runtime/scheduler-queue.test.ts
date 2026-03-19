@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { z } from "zod";
 
@@ -20,7 +21,7 @@ const queueDbPaths: string[] = [];
 const RUNTIME_CACHE_DIRECTORY = runtimeStatePath("instances/01/cache");
 const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
 const createTestQueueDbPath = (): string =>
-  path.join(RUNTIME_CACHE_DIRECTORY, `.tests/trenchclaw-scheduler-queue-${crypto.randomUUID()}.sqlite`);
+  path.join(os.tmpdir(), `trenchclaw-scheduler-queue-${crypto.randomUUID()}.sqlite`);
 
 const ensurePersistedInstance = async (instanceId = "01"): Promise<void> => {
   const instanceRoot = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
@@ -152,42 +153,44 @@ describe("Scheduler queue dispatch", () => {
       },
     );
     scheduler.start();
-
-    const now = Date.now();
-    const job: JobState = {
-      id: crypto.randomUUID(),
-      botId: "queue-test",
-      routineName: "actionSequence",
-      status: "pending",
-      config: {
-        intervalMs: 60_000,
-        steps: [
-          {
-            key: "echo",
-            actionName: "echoForQueueTest",
-            input: {
-              value: "dispatcher-through-queue",
+    try {
+      const now = Date.now();
+      const job: JobState = {
+        id: crypto.randomUUID(),
+        botId: "queue-test",
+        routineName: "actionSequence",
+        status: "pending",
+        config: {
+          intervalMs: 60_000,
+          steps: [
+            {
+              key: "echo",
+              actionName: "echoForQueueTest",
+              input: {
+                value: "dispatcher-through-queue",
+              },
             },
-          },
-        ],
-      },
-      cyclesCompleted: 0,
-      totalCycles: 1,
-      createdAt: now,
-      updatedAt: now,
-      nextRunAt: now,
-    };
-    stateStore.saveJob(job);
+          ],
+        },
+        cyclesCompleted: 0,
+        totalCycles: 1,
+        createdAt: now,
+        updatedAt: now,
+        nextRunAt: now,
+      };
+      stateStore.saveJob(job);
 
-    await scheduler.tick(now);
-    const updatedJob = await waitForJobResult(stateStore, job.id);
+      await scheduler.tick(now);
+      const updatedJob = await waitForJobResult(stateStore, job.id);
 
-    expect(updatedJob).not.toBeNull();
-    expect(updatedJob?.lastResult?.ok).toBe(true);
-    expect(updatedJob?.lastResult?.data).toEqual({
-      echoed: "dispatcher-through-queue",
-    });
-    await scheduler.stop();
+      expect(updatedJob).not.toBeNull();
+      expect(updatedJob?.lastResult?.ok).toBe(true);
+      expect(updatedJob?.lastResult?.data).toEqual({
+        echoed: "dispatcher-through-queue",
+      });
+    } finally {
+      await scheduler.stop();
+    }
   });
 
   test("promotes scheduled jobs into the queue only after their run time", async () => {
@@ -243,48 +246,50 @@ describe("Scheduler queue dispatch", () => {
       },
     );
     scheduler.start();
-
-    const now = Date.now();
-    const job: JobState = {
-      id: crypto.randomUUID(),
-      botId: "queue-delay-test",
-      routineName: "actionSequence",
-      status: "pending",
-      config: {
-        steps: [
-          {
-            key: "echo",
-            actionName: "echoForDelayedQueueTest",
-            input: {
-              value: "delay-confirmed",
+    try {
+      const now = Date.now();
+      const job: JobState = {
+        id: crypto.randomUUID(),
+        botId: "queue-delay-test",
+        routineName: "actionSequence",
+        status: "pending",
+        config: {
+          steps: [
+            {
+              key: "echo",
+              actionName: "echoForDelayedQueueTest",
+              input: {
+                value: "delay-confirmed",
+              },
             },
-          },
-        ],
-      },
-      cyclesCompleted: 0,
-      totalCycles: 1,
-      createdAt: now,
-      updatedAt: now,
-      nextRunAt: now + 250,
-    };
-    stateStore.saveJob(job);
+          ],
+        },
+        cyclesCompleted: 0,
+        totalCycles: 1,
+        createdAt: now,
+        updatedAt: now,
+        nextRunAt: now + 250,
+      };
+      stateStore.saveJob(job);
 
-    await scheduler.tick(now);
-    await Bun.sleep(75);
-    const beforeDue = stateStore.getJob(job.id);
-    expect(beforeDue?.status).toBe("pending");
-    expect(beforeDue?.lastResult).toBeUndefined();
+      await scheduler.tick(now);
+      await Bun.sleep(75);
+      const beforeDue = stateStore.getJob(job.id);
+      expect(beforeDue?.status).toBe("pending");
+      expect(beforeDue?.lastResult).toBeUndefined();
 
-    await scheduler.tick(now + 250);
-    const updatedJob = await waitForJobResult(stateStore, job.id);
+      await scheduler.tick(now + 250);
+      const updatedJob = await waitForJobResult(stateStore, job.id);
 
-    expect(updatedJob).not.toBeNull();
-    expect(updatedJob?.status).toBe("stopped");
-    expect(updatedJob?.lastResult?.ok).toBe(true);
-    expect(updatedJob?.lastResult?.data).toEqual({
-      echoed: "delay-confirmed",
-    });
-    await scheduler.stop();
+      expect(updatedJob).not.toBeNull();
+      expect(updatedJob?.status).toBe("stopped");
+      expect(updatedJob?.lastResult?.ok).toBe(true);
+      expect(updatedJob?.lastResult?.data).toEqual({
+        echoed: "delay-confirmed",
+      });
+    } finally {
+      await scheduler.stop();
+    }
   });
 
   test("marks queued jobs as failed when they reference an unsupported action", async () => {
@@ -320,45 +325,47 @@ describe("Scheduler queue dispatch", () => {
       },
     );
     scheduler.start();
-
-    const now = Date.now();
-    const job: JobState = {
-      id: crypto.randomUUID(),
-      botId: "queue-unsupported-action-test",
-      routineName: "actionSequence",
-      status: "pending",
-      config: {
-        steps: [
-          {
-            key: "removed",
-            actionName: "managedTriggerOrder",
-            input: {
-              walletGroup: "core-wallets",
+    try {
+      const now = Date.now();
+      const job: JobState = {
+        id: crypto.randomUUID(),
+        botId: "queue-unsupported-action-test",
+        routineName: "actionSequence",
+        status: "pending",
+        config: {
+          steps: [
+            {
+              key: "removed",
+              actionName: "managedTriggerOrder",
+              input: {
+                walletGroup: "core-wallets",
+              },
             },
-          },
-        ],
-      },
-      cyclesCompleted: 0,
-      totalCycles: 1,
-      createdAt: now,
-      updatedAt: now,
-      nextRunAt: now,
-    };
-    stateStore.saveJob(job);
+          ],
+        },
+        cyclesCompleted: 0,
+        totalCycles: 1,
+        createdAt: now,
+        updatedAt: now,
+        nextRunAt: now,
+      };
+      stateStore.saveJob(job);
 
-    await scheduler.tick(now);
-    const waitDeadline = Date.now() + 1_000;
-    let updatedJob = stateStore.getJob(job.id);
-    while (updatedJob?.status !== "failed" && Date.now() < waitDeadline) {
-      await Bun.sleep(20);
-      updatedJob = stateStore.getJob(job.id);
+      await scheduler.tick(now);
+      const waitDeadline = Date.now() + 1_000;
+      let updatedJob = stateStore.getJob(job.id);
+      while (updatedJob?.status !== "failed" && Date.now() < waitDeadline) {
+        await Bun.sleep(20);
+        updatedJob = stateStore.getJob(job.id);
+      }
+
+      expect(updatedJob?.status).toBe("failed");
+      expect(updatedJob?.lastResult?.ok).toBe(false);
+      expect(updatedJob?.lastResult?.code).toBe("unsupported_action");
+      expect(updatedJob?.lastResult?.error).toContain("not supported by this runtime");
+    } finally {
+      await scheduler.stop();
     }
-
-    expect(updatedJob?.status).toBe("failed");
-    expect(updatedJob?.lastResult?.ok).toBe(false);
-    expect(updatedJob?.lastResult?.code).toBe("unsupported_action");
-    expect(updatedJob?.lastResult?.error).toContain("not supported by this runtime");
-    await scheduler.stop();
   });
 
   test("tryStartJob claims the same pending cycle only once", () => {
