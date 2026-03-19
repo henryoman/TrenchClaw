@@ -76,6 +76,34 @@ const buildRuntime = (input?: {
   } as RuntimeBootstrap;
 };
 
+const ensurePersistedInstance = async (instanceId: string): Promise<string> => {
+  const instancesRoot = runtimeStatePath("instances");
+  const instancePath = path.join(instancesRoot, instanceId);
+  await mkdir(instancePath, { recursive: true });
+  await writeFile(
+    path.join(instancesRoot, "active-instance.json"),
+    `${JSON.stringify({ localInstanceId: instanceId }, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(instancePath, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: `instance-${instanceId}`,
+        localInstanceId: instanceId,
+        userPin: null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-19T00:00:00.000Z",
+        updatedAt: "2026-03-19T00:00:00.000Z",
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  return instancePath;
+};
+
 describe("Runtime v1 API", () => {
   test("POST /v1/chat/stream delegates to runtime.chat.stream with CORS headers", async () => {
     let callCount = 0;
@@ -456,6 +484,10 @@ describe("Runtime v1 API", () => {
 
   test("GET /api/gui/llm/check reports active key metadata", async () => {
     const previous = process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE;
+    const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+    const instanceId = "96";
+    const instancePath = await ensurePersistedInstance(instanceId);
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
     process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = "1";
     try {
       const runtime = buildRuntime();
@@ -478,6 +510,13 @@ describe("Runtime v1 API", () => {
       expect(typeof payload.keyLength).toBe("number");
       expect(typeof payload.probeMessage).toBe("string");
     } finally {
+      await rm(instancePath, { recursive: true, force: true });
+      await rm(path.join(runtimeStatePath("instances"), "active-instance.json"), { force: true });
+      if (previousActiveInstanceId === undefined) {
+        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+      } else {
+        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+      }
       if (previous === undefined) {
         delete process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE;
       } else {
