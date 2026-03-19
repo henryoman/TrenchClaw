@@ -20,12 +20,6 @@ const OPERATOR_ACTION_ALLOWLIST = [
   "closeTokenAccount",
   "managedUltraSwap",
   "scheduleManagedUltraSwap",
-  "getTriggerOrders",
-  "triggerOrder",
-  "managedTriggerOrder",
-  "scheduleManagedTriggerOrder",
-  "triggerCancelOrders",
-  "managedTriggerCancelOrders",
 ] as const;
 
 const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {

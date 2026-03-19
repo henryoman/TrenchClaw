@@ -109,10 +109,6 @@
       value: "scheduleManagedUltraSwap",
       label: "Managed Ultra swap",
     },
-    {
-      value: "scheduleManagedTriggerOrder",
-      label: "Managed trigger order",
-    },
   ] as const;
 
   let aiSettingsDraft: GuiAiSettingsView = { ...DEFAULT_AI_SETTINGS };

@@ -105,4 +105,23 @@ describe("ActionDispatcher", () => {
     expect(result.results).toHaveLength(1);
     expect(result.results[0]?.ok).toBe(true);
   });
+
+  test("returns an unsupported_action result when a step targets an unregistered action", async () => {
+    const stateStore = new InMemoryStateStore();
+    const dispatcher = new ActionDispatcher({
+      registry: new ActionRegistry(),
+      policyEngine: new PolicyEngine(),
+      stateStore,
+      eventBus: new InMemoryRuntimeEventBus(),
+    });
+
+    const result = await dispatcher.dispatchStep(createActionContext({ actor: "agent", stateStore }), {
+      actionName: "removedTriggerAction",
+      input: {},
+    });
+
+    expect(result.results[0]?.ok).toBe(false);
+    expect(result.results[0]?.code).toBe("unsupported_action");
+    expect(result.results[0]?.error).toContain("not supported by this runtime");
+  });
 });

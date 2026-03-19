@@ -280,7 +280,13 @@ describe("runtime capability snapshot", () => {
     );
   });
 
-  test("exposes scheduled trigger-order tools when Jupiter Trigger orders are enabled", async () => {
+  test("ignores legacy Jupiter Trigger settings and keeps trigger tools out of the model snapshot", async () => {
+    const originalWarn = console.warn;
+    const warnings: string[] = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.map((entry) => String(entry)).join(" "));
+    };
+
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
       "yaml",
       TEST_SAFE_SETTINGS_YAML
@@ -291,16 +297,18 @@ describe("runtime capability snapshot", () => {
         ),
     );
 
-    const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
-    const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
+    try {
+      const settings = await loadRuntimeSettings("safe");
+      const snapshot = await getRuntimeCapabilitySnapshot(settings);
+      const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
-    expect(modelToolNames).toContain("getTriggerOrders");
-    expect(modelToolNames).toContain("managedTriggerOrder");
-    expect(modelToolNames).toContain("scheduleManagedTriggerOrder");
-    expect(modelToolNames).toContain("managedTriggerCancelOrders");
-    expect(snapshot.modelTools.find((toolEntry) => toolEntry.name === "scheduleManagedTriggerOrder")?.releaseReadinessStatus).toBe(
-      "limited-beta",
-    );
+      expect(modelToolNames).not.toContain("getTriggerOrders");
+      expect(modelToolNames).not.toContain("managedTriggerOrder");
+      expect(modelToolNames).not.toContain("scheduleManagedTriggerOrder");
+      expect(modelToolNames).not.toContain("managedTriggerCancelOrders");
+      expect(warnings.some((warning) => warning.includes('trading.jupiter.trigger'))).toBe(true);
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 });

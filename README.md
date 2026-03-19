@@ -45,7 +45,6 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - [x] Dexscreener token discovery and market data
 - [x] Jupiter Ultra swaps from managed wallets (limited beta)
 - [x] Scheduled Ultra swaps and simple DCA plans (limited beta)
-- [x] Jupiter Trigger orders and cancellations (limited beta)
 - [x] Direct transfers, token account cleanup, and privacy flows (limited beta)
 - [x] Runtime memory, queue, and conversation history
 - [x] Desktop GUI for chat, wallets, keys, settings, activity, and runtime status
@@ -348,8 +347,8 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 ## What It Does
 
 - Registers and dispatches typed Solana actions with policy gates, retries, and idempotency
-- Ships managed wallet reads, wallet management, Dexscreener research, Jupiter Ultra swaps, and direct Jupiter Trigger order flows
-- Composes explicit action sequences, queued jobs, and narrow scheduled swap flows
+- Ships managed wallet reads, wallet management, Dexscreener research, Jupiter Ultra swaps, and direct wallet execution flows
+- Composes explicit action sequences, queued jobs, and narrow scheduled swap flows without a broad trigger framework
 - Persists runtime state + chat history in Bun SQLite (restart-safe)
 - Auto-syncs SQLite schema from declared table specs on boot and warns when existing DB columns drift from the contract
 - Emits structured events on a typed bus consumed by CLI logs and future alerting
@@ -358,7 +357,7 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
 
-Current public beta does not promise a broad autonomous strategy engine yet. Privacy flows, broad trigger automation, and non-Ultra public swap paths should be treated as coming soon.
+Current public beta does not promise a broad autonomous strategy engine yet. Treat scheduling and queued jobs as the current automation surface, and treat broader strategy automation plus non-Ultra public swap paths as coming soon.
 
 ## Download Dependencies
 

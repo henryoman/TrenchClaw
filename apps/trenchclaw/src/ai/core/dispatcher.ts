@@ -32,7 +32,20 @@ export class ActionDispatcher {
   async dispatchStep(ctx: ActionContext, step: ActionStep): Promise<DispatchResult> {
     const action = this.deps.registry.get(step.actionName);
     if (!action) {
-      throw new Error(`Action "${step.actionName}" is not registered`);
+      return {
+        results: [
+          {
+            ok: false,
+            retryable: false,
+            code: "unsupported_action",
+            error: `Action "${step.actionName}" is not supported by this runtime`,
+            durationMs: 0,
+            timestamp: Date.now(),
+            idempotencyKey: step.idempotencyKey ?? createIdempotencyKey(),
+          },
+        ],
+        policyHits: [],
+      };
     }
 
     const idempotencyKey = step.idempotencyKey ?? createIdempotencyKey();

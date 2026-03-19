@@ -9,11 +9,11 @@ import { createHelius } from "helius-sdk";
 
   // Step 2: Full agentic signup flow
   //   - Signs auth message to verify wallet ownership
-  //   - If existing project found, returns its API key
-  //   - Otherwise checks SOL/USDC balances, pays 1 USDC, creates project
+  //   - If an existing project is found, returns its API key
+  //   - Otherwise checks SOL/USDC balances, pays 1 USDC, and creates a project
   const result = await auth.agenticSignup({ secretKey });
 
-  console.log("Status:", result.status); // "success" or "existing_project"
+  console.log("Status:", result.status);
   console.log("Wallet:", result.walletAddress);
   console.log("Project ID:", result.projectId);
   console.log("API Key:", result.apiKey);

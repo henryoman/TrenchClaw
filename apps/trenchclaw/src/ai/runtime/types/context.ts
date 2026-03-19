@@ -33,7 +33,6 @@ export interface ActionContext {
   rpcUrl?: string;
   jupiter?: unknown;
   jupiterUltra?: unknown;
-  jupiterTrigger?: unknown;
   tokenAccounts?: unknown;
   ultraSigner?: {
     address?: string;

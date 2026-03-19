@@ -8,20 +8,18 @@ import { amountInputSchema } from "./shared";
 
 const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
 
-const managedUltraSwapBaseSchema = amountInputSchema.and(
-  z.object({
-    walletGroup: walletGroupNameSchema,
-    walletName: walletNameSchema,
-    swapType: z.literal("ultra").default("ultra"),
-    inputCoin: z.string().min(1),
-    outputCoin: z.string().min(1),
-    mode: z.enum(["ExactIn", "ExactOut"]).optional(),
-    executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
-    referralAccount: z.string().min(1).optional(),
-    referralFee: z.number().int().nonnegative().max(10_000).optional(),
-    coinAliases: z.record(z.string(), z.string()).optional(),
-  }),
-);
+const managedUltraSwapBaseSchema = amountInputSchema.extend({
+  walletGroup: walletGroupNameSchema,
+  walletName: walletNameSchema,
+  swapType: z.literal("ultra").default("ultra"),
+  inputCoin: z.string().min(1),
+  outputCoin: z.string().min(1),
+  mode: z.enum(["ExactIn", "ExactOut"]).optional(),
+  executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
+  referralAccount: z.string().min(1).optional(),
+  referralFee: z.number().int().nonnegative().max(10_000).optional(),
+  coinAliases: z.record(z.string(), z.string()).optional(),
+});
 
 const singleScheduleSchema = z.object({
   kind: z.literal("once"),
@@ -41,12 +39,10 @@ const dcaScheduleSchema = z
     path: ["intervalMs"],
   });
 
-const scheduleManagedUltraSwapInputSchema = managedUltraSwapBaseSchema.and(
-  z.object({
-    botId: z.string().trim().min(1).optional(),
-    schedule: z.discriminatedUnion("kind", [singleScheduleSchema, dcaScheduleSchema]),
-  }),
-);
+const scheduleManagedUltraSwapInputSchema = managedUltraSwapBaseSchema.extend({
+  botId: z.string().trim().min(1).optional(),
+  schedule: z.discriminatedUnion("kind", [singleScheduleSchema, dcaScheduleSchema]),
+});
 
 type ScheduleManagedUltraSwapInput = z.output<typeof scheduleManagedUltraSwapInputSchema>;
 

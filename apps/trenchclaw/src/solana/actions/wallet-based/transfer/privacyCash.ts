@@ -41,21 +41,17 @@ const privacyRecipientSchema = z.object({
   amountSol: z.number().positive(),
 });
 
-const privacyTransferInputSchema = basePrivacyInputSchema.and(
-  z.object({
-    recipients: z.array(privacyRecipientSchema).min(1),
-  }),
-);
+const privacyTransferInputSchema = basePrivacyInputSchema.extend({
+  recipients: z.array(privacyRecipientSchema).min(1),
+});
 
-const privacySwapInputSchema = basePrivacyInputSchema.and(
-  z.object({
-    amountSol: z.number().positive(),
-    outputCoin: z.string().min(1),
-    inputCoin: z.string().min(1).optional(),
-    mode: z.enum(["ExactIn", "ExactOut"]).optional(),
-    slippageBps: z.number().int().positive().max(10_000).optional(),
-  }),
-);
+const privacySwapInputSchema = basePrivacyInputSchema.extend({
+  amountSol: z.number().positive(),
+  outputCoin: z.string().min(1),
+  inputCoin: z.string().min(1).optional(),
+  mode: z.enum(["ExactIn", "ExactOut"]).optional(),
+  slippageBps: z.number().int().positive().max(10_000).optional(),
+});
 
 type PrivacyTransferInput = z.output<typeof privacyTransferInputSchema>;
 type PrivacySwapInput = z.output<typeof privacySwapInputSchema>;

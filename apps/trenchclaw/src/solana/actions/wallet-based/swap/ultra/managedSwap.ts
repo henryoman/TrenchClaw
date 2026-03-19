@@ -8,14 +8,12 @@ import { ultraSwapAction, type UltraSwapOutput } from "./swap";
 
 const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
 
-const managedUltraSwapInputSchema = ultraQuoteInputSchema.and(
-  z.object({
-    walletGroup: walletGroupNameSchema,
-    walletName: walletNameSchema,
-    swapType: z.literal("ultra").default("ultra"),
-    executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
-  }),
-);
+const managedUltraSwapInputSchema = ultraQuoteInputSchema.extend({
+  walletGroup: walletGroupNameSchema,
+  walletName: walletNameSchema,
+  swapType: z.literal("ultra").default("ultra"),
+  executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
+});
 
 type ManagedUltraSwapInput = z.infer<typeof managedUltraSwapInputSchema>;
 

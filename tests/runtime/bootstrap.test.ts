@@ -506,10 +506,11 @@ wallet:
 
       expect(
         blockedError.includes("requires explicit user confirmation") ||
-          blockedError.includes("is not registered"),
+          blockedError.includes("is not registered") ||
+          blockedError.includes("is not supported by this runtime"),
       ).toBe(true);
 
-      if (!blockedError.includes("is not registered")) {
+      if (!blockedError.includes("is not registered") && !blockedError.includes("is not supported by this runtime")) {
         const unblockedByToken = await runtime.dispatcher.dispatchStep(
           createActionContext({ actor: "agent" }),
           {

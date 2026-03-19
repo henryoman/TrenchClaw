@@ -258,6 +258,80 @@ describe("Scheduler queue dispatch", () => {
     await scheduler.stop();
   });
 
+  test("marks queued jobs as failed when they reference an unsupported action", async () => {
+    const stateStore = new InMemoryStateStore();
+    const eventBus = new InMemoryRuntimeEventBus();
+    const dispatcher = new ActionDispatcher({
+      registry: new ActionRegistry(),
+      policyEngine: new PolicyEngine([]),
+      stateStore,
+      eventBus,
+    });
+    const queueDbPath = createTestQueueDbPath();
+    queueDbPaths.push(queueDbPath);
+    const queueName = `scheduler-unsupported-action-test-${crypto.randomUUID()}`;
+    const scheduler = new Scheduler(
+      {
+        stateStore,
+        dispatcher,
+        eventBus,
+        createContext: (job) =>
+          createActionContext({
+            actor: "system",
+            jobMeta: {
+              jobId: job.id,
+            },
+          }),
+        resolveRoutine: () => actionSequenceRoutine,
+      },
+      1,
+      {
+        dataPath: queueDbPath,
+        queueName,
+      },
+    );
+    scheduler.start();
+
+    const now = Date.now();
+    const job: JobState = {
+      id: crypto.randomUUID(),
+      botId: "queue-unsupported-action-test",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {
+        steps: [
+          {
+            key: "removed",
+            actionName: "managedTriggerOrder",
+            input: {
+              walletGroup: "core-wallets",
+            },
+          },
+        ],
+      },
+      cyclesCompleted: 0,
+      totalCycles: 1,
+      createdAt: now,
+      updatedAt: now,
+      nextRunAt: now,
+    };
+    stateStore.saveJob(job);
+
+    await scheduler.tick(now);
+    const waitDeadline = Date.now() + 1_000;
+    let updatedJob = stateStore.getJob(job.id);
+    while (updatedJob?.status !== "failed" && Date.now() < waitDeadline) {
+      await Bun.sleep(20);
+      updatedJob = stateStore.getJob(job.id);
+    }
+
+    expect(updatedJob?.status).toBe("failed");
+    expect(updatedJob?.lastResult?.ok).toBe(false);
+    expect(updatedJob?.lastResult?.code).toBe("unsupported_action");
+    expect(updatedJob?.lastResult?.error).toContain("not supported by this runtime");
+    await scheduler.stop();
+  });
+
   test("tryStartJob claims the same pending cycle only once", () => {
     const stateStore = new InMemoryStateStore();
     const now = Date.now();

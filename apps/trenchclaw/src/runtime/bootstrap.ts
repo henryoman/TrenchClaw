@@ -24,7 +24,6 @@ import {
   type LlmGenerateInput,
   type LlmGenerateResult,
 } from "../ai";
-import { createJupiterTriggerAdapterFromConfig } from "../solana/lib/adapters/jupiter-trigger";
 import { createJupiterUltraAdapterFromConfig } from "../solana/lib/adapters/jupiter-ultra";
 import { createTokenAccountAdapter } from "../solana/lib/adapters/token-account";
 import { createUltraSignerAdapterFromVault } from "../solana/lib/adapters/ultra-signer";
@@ -616,7 +615,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   }
 
   const jupiterUltra = await createJupiterUltraAdapterFromConfig();
-  const jupiterTrigger = await createJupiterTriggerAdapterFromConfig();
   const tokenAccounts = createTokenAccountAdapter({ rpcUrl: runtimeRpcUrl });
   const ultraSigner = await createUltraSignerAdapterFromVault({ rpcUrl: runtimeRpcUrl });
   let scheduler: Scheduler;
@@ -626,7 +624,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       eventBus,
       rpcUrl: runtimeRpcUrl,
       jupiterUltra,
-      jupiterTrigger,
       tokenAccounts,
       ultraSigner,
       stateStore,
@@ -881,7 +878,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       stateStore,
       rpcUrl: runtimeRpcUrl,
       jupiterUltra,
-      jupiterTrigger,
       tokenAccounts,
       ultraSigner,
       enqueueJob,

@@ -12,10 +12,6 @@ describe("sanitizeAgentSettings profile permissions", () => {
       enabled: true,
       dca: { enabled: true },
     },
-    triggers: {
-      enabled: true,
-      timer: { enabled: true },
-    },
     actions: {
       dataBased: {
         getMarketData: true,
@@ -45,7 +41,6 @@ describe("sanitizeAgentSettings profile permissions", () => {
     expect(sanitized.agent?.enabled).toBe(true);
 
     expect(sanitized.routines).toBeUndefined();
-    expect(sanitized.triggers).toBeUndefined();
     expect(sanitized.actions).toBeUndefined();
     expect(sanitized.runtime).toBeUndefined();
     expect(sanitized.storage).toBeUndefined();

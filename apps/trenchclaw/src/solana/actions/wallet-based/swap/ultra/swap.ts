@@ -25,11 +25,9 @@ import {
   type UltraPhaseTimings,
 } from "../../../../lib/ultra/parsing";
 
-const ultraSwapInputSchema = ultraQuoteInputSchema.and(
-  z.object({
-    executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
-  }),
-);
+const ultraSwapInputSchema = ultraQuoteInputSchema.extend({
+  executeTimeoutMs: z.number().int().positive().max(60_000).optional(),
+});
 
 export type UltraSwapInput = typeof ultraSwapInputSchema._output;
 

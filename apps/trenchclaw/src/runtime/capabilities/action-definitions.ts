@@ -25,15 +25,9 @@ import {
   createWalletGroupDirectoryAction,
   createWalletsAction,
   devnetAirdropAction,
-  getTriggerOrdersAction,
   managedUltraSwapAction,
   scheduleManagedUltraSwapAction,
-  managedTriggerCancelOrdersAction,
-  managedTriggerOrderAction,
-  scheduleManagedTriggerOrderAction,
   privacyAirdropAction,
-  triggerCancelOrdersAction,
-  triggerOrderAction,
   privacySwapAction,
   closeTokenAccountAction,
   privacyTransferAction,
@@ -55,18 +49,6 @@ const canUseUltraSwap = ({ settings }: { settings: Parameters<RuntimeActionCapab
   settings.trading.jupiter.ultra.enabled &&
   settings.trading.jupiter.ultra.allowQuotes &&
   settings.trading.jupiter.ultra.allowExecutions;
-
-const canUseTriggerOrders = ({ settings }: { settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"] }): boolean =>
-  settings.trading.enabled &&
-  settings.trading.jupiter.trigger.enabled &&
-  settings.trading.jupiter.trigger.allowOrders &&
-  settings.trading.jupiter.trigger.allowExecutions;
-
-const canUseTriggerCancellations = ({ settings }: { settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"] }): boolean =>
-  settings.trading.enabled &&
-  settings.trading.jupiter.trigger.enabled &&
-  settings.trading.jupiter.trigger.allowCancellations &&
-  settings.trading.jupiter.trigger.allowExecutions;
 
 export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilityDefinition[] = [
   {
@@ -605,110 +587,6 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     },
     includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
     enabledBySettings: canUseUltraSwap,
-    requiresUserConfirmation: true,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
-    action: getTriggerOrdersAction,
-    description: "List active or historical Jupiter Trigger orders for a wallet.",
-    purpose: "Inspect open limit orders and trigger order history before placing or cancelling them.",
-    tags: ["trigger", "limit-orders", "jupiter", "read"],
-    exampleInput: {
-      orderStatus: "active",
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
-    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
-    action: triggerOrderAction,
-    description: "Create, sign, and submit a Jupiter Trigger v1 limit order.",
-    purpose: "Place an automated trigger order that executes later when the target price is reached.",
-    tags: ["trigger", "limit-orders", "jupiter", "execution"],
-    exampleInput: {
-      inputCoin: "SOL",
-      outputCoin: "USDC",
-      makingAmount: "0.5",
-      limitPrice: "210",
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
-    enabledBySettings: canUseTriggerOrders,
-    requiresUserConfirmation: true,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
-    action: managedTriggerOrderAction,
-    description: "Place a Jupiter Trigger limit order from a managed filesystem wallet.",
-    purpose: "Let scheduled routines open managed-wallet limit orders after swaps or other automated flows.",
-    tags: ["trigger", "limit-orders", "jupiter", "wallets"],
-    exampleInput: {
-      walletGroup: "core-wallets",
-      walletName: "maker-1",
-      inputCoin: "SOL",
-      outputCoin: "USDC",
-      makingAmount: "0.5",
-      limitPrice: "210",
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
-    enabledBySettings: canUseTriggerOrders,
-    requiresUserConfirmation: true,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
-    action: scheduleManagedTriggerOrderAction,
-    description: "Schedule a future managed-wallet Jupiter Trigger order or equal-interval trigger-order DCA routine.",
-    purpose: "Queue one future managed-wallet limit order or split a larger trigger-order plan into evenly spaced managed steps.",
-    tags: ["trigger", "limit-orders", "jupiter", "wallets", "scheduling", "dca"],
-    exampleInput: {
-      walletGroup: "core-wallets",
-      walletName: "maker-1",
-      inputCoin: "SOL",
-      outputCoin: "USDC",
-      makingAmount: "0.3",
-      limitPrice: "210",
-      schedule: {
-        kind: "dca",
-        installments: 3,
-        startAtUnixMs: 1_767_000_000_000,
-        intervalMs: 3_600_000,
-      },
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
-    enabledBySettings: canUseTriggerOrders,
-    requiresUserConfirmation: true,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
-    action: triggerCancelOrdersAction,
-    description: "Cancel one or more Jupiter Trigger orders and submit the cancellations.",
-    purpose: "Exit pending trigger orders cleanly without manually handling transactions.",
-    tags: ["trigger", "limit-orders", "jupiter", "cancel"],
-    exampleInput: {
-      orders: ["3g2jF8txqXPp6GUStwtXMrWydeYWxU4qoBA8UDLoTnK7"],
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
-    enabledBySettings: canUseTriggerCancellations,
-    requiresUserConfirmation: true,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
-    action: managedTriggerCancelOrdersAction,
-    description: "Cancel Jupiter Trigger orders from a managed filesystem wallet.",
-    purpose: "Let automated wallet flows revoke open trigger orders safely by managed wallet identity.",
-    tags: ["trigger", "limit-orders", "jupiter", "wallets", "cancel"],
-    exampleInput: {
-      walletGroup: "core-wallets",
-      walletName: "maker-1",
-      orders: ["3g2jF8txqXPp6GUStwtXMrWydeYWxU4qoBA8UDLoTnK7"],
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
-    enabledBySettings: canUseTriggerCancellations,
     requiresUserConfirmation: true,
     chatExposed: true,
   },
