@@ -2,20 +2,15 @@ import type { Dirent } from "node:fs";
 import { readdir, rm, unlink } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-import { RUNTIME_DB_ROOT } from "../../runtime/runtime-paths";
+import { GENERATED_STATE_ROOT, RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
 
 const APP_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
-const DB_ROOT = RUNTIME_DB_ROOT;
+const LEGACY_DB_ROOT = join(RUNTIME_STATE_ROOT, "db");
+const GENERATED_ROOT = GENERATED_STATE_ROOT;
 const TURBO_ROOT = join(APP_ROOT, ".turbo");
 
-const DB_FILES_TO_KEEP = new Set([
+const GENERATED_FILES_TO_KEEP = new Set([
   ".gitignore",
-  "README.md",
-  "memory/MEMORY.md",
-  "sessions/.keep",
-  "summaries/.keep",
-  "summary/.keep",
-  "system/.keep",
 ]);
 
 const listFilesRecursively = async (rootDir: string): Promise<string[]> => {
@@ -45,11 +40,19 @@ const listFilesRecursively = async (rootDir: string): Promise<string[]> => {
   return walk(rootDir);
 };
 
-const cleanDbArtifacts = async (): Promise<number> => {
-  const files = await listFilesRecursively(DB_ROOT);
+const cleanLegacyDbArtifacts = async (): Promise<number> => {
+  const files = await listFilesRecursively(LEGACY_DB_ROOT);
+  await Promise.all(files.map(async (absolutePath) => {
+    await unlink(absolutePath);
+  }));
+  return files.length;
+};
+
+const cleanGeneratedArtifacts = async (): Promise<number> => {
+  const files = await listFilesRecursively(GENERATED_ROOT);
   const removableFiles = files.filter((absolutePath) => {
-    const normalizedRelative = relative(DB_ROOT, absolutePath).replaceAll("\\", "/");
-    return !DB_FILES_TO_KEEP.has(normalizedRelative);
+    const normalizedRelative = relative(GENERATED_ROOT, absolutePath).replaceAll("\\", "/");
+    return !GENERATED_FILES_TO_KEEP.has(normalizedRelative);
   });
   await Promise.all(removableFiles.map(async (absolutePath) => {
     await unlink(absolutePath);
@@ -72,9 +75,10 @@ const cleanTurboLogs = async (): Promise<number> => {
   return logEntries.length;
 };
 
-const dbRemoved = await cleanDbArtifacts();
+const legacyDbRemoved = await cleanLegacyDbArtifacts();
+const generatedRemoved = await cleanGeneratedArtifacts();
 const turboRemoved = await cleanTurboLogs();
 
 console.log(
-  `Runtime cleanup complete (db files removed: ${dbRemoved}, turbo logs removed: ${turboRemoved}).`,
+  `Runtime cleanup complete (legacy db files removed: ${legacyDbRemoved}, generated files removed: ${generatedRemoved}, turbo logs removed: ${turboRemoved}).`,
 );

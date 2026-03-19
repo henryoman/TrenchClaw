@@ -216,7 +216,7 @@ const renderOperatorToolReference = (
 
 const renderOperatorKnowledgeIndex = (): string => [
   "## Knowledge Index",
-  "- `.runtime-state/generated/knowledge-index.md`: compact folder and file breakdown for available knowledge, titles, and read-when guidance",
+  "- `.trenchclaw-generated/knowledge-index.md`: compact folder and file breakdown for available knowledge, titles, and read-when guidance",
   "- open specific docs only when the request needs them; do not preload full doc bodies in your reasoning",
   "- knowledge files are reference material; live tools, release readiness, and runtime state are higher authority",
 ].join("\n");

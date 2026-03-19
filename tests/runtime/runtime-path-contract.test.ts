@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -18,6 +18,7 @@ const USER_SETTINGS_MODULE = pathToFileURL(
 const SCHEDULER_MODULE = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/ai/core/scheduler.ts"),
 ).href;
+const RUNTIME_TEMPLATE_ROOT = path.join(CORE_APP_ROOT, ".runtime");
 
 const createdDirectories = new Set<string>();
 const SHELL_COMMAND = process.platform === "win32"
@@ -28,6 +29,27 @@ const makeTempDirectory = async (): Promise<string> => {
   const directoryPath = await mkdtemp(path.join(os.tmpdir(), "trenchclaw-runtime-contract-"));
   createdDirectories.add(directoryPath);
   return directoryPath;
+};
+
+const createPersistedInstance = async (runtimeRoot: string, localInstanceId: string): Promise<void> => {
+  const instanceRoot = path.join(runtimeRoot, "instances", localInstanceId);
+  await mkdir(instanceRoot, { recursive: true });
+  await writeFile(
+    path.join(instanceRoot, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: `instance-${localInstanceId}`,
+        localInstanceId,
+        userPin: null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-11T00:00:00.000Z",
+        updatedAt: "2026-03-11T00:00:00.000Z",
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
 };
 
 const runModuleEval = async (
@@ -89,6 +111,7 @@ describe("runtime path contract", () => {
 
   test("resolves ai settings under the configured runtime root", async () => {
     const runtimeRoot = await makeTempDirectory();
+    await createPersistedInstance(runtimeRoot, "01");
     const result = await runModuleEval(
       `
         const mod = await import(${JSON.stringify(AI_SETTINGS_MODULE)});
@@ -108,8 +131,10 @@ describe("runtime path contract", () => {
 
   test("does not fall back to legacy runtime ai settings when an active instance is set", async () => {
     const runtimeRoot = await makeTempDirectory();
+    await createPersistedInstance(runtimeRoot, "01");
     const result = await runModuleEval(
       `
+        await Bun.$\`mkdir -p ${JSON.stringify(path.join(runtimeRoot, "runtime"))}\`.quiet();
         await Bun.write(${JSON.stringify(path.join(runtimeRoot, "runtime", "ai.json"))}, JSON.stringify({
           provider: "gateway",
           model: "legacy-model",
@@ -136,6 +161,7 @@ describe("runtime path contract", () => {
 
   test("resolves compatibility settings under the configured runtime root", async () => {
     const runtimeRoot = await makeTempDirectory();
+    await createPersistedInstance(runtimeRoot, "01");
     const result = await runModuleEval(
       `
         const mod = await import(${JSON.stringify(USER_SETTINGS_MODULE)});
@@ -155,8 +181,10 @@ describe("runtime path contract", () => {
 
   test("does not fall back to legacy runtime compatibility settings when an active instance is set", async () => {
     const runtimeRoot = await makeTempDirectory();
+    await createPersistedInstance(runtimeRoot, "01");
     const result = await runModuleEval(
       `
+        await Bun.$\`mkdir -p ${JSON.stringify(path.join(runtimeRoot, "runtime"))}\`.quiet();
         await Bun.write(${JSON.stringify(path.join(runtimeRoot, "runtime", "settings.json"))}, JSON.stringify({
           rpc: { primaryRpc: "legacy" }
         }, null, 2) + "\\n");
@@ -184,10 +212,11 @@ describe("runtime path contract", () => {
 
   test("resolves relative queue paths under the configured runtime root", async () => {
     const runtimeRoot = await makeTempDirectory();
+    await createPersistedInstance(runtimeRoot, "01");
     const result = await runModuleEval(
       `
         const mod = await import(${JSON.stringify(SCHEDULER_MODULE)});
-        console.log(mod.resolveQueueDataPath("db/queue/custom.sqlite"));
+        console.log(mod.resolveQueueDataPath("instances/01/cache/custom.sqlite"));
       `,
       {
         TRENCHCLAW_ACTIVE_INSTANCE_ID: "01",
@@ -196,6 +225,34 @@ describe("runtime path contract", () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.trim()).toBe(path.join(runtimeRoot, "db", "queue", "custom.sqlite"));
+    expect(result.stdout.trim()).toBe(path.join(runtimeRoot, "instances", "01", "cache", "custom.sqlite"));
+  });
+
+  test("ships a tracked runtime template contract", async () => {
+    const requiredPaths = [
+      path.join(RUNTIME_TEMPLATE_ROOT, "README.md"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "active-instance.json"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "instance.json"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "ai.json"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "settings.json"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "trading.json"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "secrets", "vault.json"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "live"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "sessions"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "summaries"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "system"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "cache", "memory"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "workspace", "routines"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "shell-home"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "tmp"),
+      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "tool-bin"),
+    ];
+
+    for (const targetPath of requiredPaths) {
+      await expect(stat(targetPath)).resolves.toBeDefined();
+    }
+
+    const logsChildren = (await readdir(path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs"))).toSorted();
+    expect(logsChildren).toEqual(["live", "sessions", "summaries", "system"]);
   });
 });

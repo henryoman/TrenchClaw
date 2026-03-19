@@ -11,31 +11,11 @@
       "model": "read"
     },
     {
-      "path": ".runtime-state/db/events",
-      "model": "read"
-    },
-    {
-      "path": ".runtime-state/db/system",
-      "model": "read"
-    },
-    {
-      "path": ".runtime-state/db/summary",
-      "model": "read"
-    },
-    {
-      "path": ".runtime-state/db/summaries",
-      "model": "read"
-    },
-    {
       "path": ".runtime-state/instances",
       "model": "write"
     },
     {
-      "path": ".runtime-state/runtime",
-      "model": "none"
-    },
-    {
-      "path": ".runtime-state/generated",
+      "path": ".trenchclaw-generated",
       "model": "read"
     }
   ]

@@ -41,7 +41,7 @@ describe("release-bundle-filter", () => {
     expect(
       hasBlockedBundleContent(
         "core/src/ai/brain/knowledge/example.md",
-        "safe relative path: .runtime-state/runtime",
+        "safe relative path: .runtime-state/instances/01/settings/ai.json",
         { blockedNeedles: ["/Users/henryoman"] },
       ),
     ).toBeNull();

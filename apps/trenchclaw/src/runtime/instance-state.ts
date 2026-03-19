@@ -7,8 +7,6 @@ import type { GuiInstanceProfileView } from "@trenchclaw/types";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
 import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 
-export const BOOTSTRAP_INSTANCE_ID = "00";
-
 const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-instance.json");
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
@@ -43,6 +41,11 @@ const getInstanceProfileFilePath = (localInstanceId: string): string =>
   path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId), INSTANCE_PROFILE_FILE_NAME);
 
 const hasStoredInstance = (localInstanceId: string): boolean => existsSync(getInstanceProfileFilePath(localInstanceId));
+
+const resolveStoredInstanceId = (localInstanceId: string): string | null => {
+  const normalized = normalizeInstanceId(localInstanceId);
+  return hasStoredInstance(normalized) ? normalized : null;
+};
 
 const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | null => {
   try {
@@ -142,10 +145,24 @@ export const readPersistedActiveInstanceSync = (): GuiInstanceProfileView | null
 export const resolveCurrentActiveInstanceIdSync = (): string | null => {
   const fromEnv = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim();
   if (fromEnv) {
-    return normalizeInstanceId(fromEnv);
+    const resolvedFromEnv = resolveStoredInstanceId(fromEnv);
+    if (resolvedFromEnv) {
+      return resolvedFromEnv;
+    }
+    delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
   }
 
   return readPersistedActiveInstanceSync()?.localInstanceId ?? null;
+};
+
+export const resolveRequiredActiveInstanceIdSync = (
+  errorMessage = "No active instance selected. Sign in before accessing instance-scoped runtime state.",
+): string => {
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  if (!activeInstanceId) {
+    throw new Error(errorMessage);
+  }
+  return activeInstanceId;
 };
 
 export const persistActiveInstance = async (instance: GuiInstanceProfileView | null): Promise<void> => {

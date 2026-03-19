@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
-import { RUNTIME_INSTANCE_ROOT } from "../../runtime/runtime-paths";
+import { resolveInstanceSecretsRoot } from "../../runtime/instance-paths";
 import { isRecord, resolvePathFromModule } from "./shared";
 
 export const DEFAULT_VAULT_JSON = {
@@ -138,7 +138,7 @@ export const readVaultString = (root: unknown, refPath: string): string | undefi
 };
 
 export const resolveInstanceVaultPath = (instanceId: string): string =>
-  path.join(RUNTIME_INSTANCE_ROOT, instanceId, INSTANCE_VAULT_FILE_NAME);
+  path.join(resolveInstanceSecretsRoot(instanceId), INSTANCE_VAULT_FILE_NAME);
 
 export const resolveVaultFile = (input?: {
   activeInstanceId?: string | null;

@@ -12,7 +12,7 @@ import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/s
 import { runtimeStatePath } from "../../helpers/core-paths";
 
 const dbPaths: string[] = [];
-const RUNTIME_DB_DIRECTORY = runtimeStatePath("db");
+const RUNTIME_DB_DIRECTORY = runtimeStatePath("instances/01/data/.tests");
 const createTestDbPath = (name: string): string =>
   path.join(RUNTIME_DB_DIRECTORY, `${name}-${crypto.randomUUID()}.db`);
 

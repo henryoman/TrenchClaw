@@ -1,0 +1,13 @@
+{
+  "configVersion": 1,
+  "trading": {
+    "preferences": {
+      "defaultSwapProvider": "ultra",
+      "defaultSwapMode": "ExactIn",
+      "defaultAmountUnit": "ui",
+      "scheduleActionName": "scheduleManagedUltraSwap",
+      "quickBuyPresets": [],
+      "customPresets": []
+    }
+  }
+}

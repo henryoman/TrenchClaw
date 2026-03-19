@@ -10,7 +10,7 @@ import type {
   RuntimeEventBus,
   StateStore,
 } from "../runtime/types";
-import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceQueueSqlitePath } from "../../runtime/instance-paths";
 import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
 import type { ActionDispatcher } from "./dispatcher";
@@ -291,7 +291,11 @@ function configureEmbeddedBunqueueDataPath(dataPath: string | undefined): void {
 export function resolveQueueDataPath(dataPath: string | undefined): string {
   const normalized = dataPath?.trim();
   if (!normalized) {
-    return resolveInstanceQueueSqlitePath(resolveCurrentActiveInstanceIdSync() ?? BOOTSTRAP_INSTANCE_ID);
+    return resolveInstanceQueueSqlitePath(
+      resolveRequiredActiveInstanceIdSync(
+        "No active instance selected. Queue storage is instance-scoped. Sign in before starting the scheduler.",
+      ),
+    );
   }
   return path.isAbsolute(normalized) ? normalized : path.resolve(RUNTIME_STATE_ROOT, normalized);
 }

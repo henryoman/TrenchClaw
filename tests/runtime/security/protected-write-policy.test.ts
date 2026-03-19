@@ -46,7 +46,7 @@ describe("protected-write-policy", () => {
     await expect(
       assertProtectedWriteAllowed({
         actor: "agent",
-        targetPath: ".runtime-state/generated/outside-protected.md",
+        targetPath: ".runtime/user/outside-protected.md",
         operation: "write outside protected root",
       }),
     ).rejects.toBeInstanceOf(ProtectedWriteForbiddenError);
@@ -72,7 +72,7 @@ describe("protected-write-policy", () => {
     await expect(
       assertProtectedReadAllowed({
         actor: "agent",
-        targetPath: ".runtime-state/instances/01/db/sessions/sessions.json",
+        targetPath: ".runtime-state/instances/01/logs/sessions/index.json",
         operation: "read session index",
       }),
     ).resolves.toBeUndefined();

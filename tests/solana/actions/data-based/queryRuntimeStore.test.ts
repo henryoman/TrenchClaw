@@ -7,7 +7,7 @@ import { queryRuntimeStoreAction } from "../../../../apps/trenchclaw/src/solana/
 import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const dbPaths: string[] = [];
-const RUNTIME_DB_DIRECTORY = runtimeStatePath("db");
+const RUNTIME_DB_DIRECTORY = runtimeStatePath("instances/01/data/.tests");
 const createTestDbPath = (): string =>
   path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-query-runtime-${crypto.randomUUID()}.db`);
 

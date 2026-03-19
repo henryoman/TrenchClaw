@@ -36,7 +36,7 @@ const makeActionResult = (input: {
 });
 
 const sqliteDbPaths: string[] = [];
-const RUNTIME_DB_DIRECTORY = runtimeStatePath("db");
+const RUNTIME_DB_DIRECTORY = runtimeStatePath("instances/01/data/.tests");
 const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
 const createTestDbPath = (): string =>
   path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-chat-runtime-${crypto.randomUUID()}.db`);
@@ -45,7 +45,6 @@ const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
 const TEST_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
-  "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
@@ -205,6 +204,34 @@ const writeTempStructuredFile = async (extension: "yaml" | "json", content: stri
   return target;
 };
 
+const createPersistedInstance = async (instanceId: string): Promise<string> => {
+  const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+  tempInstanceDirectories.push(instanceDirectory);
+  await mkdir(instanceDirectory, { recursive: true });
+  await writeFile(
+    path.join(RUNTIME_INSTANCE_DIRECTORY, "active-instance.json"),
+    `${JSON.stringify({ localInstanceId: instanceId }, null, 2)}\n`,
+    "utf8",
+  );
+  await writeFile(
+    path.join(instanceDirectory, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: `instance-${instanceId}`,
+        localInstanceId: instanceId,
+        userPin: null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-11T00:00:00.000Z",
+        updatedAt: "2026-03-11T00:00:00.000Z",
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+  return instanceDirectory;
+};
+
 beforeEach(async () => {
   resetSolPriceCacheForTests();
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -224,11 +251,12 @@ beforeEach(async () => {
   }) as typeof globalThis.fetch;
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempStructuredFile("yaml", TEST_BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempStructuredFile("json", "{}");
-  delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
   delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
   delete process.env.TRENCHCLAW_VAULT_FILE;
   delete process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE;
   process.env.TRENCHCLAW_PROFILE = "dangerous";
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+  await createPersistedInstance("01");
 });
 
 const resolveDefaultToolNames = (deps: {
@@ -354,17 +382,18 @@ const createRuntimeChatService = (
       : undefined,
   );
 
-afterEach(() => {
+afterEach(async () => {
   globalThis.fetch = originalFetch;
   resetSolPriceCacheForTests();
   for (const dbPath of sqliteDbPaths.splice(0)) {
-    void Bun.file(dbPath).delete().catch(() => {});
-    void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
-    void Bun.file(`${dbPath}-shm`).delete().catch(() => {});
+    await Bun.file(dbPath).delete().catch(() => {});
+    await Bun.file(`${dbPath}-wal`).delete().catch(() => {});
+    await Bun.file(`${dbPath}-shm`).delete().catch(() => {});
   }
   for (const directoryPath of tempInstanceDirectories.splice(0)) {
-    void rm(directoryPath, { recursive: true, force: true }).catch(() => {});
+    await rm(directoryPath, { recursive: true, force: true }).catch(() => {});
   }
+  await Bun.file(path.join(RUNTIME_INSTANCE_DIRECTORY, "active-instance.json")).delete().catch(() => {});
   if (previousActiveInstanceId === undefined) {
     delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
   } else {
@@ -380,7 +409,7 @@ afterEach(() => {
     process.env[key] = initial;
   }
   for (const filePath of createdConfigFiles.splice(0)) {
-    void Bun.file(filePath).delete().catch(() => {});
+    await Bun.file(filePath).delete().catch(() => {});
   }
 });
 
@@ -1477,9 +1506,8 @@ describe("RuntimeChatService", () => {
     const eventBus = new InMemoryRuntimeEventBus();
     const stateStore = new InMemoryStateStore();
     const instanceId = "97";
-    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const instanceDirectory = await createPersistedInstance(instanceId);
     const keypairsDirectory = path.join(instanceDirectory, "keypairs");
-    tempInstanceDirectories.push(instanceDirectory);
     await mkdir(keypairsDirectory, { recursive: true });
     await writeFile(
       path.join(keypairsDirectory, "wallet-library.jsonl"),
@@ -1544,9 +1572,7 @@ describe("RuntimeChatService", () => {
     const eventBus = new InMemoryRuntimeEventBus();
     const stateStore = new InMemoryStateStore();
     const instanceId = "98";
-    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
-    tempInstanceDirectories.push(instanceDirectory);
-    await mkdir(instanceDirectory, { recursive: true });
+    await createPersistedInstance(instanceId);
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
     const gateway = await createConfiguredGateway({
       registry,

@@ -13,6 +13,16 @@ export interface RuntimeSummaryEntry {
   details?: Record<string, unknown>;
 }
 
+interface RuntimeSummaryJsonLine {
+  ts: string;
+  product: "summary";
+  source: "runtime" | "queue" | "chat" | "system";
+  category: RuntimeSummaryCategory;
+  kind: string;
+  summary: string;
+  details?: Record<string, unknown>;
+}
+
 export interface SummaryLogStoreConfig {
   directory: string;
 }
@@ -33,11 +43,18 @@ export class SummaryLogStore {
   }
 
   append(entry: RuntimeSummaryEntry): string {
-    const filePath = path.join(this.directory, `${dateKey(entry.timestamp)}.log`);
+    const filePath = path.join(this.directory, `${dateKey(entry.timestamp)}.summary.jsonl`);
     assertRuntimeSystemWritePath(filePath, "append runtime summary log entry");
-    const details = entry.details ? ` ${JSON.stringify(entry.details)}` : "";
-    const line = `${entry.timestamp} ${entry.category.toUpperCase()} ${entry.event}${details}\n`;
-    void this.writer.appendUtf8(filePath, line);
+    const line: RuntimeSummaryJsonLine = {
+      ts: entry.timestamp,
+      product: "summary",
+      source: "runtime",
+      category: entry.category,
+      kind: entry.event,
+      summary: entry.event,
+      ...(entry.details ? { details: entry.details } : {}),
+    };
+    void this.writer.appendUtf8(filePath, `${JSON.stringify(line)}\n`);
     return filePath;
   }
 }

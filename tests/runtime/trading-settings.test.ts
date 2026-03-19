@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { rm } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { loadResolvedUserSettings } from "../../apps/trenchclaw/src/ai/llm/user-settings-loader";
@@ -10,7 +10,6 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_ACTIVE_INSTANCE_ID",
   "TRENCHCLAW_PROFILE",
   "TRENCHCLAW_SETTINGS_BASE_FILE",
-  "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
@@ -62,6 +61,28 @@ configVersion: 1
 profile: dangerous
 `);
 
+const createPersistedInstance = async (instanceId: string): Promise<void> => {
+  const instanceDirectory = path.join(runtimeStatePath("instances"), instanceId);
+  createdDirectories.add(instanceDirectory);
+  await mkdir(instanceDirectory, { recursive: true });
+  await writeFile(
+    path.join(instanceDirectory, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: `instance-${instanceId}`,
+        localInstanceId: instanceId,
+        userPin: null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-11T00:00:00.000Z",
+        updatedAt: "2026-03-11T00:00:00.000Z",
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+};
+
 afterEach(async () => {
   for (const key of MUTABLE_ENV_KEYS) {
     const initial = initialEnv[key];
@@ -102,12 +123,7 @@ describe("trading settings layering", () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "95";
-
-    const instanceDirectory = path.join(
-      runtimeStatePath("instances"),
-      process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID,
-    );
-    createdDirectories.add(instanceDirectory);
+    await createPersistedInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
 
     await writeInstanceTradingSettings(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, {
       configVersion: 1,
@@ -150,8 +166,7 @@ describe("trading settings layering", () => {
 
   test("writes canonical instance trading settings under protected instance state", async () => {
     const instanceId = "96";
-    const instanceDirectory = path.join(runtimeStatePath("instances"), instanceId);
-    createdDirectories.add(instanceDirectory);
+    await createPersistedInstance(instanceId);
 
     const filePath = await writeInstanceTradingSettings(instanceId, {
       configVersion: 1,

@@ -18,8 +18,7 @@ export class WriteScopeViolationError extends Error {
 }
 
 export const RUNTIME_SYSTEM_WRITE_ROOTS = [
-  ".runtime-state/db",
-  ".runtime-state/generated",
+  ".trenchclaw-generated",
 ] as const;
 
 export const INSTANCE_SYSTEM_WRITE_ROOTS = [
@@ -27,7 +26,7 @@ export const INSTANCE_SYSTEM_WRITE_ROOTS = [
 ] as const;
 
 export const PROTECTED_NO_READ_WRITE_ROOTS = [
-  ".runtime-state/runtime",
+  ".runtime/instances",
 ] as const;
 
 export const assertWritePathInRoots = (input: {

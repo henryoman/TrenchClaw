@@ -39,27 +39,26 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 - [日本語 / Japanese](./README.ja.md)
 
-## v0.1.0 Feature Checklist
+## v0.1.0 Release Checklist
 
-- [x] AI chat with OpenRouter or Vercel AI Gateway
+- [x] AI chat with OpenRouter and Vercel AI Gateway
 - [x] Local instance sign-in, vault, and trading settings
 - [x] Managed wallet reads for balances and holdings
 - [x] Wallet creation, grouping, and renaming
-- [x] Helius-enriched reads and swap history
+- [x] Helius RPC-based data fetching
 - [x] Dexscreener market and token research
 - [x] Jupiter Ultra swaps
-- [x] Jupiter Trigger API flows
 - [x] Queue jobs, scheduled Ultra swaps, and action sequences
 - [x] Direct transfers and token account cleanup
 - [x] Runtime memory, queue, and conversation history
 - [x] Desktop GUI for chat, wallets, keys, settings, activity, and runtime status
-- [ ] Dedicated GUI flows for wallet creation and renaming
+- [x] CI pipeline, release automation, and build/release tooling
 - [ ] Full runtime settings editor in the GUI
-- [ ] Better schedule and automation UX
+- [ ] Agent-managed scheduler
 - [ ] Standard swap paths beyond Jupiter Ultra
 - [ ] Telegram chat connector
-- [ ] Add gatekeeper settings option
-- [ ] Scheduled agent loops
+- [ ] Gatekeeper option for the Helius RPC link
+- [ ] Jupiter Trigger API flows
 
 Quick links:
 
@@ -70,9 +69,9 @@ Quick links:
 - [Why Solana Kit](#why-solana-kit)
 - [TrenchClaw vs ElizaOS and Agent Kit](#trenchclaw-vs-elizaos-and-agent-kit)
 
-WE ARE LOOKING FOR SPONSORSHIP. PLEASE SUPPORT US: 7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA
+Interested in sponsoring development? Support us: `7McYcR43aYiDttnY5vDw3SR6DpUxHG8GvLzhUsYFJSyA`
 
-### THIS IS VERY UNSAFE AND THERE IS A VERY HIGH CHANCE OF SOMETHING UNEXPECTED HAPPENING IF YOU USE IT
+### Experimental software warning: this is currently unsafe, and unexpected behavior is highly likely if you use it.
 
 ---
 
@@ -420,7 +419,7 @@ bun run start
 What `bun run start` does:
 
 - Starts the dedicated runner (`apps/runner`) which then starts the core runtime process (`apps/trenchclaw runtime:start`)
-- Rebuilds missing `.runtime-state/generated/` artifacts on startup, and you can force a full refresh with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1`
+- Rebuilds missing `.trenchclaw-generated/` artifacts on startup, and you can force a full refresh with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1`
 - Starts runtime API on localhost
 - Serves GUI from static `apps/frontends/gui/dist`
 - Proxies `/api/*` from GUI server to runtime server

@@ -222,8 +222,8 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("- active instance: 01");
     expect(payload.systemPrompt).toContain(process.env.TRENCHCLAW_VAULT_FILE ?? "");
     expect(payload.systemPrompt).toContain("workspaceReadFile");
-    expect(payload.systemPrompt).toContain(".runtime-state/generated/knowledge-index.md");
-    expect(payload.systemPrompt).toContain(".runtime-state/generated/workspace-context.md");
+    expect(payload.systemPrompt).toContain(".trenchclaw-generated/knowledge-index.md");
+    expect(payload.systemPrompt).toContain(".trenchclaw-generated/workspace-context.md");
     expect(payload.systemPrompt).not.toContain("## Prompt Assembly Order");
     expect(payload.systemPrompt).not.toContain("Source:");
     expect(payload.systemPrompt).not.toContain("SQLite SQL Schema Snapshot");

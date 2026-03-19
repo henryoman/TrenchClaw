@@ -15,7 +15,7 @@ afterEach(async () => {
 describe("SessionLogStore", () => {
   test("creates sessions index and per-session jsonl log", async () => {
     const directory = path.resolve(
-      runtimeStatePath("db/.tests"),
+      runtimeStatePath("instances/01/logs/.tests"),
       `session-log-${crypto.randomUUID()}`,
     );
     sessionDirs.push(directory);
@@ -31,7 +31,7 @@ describe("SessionLogStore", () => {
     await store.appendMessage("system", "hello");
     await store.appendEvent("action:start", { actionName: "createWallets" });
 
-    const index = JSON.parse(await Bun.file(`${directory}/sessions.json`).text()) as {
+    const index = JSON.parse(await Bun.file(`${directory}/index.json`).text()) as {
       sessions: Record<string, { sessionId: string; messageCount: number; eventCount: number }>;
     };
     const indexEntry = index.sessions["agent:test-agent:main"];
@@ -48,7 +48,7 @@ describe("SessionLogStore", () => {
 
   test("reuses existing session file when runtime restarts with same session key", async () => {
     const directory = path.resolve(
-      runtimeStatePath("db/.tests"),
+      runtimeStatePath("instances/01/logs/.tests"),
       `session-log-${crypto.randomUUID()}`,
     );
     sessionDirs.push(directory);
@@ -74,7 +74,7 @@ describe("SessionLogStore", () => {
     expect(secondActive.sessionId).toBe(firstActive.sessionId);
     expect(await Bun.file(firstActive.sessionFilePath).exists()).toBe(true);
 
-    const index = JSON.parse(await Bun.file(`${directory}/sessions.json`).text()) as {
+    const index = JSON.parse(await Bun.file(`${directory}/index.json`).text()) as {
       sessions: Record<string, { sessionId: string }>;
     };
     expect(index.sessions["agent:test-agent:main"]?.sessionId).toBe(secondActive.sessionId);
@@ -82,7 +82,7 @@ describe("SessionLogStore", () => {
 
   test("creates a new session file when reuseSessionOnBoot is disabled", async () => {
     const directory = path.resolve(
-      runtimeStatePath("db/.tests"),
+      runtimeStatePath("instances/01/logs/.tests"),
       `session-log-${crypto.randomUUID()}`,
     );
     sessionDirs.push(directory);

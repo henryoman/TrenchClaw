@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
@@ -16,18 +17,45 @@ import { actionSequenceRoutine } from "../../apps/trenchclaw/src/solana/routines
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const queueDbPaths: string[] = [];
-const RUNTIME_DB_DIRECTORY = runtimeStatePath("db");
+const RUNTIME_CACHE_DIRECTORY = runtimeStatePath("instances/01/cache");
+const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
 const createTestQueueDbPath = (): string =>
-  path.join(RUNTIME_DB_DIRECTORY, `trenchclaw-scheduler-queue-${crypto.randomUUID()}.sqlite`);
+  path.join(RUNTIME_CACHE_DIRECTORY, `.tests/trenchclaw-scheduler-queue-${crypto.randomUUID()}.sqlite`);
 
-afterEach(() => {
+const ensurePersistedInstance = async (instanceId = "01"): Promise<void> => {
+  const instanceRoot = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+  await mkdir(instanceRoot, { recursive: true });
+  await Bun.write(
+    path.join(RUNTIME_INSTANCE_DIRECTORY, "active-instance.json"),
+    `${JSON.stringify({ localInstanceId: instanceId }, null, 2)}\n`,
+  );
+  await Bun.write(
+    path.join(instanceRoot, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: `instance-${instanceId}`,
+        localInstanceId: instanceId,
+        userPin: null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-19T00:00:00.000Z",
+        updatedAt: "2026-03-19T00:00:00.000Z",
+      },
+    }, null, 2)}\n`,
+  );
+};
+
+afterEach(async () => {
   delete process.env.DATA_PATH;
   delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
   for (const dbPath of queueDbPaths.splice(0)) {
-    void Bun.file(dbPath).delete().catch(() => {});
-    void Bun.file(`${dbPath}-wal`).delete().catch(() => {});
-    void Bun.file(`${dbPath}-shm`).delete().catch(() => {});
+    await Bun.file(dbPath).delete().catch(() => {});
+    await Bun.file(`${dbPath}-wal`).delete().catch(() => {});
+    await Bun.file(`${dbPath}-shm`).delete().catch(() => {});
   }
+  await Bun.file(path.join(RUNTIME_INSTANCE_DIRECTORY, "active-instance.json")).delete().catch(() => {});
+  await Bun.$`rm -rf ${path.join(RUNTIME_INSTANCE_DIRECTORY, "01")}`.quiet();
 });
 
 const waitForJobResult = async (
@@ -44,7 +72,8 @@ const waitForJobResult = async (
 };
 
 describe("Scheduler queue dispatch", () => {
-  test("defaults embedded queue storage to the active instance db directory", async () => {
+  test("defaults embedded queue storage to the active instance cache directory", async () => {
+    await ensurePersistedInstance("01");
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
     const scheduler = new Scheduler(
       {
@@ -64,7 +93,7 @@ describe("Scheduler queue dispatch", () => {
 
     scheduler.start();
     try {
-      expect(process.env.DATA_PATH).toBe(runtimeStatePath("instances/01/db/queue.sqlite"));
+      expect(process.env.DATA_PATH).toBe(runtimeStatePath("instances/01/cache/queue.sqlite"));
     } finally {
       await scheduler.stop();
     }
