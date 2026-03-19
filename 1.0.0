@@ -27,6 +27,23 @@ Use this as the dumping ground for post-beta ideas, bigger 1.0 candidates, and r
 - Performance analytics / trade stats
 - PnL tracking
 
+### Scheduler / routines / wake-up behavior
+- Scheduler dashboard with queue state, next runs, cycle counts, and job status
+- Better scheduled job creation UX beyond raw timestamps
+- Pause / resume / cancel controls for scheduled jobs in the GUI
+- Routine templates for common operator flows
+- Action-sequence builder for multi-step jobs
+- Catch-up behavior rules for jobs that were missed while the runtime was offline
+- Wake-up boot strategy for resuming pending jobs safely after restart
+- Boot-time reconciliation of pending, paused, running, failed, and orphaned jobs
+- Wake-up notifications / runtime notices for resumed or skipped work
+- Scheduler event timeline and audit log
+- Concurrency controls and queue prioritization
+- Per-routine cooldowns, limits, and guardrails
+- Safer recurring job controls for DCA and future bot loops
+- Schedule editing / rescheduling after creation
+- Dead-letter / retry review surface for failed scheduled work
+
 ### Meteora / LP / staking stuff
 - Meteora DLMM integration
 - Meteora DLMM position management
@@ -69,6 +86,19 @@ Use this as the dumping ground for post-beta ideas, bigger 1.0 candidates, and r
 - Better desktop operator workflows
 - External notification integrations
 - Additional exchange / protocol integrations
+
+## WAKEUP.md strategy / when the runtime wakes up
+
+When we turn this into a real `WAKEUP.md`, it should cover the full boot and resume strategy:
+
+- rebuild runtime context cleanly on boot
+- reload storage, queue state, and scheduler state
+- resume pending jobs only when they are still safe to run
+- decide what happens to missed schedules after downtime
+- surface boot notices for what resumed, what was skipped, and why
+- restore session / memory context for the operator and agent
+- run startup health checks before dangerous execution resumes
+- make wake-up behavior explicit for future autonomous loops and strategies
 
 ## Parking lot
 
