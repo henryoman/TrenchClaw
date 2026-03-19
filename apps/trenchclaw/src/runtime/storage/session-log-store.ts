@@ -86,7 +86,7 @@ export interface ActiveSessionStats {
 const toAbsolutePath = (targetPath: string): string =>
   path.isAbsolute(targetPath) ? targetPath : resolveRuntimeContractPath(targetPath);
 
-const indexFileName = "sessions.json";
+const indexFileName = "index.json";
 
 const createEmptyStore = (): SessionStoreData => ({
   version: 1,

@@ -44,6 +44,7 @@ import { createRuntimeLogger, type RuntimeLogger } from "./logging/runtime-logge
 import { refreshWorkspaceContext } from "../lib/agent-scripts/refresh-workspace-context";
 import { refreshKnowledgeIndex } from "../lib/agent-scripts/refresh-knowledge-index";
 import {
+  LiveLogStore,
   MemoryLogStore,
   SessionLogStore,
   SessionSummaryStore,
@@ -54,14 +55,15 @@ import {
   type ActiveSessionInfo,
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
-import { resolveCurrentActiveInstanceIdSync } from "./instance-state";
-import { CORE_APP_ROOT, RUNTIME_GENERATED_ROOT } from "./runtime-paths";
+import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
+import { GENERATED_STATE_ROOT } from "./runtime-paths";
+import { migrateLegacyRuntimeState } from "./runtime-state-migration";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "managedUltraSwap", "privacySwap"]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
-const GENERATED_WORKSPACE_CONTEXT_PATH = path.join(RUNTIME_GENERATED_ROOT, "workspace-context.md");
-const GENERATED_KNOWLEDGE_INDEX_PATH = path.join(RUNTIME_GENERATED_ROOT, "knowledge-index.md");
+const GENERATED_WORKSPACE_CONTEXT_PATH = path.join(GENERATED_STATE_ROOT, "workspace-context.md");
+const GENERATED_KNOWLEDGE_INDEX_PATH = path.join(GENERATED_STATE_ROOT, "knowledge-index.md");
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
@@ -191,13 +193,12 @@ const hasUserConfirmation = (payload: unknown, requiredToken: string): boolean =
   );
 };
 
-const resolveStorageRootDirectory = (settings: RuntimeSettings): string => {
-  const sqlitePath = settings.storage.sqlite.path;
-  const sqliteDir = path.isAbsolute(sqlitePath)
-    ? path.dirname(sqlitePath)
-    : path.join(CORE_APP_ROOT, path.dirname(sqlitePath));
-  return path.basename(sqliteDir) === "runtime" ? path.dirname(sqliteDir) : sqliteDir;
-};
+const resolveActiveInstanceRootDirectory = (): string =>
+  resolveInstanceDirectoryPath(
+    resolveRequiredActiveInstanceIdSync(
+      "No active instance selected. Runtime storage is instance-scoped. Sign in before booting the runtime.",
+    ),
+  );
 
 const normalizeExecuteAtUnixMs = (value: number | undefined, now: number): number => {
   if (typeof value !== "number" || !Number.isFinite(value)) {
@@ -507,6 +508,7 @@ export interface RuntimeBootstrap {
 export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const bootedAt = Date.now();
   const profile = resolveRuntimeSettingsProfile();
+  const migrationReport = await migrateLegacyRuntimeState();
   const settings = await loadRuntimeSettings(profile);
   const endpoints = resolvePrimaryRuntimeEndpoints(settings);
   const logger = createRuntimeLogger(settings);
@@ -525,6 +527,9 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     logger.debug("storage:fs_write", details);
   });
   await runBootContextRefresh(logger);
+  if (migrationReport) {
+    logger.info("storage:migration", { ...migrationReport });
+  }
   const eventBus = new InMemoryRuntimeEventBus();
   const sqliteStore = settings.storage.sqlite.enabled
     ? new SqliteStateStore({
@@ -534,18 +539,22 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       })
     : null;
   const stateStore: StateStore = sqliteStore ?? new InMemoryStateStore();
-  const storageRootDirectory = resolveStorageRootDirectory(settings);
+  const instanceRootDirectory = resolveActiveInstanceRootDirectory();
+  const liveLogStore = new LiveLogStore({
+    directory: path.join(instanceRootDirectory, "logs", "live"),
+  });
   const systemLogStore = new SystemLogStore({
-    directory: path.join(storageRootDirectory, "system"),
+    directory: path.join(instanceRootDirectory, "logs", "system"),
   });
   const unsubscribeSystemLogs = logger.subscribe((entry) => {
+    liveLogStore.append(entry);
     systemLogStore.append(entry);
   });
   const sessionSummaryStore = new SessionSummaryStore({
-    directory: path.join(storageRootDirectory, "summaries"),
+    directory: path.join(instanceRootDirectory, "logs", "sessions"),
   });
   const summaryLogStore = new SummaryLogStore({
-    directory: path.join(storageRootDirectory, "summary"),
+    directory: path.join(instanceRootDirectory, "logs", "summaries"),
   });
   summaryLogStore.append({
     timestamp: new Date().toISOString(),

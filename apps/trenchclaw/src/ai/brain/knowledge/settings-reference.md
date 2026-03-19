@@ -14,7 +14,7 @@ This file explains where runtime configuration comes from right now.
   - temperature
   - max output tokens
 
-- `.runtime-state/instances/<id>/vault.json`
+- `.runtime-state/instances/<id>/secrets/vault.json`
   - secrets only
   - API keys
   - RPC URLs

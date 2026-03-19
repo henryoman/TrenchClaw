@@ -1,12 +1,12 @@
 import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority";
 import { assertResolvedRuntimeEndpoints } from "./resolved-runtime-endpoints";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
-import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../instance-state";
+import { resolveRequiredActiveInstanceIdSync } from "../instance-state";
 import {
   resolveInstanceMemoryLongTermFilePath,
   resolveInstanceMemoryRoot,
   resolveInstanceQueueSqlitePath,
-  resolveInstanceRuntimeSqlitePath,
+  resolveInstanceRuntimeDbPath,
   resolveInstanceSessionsRoot,
 } from "../instance-paths";
 import { resolveCoreRelativePath } from "../runtime-paths";
@@ -23,7 +23,6 @@ const SETTINGS_FILE_BY_PROFILE: Record<RuntimeSettingsProfile, string> = {
 
 const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
 const SETTINGS_BASE_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_BASE_FILE";
-const SETTINGS_USER_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_USER_FILE";
 const SETTINGS_AGENT_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_AGENT_FILE";
 const LOADER_WARNINGS = new Set<string>();
 
@@ -57,10 +56,12 @@ const resolveDefaultStoragePaths = (): {
   memoryDirectory: string;
   memoryLongTermFile: string;
 } => {
-  const activeInstanceId = resolveCurrentActiveInstanceIdSync() ?? BOOTSTRAP_INSTANCE_ID;
+  const activeInstanceId = resolveRequiredActiveInstanceIdSync(
+    "No active instance selected. Storage paths are instance-scoped. Sign in before booting the runtime.",
+  );
 
   return {
-    sqlitePath: resolveInstanceRuntimeSqlitePath(activeInstanceId),
+    sqlitePath: resolveInstanceRuntimeDbPath(activeInstanceId),
     queuePath: resolveInstanceQueueSqlitePath(activeInstanceId),
     sessionsDirectory: resolveInstanceSessionsRoot(activeInstanceId),
     memoryDirectory: resolveInstanceMemoryRoot(activeInstanceId),
@@ -389,13 +390,11 @@ export const loadRuntimeSettings = async (
   profile: RuntimeSettingsProfile = resolveRuntimeSettingsProfile(),
 ): Promise<RuntimeSettings> => {
   const baseSettingsPath = process.env[SETTINGS_BASE_FILE_ENV_KEY] || getSettingsFilePath(profile);
-  const userSettingsPath = process.env[SETTINGS_USER_FILE_ENV_KEY];
   const agentSettingsPath = process.env[SETTINGS_AGENT_FILE_ENV_KEY];
 
   const baseSettings = await readSettingsFile(baseSettingsPath);
   const resolvedDefaultUserSettingsPayload = await loadResolvedUserSettings();
-  const explicitUserSettings = await loadOptionalSettingsFile(userSettingsPath);
-  const userSettings = deepMerge(resolvedDefaultUserSettingsPayload.resolvedSettings, explicitUserSettings);
+  const userSettings = resolvedDefaultUserSettingsPayload.resolvedSettings;
   const agentSettings = await loadOptionalSettingsFile(agentSettingsPath);
   const sanitizedAgentSettings = sanitizeAgentSettings(agentSettings, profile);
   const mergedSettings = deepMerge(deepMerge(baseSettings, sanitizedAgentSettings), userSettings);

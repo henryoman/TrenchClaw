@@ -23,7 +23,7 @@ This file explains the current runtime shape in the smallest possible form.
 
 - `src/runtime/load/`
   - loads runtime settings
-  - merges base settings, runtime-owned settings, and instance overlays
+  - merges base settings and active-instance settings
   - enforces authority boundaries
 
 - `src/runtime/security/`
@@ -32,31 +32,40 @@ This file explains the current runtime shape in the smallest possible form.
 
 ## Runtime State Roots
 
-The runtime writes to `.runtime-state/`.
+The repo tracks the intended layout under `.runtime/`.
+
+The runtime writes mutable state to `.runtime-state/instances/` and generated prompt-support artifacts to `.trenchclaw-generated/`.
 
 Important directories:
 
-- `.runtime-state/runtime/`
-  - `ai.json`
-  - `settings.json`
+- `.runtime-state/instances/active-instance.json`
+  - selected instance pointer
 
 - `.runtime-state/instances/<id>/`
   - `instance.json`
-  - `vault.json`
+  - `settings/ai.json`
+  - `settings/settings.json`
   - `settings/trading.json`
+  - `secrets/vault.json`
+  - `data/runtime.db`
+  - `logs/live/*.console.jsonl`
+  - `logs/sessions/index.json`
+  - `logs/sessions/<session-id>.jsonl`
+  - `logs/sessions/<session-id>.summary.json`
+  - `logs/summaries/*.summary.jsonl`
+  - `logs/system/*.system.jsonl`
+  - `cache/`
   - `keypairs/`
   - `workspace/`
 
-- `.runtime-state/generated/`
+- `.trenchclaw-generated/`
   - `workspace-context.md`
   - `knowledge-index.md`
 
-- `.runtime-state/db/`
-  - sqlite and runtime log/state files
-
 ## Active Instance Rules
 
-- Active instance identity comes from `.runtime-state/instances/<id>/instance.json`
+- Active instance selection comes from `.runtime-state/instances/active-instance.json`
+- Instance identity comes from `.runtime-state/instances/<id>/instance.json`
 - Display name comes from `instance.name`
 - There is no legacy flat instance file format
 - There is no fallback name derived from directory names

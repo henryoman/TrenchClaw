@@ -5,17 +5,20 @@ import { Database } from "bun:sqlite";
 
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import { CORE_APP_ROOT, RUNTIME_DB_ROOT, RUNTIME_GENERATED_ROOT } from "../../runtime/runtime-paths";
+import { CORE_APP_ROOT, GENERATED_STATE_ROOT } from "../../runtime/runtime-paths";
+import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveInstanceRuntimeDbPath } from "../../runtime/instance-paths";
 
 const APP_ROOT_DIR = CORE_APP_ROOT;
 const CONTEXT_ROOT_LABEL = existsSync(join(APP_ROOT_DIR, "package.json")) ? "apps/trenchclaw" : "core";
-const PROTECTED_CONTEXT_FILE = `${RUNTIME_GENERATED_ROOT}/workspace-context.md`;
+const PROTECTED_CONTEXT_FILE = `${GENERATED_STATE_ROOT}/workspace-context.md`;
 const SQLITE_SQL_SNAPSHOT_FILE = join(APP_ROOT_DIR, "..", "..", "docs", "storage-schema.snapshot.sql");
 const GUI_TRANSPORT_FILE = join(APP_ROOT_DIR, "src/runtime/gui-transport/router.ts");
 const CONTEXT_DB_PATH_ENV = "TRENCHCLAW_CONTEXT_DB_PATH";
-const DEFAULT_LIVE_DB_PATH_CANDIDATES = [
-  join(RUNTIME_DB_ROOT, "runtime.sqlite"),
-];
+const DEFAULT_LIVE_DB_PATH_CANDIDATES = (() => {
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  return activeInstanceId ? [resolveInstanceRuntimeDbPath(activeInstanceId)] : [];
+})();
 
 const OMITTED_DIR_NAMES = new Set([
   "node_modules",
@@ -117,10 +120,10 @@ const renderImportantWorkspacePaths = (): string =>
     .filter((relativePath) => existsSync(join(APP_ROOT_DIR, relativePath)))
     .map((relativePath) => `- \`${CONTEXT_ROOT_LABEL}/${relativePath}/\``)
     .concat([
-      "- `.runtime-state/generated/knowledge-index.md`",
+      "- `.trenchclaw-generated/knowledge-index.md`",
       "- `.runtime-state/instances/<id>/settings/ai.json`",
       "- `.runtime-state/instances/<id>/settings/settings.json`",
-      "- `.runtime-state/instances/<id>/db/runtime.sqlite`",
+      "- `.runtime-state/instances/<id>/data/runtime.db`",
     ])
     .join("\n");
 
@@ -156,7 +159,7 @@ This file is generated. Refresh with:
 ## Workspace Scope
 This file intentionally omits the full directory tree to avoid prompt bloat.
 
-Use \`.runtime-state/generated/knowledge-index.md\` for documentation inventory and workspace tools for exact path discovery.
+Use \`.trenchclaw-generated/knowledge-index.md\` for documentation inventory and workspace tools for exact path discovery.
 
 Important paths:
 ${importantWorkspacePaths}
@@ -190,10 +193,10 @@ ${DEFAULT_LIVE_DB_PATH_CANDIDATES.map((pathCandidate) => `- \`${pathCandidate}\`
 }
 `;
 
-  await mkdir(dirname(PROTECTED_CONTEXT_FILE), { recursive: true });
+    await mkdir(dirname(PROTECTED_CONTEXT_FILE), { recursive: true });
   assertWritePathInRoots({
     targetPath: PROTECTED_CONTEXT_FILE,
-    roots: [".runtime-state/generated"],
+    roots: [".trenchclaw-generated"],
     scope: "system-context-refresh",
     operation: "write workspace context snapshot",
   });

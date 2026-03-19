@@ -26,7 +26,7 @@ afterEach(async () => {
 describe("MemoryLogStore", () => {
   test("writes daily and long-term memory logs", async () => {
     const root = path.resolve(
-      runtimeStatePath("db/.tests"),
+      runtimeStatePath("instances/01/cache/.tests"),
       `memory-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);

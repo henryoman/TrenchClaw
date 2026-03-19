@@ -18,6 +18,13 @@ export interface SessionSummaryInput {
   pendingJobsAtStop: number;
 }
 
+export interface SessionSummaryRecord extends SessionSummaryInput {
+  startedAt: string;
+  endedAt: string;
+  durationSec: number;
+  compactionLevel: "basic";
+}
+
 export interface SessionSummaryStoreConfig {
   directory: string;
 }
@@ -39,28 +46,17 @@ export class SessionSummaryStore {
     const created = new Date(summary.createdAt).getTime();
     const updated = new Date(summary.updatedAt).getTime();
     const durationMs = Number.isFinite(created) && Number.isFinite(updated) ? Math.max(0, updated - created) : 0;
-    const durationSec = Math.round(durationMs / 1000);
+    const record: SessionSummaryRecord = {
+      ...summary,
+      startedAt: summary.createdAt,
+      endedAt: summary.updatedAt,
+      durationSec: Math.round(durationMs / 1000),
+      compactionLevel: "basic",
+    };
 
-    const body = [
-      `# Session Summary (${summary.sessionId})`,
-      "",
-      `- sessionKey: ${summary.sessionKey}`,
-      `- source: ${summary.source}`,
-      `- profile: ${summary.profile}`,
-      `- startedAt: ${summary.createdAt}`,
-      `- endedAt: ${summary.updatedAt}`,
-      `- durationSec: ${durationSec}`,
-      `- messageCount: ${summary.messageCount}`,
-      `- eventCount: ${summary.eventCount}`,
-      `- pendingJobsAtStop: ${summary.pendingJobsAtStop}`,
-      `- schedulerTickMs: ${summary.schedulerTickMs}`,
-      `- registeredActions: ${summary.registeredActions.join(", ") || "none"}`,
-      "",
-    ].join("\n");
-
-    const filePath = path.join(this.directory, `${summary.sessionId}.md`);
+    const filePath = path.join(this.directory, `${summary.sessionId}.summary.json`);
     assertRuntimeSystemWritePath(filePath, "write session summary");
-    await this.writer.writeUtf8(filePath, body);
+    await this.writer.writeUtf8(filePath, `${JSON.stringify(record, null, 2)}\n`);
     return filePath;
   }
 }

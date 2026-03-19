@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceCompatibilitySettingsPath } from "../../runtime/instance-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import { isRecord, parseStructuredFile } from "./shared";
@@ -15,8 +15,11 @@ const resolveCompatibilitySettingsFilePath = (): string => {
     return configuredPath;
   }
 
-  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
-  return resolveInstanceCompatibilitySettingsPath(activeInstanceId ?? BOOTSTRAP_INSTANCE_ID);
+  return resolveInstanceCompatibilitySettingsPath(
+    resolveRequiredActiveInstanceIdSync(
+      "No active instance selected. Compatibility settings are instance-scoped. Sign in before accessing runtime settings.",
+    ),
+  );
 };
 
 const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
@@ -259,8 +262,6 @@ const loadOptionalStructuredSettingsLayer = async (filePath: string | null): Pro
 
 export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPayload> => {
   const compatibilitySettingsPath = path.resolve(resolveCompatibilitySettingsFilePath());
-
-  await ensureCompatibilitySettingsFileExists(compatibilitySettingsPath);
   const vaultPayload = await loadVaultData();
   const warnings: string[] = [];
   const fileCache = new Map<string, unknown>();

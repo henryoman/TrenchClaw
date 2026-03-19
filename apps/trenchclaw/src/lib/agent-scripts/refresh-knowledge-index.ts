@@ -2,10 +2,10 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { renderKnowledgeIndexMarkdown } from "../knowledge/knowledge-index";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import { CORE_APP_ROOT, RUNTIME_GENERATED_ROOT } from "../../runtime/runtime-paths";
+import { CORE_APP_ROOT, GENERATED_STATE_ROOT } from "../../runtime/runtime-paths";
 
 const KNOWLEDGE_DIR = process.env.TRENCHCLAW_KNOWLEDGE_DIR || join(CORE_APP_ROOT, "src/ai/brain/knowledge");
-const KNOWLEDGE_INDEX_PATH = `${RUNTIME_GENERATED_ROOT}/knowledge-index.md`;
+const KNOWLEDGE_INDEX_PATH = `${GENERATED_STATE_ROOT}/knowledge-index.md`;
 
 export const refreshKnowledgeIndex = async (): Promise<string[]> => {
   const generatedAt = new Date().toISOString();
@@ -14,7 +14,7 @@ export const refreshKnowledgeIndex = async (): Promise<string[]> => {
   await mkdir(dirname(KNOWLEDGE_INDEX_PATH), { recursive: true });
   assertWritePathInRoots({
     targetPath: KNOWLEDGE_INDEX_PATH,
-    roots: [".runtime-state/generated"],
+    roots: [".trenchclaw-generated"],
     scope: "system-knowledge-refresh",
     operation: "write knowledge index",
   });

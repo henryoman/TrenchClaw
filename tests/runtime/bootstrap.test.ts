@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
+import { mkdir } from "node:fs/promises";
 
 import { createActionContext } from "../../apps/trenchclaw/src/ai";
 import { bootstrapRuntime } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
-import { runtimeStatePath } from "../helpers/core-paths";
+import { generatedStatePath, runtimeStatePath } from "../helpers/core-paths";
 
 const BASE_SETTINGS_YAML = `
 configVersion: 1
@@ -150,7 +151,6 @@ observability:
 const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_PROFILE",
   "TRENCHCLAW_SETTINGS_BASE_FILE",
-  "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
   "TRENCHCLAW_AI_SETTINGS_FILE",
   "TRENCHCLAW_BOOT_REFRESH_CONTEXT",
@@ -163,6 +163,7 @@ const MUTABLE_ENV_KEYS = [
 
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
 const createdFiles: string[] = [];
+const createdInstanceDirectories = new Set<string>();
 
 const writeYaml = async (content: string): Promise<string> => {
   const target = `/tmp/trenchclaw-bootstrap-test-${crypto.randomUUID()}.yaml`;
@@ -178,7 +179,35 @@ const writeJson = async (content: unknown): Promise<string> => {
   return target;
 };
 
+const ensurePersistedInstance = async (instanceId = "01"): Promise<void> => {
+  const instanceRoot = runtimeStatePath("instances", instanceId);
+  if (!createdInstanceDirectories.has(instanceRoot)) {
+    createdInstanceDirectories.add(instanceRoot);
+  }
+  await mkdir(instanceRoot, { recursive: true });
+  await Bun.write(
+    runtimeStatePath("instances", "active-instance.json"),
+    `${JSON.stringify({ localInstanceId: instanceId }, null, 2)}\n`,
+  );
+  await Bun.write(
+    path.join(instanceRoot, "instance.json"),
+    `${JSON.stringify({
+      instance: {
+        name: `instance-${instanceId}`,
+        localInstanceId: instanceId,
+        userPin: null,
+      },
+      runtime: {
+        safetyProfile: "dangerous",
+        createdAt: "2026-03-19T00:00:00.000Z",
+        updatedAt: "2026-03-19T00:00:00.000Z",
+      },
+    }, null, 2)}\n`,
+  );
+};
+
 const applyDefaultEnv = async (): Promise<void> => {
+  await ensurePersistedInstance("01");
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(BASE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({});
   process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
@@ -196,7 +225,6 @@ const applyDefaultEnv = async (): Promise<void> => {
     },
   });
   process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
-  delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
   delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
   delete process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE;
 };
@@ -214,10 +242,18 @@ afterEach(async () => {
   for (const filePath of createdFiles.splice(0)) {
     await Bun.$`rm -f ${filePath}`.quiet();
   }
+
+  for (const instanceRoot of createdInstanceDirectories) {
+    await Bun.$`rm -rf ${instanceRoot}`.quiet();
+  }
+  createdInstanceDirectories.clear();
+  await Bun.$`rm -f ${runtimeStatePath("instances", "active-instance.json")}`.quiet();
 });
 
 describe("bootstrapRuntime", () => {
   test("loads runtime RPC from resolved vault-backed instance settings", async () => {
+    await ensurePersistedInstance("01");
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
@@ -260,6 +296,8 @@ rpc:
   });
 
   test("fails closed when runtime RPC endpoints remain unresolved vault refs", async () => {
+    await ensurePersistedInstance("01");
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
@@ -294,6 +332,8 @@ rpc:
   });
 
   test("fails closed when runtime endpoints use an invalid protocol", async () => {
+    await ensurePersistedInstance("01");
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
@@ -315,6 +355,8 @@ profile: dangerous
   });
 
   test("fails closed on unresolved env-style endpoint placeholders", async () => {
+    await ensurePersistedInstance("01");
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeYaml(`
 configVersion: 1
 profile: dangerous
@@ -350,7 +392,7 @@ runtime:
   scheduler:
     tickMs: 2468
 `);
-    process.env.TRENCHCLAW_SETTINGS_USER_FILE = userSettingsPath;
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = userSettingsPath;
     process.env.TRENCHCLAW_SETTINGS_AGENT_FILE = agentSettingsPath;
 
     const runtime = await bootstrapRuntime();
@@ -370,7 +412,7 @@ wallet:
   dangerously:
     allowCreatingWallets: false
 `);
-    process.env.TRENCHCLAW_SETTINGS_USER_FILE = userSettingsPath;
+    process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = userSettingsPath;
 
     const runtime = await bootstrapRuntime();
     try {
@@ -532,13 +574,13 @@ wallet:
     await applyDefaultEnv();
     process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = "0";
     process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = "0";
-    await Bun.file(runtimeStatePath("generated/workspace-context.md")).delete().catch(() => {});
-    await Bun.file(runtimeStatePath("generated/knowledge-index.md")).delete().catch(() => {});
+    await Bun.file(generatedStatePath("workspace-context.md")).delete().catch(() => {});
+    await Bun.file(generatedStatePath("knowledge-index.md")).delete().catch(() => {});
 
     const runtime = await bootstrapRuntime();
     try {
-      expect(await Bun.file(runtimeStatePath("generated/workspace-context.md")).exists()).toBe(true);
-      expect(await Bun.file(runtimeStatePath("generated/knowledge-index.md")).exists()).toBe(true);
+      expect(await Bun.file(generatedStatePath("workspace-context.md")).exists()).toBe(true);
+      expect(await Bun.file(generatedStatePath("knowledge-index.md")).exists()).toBe(true);
     } finally {
       runtime.stop();
     }

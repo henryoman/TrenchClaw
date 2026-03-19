@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { BOOTSTRAP_INSTANCE_ID, resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceAiSettingsPath } from "../../runtime/instance-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import type { AiModelProvider } from "./model-catalog";
@@ -13,6 +13,8 @@ export const DEFAULT_LLM_PROVIDER: AiModelProvider = "openrouter";
 const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";
 const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";
 const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
+const NO_ACTIVE_INSTANCE_AI_SETTINGS_MESSAGE =
+  "No active instance selected. AI settings are instance-scoped. Sign in before accessing AI settings.";
 
 export const aiSettingsSchema = z.object({
   provider: z.enum(["gateway", "openrouter"]).default(DEFAULT_LLM_PROVIDER),
@@ -35,8 +37,7 @@ const resolveAiSettingsFilePath = (): string => {
     return configuredPath;
   }
 
-  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
-  return resolveInstanceAiSettingsPath(activeInstanceId ?? BOOTSTRAP_INSTANCE_ID);
+  return resolveInstanceAiSettingsPath(resolveRequiredActiveInstanceIdSync(NO_ACTIVE_INSTANCE_AI_SETTINGS_MESSAGE));
 };
 
 export const resolveAiSettingsPaths = async (input?: {

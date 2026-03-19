@@ -491,12 +491,12 @@ describe("Runtime v1 API", () => {
     const instanceId = "97";
     const instancesRoot = runtimeStatePath("instances");
     const instancePath = path.join(instancesRoot, instanceId);
-    const vaultPath = path.join(instancePath, "vault.json");
+    const vaultPath = path.join(instancePath, "secrets", "vault.json");
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
 
     try {
       await rm(instancePath, { recursive: true, force: true });
-      await mkdir(instancePath, { recursive: true });
+      await mkdir(path.dirname(vaultPath), { recursive: true });
       await writeFile(vaultPath, `${JSON.stringify({
         rpc: {
           default: {
@@ -617,12 +617,12 @@ describe("Runtime v1 API", () => {
     const instanceId = "98";
     const instancesRoot = runtimeStatePath("instances");
     const instancePath = path.join(instancesRoot, instanceId);
-    const vaultPath = path.join(instancePath, "vault.json");
+    const vaultPath = path.join(instancePath, "secrets", "vault.json");
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
 
     try {
       await rm(instancePath, { recursive: true, force: true });
-      await mkdir(instancePath, { recursive: true });
+      await mkdir(path.dirname(vaultPath), { recursive: true });
       await writeFile(vaultPath, `${JSON.stringify({
         rpc: {
           default: {

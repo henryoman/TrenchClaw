@@ -125,7 +125,7 @@ describe("instance discovery", () => {
     expect(result.listed.instances).toHaveLength(0);
     expect(result.created.instance.localInstanceId).toBe("01");
     expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
-    expect(await Bun.file(path.join(runtimeRoot, "instances/01/vault.json")).exists()).toBe(true);
+    expect(await Bun.file(path.join(runtimeRoot, "instances/01/secrets/vault.json")).exists()).toBe(true);
     expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
   });
 
@@ -168,7 +168,7 @@ describe("instance discovery", () => {
     expect(result.signedIn.instance.name).toBe("test");
     expect(result.activeInstanceId).toBe("01");
     expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
-    expect(await Bun.file(path.join(runtimeRoot, "instances/01/vault.json")).exists()).toBe(true);
+    expect(await Bun.file(path.join(runtimeRoot, "instances/01/secrets/vault.json")).exists()).toBe(true);
     expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
   });
 
@@ -176,7 +176,7 @@ describe("instance discovery", () => {
     const runtimeRoot = await createRuntimeRoot();
     await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });
     await writeFile(
-      path.join(runtimeRoot, "instances/01/vault.json"),
+      path.join(runtimeRoot, "instances/01/secrets/vault.json"),
       `${JSON.stringify({
         llm: {
           openrouter: {
@@ -285,6 +285,25 @@ describe("instance discovery", () => {
     });
 
     expect(restored).toBeNull();
+  });
+
+  test("ignores a stale active-instance env id when the instance profile was deleted", async () => {
+    const runtimeRoot = await createRuntimeRoot();
+    await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });
+
+    const restored = await runScriptJson<string | null>({
+      runtimeRoot,
+      env: {
+        TRENCHCLAW_ACTIVE_INSTANCE_ID: "92",
+      },
+      script: `
+        const { resolveCurrentActiveInstanceIdSync } = await import(${JSON.stringify(INSTANCE_STATE_MODULE_URL)});
+        process.stdout.write(JSON.stringify(resolveCurrentActiveInstanceIdSync()));
+      `,
+    });
+
+    expect(restored).toBe("01");
+    expect(await Bun.file(path.join(runtimeRoot, "instances/92/instance.json")).exists()).toBe(false);
   });
 
   test("auto-restores a single persisted instance profile", async () => {

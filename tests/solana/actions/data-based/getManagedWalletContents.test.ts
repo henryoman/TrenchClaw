@@ -445,8 +445,9 @@ describe("getManagedWalletContentsAction", () => {
       }),
       "utf8",
     );
+    await mkdir(path.join(instanceDirectory, "secrets"), { recursive: true });
     await writeFile(
-      path.join(instanceDirectory, "vault.json"),
+      path.join(instanceDirectory, "secrets", "vault.json"),
       `${JSON.stringify({
         rpc: {
           default: {

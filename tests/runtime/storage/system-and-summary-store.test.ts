@@ -30,7 +30,7 @@ afterEach(async () => {
 describe("SystemLogStore + SessionSummaryStore", () => {
   test("writes runtime logger entries to daily system log files", async () => {
     const root = path.resolve(
-      runtimeStatePath("db/.tests"),
+      runtimeStatePath("instances/01/logs/.tests"),
       `system-log-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
@@ -50,15 +50,15 @@ describe("SystemLogStore + SessionSummaryStore", () => {
     logger.info("runtime:boot", { profile: "dangerous" });
     unsubscribe();
 
-    const logPath = `${root}/system/${new Date().toISOString().slice(0, 10)}.log`;
+    const logPath = `${root}/system/${new Date().toISOString().slice(0, 10)}.system.jsonl`;
     const content = await waitForFileText(logPath);
     expect(content.includes("runtime:boot")).toBe(true);
     expect(content.includes("dangerous")).toBe(true);
   });
 
-  test("creates compact markdown summaries for sessions", async () => {
+  test("creates structured JSON summaries for sessions", async () => {
     const root = path.resolve(
-      runtimeStatePath("db/.tests"),
+      runtimeStatePath("instances/01/logs/.tests"),
       `session-summary-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
@@ -90,22 +90,28 @@ describe("SystemLogStore + SessionSummaryStore", () => {
       pendingJobsAtStop: 0,
     });
 
-    const markdown = await Bun.file(summaryPath).text();
-    expect(summaryPath.endsWith(`${active.sessionId}.md`)).toBe(true);
-    expect(markdown.includes("# Session Summary")).toBe(true);
-    expect(markdown.includes("messageCount: 1")).toBe(true);
-    expect(markdown.includes("eventCount: 1")).toBe(true);
+    const summary = JSON.parse(await Bun.file(summaryPath).text()) as {
+      sessionId: string;
+      messageCount: number;
+      eventCount: number;
+      compactionLevel: string;
+    };
+    expect(summaryPath.endsWith(`${active.sessionId}.summary.json`)).toBe(true);
+    expect(summary.sessionId).toBe(active.sessionId);
+    expect(summary.messageCount).toBe(1);
+    expect(summary.eventCount).toBe(1);
+    expect(summary.compactionLevel).toBe("basic");
   });
 
   test("writes concise summary entries to daily files", async () => {
     const root = path.resolve(
-      runtimeStatePath("db/.tests"),
+      runtimeStatePath("instances/01/logs/.tests"),
       `runtime-summary-${crypto.randomUUID()}`,
     );
     tmpTargets.push(root);
 
     const summaryStore = new SummaryLogStore({
-      directory: `${root}/summary`,
+      directory: `${root}/summaries`,
     });
     summaryStore.append({
       timestamp: new Date().toISOString(),
@@ -114,9 +120,9 @@ describe("SystemLogStore + SessionSummaryStore", () => {
       details: { actionName: "ultraSwap", txSignature: "abc123" },
     });
 
-    const logPath = `${root}/summary/${new Date().toISOString().slice(0, 10)}.log`;
+    const logPath = `${root}/summaries/${new Date().toISOString().slice(0, 10)}.summary.jsonl`;
     const content = await waitForFileText(logPath);
-    expect(content.includes("TRADE")).toBe(true);
+    expect(content.includes("\"category\":\"trade\"")).toBe(true);
     expect(content.includes("trade:executed")).toBe(true);
     expect(content.includes("ultraSwap")).toBe(true);
   });

@@ -6,13 +6,18 @@ import { ensureCompatibilitySettingsFileExists } from "../ai/llm/user-settings-l
 import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
 import {
   resolveInstanceAiSettingsPath,
-  resolveInstanceCompatibilitySettingsPath,
-  resolveInstanceDbRoot,
+  resolveInstanceCacheRoot,
+  resolveInstanceDataRoot,
+  resolveInstanceLiveLogsRoot,
   resolveInstanceMemoryRoot,
+  resolveInstanceSecretsRoot,
   resolveInstanceSessionsRoot,
   resolveInstanceShellHomeRoot,
+  resolveInstanceSummariesRoot,
+  resolveInstanceSystemLogsRoot,
   resolveInstanceTmpRoot,
   resolveInstanceToolBinRoot,
+  resolveInstanceCompatibilitySettingsPath,
 } from "./instance-paths";
 import {
   INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
@@ -23,10 +28,13 @@ import { resolveInstanceDirectoryPath } from "./instance-state";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
 
 const INSTANCE_LAYOUT_DIRECTORIES = [
+  "secrets",
+  "data",
+  "logs",
+  "cache",
   "keypairs",
   "settings",
   "workspace",
-  "db",
   "shell-home",
   "tmp",
   "tool-bin",
@@ -73,9 +81,14 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
   )).filter((directoryPath): directoryPath is string => directoryPath != null);
 
   const nestedInstanceDirectories = [
+    resolveInstanceSecretsRoot(instanceId),
+    resolveInstanceDataRoot(instanceId),
+    resolveInstanceLiveLogsRoot(instanceId),
     resolveInstanceSessionsRoot(instanceId),
+    resolveInstanceSummariesRoot(instanceId),
+    resolveInstanceSystemLogsRoot(instanceId),
     resolveInstanceMemoryRoot(instanceId),
-    resolveInstanceDbRoot(instanceId),
+    resolveInstanceCacheRoot(instanceId),
     resolveInstanceShellHomeRoot(instanceId),
     resolveInstanceTmpRoot(instanceId),
     resolveInstanceToolBinRoot(instanceId),

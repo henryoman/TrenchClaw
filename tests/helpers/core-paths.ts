@@ -40,3 +40,11 @@ export const runtimeStatePath = (...segments: string[]): string => {
     : path.join(CORE_APP_ROOT, ".runtime-state");
   return path.join(runtimeRoot, ...segments);
 };
+
+export const generatedStatePath = (...segments: string[]): string => {
+  const configuredRoot = process.env.TRENCHCLAW_GENERATED_ROOT?.trim();
+  const generatedRoot = configuredRoot
+    ? resolveAbsoluteEnvPath("TRENCHCLAW_GENERATED_ROOT", configuredRoot)
+    : path.join(CORE_APP_ROOT, ".trenchclaw-generated");
+  return path.join(generatedRoot, ...segments);
+};

@@ -10,6 +10,16 @@ export interface SystemLogStoreConfig {
   directory: string;
 }
 
+interface SystemLogJsonLine {
+  ts: string;
+  product: "system";
+  source: "system";
+  level: RuntimeLogEntry["level"];
+  kind: string;
+  summary: string;
+  details?: Record<string, unknown>;
+}
+
 const toAbsolutePath = (targetPath: string): string =>
   path.isAbsolute(targetPath) ? targetPath : resolveRuntimeContractPath(targetPath);
 
@@ -27,11 +37,18 @@ export class SystemLogStore {
 
   append(entry: RuntimeLogEntry): string {
     const key = dateKey(entry.timestamp);
-    const filePath = path.join(this.directory, `${key}.log`);
+    const filePath = path.join(this.directory, `${key}.system.jsonl`);
     assertRuntimeSystemWritePath(filePath, "append system log entry");
-    const details = entry.details ? ` ${JSON.stringify(entry.details)}` : "";
-    const line = `${entry.timestamp} ${entry.level.toUpperCase()} ${entry.event}${details}\n`;
-    void this.writer.appendUtf8(filePath, line);
+    const line: SystemLogJsonLine = {
+      ts: entry.timestamp,
+      product: "system",
+      source: "system",
+      level: entry.level,
+      kind: entry.event,
+      summary: entry.event,
+      ...(entry.details ? { details: entry.details } : {}),
+    };
+    void this.writer.appendUtf8(filePath, `${JSON.stringify(line)}\n`);
     return filePath;
   }
 }

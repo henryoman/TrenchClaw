@@ -3,7 +3,6 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 
 import type { bootstrapRuntime as bootstrapRuntimeType } from "../trenchclaw/src/runtime/bootstrap";
-import { BOOTSTRAP_INSTANCE_ID } from "../trenchclaw/src/runtime/instance-state";
 import type { RuntimeSettingsProfile } from "../trenchclaw/src/runtime/load";
 import type { startRuntimeServer as startRuntimeServerType, RuntimeServerInfo } from "../trenchclaw/src/runtime/start-runtime-server";
 
@@ -27,6 +26,7 @@ const RUNNER_LOG_PREFIX = colorize("@trenchclaw:", "neonPurple");
 const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 const strong = (value: string): string => applyAnsi(value, "bold");
 const spotlight = (value: string): string => applyAnsi(value, "bold", "neonTurquoise");
+const DEFAULT_BOOTSTRAP_INSTANCE_ID = "01";
 
 export type LayoutKind = "workspace" | "release";
 
@@ -323,8 +323,7 @@ const resolveDoctorStateRootStatus = (runtimeStateRoot: string): {
 };
 
 const isTwoDigitInstanceId = (value: string): boolean => /^\d{2}$/u.test(value.trim());
-const isVisibleInstanceId = (value: string): boolean =>
-  isTwoDigitInstanceId(value) && value.trim() !== BOOTSTRAP_INSTANCE_ID;
+const isVisibleInstanceId = (value: string): boolean => isTwoDigitInstanceId(value);
 
 const resolveDoctorActiveInstance = (runtimeStateRoot: string, env: NodeJS.ProcessEnv): {
   id: string | null;
@@ -411,7 +410,7 @@ export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorRe
   const stateRootStatus = resolveDoctorStateRootStatus(layout.runtimeStateRoot);
   const activeInstance = resolveDoctorActiveInstance(layout.runtimeStateRoot, env);
   const vaultPath = activeInstance.id
-    ? path.join(layout.runtimeStateRoot, "instances", activeInstance.id, "vault.json")
+    ? path.join(layout.runtimeStateRoot, "instances", activeInstance.id, "secrets", "vault.json")
     : null;
   const vaultExists = Boolean(vaultPath && existsSync(vaultPath));
   const vaultData = vaultPath ? readJsonObjectSync(vaultPath) : null;
@@ -680,7 +679,7 @@ const canBindPort = async (host: string, port: number): Promise<boolean> => {
 };
 
 const resolveRuntimeBootstrapInstanceId = (): string =>
-  resolveDoctorActiveInstance(LAYOUT.runtimeStateRoot, process.env).id ?? BOOTSTRAP_INSTANCE_ID;
+  resolveDoctorActiveInstance(LAYOUT.runtimeStateRoot, process.env).id ?? DEFAULT_BOOTSTRAP_INSTANCE_ID;
 
 const ensureRuntimeBootstrapInstance = async (): Promise<string> => {
   const instanceId = resolveRuntimeBootstrapInstanceId();

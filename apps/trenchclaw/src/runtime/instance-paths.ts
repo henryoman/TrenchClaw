@@ -9,26 +9,44 @@ const resolveInstanceChildPath = (instanceId: string, ...segments: string[]): st
   return resolvedPath;
 };
 
+export const resolveInstanceSecretsRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "secrets");
+
 export const resolveInstanceSettingsRoot = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "settings");
 
-export const resolveInstanceDbRoot = (instanceId: string): string =>
-  resolveInstanceChildPath(instanceId, "db");
+export const resolveInstanceDataRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "data");
 
-export const resolveInstanceRuntimeSqlitePath = (instanceId: string): string =>
-  resolveInstanceChildPath(instanceId, "db", "runtime.sqlite");
+export const resolveInstanceRuntimeDbPath = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "data", "runtime.db");
 
 export const resolveInstanceQueueSqlitePath = (instanceId: string): string =>
-  resolveInstanceChildPath(instanceId, "db", "queue.sqlite");
+  resolveInstanceChildPath(instanceId, "cache", "queue.sqlite");
+
+export const resolveInstanceLogsRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "logs");
+
+export const resolveInstanceLiveLogsRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "logs", "live");
 
 export const resolveInstanceSessionsRoot = (instanceId: string): string =>
-  resolveInstanceChildPath(instanceId, "db", "sessions");
+  resolveInstanceChildPath(instanceId, "logs", "sessions");
+
+export const resolveInstanceSummariesRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "logs", "summaries");
+
+export const resolveInstanceSystemLogsRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "logs", "system");
+
+export const resolveInstanceCacheRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "cache");
 
 export const resolveInstanceMemoryRoot = (instanceId: string): string =>
-  resolveInstanceChildPath(instanceId, "db", "memory");
+  resolveInstanceChildPath(instanceId, "cache", "memory");
 
 export const resolveInstanceMemoryLongTermFilePath = (instanceId: string): string =>
-  resolveInstanceChildPath(instanceId, "db", "memory", "MEMORY.md");
+  resolveInstanceChildPath(instanceId, "cache", "memory", "MEMORY.md");
 
 export const resolveInstanceAiSettingsPath = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "settings", "ai.json");

@@ -59,8 +59,9 @@ describe("collectDoctorReport", () => {
       path.join(layout.runtimeStateRoot, "instances", "active-instance.json"),
       `${JSON.stringify({ localInstanceId: "01" }, null, 2)}\n`,
     );
+    await Bun.$`mkdir -p ${path.join(instanceRoot, "secrets")}`.quiet();
     await Bun.write(
-      path.join(instanceRoot, "vault.json"),
+      path.join(instanceRoot, "secrets", "vault.json"),
       `${JSON.stringify(
         {
           rpc: {
@@ -102,11 +103,11 @@ describe("collectDoctorReport", () => {
     expect(formatDoctorReport(report)).toContain("TrenchClaw doctor");
   });
 
-  test("ignores the reserved bootstrap scaffold instance when resolving active instance health", async () => {
+  test("does not report an active instance when multiple instance directories exist without a selection", async () => {
     const layout = await createLayout();
-    await Bun.$`mkdir -p ${path.join(layout.runtimeStateRoot, "instances", "00", "settings")}`.quiet();
-    await Bun.$`mkdir -p ${path.join(layout.runtimeStateRoot, "instances", "00", "workspace")}`.quiet();
-    await Bun.write(path.join(layout.runtimeStateRoot, "instances", "00", "settings", "settings.json"), "{}\n");
+    await Bun.$`mkdir -p ${path.join(layout.runtimeStateRoot, "instances", "01", "settings")}`.quiet();
+    await Bun.$`mkdir -p ${path.join(layout.runtimeStateRoot, "instances", "02", "workspace")}`.quiet();
+    await Bun.write(path.join(layout.runtimeStateRoot, "instances", "01", "settings", "settings.json"), "{}\n");
 
     const report = collectDoctorReport({
       layout,

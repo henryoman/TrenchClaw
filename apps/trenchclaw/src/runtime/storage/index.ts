@@ -5,6 +5,7 @@ export * from "./sqlite-schema";
 export * from "./sqlite-orm";
 export * from "./session-log-store";
 export * from "./session-summary-store";
+export * from "./live-log-store";
 export * from "./memory-log-store";
 export * from "./system-log-store";
 export * from "./summary-log-store";

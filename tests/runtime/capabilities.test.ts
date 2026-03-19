@@ -19,7 +19,6 @@ const DEXSCREENER_MODEL_TOOL_NAMES = [
 const TEST_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
-  "TRENCHCLAW_SETTINGS_USER_FILE",
   "TRENCHCLAW_SETTINGS_AGENT_FILE",
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
@@ -169,7 +168,6 @@ const writeTempFile = async (extension: "yaml" | "json", content: string): Promi
 beforeEach(async () => {
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile("yaml", TEST_SAFE_SETTINGS_YAML);
   process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeTempFile("json", "{}");
-  delete process.env.TRENCHCLAW_SETTINGS_USER_FILE;
   delete process.env.TRENCHCLAW_SETTINGS_AGENT_FILE;
   delete process.env.TRENCHCLAW_VAULT_FILE;
   delete process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE;

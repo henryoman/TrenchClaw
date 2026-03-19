@@ -72,10 +72,13 @@ describe("ensureInstanceLayout", () => {
     });
 
     expect(result.first.createdDirectories.map((directoryPath) => path.basename(directoryPath))).toEqual([
+      "secrets",
+      "data",
+      "logs",
+      "cache",
       "keypairs",
       "settings",
       "workspace",
-      "db",
       "shell-home",
       "tmp",
       "tool-bin",
@@ -86,7 +89,10 @@ describe("ensureInstanceLayout", () => {
       "scratch",
       "output",
       "routines",
+      "live",
       "sessions",
+      "summaries",
+      "system",
       "memory",
     ]);
     expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual([

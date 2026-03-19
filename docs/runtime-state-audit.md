@@ -9,7 +9,7 @@ This document explains which ignored/generated paths are part of the TrenchClaw 
 | `node_modules/` | package manager | yes | `bun install` | dependency install, not app state |
 | `.turbo/` | Turbo cache | no | Turbo | cache only |
 | `apps/trenchclaw/.runtime-state/` | runtime contract | yes | runner/bootstrap and runtime activity | main local state root in workspace mode |
-| `*.db`, `*.sqlite`, `*-wal`, `*-shm` | runtime storage | yes | runtime bootstrap, scheduler, SQLite | mostly under `.runtime-state/db/` now |
+| `*.db`, `*.sqlite`, `*-wal`, `*-shm` | runtime storage | yes | runtime bootstrap, scheduler, SQLite | under `.runtime-state/instances/<id>/data/` and `.runtime-state/instances/<id>/cache/` |
 | `**/dist/` | build output | yes for release/build flows | app/gui/core build scripts | safe to delete and rebuild |
 | `website/.svelte-kit/` | SvelteKit cache | no | website dev/typecheck/build | cache/build helper |
 | `website/build/` | website static output | yes for website build | `bun run website:build` | build artifact |
@@ -24,41 +24,42 @@ These are the paths a brand new local install needs. Some should be created eage
 
 Must exist immediately or during first runtime boot:
 
-- `.runtime-state/runtime/`
 - `.runtime-state/instances/`
-- `.runtime-state/generated/`
-- `.runtime-state/protected/keypairs/`
+- `.trenchclaw-generated/`
 
 Files created eagerly or on first access:
 
-- `.runtime-state/runtime/vault.template.json`
-- `.runtime-state/generated/workspace-context.md`
-- `.runtime-state/generated/knowledge-index.md`
+- `.runtime-state/instances/active-instance.json`
+- `.trenchclaw-generated/workspace-context.md`
+- `.trenchclaw-generated/knowledge-index.md`
 
 ### Current Per-instance
 
 For a newly created or first-signed-in instance `NN`, the runtime should ensure:
 
 - `.runtime-state/instances/NN/instance.json`
-- `.runtime-state/instances/NN/vault.json`
+- `.runtime-state/instances/NN/secrets/vault.json`
 - `.runtime-state/instances/NN/keypairs/`
 - `.runtime-state/instances/NN/settings/`
 - `.runtime-state/instances/NN/settings/ai.json`
 - `.runtime-state/instances/NN/settings/settings.json`
 - `.runtime-state/instances/NN/settings/trading.json`
+- `.runtime-state/instances/NN/data/`
+- `.runtime-state/instances/NN/logs/live/`
+- `.runtime-state/instances/NN/logs/sessions/`
+- `.runtime-state/instances/NN/logs/summaries/`
+- `.runtime-state/instances/NN/logs/system/`
+- `.runtime-state/instances/NN/cache/memory/`
 - `.runtime-state/instances/NN/workspace/`
 - `.runtime-state/instances/NN/workspace/routines/`
-- `.runtime-state/instances/NN/db/`
-- `.runtime-state/instances/NN/db/sessions/`
-- `.runtime-state/instances/NN/db/memory/`
 - `.runtime-state/instances/NN/shell-home/`
 - `.runtime-state/instances/NN/tmp/`
 - `.runtime-state/instances/NN/tool-bin/`
 
 Created lazily later:
 
-- `.runtime-state/instances/NN/db/runtime.sqlite`
-- `.runtime-state/instances/NN/db/queue.sqlite`
+- `.runtime-state/instances/NN/data/runtime.db`
+- `.runtime-state/instances/NN/cache/queue.sqlite`
 - `.runtime-state/instances/NN/keypairs/wallet-library.jsonl`
 - `.runtime-state/instances/NN/keypairs/<group>/...`
 - any future per-instance workspace, notes, or output paths
@@ -67,21 +68,23 @@ Created lazily later:
 
 ### Runtime-global
 
-- `.runtime-state/generated/`
-- `.runtime-state/runtime/vault.template.json`
-- `.runtime-state/protected/keypairs/`
+- `.runtime-state/instances/active-instance.json`
+- `.trenchclaw-generated/`
 
 ### Per-instance
 
 - `.runtime-state/instances/<id>/instance.json`
-- `.runtime-state/instances/<id>/vault.json`
+- `.runtime-state/instances/<id>/secrets/vault.json`
 - `.runtime-state/instances/<id>/settings/ai.json`
 - `.runtime-state/instances/<id>/settings/settings.json`
 - `.runtime-state/instances/<id>/settings/trading.json`
-- `.runtime-state/instances/<id>/db/runtime.sqlite`
-- `.runtime-state/instances/<id>/db/queue.sqlite`
-- `.runtime-state/instances/<id>/db/sessions/`
-- `.runtime-state/instances/<id>/db/memory/`
+- `.runtime-state/instances/<id>/data/runtime.db`
+- `.runtime-state/instances/<id>/cache/queue.sqlite`
+- `.runtime-state/instances/<id>/logs/sessions/`
+- `.runtime-state/instances/<id>/logs/summaries/`
+- `.runtime-state/instances/<id>/logs/system/`
+- `.runtime-state/instances/<id>/logs/live/`
+- `.runtime-state/instances/<id>/cache/memory/`
 - `.runtime-state/instances/<id>/keypairs/`
 - `.runtime-state/instances/<id>/workspace/`
 - `.runtime-state/instances/<id>/shell-home/`
@@ -124,7 +127,7 @@ That means:
 
 Vaults are per-instance only.
 
-- Active/default vault path in workspace mode: `.runtime-state/instances/<id>/vault.json`
+- Active/default vault path in workspace mode: `.runtime-state/instances/<id>/secrets/vault.json`
 - No shared runtime vault fallback
 - No shared runtime `ai.json` fallback
 - No shared runtime `settings.json` fallback
@@ -146,7 +149,7 @@ If you want many instances to share the same secret, duplicate it intentionally.
 
 A fresh instance must be able to sign in and work without manual file scaffolding. The runtime now creates these automatically:
 
-- `instances/<id>/vault.json`
+- `instances/<id>/secrets/vault.json`
 - `instances/<id>/keypairs/`
 - `instances/<id>/settings/`
 - `instances/<id>/settings/trading.json`
@@ -154,7 +157,6 @@ A fresh instance must be able to sign in and work without manual file scaffoldin
 The remaining shared runtime bootstrap contract stays global:
 
 - generated prompt files
-- vault template and protected placeholder files
 - shared knowledge manifests and shared default knowledge
 
 ## Bloat To Remove Or Avoid
