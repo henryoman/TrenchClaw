@@ -3,7 +3,7 @@ import type { RuntimeSettings } from "../load";
 import type { FilesystemPolicySummary } from "../security/filesystem-manifest";
 
 export type CapabilitySideEffectLevel = "read" | "write" | "execute";
-export type ReleaseReadinessStatus = "shipped-now" | "limited-beta" | "coming-soon";
+export type ReleaseReadinessStatus = "shipped-now" | "limited" | "coming-soon";
 
 export interface RuntimeCapabilityPredicateContext {
   settings: RuntimeSettings;

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="./package.json"><img src="https://img.shields.io/badge/Version-0.0.0--beta.4-2563EB?style=for-the-badge" alt="Version 0.0.0-beta.4" /></a>
+  <a href="./package.json"><img src="https://img.shields.io/badge/Version-0.0.0-2563EB?style=for-the-badge" alt="Version 0.0.0" /></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.3.11-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun 1.3.11" /></a>
   <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/badge/AI%20SDK-111827?style=for-the-badge" alt="AI SDK" /></a>
   <a href="https://x.com/mert"><img src="https://img.shields.io/badge/Teachings%20of%20Mert-000000?style=for-the-badge&logo=x&logoColor=white" alt="Teachings of Mert" /></a>
@@ -31,7 +31,7 @@ TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It'
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
-Current beta keys: helius api key for helius-backed reads, jupiter ultra key for swap and trigger flows, and an OpenRouter or Gateway API key for chat-driven workflows.
+Current release keys: helius api key for helius-backed reads, jupiter ultra key for swap flows, and an OpenRouter or Gateway API key for chat-driven workflows.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
@@ -63,7 +63,7 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 Quick links:
 
 - [Quickstart](https://trenchclaw.vercel.app/docs)
-- [Beta Capability Matrix](https://trenchclaw.vercel.app/docs/beta-capability-matrix)
+- [Capability Matrix](https://trenchclaw.vercel.app/docs/beta-capability-matrix)
 - [Runtime Architecture and Boundaries](#runtime-architecture-and-boundaries)
 - [Why TypeScript?](#why-typescript)
 - [Why Solana Kit](#why-solana-kit)
@@ -131,23 +131,24 @@ Public releases ship as standalone compiled `trenchclaw` binaries. Bun is requir
 
 ```bash
 # local verification
-bun run release:build -- --version v0.0.0-beta.4 --run-checks
+bun run release:build -- --version v0.0.0 --run-checks
 
-# review the release body that will be published
-# releases/0.0.0-beta.4.md
+# optional drafted release body for manual releases
+# releases/0.0.0.md
 ```
 
-Release publishing is manual only through the GitHub Actions `Release` workflow (`workflow_dispatch`).
+Release publishing runs through the GitHub Actions `Release` workflow (`workflow_dispatch`).
 
-- `release_mode=manual` publishes the current committed version and uses `releases/<version>.md`
+- `release_mode=manual` publishes the current committed version
 - `release_mode=patch` auto-bumps the next patch version and uses GitHub-generated notes
 - `release_mode=minor` auto-bumps the next minor version and uses GitHub-generated notes
-- prerelease versions like `0.0.0-beta.4` should stay on `manual` mode until you intentionally cut a stable line
+- `release_notes_mode=auto` uses GitHub-generated notes for manual releases too
+- `release_notes_mode=draft` uses `releases/<version>.md` when you want a custom manual release body
 
 ```mermaid
 flowchart LR
   A["Push / PR"] --> B["CI: test + app build + bundle verify"]
-  B --> C["Manual Release Trigger"]
+  B --> C["Release Trigger"]
   C --> D["Build app bundle"]
   D --> E["Package tar.gz + sha256"]
   E --> F["Generate notes from commits since last tag"]
@@ -403,7 +404,7 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
 - Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
 
-Current public beta does not promise a broad autonomous strategy engine yet. Treat scheduling and queued jobs as the current automation surface, and treat broader strategy automation plus non-Ultra public swap paths as coming soon.
+The current public release does not promise a broad autonomous strategy engine yet. Treat scheduling and queued jobs as the current automation surface, and treat broader strategy automation plus non-Ultra public swap paths as coming soon.
 
 ## Download Dependencies
 

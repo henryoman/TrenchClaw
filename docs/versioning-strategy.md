@@ -3,14 +3,21 @@
 ## Current Baseline
 
 - Root version source of truth: `package.json -> version`
-- Current baseline: `0.0.0-beta.4`
+- Current baseline: `0.0.0`
 
 ## Increment Rules
 
+- `patch`
+  - stable versions increment normally: `0.0.0` -> `0.0.1`
+  - prerelease versions promote to the matching stable version: `0.0.0-beta.4` -> `0.0.0`
+
+- `minor`
+  - stable versions increment normally: `0.0.0` -> `0.1.0`
+  - prerelease versions must be promoted to stable before a minor bump
+
 - `beta`
-  - `0.0.0-beta.N` -> `0.0.0-beta.(N+1)`
-  - no stable promotion yet
-  - no patch/minor/major bumping yet
+  - existing prerelease versions can still increment in place: `0.0.0-beta.4` -> `0.0.0-beta.5`
+  - beta support remains for compatibility, but it is no longer the default release flow
 
 ## Commands
 
@@ -18,6 +25,12 @@ Dry-run only (default behavior):
 
 ```bash
 bun run version:next
+```
+
+Preview the next stable patch release explicitly:
+
+```bash
+bun run version:next -- --strategy patch
 ```
 
 Apply to `package.json`:
@@ -28,26 +41,27 @@ TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply
 
 ## Release Notes Coupling
 
-Manual prerelease notes live in `releases/<version>.md`.
+Manual release notes live in `releases/<version>.md` when you choose drafted notes for a manual release.
 Tag output from version commands is returned as `nextTag` for release workflow use.
 
 ## Release Gate
 
 The release workflow uses `workflow_dispatch` with explicit release modes.
 
-- prerelease versions like `0.0.0-beta.N` should use `release_mode=manual`
 - `manual` publishes the current committed version already present in `package.json`
-- `manual` requires `releases/<version>.md`
-- `patch` and `minor` are for stable releases, not the beta track
+- `manual` can use auto-generated GitHub notes or `releases/<version>.md`
+- `patch` is the default day-to-day release path
+- `minor` remains available when you intentionally want a wider stable step
 - existing tags are rejected before build/publish starts
 
 ## Flow
 
 ```mermaid
 flowchart TD
-  A["Current package.json version"] --> B["Dispatch release workflow in manual mode"]
-  B --> C["Workflow validates releases/version.md"]
-  C --> D["Workflow tags current committed version"]
-  D --> E["Workflow builds artifacts and publishes release"]
-  E --> F["GitHub release uses drafted markdown body"]
+  A["Current package.json version"] --> B["Dispatch release workflow"]
+  B --> C["Patch mode computes next stable version"]
+  B --> D["Manual mode uses current committed version"]
+  C --> E["Workflow validates, tags, builds, and publishes"]
+  D --> F["Manual release uses auto notes or drafted markdown"]
+  F --> E
 ```

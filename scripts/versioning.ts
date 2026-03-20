@@ -48,26 +48,35 @@ export const formatVersion = (parsed: ParsedVersion): string => {
 
 export const incrementVersion = (
   current: string,
-  strategy: VersioningStrategy = "beta",
+  strategy: VersioningStrategy = "patch",
 ): string => {
   const parsed = parseVersion(current);
   if (strategy === "beta") {
-    if (parsed.major !== 0 || parsed.minor !== 0 || parsed.patch !== 0 || parsed.beta === null) {
-      throw new Error(`Current version "${current}" must stay on the 0.0.0-beta.N track for now.`);
+    if (parsed.beta === null) {
+      throw new Error(
+        `Cannot increment "beta" from stable version "${current}". Start from an existing prerelease version first.`,
+      );
     }
 
     return formatVersion({
-      major: 0,
-      minor: 0,
-      patch: 0,
+      major: parsed.major,
+      minor: parsed.minor,
+      patch: parsed.patch,
       beta: parsed.beta + 1,
     });
   }
 
+  if (parsed.beta !== null && strategy === "patch") {
+    return formatVersion({
+      major: parsed.major,
+      minor: parsed.minor,
+      patch: parsed.patch,
+      beta: null,
+    });
+  }
+
   if (parsed.beta !== null) {
-    throw new Error(
-      `Cannot auto-increment "${strategy}" from prerelease version "${current}". Use a manual release or promote to a stable version first.`,
-    );
+    throw new Error(`Cannot auto-increment "${strategy}" from prerelease version "${current}".`);
   }
 
   if (strategy === "patch") {

@@ -141,7 +141,8 @@ describe("manual action runner", () => {
     expect(result?.ok).toBe(true);
     expect(result?.data?.wallets?.[0]).toMatchObject({
       walletGroup: "core-wallets",
-      walletName: "wallet_000",
+      walletId: "core-wallets.000",
+      walletName: "000",
     });
   });
 

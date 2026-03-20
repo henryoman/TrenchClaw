@@ -284,10 +284,10 @@ describe("runtime capability snapshot", () => {
     expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("transfer");
     expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("closeTokenAccount");
     expect(enabledSnapshot.modelTools.find((toolEntry) => toolEntry.name === "transfer")?.releaseReadinessStatus).toBe(
-      "limited-beta",
+      "limited",
     );
     expect(enabledSnapshot.modelTools.find((toolEntry) => toolEntry.name === "transfer")?.toolDescription).toContain(
-      "Release readiness: limited-beta.",
+      "Release readiness: limited.",
     );
   });
 

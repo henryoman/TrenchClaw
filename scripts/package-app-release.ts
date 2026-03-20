@@ -87,7 +87,10 @@ const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
     stdout: "inherit",
     stderr: "inherit",
     stdin: "inherit",
-    env: process.env,
+    env: {
+      ...process.env,
+      COPYFILE_DISABLE: "1",
+    },
   });
   const code = await proc.exited;
   if (code !== 0) {

@@ -26,7 +26,7 @@ const RUNNER_LOG_PREFIX = colorize("@trenchclaw:", "neonPurple");
 const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 const strong = (value: string): string => applyAnsi(value, "bold");
 const spotlight = (value: string): string => applyAnsi(value, "bold", "neonTurquoise");
-const DEFAULT_BOOTSTRAP_INSTANCE_ID = "01";
+const DEFAULT_BOOTSTRAP_INSTANCE_ID = "00";
 
 export type LayoutKind = "workspace" | "release";
 
