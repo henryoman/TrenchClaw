@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-20T00:31:04.785Z
+Generated at: 2026-03-20T03:29:30.009Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
