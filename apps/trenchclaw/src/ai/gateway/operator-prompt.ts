@@ -133,7 +133,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   managedTriggerOrder: {
     useWhen: "the user explicitly wants to place a Jupiter Trigger order from a managed wallet and you know the wallet selector, token pair, amount, trigger specification, and confirmation token if policy requires it",
     avoidWhen: "the user did not explicitly request a trigger order, the managed wallet is unknown, or the confirmation token is missing when policy requires it",
-    inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, `direction`, and a `trigger` object. Prefer `trigger.kind = \"percentFromBuyPrice\"` for relative exits or `exactPrice` for exact ratio targeting.",
+    inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, `direction`, and a `trigger` object. For direct price targets, default to `trigger.kind = \"exactPrice\"`. Use `percentFromBuyPrice` only when the user explicitly wants an entry-relative trigger such as a stop loss, take profit, or percent gain/loss from buy price.",
   },
   managedTriggerCancelOrders: {
     useWhen: "the user explicitly wants to cancel one or more existing Jupiter Trigger orders and you know the wallet plus exact order ids",
@@ -172,9 +172,12 @@ const renderOperatorDecisionRules = (): string => [
   "- If the user already gave an exact address, pair, wallet, or mint, skip discovery and go straight to the most specific tool.",
   "- Use discovery tools only when the user gave a fuzzy symbol, nickname, or broad market question.",
   "- Read before write: inspect wallet state first, then execute transfers or cleanup only after the user explicitly asked and the inputs are concrete.",
+  "- For direct trigger-order asks with a concrete target price, prefer `managedTriggerOrder` with `trigger.kind = \"exactPrice\"`.",
+  "- Use `percentFromBuyPrice` only when the user explicitly frames the trigger relative to entry price, buy price, stop loss, or take profit percentage.",
   "- Never use a write tool just because it is available. Use it only when the user clearly requested the mutation.",
   "- If confirmation is required, pass `userConfirmationToken` only when the user explicitly confirmed the action in this conversation.",
   "- After a successful tool call, answer in normal English from the tool result and stop unless another tool is still necessary.",
+  "- After a successful `managedTriggerOrder`, treat the order as submitted and tell the user it can be tracked with `getTriggerOrders` using `orderStatus = \"active\"`.",
   "- If a tool fails, report the exact failure and the next corrective action; do not jump to unrelated tools.",
 ].join("\n");
 
@@ -235,6 +238,8 @@ const renderOperatorKnowledgeIndex = (): string => [
   "## Knowledge Index",
   "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
   "- use `readKnowledgeDoc` with an alias like `runtime-reference` or `helius-cli-readme` to open one directly",
+  "- use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults",
+  "- use `settings-reference` for settings ownership, load order, and active-instance overrides",
   "- knowledge files are reference material; live tools, release readiness, and runtime state are higher authority",
 ].join("\n");
 

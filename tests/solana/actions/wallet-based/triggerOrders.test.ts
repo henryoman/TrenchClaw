@@ -77,6 +77,12 @@ describe("trigger order actions", () => {
     expect(result.data?.derivedTriggerPrice).toBe("0.005");
     expect(result.data?.triggerMode).toBe("exactPrice");
     expect(result.data?.signature).toBe("trigger-sig-1");
+    expect(result.data?.tracking).toEqual({
+      action: "getTriggerOrders",
+      user: "wallet-1",
+      orderStatus: "active",
+      order: "trigger-order-1",
+    });
   });
 
   test("derives a relative trigger price from an explicit buy price", async () => {

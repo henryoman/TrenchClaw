@@ -1361,6 +1361,75 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("schedule a managed Ultra swap");
   });
 
+  test("guides direct exact-price trigger orders through the operator prompt", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "getTriggerOrders",
+            description: "list trigger orders",
+            purpose: "list active trigger orders",
+            routingHint: "list active trigger orders",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", orderStatus: "active" },
+            toolDescription: "list trigger orders",
+            releaseReadinessStatus: "limited",
+            releaseReadinessNote: "Limited.",
+          },
+          {
+            kind: "action",
+            name: "managedTriggerOrder",
+            description: "place managed trigger order",
+            purpose: "place a managed exact-price trigger order",
+            routingHint: "place a managed exact-price trigger order",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: {
+              walletGroup: "core-wallets",
+              walletName: "wallet_001",
+              inputCoin: "JUP",
+              outputCoin: "SOL",
+              amount: "100",
+              direction: "sellAbove",
+              trigger: { kind: "exactPrice", price: "0.005" },
+            },
+            toolDescription: "place managed trigger order",
+            releaseReadinessStatus: "limited",
+            releaseReadinessNote: "Limited.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-trigger-price-1",
+          role: "user",
+          parts: [{ type: "text", text: "place a trigger order to sell 100 JUP above 0.005 SOL" }],
+        },
+      ],
+      userMessage: "place a trigger order to sell 100 JUP above 0.005 SOL",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.systemPrompt).toContain("prefer `managedTriggerOrder` with `trigger.kind = \"exactPrice\"`");
+    expect(execution.systemPrompt).toContain("Use `percentFromBuyPrice` only when the user explicitly frames the trigger relative to entry price");
+    expect(execution.systemPrompt).toContain("treat the order as submitted and tell the user it can be tracked with `getTriggerOrders` using `orderStatus = \"active\"`");
+  });
+
   test("keeps the operator gateway prompt and tool list compact", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {
@@ -1435,6 +1504,7 @@ describe("RuntimeChatService", () => {
     expect(execution.toolNames).toEqual(["getManagedWalletContents", "queryRuntimeStore"]);
     expect(execution.toolNames).not.toContain(WORKSPACE_READ_FILE_TOOL_NAME);
     expect(execution.systemPrompt).toContain("## Knowledge Index");
+    expect(execution.systemPrompt).toContain("use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults");
   });
 
   test("includes Dexscreener discovery and market-data actions in the normal operator payload", async () => {
