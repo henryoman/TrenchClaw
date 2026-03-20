@@ -81,6 +81,50 @@ Use the docs for install and first-run:
 
 - [Getting Started](https://trenchclaw.vercel.app/docs/getting-started)
 
+## Developer Runtime State
+
+Local development and manual testing should use the same per-instance runtime shape as the shipped product, but the mutable state should live outside the repo.
+
+Default local dev behavior:
+
+- `bun run dev` uses `~/trenchclaw-dev-runtime` for runtime state
+- `bun run dev` uses `~/trenchclaw-dev-generated` for generated prompt-support files
+- that state persists across reconnects and restarts
+- that state is personal/local and is not part of the repo
+
+Important rules for contributors, reviewers, and agents:
+
+- do not store personal vaults, wallets, logs, databases, or generated runtime state in this repository
+- `.runtime/` is the tracked contract only; runtime code must never write there
+- the external dev runtime is intentionally separate so local testing behaves like a real user install without polluting PRs
+- tests should use temporary runtime roots, not a shared developer runtime
+
+Common setup:
+
+```bash
+# initialize the default external dev runtime once
+bun run dev:runtime:init
+
+# start local dev against the persistent external runtime
+bun run dev
+
+# copy selected instance state into the external dev runtime
+bun run dev:instance:clone -- \
+  --from-root /path/to/source-runtime \
+  --to-root ~/trenchclaw-dev-runtime \
+  --from-instance 01 \
+  --to-instance 01 \
+  --parts wallets,db,settings
+```
+
+Useful overrides:
+
+- `bun run dev -- --runtime-root /path/to/runtime --generated-root /path/to/generated`
+- `TRENCHCLAW_RUNTIME_STATE_ROOT=/path/to/runtime`
+- `TRENCHCLAW_GENERATED_ROOT=/path/to/generated`
+
+The external dev runtime writes a managed `.gitignore` so secrets, keypairs, databases, logs, caches, and other personal testing state stay out of git by default.
+
 ## Build + Release (Current Path)
 
 Public releases ship as standalone compiled `trenchclaw` binaries. Bun is required for local development and release engineering, not for end-user installs.

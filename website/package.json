@@ -14,7 +14,7 @@
     "dev": "bun run content:sync && bunx --bun vite dev",
     "build": "bun run content:sync && bunx --bun vite build",
     "preview": "bun run content:sync && bunx --bun vite preview",
-    "lint": "oxlint .",
+    "lint": "cd .. && bunx oxlint -c .oxlintrc.json website",
     "test": "bun test ../tests/website",
     "svelte:check": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "check": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -26,6 +26,7 @@
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.55.0",
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
+    "highlight.js": "^11.11.1",
     "marked": "^17.0.4",
     "svelte": "^5.54.0"
   },

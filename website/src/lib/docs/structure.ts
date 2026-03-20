@@ -3,7 +3,6 @@ import type { DocListItem } from './types';
 export const primaryDocSlugs = [
   'getting-started',
   'keys-and-settings',
-  'beta-capabilities',
 ] as const;
 
 export const referenceDocSlugs = ['architecture'] as const;

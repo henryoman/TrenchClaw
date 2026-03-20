@@ -1,46 +1,27 @@
 ---
 title: Getting Started
-description: Install the release, launch the beta correctly, use the recommended defaults, and get the app ready without guessing.
+description: Install TrenchClaw, launch it, add the right first key, and stop once the basic setup is working.
 order: 1
 featured: true
 ---
 
-## What This Beta Actually Covers
+## The Shortest Setup
 
-This beta is centered on a small set of workflows we can stand behind today:
+If you want the fast version, do this in order:
 
-- local runtime and local GUI boot
-- instance creation and sign-in
-- AI-backed chat workflows
-- managed wallet reads
-- Jupiter Ultra swap flows when you add the right key
+1. Install the release.
+2. Run `trenchclaw`.
+3. Create or sign into an instance.
+4. Open `Keys` and save your `OpenRouter API Key`.
+5. Open `Settings` and set:
+   - AI provider: `OpenRouter`
+   - model: `GPT-5.4 Nano`
+6. Click `Test AI connection`.
+7. Stop there unless you specifically need a private RPC or Ultra swaps.
 
-The app does not ask you to install every optional dependency up front. Start with the release, confirm the app boots, then add only the keys and tools required by the workflows you actually want.
+That is the clean default setup.
 
-## Recommended Defaults
-
-For a clean first setup, use these defaults:
-
-- AI provider: `OpenRouter`
-- model: `openai/gpt-5.4-nano`
-- RPC: start with a public Solana RPC for basic first launch
-- Helius: add it only when you want enriched wallet reads or swap history
-- Jupiter Ultra API key: add it only when you want swaps or trigger orders
-- optional CLIs: skip them until a workflow explicitly needs them
-
-TrenchClaw public builds ship as a standalone compiled binary named `trenchclaw`.
-
-- you do not need Bun for the release install path
-- GitHub Releases is the install channel for public binaries
-- writable runtime state lives outside the install tree
-
-## Install The Release
-
-Supported release targets today:
-
-- `darwin-arm64`
-- `linux-x64`
-- `linux-arm64`
+## Install
 
 ### macOS
 
@@ -54,16 +35,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/maco
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | bash
 ```
 
-The installer:
-
-- resolves the release version
-- downloads the right bundle and checksum
-- verifies the checksum before extraction
-- installs the app under `~/.local/share/trenchclaw/<version>/`
-- updates `~/.local/share/trenchclaw/current`
-- writes the `trenchclaw` launcher into `~/.local/bin`
-
-If you need to pin a specific release:
+If you need to pin a release:
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.4 bash
@@ -73,7 +45,7 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/maco
 curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.4 bash
 ```
 
-## Launch TrenchClaw
+## Launch And Check Readiness
 
 Start the app with:
 
@@ -81,186 +53,86 @@ Start the app with:
 trenchclaw
 ```
 
-The runtime stays local by default.
-
-- runtime API: `127.0.0.1:4020`
-- GUI: `127.0.0.1:4173`
-
-If either port is occupied, TrenchClaw moves upward to the next available local port.
-
-## Run `trenchclaw doctor`
-
-After the first install, run:
+Then run:
 
 ```bash
 trenchclaw doctor
 ```
 
-`doctor` is the first thing to check when you are not sure what is missing. It reports:
+Use `doctor` whenever:
 
-- whether the app bundle is healthy
-- whether the runtime state root is writable
-- whether an active instance exists
-- whether the active instance vault exists
-- whether AI, Helius, and Jupiter keys are configured
-- whether optional CLIs such as `solana` and `helius` are available
+- the app looks half-configured
+- AI will not connect
+- you changed keys
+- you changed RPC setup
 
-Run it again after you change keys, switch RPC setup, or install optional CLI tooling.
+## What To Do Inside The App
 
-## Create Or Sign Into An Instance
+### 1. Create or sign into an instance
 
-On first launch, use the GUI to create an instance or sign into an existing one.
+Do this first. The instance is where TrenchClaw stores your vault and trading settings.
 
-Creating an instance does the setup work you should not have to do by hand:
+### 2. Open `Keys`
 
-- allocates the next local instance id such as `01`
-- writes the instance profile
-- creates the instance directory
-- creates the instance `vault.json`
-- creates the instance `settings/trading.json`
-- persists the active instance selection
+For most users, only one key matters on day one:
 
-Signing into an existing instance also ensures the instance layout exists before the rest of the app uses it.
+- `OpenRouter API Key`: required for the recommended chat setup
 
-Use the default `dangerous` profile only if you want trading paths available. If you are just inspecting the app, start conservatively.
+These are optional:
 
-## Add Keys In The Right Order
+- `Private RPC credential`: only if you want Helius or another private RPC
+- `Jupiter Ultra API Key`: only if you want Ultra swaps
+- `Vercel AI Gateway API Key`: only if you intentionally use Gateway instead of OpenRouter
 
-The easiest setup sequence is:
+### 3. Open `Settings`
 
-1. Set your AI key first so chat can work.
-2. Leave RPC on a public Solana endpoint unless you specifically want Helius-backed reads.
-3. Add a Helius key only when you want Helius as your private RPC or want swap history.
-4. Add a Jupiter Ultra API key only when you are ready for swap or trigger-order workflows.
+Use these defaults:
 
-For the exact file model and all key locations, use [Keys and Settings](/docs/keys-and-settings).
+- AI provider: `OpenRouter`
+- model: `GPT-5.4 Nano`
+- leave the default swap setting on `Ultra`
 
-## Test AI Connection
+Leave the private RPC setting alone unless you already saved a `Private RPC credential` in `Keys`.
 
-After you save your AI key:
+## When You Actually Need Extra Keys
 
-1. Open the `Keys` panel.
-2. Save `OpenRouter API Key`.
-3. Open the AI settings panel.
-4. Choose `OpenRouter`.
-5. Choose `GPT-5.4 Nano`.
-6. Save.
-7. Click `Test AI connection`.
+### Private RPC credential
 
-If the test fails, run `trenchclaw doctor` and confirm:
+Add this only when you want:
 
-- an active instance exists
-- the active instance vault exists
-- at least one AI key is present
-- the selected provider matches the key you actually saved
+- Helius-backed reads
+- a private RPC provider instead of the public Solana RPC
 
-## Optional CLI Tools
+If you are just getting started, you can leave this blank.
 
-Optional CLIs are not required for baseline launch.
+### Jupiter Ultra API Key
 
-Use the helper only if you want TrenchClaw to install or update those external tools for you:
+Add this only when you want swaps through Jupiter Ultra.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
-```
+If you are not swapping yet, leave it blank.
 
-Today that helper manages:
+## What `Ultra` Means
 
-- `Solana CLI`
-- `Helius CLI`
+`Ultra` means TrenchClaw uses Jupiter's managed Ultra swap flow.
 
-You can also install them directly:
+The simple version is:
 
-```bash
-sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
-```
+- TrenchClaw sends the swap through Jupiter Ultra
+- Jupiter handles the route
+- Jupiter handles the slippage logic
+- Jupiter handles the landing and execution flow
 
-```bash
-bun add -g helius-cli@latest
-```
+That is why `Ultra` is the recommended option right now.
 
-Install them only when a shell workflow explicitly needs them.
+The other non-Ultra path is still a coming-soon path. You do not need to think about it yet.
 
-## First Workflows To Try
+## If Something Fails
 
-Once the app is up and your AI connection passes:
+Check these in order:
 
-1. Use chat or the runtime UI to confirm the runtime is responding.
-2. Inspect the active instance and current readiness with `trenchclaw doctor`.
-3. If you already have managed wallets in the active instance, use managed wallet reads.
-4. Add Helius only if you want richer wallet reads or swap history.
-5. Add Jupiter Ultra only if you are ready to test swaps or trigger orders.
+1. Run `trenchclaw doctor`.
+2. Confirm an instance is active.
+3. Confirm the key you saved matches the setting you selected.
+4. Click `Test AI connection` again after saving settings.
 
-For risky workflows, use devnet or small amounts first.
-
-## Where Local State Lives
-
-Readonly install root:
-
-```text
-~/.local/share/trenchclaw/
-  current -> ~/.local/share/trenchclaw/<version>
-  <version>/
-    trenchclaw
-    gui/
-    core/
-    release-metadata.json
-```
-
-Writable state root for release installs:
-
-```text
-~/.trenchclaw/
-  generated/
-  runtime/
-    vault.template.json
-  instances/
-    active-instance.json
-    <id>/
-      instance.json
-      vault.json
-      keypairs/
-      settings/
-        ai.json
-        settings.json
-        trading.json
-      workspace/
-      db/
-        runtime.sqlite
-        queue.sqlite
-        sessions/
-        memory/
-      shell-home/
-      tmp/
-      tool-bin/
-  protected/
-    keypairs/
-```
-
-You do not need to create these files by hand. TrenchClaw creates the instance directories, vault file, settings files, workspace, and instance-local DB/shell directories for you and applies best-effort secure permissions as part of the app flow.
-
-## Troubleshooting
-
-### `trenchclaw: command not found`
-
-Reload your shell, or add `~/.local/bin` to `PATH`:
-
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-```
-
-Then open a new shell and try again.
-
-### Missing optional tools
-
-First launch is not blocked by missing `solana`, `solana-keygen`, or `helius`. Install them only when a workflow asks for them, then rerun `trenchclaw doctor`.
-
-### Download or checksum problems
-
-If install fails, check:
-
-- the GitHub Release exists
-- the artifact for your platform exists
-- the tag matches `TRENCHCLAW_VERSION` if you pinned one
-
-Checksum mismatches should stop the install. Treat that as a release issue, not something to bypass locally.
+If you need the exact key and settings breakdown, use [Keys and Settings](/docs/keys-and-settings).

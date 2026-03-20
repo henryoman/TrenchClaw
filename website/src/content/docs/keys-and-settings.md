@@ -1,245 +1,132 @@
 ---
 title: Keys and Settings
-description: Understand what lives in the vault, what lives in settings, and how to change the current beta configuration without guessing.
+description: The clean explanation of which keys matter, which settings matter, and what Ultra actually means in TrenchClaw.
 order: 2
 featured: true
 ---
 
-## The Mental Model
+## The Only Things Most Users Need To Know
 
-TrenchClaw splits configuration into three different buckets:
+There are two setup panels:
 
-- keys and secrets for the active instance
-- AI provider and model settings for the local runtime
-- trading preferences for the active instance
+- `Keys`
+- `Settings`
 
-That split matters because the app does not treat every setting as global.
+For a normal first run, you only need to understand three things:
 
-## What Lives Where
+1. Save your AI key first.
+2. Leave private RPC blank unless you really want a private RPC.
+3. If you want swaps, use `Ultra`.
 
-### `vault.json`
+That is the whole setup story for most users.
 
-The instance vault stores secrets and RPC credentials.
+## Keys
 
-Current beta examples:
+### `OpenRouter API Key`
 
-- `Private RPC credential`
-- `Jupiter Ultra API Key`
-- `OpenRouter API Key`
-- `Vercel AI Gateway API Key`
+This is the recommended first key.
 
-This file is instance-scoped. Switching instances changes which vault the app reads.
+Use it when you want chat working with the default setup.
 
-### `ai.json`
+### `Private RPC credential`
 
-The AI settings file stores the runtime-level AI selection:
+This is optional.
 
-- provider
-- model
-- default mode
-- temperature
-- max output tokens
+Use it only when you want:
 
-This file is runtime-scoped, not instance-scoped.
+- Helius
+- QuickNode
+- Chainstack
+- another private RPC instead of the public Solana RPC
 
-### `trading.json`
+If you do not know whether you need this, you probably do not need it yet.
 
-The instance trading settings file stores per-instance trading preferences:
+### `Jupiter Ultra API Key`
 
-- default swap provider
-- default swap mode
-- default amount unit
-- quick buy presets
-- custom presets
+This is optional.
 
-This file is active-instance-scoped.
+Use it only when you want swaps through Jupiter Ultra.
 
-## Scope Rules
+If you are not swapping yet, leave it blank.
 
-Use this rule of thumb:
+### `Vercel AI Gateway API Key`
 
-- if it is sensitive, it belongs in the vault
-- if it chooses how the AI runs, it belongs in `ai.json`
-- if it changes swap or preset behavior for one instance, it belongs in `trading.json`
+This is an alternative AI path.
 
-Current scope behavior:
+Most users should ignore it and use `OpenRouter` first.
 
-- keys are instance-scoped
-- AI settings are runtime-scoped
-- trading settings are active-instance-scoped
+## Settings
 
-## How To Change Things In The Current GUI
+### AI
 
-### Keys
+For the recommended setup, use:
 
-Use the `Keys` panel.
+- provider: `OpenRouter`
+- model: `GPT-5.4 Nano`
 
-The exact current secret labels are:
+### RPC
 
-- `Private RPC credential`
-- `Jupiter Ultra API Key`
-- `OpenRouter API Key`
-- `Vercel AI Gateway API Key`
+Only touch this if you already saved a `Private RPC credential` in `Keys`.
 
-When you save from that panel, the app updates the active instance vault for you.
+If you did not do that, leave the RPC setup alone.
 
-### AI settings
+### Default swap setting
 
-Use the AI settings panel.
+This is the swap setting that matters right now.
 
-Today that panel controls:
+- `Ultra` is the supported path
+- the non-Ultra path is still coming soon
 
-- provider
-- model
-- default mode
-- temperature
-- max output tokens
+## Ultra vs The Coming-Soon Manual Path
 
-The default runtime path is:
+### `Ultra`
 
-- provider: `openrouter`
-- model: `openai/gpt-5.4-nano`
+`Ultra` means Jupiter manages the swap flow for you.
 
-### Trading settings
+The simple version:
 
-Use the trading settings panel.
+- TrenchClaw sends the swap through Jupiter Ultra
+- Jupiter chooses the route
+- Jupiter handles the slippage behavior
+- Jupiter handles the landing and execution path
 
-Today it controls:
+In TrenchClaw today, `Ultra` is the supported swap path.
 
-- default swap provider
-- default swap mode
-- default amount unit
-- quick buy presets
-- custom presets
+Jupiter's current Ultra docs describe Ultra as the managed swap product and note that Jupiter handles transaction
+broadcasting, routing, and execution details through the Ultra flow. Useful references:
 
-## Recommended Baseline Setup
+- [Jupiter API setup](https://dev.jup.ag/docs/api-setup)
+- [Jupiter Ultra V3 update](https://dev.jup.ag/updates/ultra-v3)
 
-For most beta users, the clean default is:
+### The coming-soon manual path
+
+This is not the path you should think about right now.
+
+The only difference you need to understand is:
+
+- `Ultra` is the current managed Jupiter path
+- the other path is the future self-managed path
+
+Today, that other path is just a placeholder.
+
+## Recommended Default Setup
 
 1. Save `OpenRouter API Key`.
-2. Set AI provider to `OpenRouter`.
-3. Set model to `GPT-5.4 Nano`.
-4. Leave RPC on a public Solana endpoint until you need more.
-5. Add Helius only when you want Helius-backed reads or swap history.
-6. Add Jupiter Ultra only when you want swap or trigger-order workflows.
+2. In `Settings`, choose `OpenRouter`.
+3. In `Settings`, choose `GPT-5.4 Nano`.
+4. Leave private RPC blank unless you want a private RPC.
+5. If you want swaps, save `Jupiter Ultra API Key`.
+6. Keep the default swap setting on `Ultra`.
 
-## OpenRouter Setup
+## What To Ignore For Now
 
-OpenRouter is the recommended beta default because it matches the runtime default provider path.
+You do not need to touch something just because it exists.
 
-Use:
+Ignore it unless you actually need it:
 
-- docs: [OpenRouter API Authentication](https://openrouter.ai/docs/api-keys)
-- key page: [OpenRouter key settings](https://openrouter.ai/settings/keys)
+- `Vercel AI Gateway API Key`
+- private RPC setup
+- `Jupiter Ultra API Key` when you are not swapping
+- the non-Ultra swap path
 
-Setup flow:
-
-1. Create or sign into your OpenRouter account.
-2. Create an API key.
-3. In TrenchClaw, open `Keys`.
-4. Save the key into `OpenRouter API Key`.
-5. Open AI settings.
-6. Set provider to `OpenRouter`.
-7. Set model to `GPT-5.4 Nano`.
-8. Save.
-9. Click `Test AI connection`.
-
-Use `Vercel AI Gateway` only if you already have that route and want it on purpose. It is supported, but it is not the recommended first setup for this beta.
-
-## Helius Setup
-
-Helius is for the RPC side, not the default AI path.
-
-Use it when you want:
-
-- Helius-backed wallet enrichment
-- richer managed wallet contents
-- swap history through Helius enhanced transaction history
-
-Useful links:
-
-- docs: [Helius authentication guide](https://www.helius.dev/docs/api-reference/authentication)
-- dashboard: [Helius Dashboard](https://dashboard.helius.dev/)
-
-Fastest setup:
-
-1. Create a Helius account or sign in.
-2. Create an API key in the dashboard.
-3. In TrenchClaw, open `Keys`.
-4. Use `Private RPC credential`.
-5. Select `Helius` as the provider.
-6. Paste the Helius key.
-7. Save.
-
-That writes the active RPC configuration into the vault and generates the matching HTTP and WebSocket URLs for you.
-
-Optional CLI path for power users:
-
-```bash
-bun add -g helius-cli@latest
-```
-
-```bash
-helius keygen
-helius signup --json
-helius projects --json
-helius rpc <project-id> --json
-```
-
-The CLI is optional. Do not install it unless you want the shell workflow.
-
-## Jupiter Ultra Setup
-
-Jupiter Ultra is only needed for Ultra swaps and trigger-order flows.
-
-Useful links:
-
-- docs: [Jupiter developer docs](https://dev.jup.ag/)
-- API portal: [Jupiter developer portal](https://portal.jup.ag/pricing)
-
-Setup flow:
-
-1. Get an API key from the Jupiter portal.
-2. In TrenchClaw, open `Keys`.
-3. Save it into `Jupiter Ultra API Key`.
-4. Rerun `trenchclaw doctor`.
-5. Only then start testing swap or trigger-order workflows.
-
-If you are not using Ultra yet, leave this blank.
-
-## Public RPC Versus Private RPC
-
-For basic first launch, a public Solana RPC is fine.
-
-Use a private RPC when you need:
-
-- more control over reliability
-- Helius-backed enrichment
-- better support for the workflows that depend on provider-specific reads
-
-If you clear the private RPC credential, TrenchClaw falls back to a public Solana RPC selection instead of leaving the app without an RPC.
-
-## File Ownership And Permissions
-
-You should not need to hand-edit the filesystem for normal setup.
-
-The app handles:
-
-- creating the instance vault when needed
-- creating `ai.json` when needed
-- creating `trading.json` when needed
-- writing best-effort secure file permissions for those files
-
-That is why the recommended setup path is the GUI plus `trenchclaw doctor`, not manual file surgery.
-
-## When To Use `trenchclaw doctor`
-
-Run `trenchclaw doctor` when:
-
-- chat is not available
-- you saved a key and the app still looks unready
-- you changed RPC setup
-- you installed optional CLI tooling
-- you are not sure which dependency is still missing
-
-`doctor` should be your readiness check, not a last resort.
+That keeps the setup clean.

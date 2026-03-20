@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWallets";
+import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
@@ -46,7 +47,8 @@ describe("createWalletsAction", () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     delete process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;
     const walletGroup = `default-wallets-${crypto.randomUUID()}`;
-    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -69,9 +71,10 @@ describe("createWalletsAction", () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const coreGroup = `core-wallets-${crypto.randomUUID()}`;
     const snipersGroup = `snipers-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
 
     const result = await createWalletsAction.execute({} as never, {
       groups: [
@@ -113,9 +116,10 @@ describe("createWalletsAction", () => {
   test("creates wallets inside the selected wallet group directory and appends library metadata", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `core-wallets-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -172,6 +176,8 @@ describe("createWalletsAction", () => {
 
   test("rejects invalid wallet group names", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
       storage: {
@@ -190,6 +196,8 @@ describe("createWalletsAction", () => {
 
   test("rejects groups that exceed the 100 wallet limit", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
     const result = await createWalletsAction.execute({} as never, {
       groups: [
         {
@@ -210,11 +218,12 @@ describe("createWalletsAction", () => {
   test("uses existing wallet group directory when createGroupIfMissing is false", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `existing-wallets-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
     const walletGroupPath = path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID, "keypairs", walletGroup);
     await Bun.$`mkdir -p ${walletGroupPath}`.quiet();
-    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
+    createdPaths.add(instanceRoot);
 
     const result = await createWalletsAction.execute({} as never, {
       count: 1,
@@ -235,9 +244,9 @@ describe("createWalletsAction", () => {
   test("allocates the next available wallet file slots when a group already contains wallets", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `gapped-wallets-${crypto.randomUUID()}`;
-    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    const instanceRoot = path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID);
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
     const walletGroupPath = path.join(instanceRoot, "keypairs", walletGroup);
     createdPaths.add(instanceRoot);
 

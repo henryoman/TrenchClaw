@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWallets";
 import { transferAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/transfer/transfer";
+import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
@@ -60,9 +61,10 @@ describe("transferAction", () => {
 
   test("uses managed wallet signers when walletGroup and walletName are provided", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
-    const walletLibraryFile = path.join(".runtime-state", "instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
+    const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
-    createdPaths.add(path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID));
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
 
     const created = await createWalletsAction.execute({} as never, {
       groups: [

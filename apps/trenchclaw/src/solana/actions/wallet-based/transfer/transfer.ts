@@ -232,6 +232,8 @@ const waitForTransferConfirmation = async (input: {
   const requiredCommitment = input.commitment ?? "confirmed";
 
   while (Date.now() < timeoutAt) {
+    // Polling for confirmation is intentionally sequential.
+    // eslint-disable-next-line no-await-in-loop
     const response = await (input.rpc as any).getSignatureStatuses(
       [signature(input.txSignature)],
       { searchTransactionHistory: true },
@@ -252,6 +254,7 @@ const waitForTransferConfirmation = async (input: {
       return;
     }
 
+    // eslint-disable-next-line no-await-in-loop
     await Bun.sleep(TRANSFER_CONFIRMATION_POLL_INTERVAL_MS);
   }
 
@@ -458,7 +461,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
       const unsignedBase64 = getBase64EncodedWireTransaction(unsignedTransaction);
       const signedBase64 = await signer.signBase64Transaction(unsignedBase64);
 
-      const signature = await (rpc as any)
+      const submittedSignature = await (rpc as any)
         .sendTransaction(signedBase64, {
           encoding: "base64",
           skipPreflight: input.skipPreflight ?? false,
@@ -467,16 +470,16 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
         .send();
       await waitForTransferConfirmation({
         rpc,
-        txSignature: String(signature),
+        txSignature: String(submittedSignature),
       });
 
       const result: ActionResult<TransferOutput> = {
         ok: true,
         retryable: false,
-        txSignature: String(signature),
+        txSignature: String(submittedSignature),
         data: {
           ...transferOutput,
-          txSignature: String(signature),
+          txSignature: String(submittedSignature),
         },
         durationMs: Math.max(0, Math.round(performance.now() - startedAt)),
         timestamp: Date.now(),

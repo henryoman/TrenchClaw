@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { loadResolvedUserSettings } from "../../apps/trenchclaw/src/ai/llm/user-settings-loader";
 import { loadRuntimeSettings, writeInstanceTradingSettings } from "../../apps/trenchclaw/src/runtime/load";
+import { createPersistedTestInstance } from "../helpers/instance-fixtures";
 import { coreAppPath, runtimeStatePath } from "../helpers/core-paths";
 
 const MUTABLE_ENV_KEYS = [
@@ -61,28 +62,6 @@ configVersion: 1
 profile: dangerous
 `);
 
-const createPersistedInstance = async (instanceId: string): Promise<void> => {
-  const instanceDirectory = path.join(runtimeStatePath("instances"), instanceId);
-  createdDirectories.add(instanceDirectory);
-  await mkdir(instanceDirectory, { recursive: true });
-  await writeFile(
-    path.join(instanceDirectory, "instance.json"),
-    `${JSON.stringify({
-      instance: {
-        name: `instance-${instanceId}`,
-        localInstanceId: instanceId,
-        userPin: null,
-      },
-      runtime: {
-        safetyProfile: "dangerous",
-        createdAt: "2026-03-11T00:00:00.000Z",
-        updatedAt: "2026-03-11T00:00:00.000Z",
-      },
-    }, null, 2)}\n`,
-    "utf8",
-  );
-};
-
 afterEach(async () => {
   for (const key of MUTABLE_ENV_KEYS) {
     const initial = initialEnv[key];
@@ -107,7 +86,9 @@ describe("trading settings layering", () => {
   test("defaults to Ultra trading preferences from the runtime settings layer", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
-    delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "95";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
+    createdDirectories.add(instanceDirectory);
 
     const settings = await loadRuntimeSettings("dangerous");
 
@@ -123,7 +104,8 @@ describe("trading settings layering", () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "95";
-    await createPersistedInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
+    createdDirectories.add(instanceDirectory);
 
     await writeInstanceTradingSettings(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, {
       configVersion: 1,
@@ -152,7 +134,9 @@ describe("trading settings layering", () => {
     const settings = await loadRuntimeSettings("dangerous");
 
     expect(payload.activeInstanceId).toBe(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
-    expect(payload.instanceTradingSettingsPath).toContain("/.runtime-state/instances/");
+    expect(payload.instanceTradingSettingsPath).toBe(
+      path.join(runtimeStatePath("instances"), process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, "settings", "trading.json"),
+    );
     expect((payload.resolvedSettings as { trading?: { preferences?: { defaultSwapProvider?: string } } }).trading?.preferences?.defaultSwapProvider).toBe(
       "standard",
     );
@@ -166,7 +150,8 @@ describe("trading settings layering", () => {
 
   test("writes canonical instance trading settings under protected instance state", async () => {
     const instanceId = "96";
-    await createPersistedInstance(instanceId);
+    const instanceDirectory = await createPersistedTestInstance(instanceId);
+    createdDirectories.add(instanceDirectory);
 
     const filePath = await writeInstanceTradingSettings(instanceId, {
       configVersion: 1,
@@ -205,6 +190,9 @@ describe("trading settings layering", () => {
   test("loads compatibility settings only from the canonical runtime settings file", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "97";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
+    createdDirectories.add(instanceDirectory);
     process.env.TRENCHCLAW_RUNTIME_SETTINGS_FILE = await writeJson({
       rpc: {
         primaryRpc: "helius",
@@ -229,6 +217,9 @@ describe("trading settings layering", () => {
 
   test("falls back to rpc.default when the selected provider has no configured endpoint", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "98";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
+    createdDirectories.add(instanceDirectory);
     process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
       rpc: {
         default: {

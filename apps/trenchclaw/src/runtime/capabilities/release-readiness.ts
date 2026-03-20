@@ -162,7 +162,13 @@ export const getToolReleaseReadinessDescriptor = (name: string): RuntimeReleaseR
 };
 
 export const getRuntimeComingSoonFeatures = (): RuntimeComingSoonFeatureEntry[] =>
-  comingSoonFeatures.map((entry) => ({ ...entry, aliases: [...entry.aliases] }));
+  comingSoonFeatures.map((entry) => ({
+    id: entry.id,
+    label: entry.label,
+    aliases: [...entry.aliases],
+    status: entry.status,
+    note: entry.note,
+  }));
 
 export const renderRuntimeReleaseReadinessSection = (snapshot: RuntimeCapabilitySnapshot): string =>
   [

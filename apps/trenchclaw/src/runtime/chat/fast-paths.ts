@@ -93,7 +93,8 @@ export const formatWalletContentsFastPathText = (data: unknown): string | null =
   }
 
   const header = `Here are the contents for ${wallets.length} managed wallet${wallets.length === 1 ? "" : "s"}:`;
-  const lines = wallets.flatMap((wallet) => {
+  const lines: string[] = [];
+  for (const wallet of wallets) {
     const tokenSummary = wallet.tokenBalances.length === 0
       ? ["  Tokens: none"]
       : wallet.tokenBalances.slice(0, 6).map((token) => {
@@ -108,12 +109,10 @@ export const formatWalletContentsFastPathText = (data: unknown): string | null =
       ? [`  Collectibles: ${wallet.collectibleCount}`]
       : [];
 
-    return [
-      `- ${wallet.walletName}: ${wallet.balanceSol} SOL (${wallet.address})`,
-      ...collectibleSummary,
-      ...tokenSummary,
-    ];
-  });
+    lines.push(`- ${wallet.walletName}: ${wallet.balanceSol} SOL (${wallet.address})`);
+    lines.push(...collectibleSummary);
+    lines.push(...tokenSummary);
+  }
 
   return [header, ...lines].join("\n");
 };
