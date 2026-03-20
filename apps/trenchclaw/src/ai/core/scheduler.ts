@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { Queue, Worker } from "bunqueue/client";
+import { Queue, Worker, shutdownManager } from "bunqueue/client";
 
 import type {
   ActionContext,
@@ -97,6 +97,7 @@ export class Scheduler {
     }
     this.queuedCycles.clear();
     await Promise.all([closeBunqueueResource(this.worker), closeBunqueueResource(this.queue)]);
+    shutdownManager();
     this.worker = null;
     this.queue = null;
   }
@@ -285,6 +286,9 @@ export class Scheduler {
 function configureEmbeddedBunqueueDataPath(dataPath: string | undefined): void {
   const resolvedPath = resolveQueueDataPath(dataPath);
   mkdirSync(path.dirname(resolvedPath), { recursive: true });
+  if (process.env[BUNQUEUE_DATA_PATH_ENV] && process.env[BUNQUEUE_DATA_PATH_ENV] !== resolvedPath) {
+    shutdownManager();
+  }
   process.env[BUNQUEUE_DATA_PATH_ENV] = resolvedPath;
 }
 

@@ -11,10 +11,11 @@
   } = $props();
 
   const sections = $derived(splitDocsBySection(docs));
+  const showReference = $derived(currentSlug === 'architecture' && sections.reference.length > 0);
 </script>
 
 <div class="docs-sidebar">
-  <p class="docs-sidebar-label">Beta guides</p>
+  <p class="docs-sidebar-label">Setup</p>
   <nav class="mt-2">
     {#each sections.primary as doc (doc.slug)}
       <a
@@ -27,7 +28,7 @@
     {/each}
   </nav>
 
-  {#if sections.reference.length > 0}
+  {#if showReference}
     <p class="docs-sidebar-label mt-5">Reference</p>
     <nav class="mt-2">
       {#each sections.reference as doc (doc.slug)}

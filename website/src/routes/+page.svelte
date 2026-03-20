@@ -26,9 +26,6 @@
 
       <div class="flex items-center gap-6 text-sm">
         <a href={resolve('/docs', {})} class="text-muted transition-colors hover:text-foreground">Docs</a>
-        <a href={resolve('/docs/[slug]', { slug: 'architecture' })} class="text-muted transition-colors hover:text-foreground">
-          Architecture
-        </a>
         <div class="flex items-center gap-3">
           <a
             href={githubUrl}
@@ -125,7 +122,7 @@
                 <h2 class="text-sm font-semibold">{target.label}</h2>
                 <span class="font-mono text-[11px] uppercase tracking-[0.16em] text-muted">copy + run</span>
               </div>
-              <code class="block overflow-x-auto whitespace-pre-wrap break-all font-mono text-[13px] leading-6 text-foreground">
+              <code class="block overflow-hidden whitespace-pre-wrap break-all font-mono text-[13px] leading-6 text-foreground">
                 {target.command}
               </code>
             </div>

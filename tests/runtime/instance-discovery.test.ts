@@ -35,7 +35,9 @@ const createPersistedInstance = async (
   input: { localInstanceId: string; name: string; userPin?: string | null },
 ): Promise<void> => {
   const instanceRoot = path.join(runtimeRoot, "instances", input.localInstanceId);
-  await mkdir(instanceRoot, { recursive: true });
+  await mkdir(path.join(instanceRoot, "settings"), { recursive: true });
+  await mkdir(path.join(instanceRoot, "secrets"), { recursive: true });
+  await mkdir(path.join(instanceRoot, "keypairs"), { recursive: true });
   await writeFile(
     path.join(instanceRoot, "instance.json"),
     `${JSON.stringify({

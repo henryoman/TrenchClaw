@@ -4,6 +4,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { createWalletGroupDirectoryAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWalletGroupDirectory";
+import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const createdPaths = new Set<string>();
@@ -25,6 +26,8 @@ afterEach(async () => {
 describe("createWalletGroupDirectoryAction", () => {
   test("creates group directories under protected keypairs root", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
     const walletGroup = `uploaded-wallets-${crypto.randomUUID()}`;
     const expectedPath = path.join(runtimeStatePath("instances"), TEST_INSTANCE_ID, "keypairs", walletGroup);
 
@@ -44,6 +47,8 @@ describe("createWalletGroupDirectoryAction", () => {
 
   test("rejects invalid group names", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
+    const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
+    createdPaths.add(instanceRoot);
     const result = await createWalletGroupDirectoryAction.execute({} as never, {
       walletGroup: "../escape",
     });

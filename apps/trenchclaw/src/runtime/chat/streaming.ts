@@ -193,6 +193,8 @@ export const pipeUIMessageStream = async (
   const reader = stream.getReader();
   try {
     while (true) {
+      // Streaming readers must be consumed sequentially.
+      // eslint-disable-next-line no-await-in-loop
       const { done, value } = await reader.read();
       if (done) return;
       observeChunk?.(value);

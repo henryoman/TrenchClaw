@@ -784,6 +784,8 @@ const loadWalletContentsBatchFromHeliusDas = async (input: {
       },
     }));
 
+    // DAS pagination is stateful across pages, so each batch must complete before the next one is requested.
+    // eslint-disable-next-line no-await-in-loop
     const rpcResults = await withRpcRetries(() => postRpcBatch(input.rpcUrl, requests));
 
     for (const { entry, page } of pageBatch) {

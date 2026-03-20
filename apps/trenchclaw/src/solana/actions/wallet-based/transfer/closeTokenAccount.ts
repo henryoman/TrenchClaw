@@ -168,6 +168,8 @@ const waitForCloseConfirmation = async (input: {
   const requiredCommitment = input.commitment ?? "confirmed";
 
   while (Date.now() < timeoutAt) {
+    // Polling for confirmation is intentionally sequential.
+    // eslint-disable-next-line no-await-in-loop
     const response = await (input.rpc as any).getSignatureStatuses(
       [signature(input.txSignature)],
       { searchTransactionHistory: true },
@@ -188,6 +190,7 @@ const waitForCloseConfirmation = async (input: {
       return;
     }
 
+    // eslint-disable-next-line no-await-in-loop
     await Bun.sleep(CLOSE_TOKEN_ACCOUNT_POLL_INTERVAL_MS);
   }
 

@@ -150,6 +150,39 @@ const getRowSchemaShape = (table: TableSpec): Record<string, z.ZodType> => {
   return shape;
 };
 
+const PRIMARY_KEY_CONSTRAINT_PATTERN = /^PRIMARY KEY\s*\((.+)\)$/iu;
+
+const parsePrimaryKeyConstraintColumns = (constraint: string): string[] => {
+  const match = PRIMARY_KEY_CONSTRAINT_PATTERN.exec(constraint.trim());
+  if (!match) {
+    return [];
+  }
+
+  const rawColumns = match[1] ?? "";
+  return rawColumns
+    .split(",")
+    .map((columnName) => columnName.trim().replace(/^"|"$/g, ""))
+    .filter(Boolean);
+};
+
+const getExpectedPrimaryKeyColumns = (table: TableSpec): Set<string> => {
+  const primaryKeyColumns = new Set<string>();
+
+  for (const column of table.columns) {
+    if (column.primaryKey) {
+      primaryKeyColumns.add(column.name);
+    }
+  }
+
+  for (const constraint of table.tableConstraints ?? []) {
+    for (const columnName of parsePrimaryKeyConstraintColumns(constraint)) {
+      primaryKeyColumns.add(columnName);
+    }
+  }
+
+  return primaryKeyColumns;
+};
+
 const getSqliteTableContractViolations = (tables: readonly TableSpec[]): string[] => {
   const violations: string[] = [];
 
@@ -157,6 +190,7 @@ const getSqliteTableContractViolations = (tables: readonly TableSpec[]): string[
     const shape = getRowSchemaShape(table);
     const schemaColumnNames = Object.keys(shape).toSorted();
     const declaredColumnNames = table.columns.map((column) => column.name).toSorted();
+    const expectedPrimaryKeyColumns = getExpectedPrimaryKeyColumns(table);
 
     for (const columnName of schemaColumnNames) {
       if (!declaredColumnNames.includes(columnName)) {
@@ -190,7 +224,7 @@ const getSqliteTableContractViolations = (tables: readonly TableSpec[]): string[
 
       const { nullable, optional } = unwrapSchema(fieldSchema);
       const expectedNotNull = !nullable && !optional;
-      const declaredNotNull = column.notNull === true || column.primaryKey === true;
+      const declaredNotNull = column.notNull === true || expectedPrimaryKeyColumns.has(column.name);
       if (expectedNotNull !== declaredNotNull) {
         violations.push(
           `table ${table.name}.${column.name} row schema ${
@@ -498,6 +532,7 @@ export const inspectSqliteSchema = (db: Database): SqliteSchemaInspectionReport 
 
     const actualColumns = getExistingColumnInfo(db, table.name);
     const expectedColumnNames = new Set(table.columns.map((column) => column.name));
+    const expectedPrimaryKeyColumns = getExpectedPrimaryKeyColumns(table);
 
     for (const column of table.columns) {
       const actual = actualColumns.get(column.name);
@@ -514,15 +549,16 @@ export const inspectSqliteSchema = (db: Database): SqliteSchemaInspectionReport 
         );
       }
 
-      const expectedNotNull = column.notNull === true || column.primaryKey === true;
-      if (Boolean(actual.notnull) !== expectedNotNull) {
+      const expectedNotNull = column.notNull === true || expectedPrimaryKeyColumns.has(column.name);
+      const actualEffectivelyNotNull = Boolean(actual.notnull) || actual.pk > 0;
+      if (actualEffectivelyNotNull !== expectedNotNull) {
         report.mismatchedColumns.push(`${table.name}.${column.name}`);
         report.warnings.push(
-          `column ${table.name}.${column.name} has notnull=${Boolean(actual.notnull)} but expected ${expectedNotNull}`,
+          `column ${table.name}.${column.name} has effective_notnull=${actualEffectivelyNotNull} but expected ${expectedNotNull}`,
         );
       }
 
-      const expectedPrimaryKey = column.primaryKey === true;
+      const expectedPrimaryKey = expectedPrimaryKeyColumns.has(column.name);
       if ((actual.pk > 0) !== expectedPrimaryKey) {
         report.mismatchedColumns.push(`${table.name}.${column.name}`);
         report.warnings.push(

@@ -25,6 +25,8 @@
     "launch:release": "bun run app:build && bun run app:start",
     "dev": "bun run scripts/dev-bootstrap.ts",
     "dev:bootstrap": "bun run scripts/dev-bootstrap.ts",
+    "dev:runtime:init": "bun run scripts/dev-runtime-init.ts",
+    "dev:instance:clone": "bun run scripts/dev-instance-clone.ts",
     "dev:gui-only": "bun run --bun --cwd apps/frontends/gui dev:standalone",
     "gui:dev": "bun run --bun --cwd apps/frontends/gui dev",
     "website:dev": "bun run --bun --cwd website dev",

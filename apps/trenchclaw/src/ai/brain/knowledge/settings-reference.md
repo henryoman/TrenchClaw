@@ -4,6 +4,8 @@
 
 This file explains where runtime configuration comes from right now.
 
+For local development, the active runtime root may be an external directory selected by `TRENCHCLAW_RUNTIME_STATE_ROOT`. The same per-instance paths still apply.
+
 ## Main Settings Files
 
 - `.runtime-state/instances/<id>/settings/ai.json`

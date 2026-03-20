@@ -1,7 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
+import { rm } from "node:fs/promises";
 
 import { getRuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
+import { createPersistedTestInstance } from "../helpers/instance-fixtures";
+import { runtimeStatePath } from "../helpers/core-paths";
 
 const DEXSCREENER_MODEL_TOOL_NAMES = [
   "getDexscreenerLatestAds",
@@ -23,9 +26,11 @@ const TEST_ENV_KEYS = [
   "TRENCHCLAW_VAULT_FILE",
   "TRENCHCLAW_VAULT_TEMPLATE_FILE",
   "TRENCHCLAW_PROFILE",
+  "TRENCHCLAW_ACTIVE_INSTANCE_ID",
 ] as const;
 const initialEnv = Object.fromEntries(TEST_ENV_KEYS.map((key) => [key, process.env[key]]));
 const createdFiles: string[] = [];
+const createdPaths = new Set<string>();
 const TEST_SAFE_SETTINGS_YAML = `
 configVersion: 1
 profile: safe
@@ -172,9 +177,11 @@ beforeEach(async () => {
   delete process.env.TRENCHCLAW_VAULT_FILE;
   delete process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE;
   process.env.TRENCHCLAW_PROFILE = "safe";
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+  createdPaths.add(await createPersistedTestInstance("01"));
 });
 
-afterEach(() => {
+afterEach(async () => {
   for (const key of TEST_ENV_KEYS) {
     const initial = initialEnv[key];
     if (initial === undefined) {
@@ -185,8 +192,14 @@ afterEach(() => {
   }
 
   for (const filePath of createdFiles.splice(0)) {
-    void Bun.file(filePath).delete().catch(() => {});
+    await Bun.file(filePath).delete().catch(() => {});
   }
+
+  for (const targetPath of createdPaths) {
+    await rm(targetPath, { recursive: true, force: true });
+  }
+  createdPaths.clear();
+  await Bun.file(runtimeStatePath("instances", "active-instance.json")).delete().catch(() => {});
 });
 
 describe("runtime capability snapshot", () => {

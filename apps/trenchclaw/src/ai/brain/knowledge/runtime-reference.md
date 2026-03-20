@@ -36,6 +36,13 @@ The repo tracks the intended layout under `.runtime/`.
 
 The runtime writes mutable state to `.runtime-state/instances/` and generated prompt-support artifacts to `.trenchclaw-generated/`.
 
+For local development, `bun run dev` defaults those roots to persistent external directories:
+
+- `~/trenchclaw-dev-runtime`
+- `~/trenchclaw-dev-generated`
+
+Those external roots are the preferred dev/test manual workflow because they preserve real per-instance behavior without putting personal state in the repo.
+
 Important directories:
 
 - `.runtime-state/instances/active-instance.json`
@@ -78,6 +85,8 @@ If you need runtime truth:
 2. trust the injected live runtime context section for the current clock and shared backend SOL price snapshot
 3. trust the injected release-readiness section over bundled docs, knowledge files, or source references
 4. trust injected resolved settings
-5. use workspace tools only inside `.runtime-state/instances/<active-id>/workspace/`
-6. do not treat core repo source files as part of the runtime workspace tool surface
-7. if a feature is not listed as shipped or limited beta, describe it as coming soon instead of guessing
+5. for local dev, assume the mutable runtime root may be an external directory selected by `TRENCHCLAW_RUNTIME_STATE_ROOT`
+6. use workspace tools only inside `.runtime-state/instances/<active-id>/workspace/` or the equivalent external runtime root
+7. do not treat core repo source files as part of the runtime workspace tool surface
+8. do not treat `.runtime/` as mutable state
+9. if a feature is not listed as shipped or limited beta, describe it as coming soon instead of guessing

@@ -122,10 +122,7 @@ export const devnetAirdropAction: Action<DevnetAirdropInput, DevnetAirdropOutput
           if (typeof result !== "string" || result.length === 0) {
             throw new Error(`Airdrop RPC response is missing a signature for ${recipient.address}`);
           }
-          return {
-            ...recipient,
-            signature: result,
-          };
+          return Object.assign({}, recipient, { signature: result });
         }),
       );
 

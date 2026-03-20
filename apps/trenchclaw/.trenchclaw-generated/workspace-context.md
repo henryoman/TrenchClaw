@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-19T20:16:35.062Z
+Generated at: 2026-03-19T23:52:29.654Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -230,4 +230,4 @@ CREATE INDEX "idx_ohlcv_lookup" ON "ohlcv_bars"("instrument_id", "source", "inte
 No live SQLite database found.
 
 Set `TRENCHCLAW_CONTEXT_DB_PATH` to a DB path or create one at:
-- `/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/.runtime-state/instances/01/data/runtime.db`
+

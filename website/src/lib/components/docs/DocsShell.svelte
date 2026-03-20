@@ -25,9 +25,10 @@
 
   let theme = $state<DocsTheme>('dark');
   const hasToc = $derived(toc.length > 0);
+  const sectionedDocs = $derived(splitDocsBySection(docs));
   const navDocs = $derived([
-    ...splitDocsBySection(docs).primary,
-    ...splitDocsBySection(docs).reference,
+    ...sectionedDocs.primary,
+    ...(currentSlug === 'architecture' ? sectionedDocs.reference : []),
   ]);
   const layoutClass = $derived(
     hasToc

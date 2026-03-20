@@ -3,6 +3,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { executeAction, listRegisteredActions } from "../../../apps/trenchclaw/src/solana/actions/execute";
+import { createPersistedTestInstance } from "../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../helpers/core-paths";
 
 const previousFetch = globalThis.fetch;
@@ -98,6 +99,9 @@ describe("manual action runner", () => {
   test("lists registered runtime actions without starting chat", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     const actionNames = await listRegisteredActions();
 
@@ -110,11 +114,7 @@ describe("manual action runner", () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
-
-    const instanceDirectory = path.join(
-      runtimeStatePath("instances"),
-      process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID,
-    );
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
     createdDirectories.add(instanceDirectory);
 
     const report = await executeAction({
@@ -148,6 +148,9 @@ describe("manual action runner", () => {
   test("executes a model-style Dexscreener tool envelope through the runtime dispatcher", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     globalThis.fetch = (async (input) => {
       const requestUrl = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -210,6 +213,9 @@ describe("manual action runner", () => {
   test("blocks model-style transfer tool envelopes until confirmation is supplied", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     const report = await executeAction({
       input: {
@@ -230,6 +236,9 @@ describe("manual action runner", () => {
   test("adds confirmation to model-style transfer envelopes when requested", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     const report = await executeAction({
       confirm: true,
@@ -256,6 +265,9 @@ describe("manual action runner", () => {
   test("accepts runtime confirmation tokens on model-style transfer envelopes", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     const report = await executeAction({
       input: {
@@ -277,6 +289,9 @@ describe("manual action runner", () => {
   test("blocks model-style close token account envelopes until confirmation is supplied", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     const report = await executeAction({
       input: {
@@ -298,6 +313,9 @@ describe("manual action runner", () => {
   test("adds confirmation to model-style close token account envelopes when requested", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     const report = await executeAction({
       confirm: true,
@@ -326,6 +344,9 @@ describe("manual action runner", () => {
   test("accepts runtime confirmation tokens on model-style close token account envelopes", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "96";
+    const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID, { markActive: true });
+    createdDirectories.add(instanceDirectory);
 
     const report = await executeAction({
       input: {

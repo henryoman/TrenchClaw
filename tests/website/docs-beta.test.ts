@@ -20,7 +20,6 @@ describe('beta docs structure', () => {
     expect(primaryDocSlugs).toEqual([
       'getting-started',
       'keys-and-settings',
-      'beta-capabilities',
     ]);
     expect(referenceDocSlugs).toEqual(['architecture']);
   });
@@ -40,7 +39,6 @@ describe('beta docs routing', () => {
     expect(getDocRouteEntrySlugs()).toEqual([
       'getting-started',
       'keys-and-settings',
-      'beta-capabilities',
       'architecture',
     ]);
     expect(routeSource).toContain('throw redirect(307, resolved.location);');
@@ -49,10 +47,11 @@ describe('beta docs routing', () => {
 });
 
 describe('beta docs presentation', () => {
-  test('docs nav separates beta guides from reference', async () => {
+  test('docs nav keeps setup docs primary and hides reference by default', async () => {
     const navSource = await readFile(path.join(websiteRoot, 'src', 'lib', 'components', 'docs', 'DocsNav.svelte'), 'utf8');
 
-    expect(navSource).toContain('Beta guides');
+    expect(navSource).toContain('Setup');
+    expect(navSource).toContain("currentSlug === 'architecture'");
     expect(navSource).toContain('Reference');
   });
 

@@ -2,6 +2,7 @@
 
 import path from "node:path";
 import { createServer } from "node:net";
+import { initializeDeveloperRuntime, resolveDeveloperBootstrapRoots } from "./lib/dev-runtime";
 
 const REPO_ROOT = process.cwd();
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
@@ -21,6 +22,49 @@ interface PortProbeResult {
   available: boolean;
   errorCode?: string;
 }
+
+interface CliArgs {
+  runtimeRoot?: string;
+  generatedRoot?: string;
+}
+
+const parseArgs = (argv: string[]): CliArgs => {
+  const args: CliArgs = {};
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    switch (arg) {
+      case "--runtime-root":
+        args.runtimeRoot = argv[index + 1];
+        index += 1;
+        break;
+      case "--generated-root":
+        args.generatedRoot = argv[index + 1];
+        index += 1;
+        break;
+      case "--help":
+      case "-h":
+        console.log(
+          [
+            "Usage: bun run scripts/dev-bootstrap.ts [options]",
+            "",
+            "Options:",
+            "  --runtime-root <path>     External runtime root for local dev",
+            "  --generated-root <path>   External generated root for local dev",
+          ].join("\n"),
+        );
+        process.exit(0);
+        break;
+      default:
+        if (arg?.startsWith("--")) {
+          throw new Error(`Unknown argument: ${arg}`);
+        }
+        break;
+    }
+  }
+
+  return args;
+};
 
 const listPortOwnerPids = async (port: number): Promise<number[]> => {
   const proc = Bun.spawn(["lsof", "-ti", `tcp:${port}`], {
@@ -150,6 +194,7 @@ const forceStop = (proc: Bun.Subprocess): void => {
 };
 
 const run = async (): Promise<void> => {
+  const cliArgs = parseArgs(process.argv.slice(2));
   const runtimeStrictPort = process.env.RUNTIME_STRICT_PORT === "1";
   const guiStrictPort = process.env.GUI_STRICT_PORT === "1";
   const runtimePort = ensureValidPort(DEFAULT_RUNTIME_PORT, "runtime");
@@ -179,6 +224,18 @@ const run = async (): Promise<void> => {
   console.log(`[bootstrap] gui target: ${guiUrl}`);
 
   const baseEnv = { ...process.env };
+  const { runtimeRoot: runtimeStateRoot, generatedRoot } = resolveDeveloperBootstrapRoots({
+    runtimeRoot: cliArgs.runtimeRoot,
+    generatedRoot: cliArgs.generatedRoot,
+    env: baseEnv,
+  });
+  await initializeDeveloperRuntime({
+    runtimeRoot: runtimeStateRoot,
+    generatedRoot,
+  });
+
+  console.log(`[bootstrap] runtime state root: ${path.resolve(runtimeStateRoot)}`);
+  console.log(`[bootstrap] generated root: ${path.resolve(generatedRoot)}`);
 
   const runtimeProc = Bun.spawn(["bun", "run", "--cwd", "apps/trenchclaw", "runtime:start"], {
     cwd: REPO_ROOT,
@@ -191,6 +248,8 @@ const run = async (): Promise<void> => {
       RUNTIME_PORT: String(runtimePort),
       RUNTIME_REQUIRE_SERVER: "1",
       TRENCHCLAW_GUI_URL: guiUrl,
+      TRENCHCLAW_RUNTIME_STATE_ROOT: path.resolve(runtimeStateRoot),
+      TRENCHCLAW_GENERATED_ROOT: path.resolve(generatedRoot),
     },
   });
 

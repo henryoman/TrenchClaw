@@ -12,22 +12,22 @@
       "name": "@trenchclaw/web-gui",
       "version": "0.0.1",
       "dependencies": {
-        "@ai-sdk/svelte": "latest",
-        "@openrouter/ai-sdk-provider": "latest",
+        "@ai-sdk/svelte": "^4.0.116",
+        "@openrouter/ai-sdk-provider": "^2.3.3",
         "@trenchclaw/types": "workspace:*",
-        "ai": "latest",
-        "marked": "latest",
-        "zod": "latest",
+        "ai": "^6.0.116",
+        "marked": "^17.0.4",
+        "zod": "^4.3.6",
       },
       "devDependencies": {
-        "@sveltejs/vite-plugin-svelte": "latest",
-        "@types/json-schema": "latest",
-        "@typescript-eslint/types": "latest",
-        "oxlint": "latest",
-        "svelte": "latest",
-        "svelte-check": "latest",
-        "typescript": "latest",
-        "vite": "latest",
+        "@sveltejs/vite-plugin-svelte": "^7.0.0",
+        "@types/json-schema": "^7.0.15",
+        "@typescript-eslint/types": "^8.57.1",
+        "oxlint": "^1.56.0",
+        "svelte": "^5.54.0",
+        "svelte-check": "^4.4.5",
+        "typescript": "^5.9.3",
+        "vite": "^8.0.0",
       },
     },
     "apps/runner": {
@@ -72,6 +72,7 @@
         "@sveltejs/adapter-static": "^3.0.10",
         "@sveltejs/kit": "^2.55.0",
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
+        "highlight.js": "^11.11.1",
         "marked": "^17.0.4",
         "svelte": "^5.54.0",
       },
@@ -778,6 +779,8 @@
     "hasown": ["hasown@2.0.2", "", { "dependencies": { "function-bind": "^1.1.2" } }, "sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ=="],
 
     "helius-sdk": ["helius-sdk@2.2.2", "", { "dependencies": { "@solana-program/compute-budget": "^0.11.0", "@solana-program/stake": "^0.5.0", "@solana-program/system": "^0.10.0", "@solana-program/token": "^0.9.0", "@solana/kit": "^5.0.0", "bs58": "^6.0.0", "tslib": "^2.8.1" } }, "sha512-T7H9fJOYAB9HUZomDQ47EnKYPE//SgweZz4PbWF6q0Y1/jA0J+7xY15kFpZLJHyAGd4AXXxDCSISRdABmpCjfQ=="],
+
+    "highlight.js": ["highlight.js@11.11.1", "", {}, "sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w=="],
 
     "hono": ["hono@4.12.5", "", {}, "sha512-3qq+FUBtlTHhtYxbxheZgY8NIFnkkC/MR8u5TTsr7YZ3wixryQ3cCwn3iZbg8p8B88iDBBAYSfZDS75t8MN7Vg=="],
 
