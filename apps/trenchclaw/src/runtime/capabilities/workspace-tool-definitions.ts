@@ -3,7 +3,7 @@ import {
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
 } from "../workspace-bash";
-import type { WorkspaceToolCapabilityDefinition } from "./types";
+import type { RuntimeReleaseReadinessDescriptor, WorkspaceToolCapabilityDefinition } from "./types";
 
 const hasReadableWorkspaceSurface = ({
   filesystemPolicy,
@@ -20,7 +20,10 @@ const hasWritableWorkspaceSurface = ({
   settings.agent.dangerously.allowFilesystemWrites
   && (filesystemPolicy.defaultPermission === "write" || filesystemPolicy.writePaths.length > 0);
 
-export const workspaceToolsEnabledByRuntimeSettings = hasReadableWorkspaceSurface;
+const SHIPPED_NOW = (note: string): RuntimeReleaseReadinessDescriptor => ({
+  status: "shipped-now",
+  note,
+});
 
 export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilityDefinition[] = [
   {
@@ -34,6 +37,7 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
     exampleInput: {
       path: "src/runtime/chat.ts",
     },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
     enabledBySettings: hasReadableWorkspaceSurface,
     chatExposed: true,
   },
@@ -49,6 +53,7 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
       path: "notes/runtime.md",
       content: "# runtime notes",
     },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
     enabledBySettings: hasWritableWorkspaceSurface,
     chatExposed: true,
   },
@@ -63,6 +68,7 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
     exampleInput: {
       command: "find . -maxdepth 2 -type f",
     },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
     enabledBySettings: hasReadableWorkspaceSurface,
     chatExposed: true,
   },

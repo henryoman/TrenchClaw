@@ -53,6 +53,9 @@ describe("renderRuntimeWalletPromptContext", () => {
     expect(prompt).toContain("Each wallet group can create at most 100 wallets per call.");
     expect(prompt).toContain("Use `renameWallets` to update wallet organization labels only.");
     expect(prompt).toContain("There is no wallet delete tool in chat.");
+    expect(prompt).toContain("prefer passing `wallet` as the wallet name string");
+    expect(prompt).toContain("prefer passing `wallets` as an array of wallet name strings");
+    expect(prompt).toContain("Runtime action context resolves RPC and rate limiting automatically.");
     expect(prompt).not.toContain("#### createWallets JSON Shape");
     expect(prompt).not.toContain("#### renameWallets JSON Shape");
     expect(prompt).not.toContain('"groups": [');

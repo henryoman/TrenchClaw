@@ -1,6 +1,9 @@
 import { isToolUIPart, type UIMessage } from "ai";
 import { createChatMessageId, createConversationId } from "../../ai/runtime/types/ids";
+import { isRecord } from "../object-utils";
 import { WALLET_MUTATION_INTENT_TOKENS } from "./constants";
+
+export { isRecord } from "../object-utils";
 
 export const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
@@ -21,9 +24,6 @@ export const hasWalletMutationIntent = (userMessage: string): boolean => {
   const normalized = normalizeIntentText(userMessage);
   return hasAnyIntentPhrase(normalized, WALLET_MUTATION_INTENT_TOKENS);
 };
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
 
 export const isToolLikePart = (value: unknown): value is Record<string, unknown> & { type: string } =>
   isRecord(value) && typeof value.type === "string" && value.type.startsWith("tool-");

@@ -1,4 +1,5 @@
 import type { RuntimeSettings } from "../load";
+import { isRecord } from "../object-utils";
 
 type RuntimeLogLevel = RuntimeSettings["observability"]["logging"]["level"];
 type RuntimeLogStyle = RuntimeSettings["observability"]["logging"]["style"];
@@ -9,9 +10,6 @@ const LOG_LEVEL_WEIGHT: Record<RuntimeLogLevel, number> = {
   warn: 30,
   error: 40,
 };
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object" && !Array.isArray(value);
 
 const stringifyJsonSafe = (value: unknown, space?: number): string => JSON.stringify(
   value,

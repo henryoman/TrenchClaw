@@ -20,6 +20,7 @@ import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
 import type { ActionContext } from "../../../../ai/runtime/types/context";
 import { createRateLimitedSolanaRpc } from "../../../lib/rpc/client";
 import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
+import { managedWalletSelectorSchema, resolveManagedWalletSelection } from "../../../lib/wallet/wallet-selector";
 import { loadManagedWalletSigner } from "../../../lib/wallet/wallet-signer";
 import { walletGroupNameSchema, walletNameSchema } from "../../../lib/wallet/wallet-types";
 
@@ -40,6 +41,7 @@ type TransferAmountResolution = {
 const transferAmountSchema = z.union([z.number().positive(), z.string().trim().min(1)]);
 
 const transferInputSchema = z.object({
+  wallet: managedWalletSelectorSchema.optional(),
   destination: z.string().min(1),
   amount: transferAmountSchema,
   walletGroup: walletGroupNameSchema.optional(),
@@ -97,16 +99,17 @@ const resolveTransferSigner = async (
     return ctx.ultraSigner;
   }
 
-  if (input.walletGroup && input.walletName) {
+  const managedWallet = await resolveManagedWalletSelection(input);
+  if (managedWallet) {
     return loadManagedWalletSigner({
-      walletGroup: input.walletGroup,
-      walletName: input.walletName,
+      walletGroup: managedWallet.walletGroup,
+      walletName: managedWallet.walletName,
       rpcUrl: ctx.rpcUrl,
     });
   }
 
   throw new Error(
-    "Missing signer in action context. Provide ctx.ultraSigner or input.walletGroup and input.walletName.",
+    "Missing signer in action context. Provide ctx.ultraSigner or a managed wallet selector in input.wallet or input.walletGroup/input.walletName.",
   );
 };
 

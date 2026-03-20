@@ -335,6 +335,31 @@ export interface GuiUpdateTradingSettingsResponse {
   settings: GuiTradingSettingsView;
 }
 
+export interface GuiWakeupSettingsView {
+  intervalMinutes: number;
+  prompt: string;
+}
+
+export interface GuiWakeupSettingsResponse {
+  instanceId: string | null;
+  filePath: string | null;
+  exists: boolean;
+  defaultPrompt: string;
+  settings: GuiWakeupSettingsView;
+}
+
+export interface GuiUpdateWakeupSettingsRequest {
+  settings: GuiWakeupSettingsView;
+}
+
+export interface GuiUpdateWakeupSettingsResponse {
+  instanceId: string;
+  filePath: string;
+  savedAt: string;
+  defaultPrompt: string;
+  settings: GuiWakeupSettingsView;
+}
+
 export type GuiSecretCategory = "ai" | "blockchain";
 
 export interface GuiSecretOptionView {

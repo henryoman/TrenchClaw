@@ -56,10 +56,10 @@ describe("transferAction", () => {
       return;
     }
     expect(result.code).toBe("TRANSFER_FAILED");
-    expect(result.error).toContain("Provide ctx.ultraSigner or input.walletGroup and input.walletName");
+    expect(result.error).toContain("Provide ctx.ultraSigner or a managed wallet selector");
   });
 
-  test("uses managed wallet signers when walletGroup and walletName are provided", async () => {
+  test("uses managed wallet signers when wallet is provided as a simple name", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
@@ -80,8 +80,7 @@ describe("transferAction", () => {
     }
 
     const result = await transferAction.execute({} as never, {
-      walletGroup: "core-wallets",
-      walletName: "wallet_000",
+      wallet: "wallet_000",
       destination: created.data?.wallets[0]?.address ?? "target",
       amount: "0.001",
     });

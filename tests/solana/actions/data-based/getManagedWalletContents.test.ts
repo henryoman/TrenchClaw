@@ -153,6 +153,65 @@ describe("getManagedWalletContentsAction", () => {
     expect(payload.tokenTotals).toEqual([]);
   });
 
+  test("selects specific wallets by wallet name selectors", async () => {
+    const instanceId = "91";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      [
+        JSON.stringify({
+          walletId: "core-wallets.wallet_000",
+          walletGroup: "core-wallets",
+          walletName: "wallet_000",
+          address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+        }),
+        JSON.stringify({
+          walletId: "core-wallets.wallet_001",
+          walletGroup: "core-wallets",
+          walletName: "wallet_001",
+          address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.label.json"),
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    const action = createGetManagedWalletContentsAction({
+      loadWalletContents: async ({ address }) => ({
+        lamports: address === "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU" ? 1_000_000_000n : 2_000_000_000n,
+        tokenBalances: [],
+      }),
+    });
+
+    const result = await action.execute(createActionContext({ actor: "agent" }), {
+      wallets: ["wallet_001"],
+      includeZeroBalances: false,
+    });
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      walletCount: number;
+      wallets: Array<{ walletName: string; balanceLamports: string }>;
+      totalBalanceLamports: string;
+    };
+    expect(payload.walletCount).toBe(1);
+    expect(payload.wallets).toEqual([
+      expect.objectContaining({
+        walletName: "wallet_001",
+        balanceLamports: "2000000000",
+      }),
+    ]);
+    expect(payload.totalBalanceLamports).toBe("2000000000");
+  });
+
   test("uses one regular-RPC batch request to load SOL and SPL contents across wallets", async () => {
     const instanceId = "98";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);

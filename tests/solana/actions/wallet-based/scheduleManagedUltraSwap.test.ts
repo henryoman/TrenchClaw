@@ -38,8 +38,7 @@ describe("scheduleManagedUltraSwapAction", () => {
         },
       }),
       {
-        walletGroup: "core-wallets",
-        walletName: "maker_1",
+        wallet: "maker_1",
         swapType: "ultra",
         inputCoin: "SOL",
         outputCoin: "JUP",
@@ -64,8 +63,7 @@ describe("scheduleManagedUltraSwapAction", () => {
       key: "swap-1",
       actionName: "managedUltraSwap",
       input: {
-        walletGroup: "core-wallets",
-        walletName: "maker_1",
+        wallet: "maker_1",
         inputCoin: "SOL",
         outputCoin: "JUP",
         amount: "0.15",
@@ -107,8 +105,7 @@ describe("scheduleManagedUltraSwapAction", () => {
         },
       }),
       {
-        walletGroup: "core-wallets",
-        walletName: "maker_1",
+        wallet: "maker_1",
         swapType: "ultra",
         inputCoin: "SOL",
         outputCoin: "JUP",

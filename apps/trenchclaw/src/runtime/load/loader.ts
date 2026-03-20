@@ -2,6 +2,7 @@ import { enforceUserProtectedSettings, sanitizeAgentSettings } from "./authority
 import { assertResolvedRuntimeEndpoints } from "./resolved-runtime-endpoints";
 import { runtimeSettingsSchema, type RuntimeSettings } from "./schema";
 import { resolveRequiredActiveInstanceIdSync } from "../instance-state";
+import { deepMerge, isRecord } from "../object-utils";
 import {
   resolveInstanceMemoryLongTermFilePath,
   resolveInstanceMemoryRoot,
@@ -25,9 +26,6 @@ const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
 const SETTINGS_BASE_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_BASE_FILE";
 const SETTINGS_AGENT_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_AGENT_FILE";
 const LOADER_WARNINGS = new Set<string>();
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object" && !Array.isArray(value);
 
 const toStringValue = (value: unknown, fallback: string): string =>
   typeof value === "string" && value.trim().length > 0 ? value : fallback;
@@ -67,22 +65,6 @@ const resolveDefaultStoragePaths = (): {
     memoryDirectory: resolveInstanceMemoryRoot(activeInstanceId),
     memoryLongTermFile: resolveInstanceMemoryLongTermFilePath(activeInstanceId),
   };
-};
-
-const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
-  if (!isRecord(baseValue) || !isRecord(overlayValue)) {
-    return overlayValue;
-  }
-
-  const merged: Record<string, unknown> = { ...baseValue };
-
-  for (const [key, value] of Object.entries(overlayValue)) {
-    const currentValue = merged[key];
-    merged[key] =
-      isRecord(currentValue) && isRecord(value) ? deepMerge(currentValue, value) : value;
-  }
-
-  return merged;
 };
 
 const parseSettingsFile = (raw: unknown, filePath: string): unknown => {

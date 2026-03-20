@@ -17,9 +17,9 @@ import {
   resolveRequiredVaultFile,
   sanitizeVaultData,
 } from "../../../ai/llm/vault-file";
+import { isRecord } from "../../object-utils";
 import { assertInstanceSystemWritePath } from "../../security/write-scope";
 import { PUBLIC_RPC_OPTIONS, RPC_PROVIDER_OPTIONS, SECRET_OPTIONS } from "../constants";
-import { isRecord } from "../parsers";
 import type { RuntimeGuiDomainContext } from "../contracts";
 
 interface SecretOptionInternal extends GuiSecretOptionView {

@@ -7,6 +7,7 @@
   const sections = $derived(splitDocsBySection(docs));
   const startHere = $derived(sections.primary.find((doc) => doc.slug === 'getting-started') ?? sections.primary[0]);
   const keysGuide = $derived(sections.primary.find((doc) => doc.slug === 'keys-and-settings') ?? sections.primary[1]);
+  const architectureGuide = $derived(sections.reference.find((doc) => doc.slug === 'architecture') ?? sections.reference[0]);
   const currentCapabilities = [
     {
       title: 'Swap with Ultra',
@@ -28,11 +29,11 @@
 </script>
 
 <div class="docs-index-hero">
-  <p class="docs-kicker">Setup docs</p>
+  <p class="docs-kicker">Docs</p>
   <h1 class="docs-index-title">Set up TrenchClaw without guessing.</h1>
   <p class="docs-index-description">
-    Everything here is about first run setup: install the app, add the right keys, and understand the one swap setting
-    that matters today.
+    Start with install and keys, then use the architecture page when you want the real explanation of the runtime,
+    instance state, and `.runtime` versus `.runtime-state`.
   </p>
   <div class="docs-hero-actions">
     {#if startHere}
@@ -41,12 +42,15 @@
     {#if keysGuide}
       <a href={resolve('/docs/[slug]', { slug: keysGuide.slug })} class="docs-secondary-button">Keys and settings</a>
     {/if}
+    {#if architectureGuide}
+      <a href={resolve('/docs/[slug]', { slug: architectureGuide.slug })} class="docs-secondary-button">Architecture</a>
+    {/if}
   </div>
 </div>
 
 <section class="docs-index-section mt-8" aria-labelledby="docs-guides-title">
   <p class="docs-kicker">Setup path</p>
-  <h2 id="docs-guides-title" class="docs-index-section-title">The two pages that matter.</h2>
+  <h2 id="docs-guides-title" class="docs-index-section-title">Start with setup.</h2>
   <p class="docs-index-section-intro">
     Read these in order if you are setting up TrenchClaw for the first time.
   </p>
@@ -61,6 +65,27 @@
     {/each}
   </div>
 </section>
+
+{#if sections.reference.length > 0}
+  <section class="docs-index-section mt-8" aria-labelledby="docs-reference-title">
+    <p class="docs-kicker">Power users</p>
+    <h2 id="docs-reference-title" class="docs-index-section-title">Understand how the runtime is actually put together.</h2>
+    <p class="docs-index-section-intro">
+      Use the reference page when you want the runtime shape, boot flow, instance layout, and the guard rails that
+      separate TrenchClaw from thinner wrappers.
+    </p>
+    <div class="docs-grid mt-6">
+      {#each sections.reference as doc (doc.slug)}
+        <a href={resolve('/docs/[slug]', { slug: doc.slug })} class="docs-card">
+          <p class="docs-card-label">Reference</p>
+          <h2 class="docs-card-title">{doc.title}</h2>
+          <p class="docs-card-description">{doc.description}</p>
+          <p class="docs-card-link">Open reference</p>
+        </a>
+      {/each}
+    </div>
+  </section>
+{/if}
 
 <section class="docs-index-section mt-8" aria-labelledby="docs-quick-path-title">
   <p class="docs-kicker">Short version</p>

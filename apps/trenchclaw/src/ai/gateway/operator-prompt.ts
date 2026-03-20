@@ -53,12 +53,12 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   getManagedWalletContents: {
     useWhen: "the user asks what is in the managed wallets, what coins or tokens are held, what balances exist, or asks for a wallet update in plain English",
     avoidWhen: "the user only wants SOL balances, or is asking about market prices, trading history, or external token liquidity",
-    inputAdvice: "Pass `walletGroup` when the user names one; otherwise omit it to inspect the active managed wallets.",
+    inputAdvice: "Pass `wallets` when the user names specific wallets, `walletGroup` when the user names a whole group, or omit both to inspect all active managed wallets.",
   },
   getManagedWalletSolBalances: {
     useWhen: "the user only wants SOL balances or a quick SOL-only summary",
     avoidWhen: "the user asks about SPL tokens, collectibles, or full wallet contents",
-    inputAdvice: "Pass `walletGroup` when the scope is one wallet group.",
+    inputAdvice: "Pass `wallets` when the user names specific wallets, `walletGroup` when the scope is one wallet group, or omit both to inspect all active managed wallets.",
   },
   queryRuntimeStore: {
     useWhen: "the user asks about runtime state like jobs, conversations, receipts, or stored runtime records",
@@ -71,7 +71,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   getSwapHistory: {
     useWhen: "the user asks about recent swap activity for a wallet",
     avoidWhen: "the user is asking for current balances or market prices",
-    inputAdvice: "Provide a concrete wallet address and optional limit.",
+    inputAdvice: "Prefer a concrete wallet address. When the user names a managed wallet, resolve it first from the managed wallet context instead of asking for raw RPC or provider details.",
   },
   getDexscreenerLatestTokenProfiles: {
     useWhen: "the user asks what is new, newly listed, freshly discovered, or you need an initial discovery pass before ranking candidate tokens",
@@ -116,17 +116,17 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   transfer: {
     useWhen: "the user explicitly wants to move SOL or SPL tokens and you know the source wallet, destination address, asset, amount, and confirmation token if policy requires it",
     avoidWhen: "any of those transfer details are missing or the user has not clearly confirmed the action",
-    inputAdvice: "Use `walletGroup`, `walletName`, `destination`, `amount`, optional `mintAddress`, and `userConfirmationToken` when required.",
+    inputAdvice: "Use `wallet` for the managed wallet selector, plus `destination`, `amount`, optional `mintAddress`, and `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
   },
   closeTokenAccount: {
     useWhen: "the user explicitly wants to reclaim rent from an empty token account after the balance has already been moved out",
     avoidWhen: "the token account still holds tokens or the user did not ask for cleanup",
-    inputAdvice: "Use `walletGroup`, `walletName`, and either `mintAddress` or `tokenAccountAddress`, plus `userConfirmationToken` when required.",
+    inputAdvice: "Use `wallet` for the managed wallet selector, and either `mintAddress` or `tokenAccountAddress`, plus `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
   },
   managedUltraSwap: {
-    useWhen: "the user explicitly wants to swap through Jupiter Ultra using a managed wallet and you know walletGroup, walletName, inputCoin, outputCoin, amount, and confirmation token if policy requires it",
+    useWhen: "the user explicitly wants to swap through Jupiter Ultra using a managed wallet and you know the wallet selector, inputCoin, outputCoin, amount, and confirmation token if policy requires it",
     avoidWhen: "the user did not explicitly request a swap, the managed wallet is unknown, or the confirmation token is missing when policy requires it",
-    inputAdvice: "Use `walletGroup`, `walletName`, `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required.",
+    inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
   },
 };
 

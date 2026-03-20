@@ -3,78 +3,7 @@ import type {
   RuntimeCapabilitySnapshot,
   RuntimeComingSoonFeatureEntry,
   RuntimeModelToolSnapshotEntry,
-  RuntimeReleaseReadinessDescriptor,
 } from "./types";
-
-const mapToolNames = (
-  names: readonly string[],
-  descriptor: RuntimeReleaseReadinessDescriptor,
-): Record<string, RuntimeReleaseReadinessDescriptor> =>
-  Object.fromEntries(names.map((name) => [name, descriptor]));
-
-const SHIPPED_NOW = (note: string): RuntimeReleaseReadinessDescriptor => ({
-  status: "shipped-now",
-  note,
-});
-
-const LIMITED = (note: string): RuntimeReleaseReadinessDescriptor => ({
-  status: "limited",
-  note,
-});
-
-const toolReleaseReadinessByName: Record<string, RuntimeReleaseReadinessDescriptor> = {
-  ...mapToolNames(
-    ["createWalletGroupDirectory", "createWallets", "renameWallets"],
-    SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
-  ),
-  ...mapToolNames(
-    ["queryRuntimeStore", "queryInstanceMemory", "mutateInstanceMemory", "pingRuntime", "sleep"],
-    SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
-  ),
-  ...mapToolNames(
-    ["getManagedWalletContents", "getManagedWalletSolBalances"],
-    SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
-  ),
-  ...mapToolNames(
-    [
-      "getDexscreenerLatestAds",
-      "getDexscreenerLatestCommunityTakeovers",
-      "getDexscreenerLatestTokenBoosts",
-      "getDexscreenerLatestTokenProfiles",
-      "getDexscreenerOrdersByToken",
-      "getDexscreenerPairByChainAndPairId",
-      "getDexscreenerTokenPairsByChain",
-      "getDexscreenerTokensByChain",
-      "getDexscreenerTopTokenBoosts",
-      "searchDexscreenerPairs",
-    ],
-    SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
-  ),
-  ...mapToolNames(
-    ["workspaceBash", "workspaceReadFile", "workspaceWriteFile"],
-    SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
-  ),
-  ...mapToolNames(
-    ["devnetAirdrop"],
-    LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
-  ),
-  ...mapToolNames(
-    ["enqueueRuntimeJob", "manageRuntimeJob"],
-    LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
-  ),
-  ...mapToolNames(
-    ["getSwapHistory", "transfer", "closeTokenAccount", "privacyTransfer", "privacyAirdrop", "privacySwap"],
-    LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
-  ),
-  ...mapToolNames(
-    ["ultraQuoteSwap", "ultraExecuteSwap", "managedUltraSwap", "scheduleManagedUltraSwap", "ultraSwap"],
-    LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
-  ),
-  ...mapToolNames(
-    ["createBlockchainAlert"],
-    LIMITED("Alert creation exists, but it is not yet a broad monitoring platform."),
-  ),
-};
 
 const comingSoonFeatures: RuntimeComingSoonFeatureEntry[] = [
   {
@@ -151,14 +80,6 @@ const renderToolGroup = (tools: RuntimeModelToolSnapshotEntry[], status: Release
       (tool) => `- \`${tool.name}\`: ${tool.releaseReadinessNote}`,
     ),
   ].join("\n");
-};
-
-export const getToolReleaseReadinessDescriptor = (name: string): RuntimeReleaseReadinessDescriptor => {
-  const descriptor = toolReleaseReadinessByName[name];
-  if (!descriptor) {
-    throw new Error(`Missing release readiness classification for runtime tool "${name}".`);
-  }
-  return descriptor;
 };
 
 export const getRuntimeComingSoonFeatures = (): RuntimeComingSoonFeatureEntry[] =>

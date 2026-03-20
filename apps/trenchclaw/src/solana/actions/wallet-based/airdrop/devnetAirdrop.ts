@@ -1,22 +1,29 @@
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
+import {
+  managedWalletSelectorListSchema,
+  managedWalletSelectorSchema,
+  resolveManagedWalletEntriesBySelection,
+} from "../../../lib/wallet/wallet-selector";
 import { readManagedWalletLibraryEntries } from "../../../lib/wallet/wallet-manager";
 import { base58AddressSchema, walletGroupNameSchema, walletNameSchema } from "../../../lib/wallet/wallet-types";
 
 const devnetAirdropInputSchema = z
   .object({
+    wallet: managedWalletSelectorSchema.optional(),
+    wallets: managedWalletSelectorListSchema.optional(),
     walletGroup: walletGroupNameSchema.optional(),
     walletNames: z.array(walletNameSchema).min(1).optional(),
     addresses: z.array(base58AddressSchema).min(1).optional(),
     amountSol: z.number().positive(),
   })
   .superRefine((input, ctx) => {
-    if (!input.walletGroup && !input.addresses) {
+    if (!input.wallet && !input.wallets && !input.walletGroup && !input.addresses) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Provide "walletGroup" or "addresses" for devnet airdrops.',
-        path: ["walletGroup"],
+        message: 'Provide "wallet", "wallets", "walletGroup", or "addresses" for devnet airdrops.',
+        path: ["wallet"],
       });
     }
   });
@@ -65,6 +72,17 @@ const resolveRecipients = async (input: DevnetAirdropInput): Promise<Array<{
 
   for (const address of input.addresses ?? []) {
     recipients.set(address, { address });
+  }
+
+  const selectedEntries = await resolveManagedWalletEntriesBySelection(input);
+  if (selectedEntries) {
+    for (const entry of selectedEntries) {
+      recipients.set(entry.address, {
+        address: entry.address,
+        walletGroup: entry.walletGroup,
+        walletName: entry.walletName,
+      });
+    }
   }
 
   if (input.walletGroup) {

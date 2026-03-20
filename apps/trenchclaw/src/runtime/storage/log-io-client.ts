@@ -4,7 +4,7 @@ import {
   type LogIoRequestWithoutId,
   type LogIoResponse,
   performLogIoWrite,
-} from "./log-io-shared";
+} from "./log-io-core";
 
 export interface LogIoWriteEvent {
   ok: boolean;
@@ -22,7 +22,7 @@ export const setLogIoWriteObserver = (observer: LogIoWriteObserver | null): void
   writeObserver = observer;
 };
 
-export class LogIoWorkerClient {
+export class LogIoClient {
   private worker: Worker | null = null;
   private readonly pending = new Map<string, { resolve: () => void; reject: (error: Error) => void }>();
 
@@ -32,7 +32,7 @@ export class LogIoWorkerClient {
     }
 
     try {
-      this.worker = new Worker(new URL("./log-io.worker.ts", import.meta.url).href, { type: "module" });
+      this.worker = new Worker(new URL("./log-io-write.worker.ts", import.meta.url).href, { type: "module" });
     } catch {
       this.worker = null;
       return;
@@ -114,9 +114,9 @@ export class LogIoWorkerClient {
   }
 }
 
-let sharedClient: LogIoWorkerClient | null = null;
+let sharedClient: LogIoClient | null = null;
 
-export const getLogIoWorkerClient = (): LogIoWorkerClient => {
-  sharedClient ??= new LogIoWorkerClient();
+export const getLogIoClient = (): LogIoClient => {
+  sharedClient ??= new LogIoClient();
   return sharedClient;
 };

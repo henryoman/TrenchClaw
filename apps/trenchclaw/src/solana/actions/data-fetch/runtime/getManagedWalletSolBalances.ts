@@ -3,6 +3,11 @@ import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
 import {
+  managedWalletSelectorListSchema,
+  managedWalletSelectorSchema,
+  resolveManagedWalletEntriesBySelection,
+} from "../../../lib/wallet/wallet-selector";
+import {
   DEFAULT_WALLET_LIBRARY_FILE_NAME,
   walletGroupNameSchema,
   walletNameSchema,
@@ -19,6 +24,8 @@ const maxWalletNames = 100;
 
 const getManagedWalletSolBalancesInputSchema = z.object({
   instanceId: z.string().trim().min(1).max(64).optional(),
+  wallet: managedWalletSelectorSchema.optional(),
+  wallets: managedWalletSelectorListSchema.optional(),
   walletGroup: walletGroupNameSchema.optional(),
   walletNames: z.array(walletNameSchema).max(maxWalletNames).optional(),
 });
@@ -49,6 +56,19 @@ const filterWalletEntries = (
     }
     return true;
   });
+};
+
+const resolveWalletEntries = async (
+  entries: ManagedWalletLibraryEntry[],
+  input: GetManagedWalletSolBalancesInput,
+): Promise<ManagedWalletLibraryEntry[]> => {
+  const selectedEntries = await resolveManagedWalletEntriesBySelection(input);
+  if (!selectedEntries) {
+    return filterWalletEntries(entries, input);
+  }
+
+  const selectedWalletIds = new Set(selectedEntries.map((entry) => entry.walletId));
+  return entries.filter((entry) => selectedWalletIds.has(entry.walletId));
 };
 
 export const createGetManagedWalletSolBalancesAction = (
@@ -93,7 +113,7 @@ export const createGetManagedWalletSolBalancesAction = (
         const discoveredVia = "wallet-library";
         const entries = walletLibrary.entries;
 
-        const filteredEntries = filterWalletEntries(entries, input);
+        const filteredEntries = await resolveWalletEntries(entries, input);
         const wallets = await Promise.all(
           filteredEntries.map(async (entry) => {
             const balance = await loadBalance({

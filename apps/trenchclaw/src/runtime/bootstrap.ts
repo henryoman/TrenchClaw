@@ -56,6 +56,7 @@ import {
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
+import { isRecord } from "./object-utils";
 import { GENERATED_STATE_ROOT } from "./runtime-paths";
 import { migrateLegacyRuntimeState } from "./runtime-state-migration";
 
@@ -64,9 +65,6 @@ const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
 const GENERATED_WORKSPACE_CONTEXT_PATH = path.join(GENERATED_STATE_ROOT, "workspace-context.md");
 const GENERATED_KNOWLEDGE_INDEX_PATH = path.join(GENERATED_STATE_ROOT, "knowledge-index.md");
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object" && !Array.isArray(value);
 
 const trimOrUndefined = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();

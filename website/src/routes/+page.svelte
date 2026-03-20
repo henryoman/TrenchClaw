@@ -2,6 +2,7 @@
   import { resolve } from '$app/paths';
 
   import {
+    architectureHref,
     comparison,
     getHomepageQuickLinks,
     githubUrl,
@@ -59,19 +60,24 @@
       <div class="max-w-3xl">
         <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Local Solana runtime</p>
         <h1 class="mt-4 max-w-4xl text-6xl font-extrabold leading-[0.94] tracking-[-0.06em] text-balance md:text-8xl">
-          The Solana-native AI assistant.
+          A local Solana runtime with real guard rails.
         </h1>
         <p class="mt-6 max-w-2xl text-lg leading-8 text-foreground-soft">
-          TrenchClaw is a local Solana runtime with actions, wallets, routines, and a local GUI.
+          TrenchClaw is a Bun + TypeScript runtime for Solana operator workflows with validated actions, managed wallets,
+          local state, and a GUI that talks to the runtime instead of replacing it.
         </p>
         <p class="mt-4 max-w-2xl text-sm leading-7 text-foreground-soft">
-          Install from the release docs, then add Solana CLI, Helius CLI, and provider keys only for the workflows you
-          actually use.
+          The important difference from thinner OpenClaw-style wrappers is the execution model: capability-gated tools,
+          settings-aware policy checks, instance-scoped state under `.runtime-state`, and a repo-tracked `.runtime`
+          contract that is not treated as live mutable state.
         </p>
 
         <div class="mt-8 flex flex-col gap-4 sm:flex-row">
           <a href={resolve('/docs', {})} class="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 text-sm font-semibold text-black transition-transform hover:-translate-y-0.5">
             Open docs
+          </a>
+          <a href={architectureHref} class="inline-flex items-center justify-center rounded-full border border-border-strong px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-white hover:text-black">
+            Read architecture
           </a>
           <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="inline-flex items-center justify-center rounded-full border border-border-strong px-6 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-white hover:text-black">
             View repository
@@ -80,16 +86,16 @@
 
         <div class="mt-10 grid gap-4 md:grid-cols-3">
           <div class="surface-card p-5">
-            <div class="text-2xl font-bold tracking-[-0.04em]">~100KB</div>
-            <div class="mt-1 text-sm text-muted">Modern `@solana/kit` footprint</div>
+            <div class="text-2xl font-bold tracking-[-0.04em]">Bun + TS</div>
+            <div class="mt-1 text-sm text-muted">Compiled runtime, typed actions, local services, and a local web app</div>
           </div>
           <div class="surface-card p-5">
-            <div class="text-2xl font-bold tracking-[-0.04em]">JSONL + sidecars</div>
-            <div class="mt-1 text-sm text-muted">Wallet metadata stays inspectable</div>
+            <div class="text-2xl font-bold tracking-[-0.04em]">Instance-scoped</div>
+            <div class="mt-1 text-sm text-muted">Vaults, wallets, logs, settings, and workspace state stay grouped per instance</div>
           </div>
           <div class="surface-card p-5">
-            <div class="text-2xl font-bold tracking-[-0.04em]">CLI first</div>
-            <div class="mt-1 text-sm text-muted">Some workflows are still chat- and runtime-driven</div>
+            <div class="text-2xl font-bold tracking-[-0.04em]">Policy-backed</div>
+            <div class="mt-1 text-sm text-muted">Tool exposure, dangerous actions, and write scope are constrained by runtime rules</div>
           </div>
         </div>
       </div>
@@ -136,10 +142,11 @@
   <section class="border-t border-border-subtle px-6 py-20">
     <div class="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_minmax(0,1.1fr)]">
       <div>
-        <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Quick links</p>
-        <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Start with the core workflows.</h2>
+        <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Start here</p>
+        <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">The three pages that explain the product.</h2>
         <p class="mt-4 max-w-xl text-base leading-8 text-foreground-soft">
-          Install the runtime, connect providers and vaults, then launch the CLI and GUI with the documented first-run flow.
+          Start with setup, move to keys only when you need to change providers, and use architecture when you want the
+          runtime model instead of the onboarding path.
         </p>
       </div>
 
@@ -148,7 +155,7 @@
           <a href={resolve('/docs/[slug]', { slug: item.slug })} class="surface-card block p-6 transition-transform hover:-translate-y-0.5">
             <div class="flex items-center justify-between gap-4">
               <div>
-                <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">Guide</p>
+                <p class="font-mono text-[11px] uppercase tracking-[0.18em] text-muted">{item.kind}</p>
                 <h3 class="mt-2 text-xl font-semibold tracking-[-0.03em] text-foreground">{item.label}</h3>
                 <p class="mt-2 max-w-xl text-sm leading-7 text-foreground-soft">{item.description}</p>
               </div>
@@ -166,18 +173,21 @@
     <div class="mx-auto max-w-7xl">
       <div class="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Principles</p>
-          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Built for direct control.</h2>
+          <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Guard rails</p>
+          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Why TrenchClaw is not just a wrapper.</h2>
         </div>
         <p class="max-w-xl text-sm leading-7 text-foreground-soft">
-          Validated actions, policy checks, and local state make behavior easier to inspect when the agent is allowed to act.
+          The runtime decides what exists, what is enabled, and where state is allowed to live. That makes the operator
+          surface narrower, more inspectable, and easier to reason about than broad shell-first agent setups.
         </p>
       </div>
 
-      <div class="grid gap-5 md:grid-cols-3">
-        {#each principles as principle (principle.title)}
+      <div class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {#each principles as principle, index (principle.title)}
           <div class="surface-card p-6">
-            <div class="font-mono text-xs uppercase tracking-[0.16em] text-muted">0{principles.indexOf(principle) + 1}</div>
+            <div class="font-mono text-xs uppercase tracking-[0.16em] text-muted">
+              {String(index + 1).padStart(2, '0')}
+            </div>
             <h3 class="mt-4 text-xl font-semibold tracking-[-0.03em]">{principle.title}</h3>
             <p class="mt-3 text-sm leading-7 text-foreground-soft">{principle.description}</p>
           </div>
@@ -190,6 +200,7 @@
     <div class="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.95fr_minmax(0,1.05fr)]">
       <div class="surface-card p-6">
         <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Stack</p>
+        <h2 class="mt-3 text-3xl font-extrabold tracking-[-0.04em]">What actually ships.</h2>
         <div class="mt-5 grid gap-px overflow-hidden rounded-2xl border border-border-subtle bg-border-subtle">
           {#each stack as item (item.label)}
             <div class="grid gap-2 bg-background-panel p-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-start">
@@ -201,13 +212,14 @@
       </div>
 
       <div class="surface-card p-6">
-        <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Runtime capabilities</p>
+        <p class="font-mono text-xs uppercase tracking-[0.18em] text-muted">Runtime state model</p>
+        <h2 class="mt-3 text-3xl font-extrabold tracking-[-0.04em]">The folders that matter.</h2>
         <div class="mt-5 overflow-hidden rounded-2xl border border-border-subtle">
           <table class="w-full text-left text-sm">
             <thead class="bg-white/3">
               <tr>
-                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Area</th>
-                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">What it covers</th>
+                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Boundary</th>
+                <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">What it is</th>
                 <th class="px-4 py-3 font-mono text-[11px] uppercase tracking-[0.16em] text-muted">Why it matters</th>
               </tr>
             </thead>
@@ -230,9 +242,13 @@
     <div class="mx-auto max-w-7xl">
       <div class="mb-8 flex items-end justify-between gap-6">
         <div>
-          <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Runtime dashboard</p>
-          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">Runtime dashboard</h2>
+          <p class="font-mono text-xs uppercase tracking-[0.22em] text-muted">Local GUI</p>
+          <h2 class="mt-3 text-4xl font-extrabold tracking-[-0.05em] md:text-5xl">The GUI sits on top of the runtime.</h2>
         </div>
+        <p class="max-w-xl text-sm leading-7 text-foreground-soft">
+          The frontend is there to inspect and operate the runtime cleanly. The runtime remains the storage and execution
+          authority underneath it.
+        </p>
       </div>
 
       <div class="terminal-window relative">
@@ -256,7 +272,7 @@
       <div class="flex gap-6 text-sm text-muted">
         <a href={resolve('/docs', {})} class="transition-colors hover:text-foreground">Docs</a>
         <a href={githubUrl} target="_blank" rel="noopener noreferrer" class="transition-colors hover:text-foreground">GitHub</a>
-        <a href={resolve('/docs/[slug]', { slug: 'architecture' })} class="transition-colors hover:text-foreground">
+        <a href={architectureHref} class="transition-colors hover:text-foreground">
           Architecture
         </a>
       </div>

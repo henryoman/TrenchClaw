@@ -4,15 +4,15 @@ import type {
   GuiDeleteSecretRequest,
   GuiSignInInstanceRequest,
   GuiUpdateTradingSettingsRequest,
+  GuiUpdateWakeupSettingsRequest,
   GuiUpdateVaultRequest,
   GuiUpsertSecretRequest,
 } from "@trenchclaw/types";
 import { safeValidateUIMessages, type UIMessage } from "ai";
 import { createChatMessageId } from "../../ai/runtime/types/ids";
 import { tradingPreferencesSchema } from "../load/trading-settings";
-
-export const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === "object" && !Array.isArray(value);
+import { isRecord } from "../object-utils";
+import { wakeupSettingsSchema } from "../load/wakeup-settings";
 
 const toUserMessage = (text: string): UIMessage => ({
   id: createChatMessageId(),
@@ -274,6 +274,26 @@ export const parseUpdateTradingSettingsRequest = async (request: Request): Promi
     }
 
     const parsed = tradingPreferencesSchema.safeParse(payload.settings);
+    if (!parsed.success) {
+      return null;
+    }
+
+    return {
+      settings: parsed.data,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateWakeupSettingsRequest = async (request: Request): Promise<GuiUpdateWakeupSettingsRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.settings)) {
+      return null;
+    }
+
+    const parsed = wakeupSettingsSchema.safeParse(payload.settings);
     if (!parsed.success) {
       return null;
     }

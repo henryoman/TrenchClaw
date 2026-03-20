@@ -6,6 +6,7 @@ import {
   parseDeleteSecretRequest,
   parseSignInRequest,
   parseUpdateTradingSettingsRequest,
+  parseUpdateWakeupSettingsRequest,
   parseUiChatRequest,
   parseUpdateVaultRequest,
   parseUpsertSecretRequest,
@@ -15,8 +16,9 @@ import { deleteConversation, streamChat, getConversationMessages, getConversatio
 import { createInstance, listInstances, signInInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
-import { getSolPrice } from "./domains/sol-price";
+import { getSolPrice } from "../market/sol-price";
 import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
+import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeup-settings";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
@@ -259,6 +261,27 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
 
       try {
         return Response.json(await updateTradingSettings(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/gui/wakeup-settings") {
+      try {
+        return Response.json(await getWakeupSettings(context), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "PUT" && url.pathname === "/api/gui/wakeup-settings") {
+      const payload = await parseUpdateWakeupSettingsRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid wakeup settings payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      try {
+        return Response.json(await updateWakeupSettings(context, payload), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
       }

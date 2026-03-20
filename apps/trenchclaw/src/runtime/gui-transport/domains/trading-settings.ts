@@ -7,7 +7,6 @@ import {
   DEFAULT_TRADING_PREFERENCES,
   instanceTradingSettingsSchema,
   loadInstanceTradingSettings,
-  resolveInstanceTradingSettingsPath,
   type TradingPreferences,
   writeInstanceTradingSettings,
 } from "../../load/trading-settings";
@@ -23,14 +22,12 @@ const cloneTradingPreferences = (settings: TradingPreferences): TradingPreferenc
 export const getTradingSettings = async (context: RuntimeGuiDomainContext): Promise<GuiTradingSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   const payload = await loadInstanceTradingSettings({ instanceId: activeInstanceId });
-  const instanceId = payload.instanceId;
-  const settingsPath = payload.settingsPath ?? (instanceId ? resolveInstanceTradingSettingsPath(instanceId) : null);
   const parsed = instanceTradingSettingsSchema.safeParse(payload.resolvedSettings);
   const preferences = parsed.success ? parsed.data.trading.preferences : DEFAULT_TRADING_PREFERENCES;
 
   return {
-    instanceId,
-    filePath: settingsPath,
+    instanceId: payload.instanceId,
+    filePath: payload.settingsPath,
     exists: payload.exists,
     settings: cloneTradingPreferences(preferences),
   };

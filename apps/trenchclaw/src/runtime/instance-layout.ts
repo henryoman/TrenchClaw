@@ -15,15 +15,18 @@ import {
   resolveInstanceShellHomeRoot,
   resolveInstanceSummariesRoot,
   resolveInstanceSystemLogsRoot,
+  resolveInstanceTradingSettingsPath,
   resolveInstanceTmpRoot,
   resolveInstanceToolBinRoot,
   resolveInstanceCompatibilitySettingsPath,
+  resolveInstanceWakeupSettingsPath,
 } from "./instance-paths";
 import {
   INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
   resolveInstanceWorkspaceRoot,
 } from "./instance-workspace";
-import { resolveInstanceTradingSettingsPath, writeInstanceTradingSettings } from "./load/trading-settings";
+import { writeInstanceTradingSettings } from "./load/trading-settings";
+import { writeInstanceWakeupSettings } from "./load/wakeup-settings";
 import { resolveInstanceDirectoryPath } from "./instance-state";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
 
@@ -113,6 +116,11 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
   const tradingSettingsPath = resolveInstanceTradingSettingsPath(instanceId);
   if (!(await Bun.file(tradingSettingsPath).exists())) {
     createdFiles.push(await writeInstanceTradingSettings(instanceId, {}));
+  }
+
+  const wakeupSettingsPath = resolveInstanceWakeupSettingsPath(instanceId);
+  if (!(await Bun.file(wakeupSettingsPath).exists())) {
+    createdFiles.push(await writeInstanceWakeupSettings(instanceId, {}));
   }
 
   const aiSettingsPath = resolveInstanceAiSettingsPath(instanceId);

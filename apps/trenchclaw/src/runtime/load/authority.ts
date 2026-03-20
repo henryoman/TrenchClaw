@@ -1,3 +1,5 @@
+import { deepMerge, isRecord } from "../object-utils";
+
 const USER_PROTECTED_PATH_PREFIXES = [
   "wallet.dangerously",
   "trading.enabled",
@@ -18,25 +20,6 @@ const AGENT_EDITABLE_PATH_PREFIXES_DANGEROUS = [
   // Keep dangerous mode focused on bot capabilities only.
   "agent.enabled",
 ] as const;
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value != null && typeof value === "object" && !Array.isArray(value);
-
-const deepMerge = (baseValue: unknown, overlayValue: unknown): unknown => {
-  if (!isRecord(baseValue) || !isRecord(overlayValue)) {
-    return overlayValue;
-  }
-
-  const merged: Record<string, unknown> = { ...baseValue };
-
-  for (const [key, value] of Object.entries(overlayValue)) {
-    const currentValue = merged[key];
-    merged[key] =
-      isRecord(currentValue) && isRecord(value) ? deepMerge(currentValue, value) : value;
-  }
-
-  return merged;
-};
 
 const pathToSegments = (path: string): string[] => path.split(".").filter(Boolean);
 
@@ -213,13 +196,4 @@ export const enforceUserProtectedSettings = (
   }
 
   return merged;
-};
-
-export const settingsAuthority = {
-  userProtectedPathPrefixes: USER_PROTECTED_PATH_PREFIXES,
-  agentEditablePathPrefixesByProfile: {
-    safe: [] as const,
-    dangerous: AGENT_EDITABLE_PATH_PREFIXES_DANGEROUS,
-    veryDangerous: ["*"] as const,
-  },
 };

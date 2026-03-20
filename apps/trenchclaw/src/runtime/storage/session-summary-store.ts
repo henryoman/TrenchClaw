@@ -1,8 +1,5 @@
-import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { assertRuntimeSystemWritePath } from "../security/write-scope";
-import { resolveRuntimeContractPath } from "../runtime-paths";
-import { getLogIoWorkerClient } from "./log-io-worker";
+import { getStorageWriter, initializeStorageDirectory, writeJsonFile } from "./storage-shared";
 
 export interface SessionSummaryInput {
   sessionId: string;
@@ -29,17 +26,12 @@ export interface SessionSummaryStoreConfig {
   directory: string;
 }
 
-const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : resolveRuntimeContractPath(targetPath);
-
 export class SessionSummaryStore {
   private readonly directory: string;
-  private readonly writer = getLogIoWorkerClient();
+  private readonly writer = getStorageWriter();
 
   constructor(config: SessionSummaryStoreConfig) {
-    this.directory = toAbsolutePath(config.directory);
-    assertRuntimeSystemWritePath(this.directory, "initialize session summary directory");
-    mkdirSync(this.directory, { recursive: true });
+    this.directory = initializeStorageDirectory(config.directory, "initialize session summary directory");
   }
 
   async writeSummary(summary: SessionSummaryInput): Promise<string> {
@@ -55,8 +47,6 @@ export class SessionSummaryStore {
     };
 
     const filePath = path.join(this.directory, `${summary.sessionId}.summary.json`);
-    assertRuntimeSystemWritePath(filePath, "write session summary");
-    await this.writer.writeUtf8(filePath, `${JSON.stringify(record, null, 2)}\n`);
-    return filePath;
+    return writeJsonFile(this.writer, filePath, record, "write session summary");
   }
 }
