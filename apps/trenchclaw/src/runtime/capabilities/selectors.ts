@@ -198,7 +198,9 @@ export const getRuntimeActionsRequiringUserConfirmation = (): ReadonlySet<string
       .map((definition) => definition.action.name),
   );
 
-export const getRuntimeCapabilitySnapshot = async (settings: RuntimeSettings): Promise<RuntimeCapabilitySnapshot> => {
+export const getRuntimeCapabilitySnapshot = async (
+  settings: RuntimeSettings,
+): Promise<RuntimeCapabilitySnapshot> => {
   const filesystemPolicy = await summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 32 });
   const [actions, workspaceTools] = await Promise.all([
     Promise.all(runtimeActionCapabilityDefinitions.map((definition) => toActionSnapshotEntry(definition, settings, filesystemPolicy))),
@@ -252,4 +254,3 @@ export const getRuntimeCapabilitySnapshot = async (settings: RuntimeSettings): P
     comingSoonFeatures: getRuntimeComingSoonFeatures(),
   };
 };
-

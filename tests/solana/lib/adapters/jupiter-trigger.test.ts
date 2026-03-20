@@ -54,7 +54,7 @@ describe("jupiter trigger adapter", () => {
     const requests: Array<{ url: string; init?: RequestInit }> = [];
     const adapter = createJupiterTriggerAdapter({
       apiKey: "trigger-key",
-      fetchImpl: async (url, init) => {
+      fetchImpl: (async (url: URL | RequestInfo, init?: RequestInit) => {
         requests.push({ url: String(url), init });
         if (String(url).includes("/createOrder")) {
           return new Response(JSON.stringify({
@@ -71,7 +71,7 @@ describe("jupiter trigger adapter", () => {
           page: 2,
           totalPages: 4,
         }));
-      },
+      }) as unknown as typeof fetch,
     });
 
     const created = await adapter.createOrder({

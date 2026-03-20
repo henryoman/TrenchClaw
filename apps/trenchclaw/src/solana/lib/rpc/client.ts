@@ -95,7 +95,7 @@ export const createRateLimitedSolanaRpc = (
 ) => {
   const baseTransport = createDefaultRpcTransport({
     url: rpcUrl,
-    ...(config ?? {}),
+    ...config,
   });
   const rateLimitedTransport = (async (...args: Parameters<typeof baseTransport>) =>
     await scheduleRateLimitedRpcRequest(rpcUrl, async () => await baseTransport(...args))) as typeof baseTransport;

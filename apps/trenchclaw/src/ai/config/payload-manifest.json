@@ -8,7 +8,7 @@
   },
   "modes": {
     "primary": {
-      "title": "Primary Runtime Contract",
+      "title": "Primary Runtime Rules",
       "sections": [
         {
           "kind": "file",
@@ -17,8 +17,8 @@
         },
         {
           "kind": "generated",
-          "title": "Runtime Contract",
-          "source": "runtimeContract"
+          "title": "Live Runtime Rules",
+          "source": "liveRuntimeRules"
         }
       ]
     }

@@ -103,6 +103,8 @@ interface HeliusEnhancedTransaction {
   };
 }
 
+type HeliusSwapEvent = NonNullable<NonNullable<HeliusEnhancedTransaction["events"]>["swap"]>;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value != null && typeof value === "object" && !Array.isArray(value);
 
@@ -343,6 +345,7 @@ const buildReceiptDerivedPrice = async (params: {
       continue;
     }
 
+    // eslint-disable-next-line no-await-in-loop
     const candidate = await fillMissingDecimals(params.ctx, baseCandidate);
     const isSellDirection = params.direction.startsWith("sell");
     const matches =
@@ -372,8 +375,8 @@ const buildReceiptDerivedPrice = async (params: {
 };
 
 const collectHeliusSwapSide = (
-  tokenEntries: HeliusEnhancedTransaction["events"]["swap"]["tokenInputs"] | HeliusEnhancedTransaction["events"]["swap"]["tokenOutputs"] | undefined,
-  nativeEntry: { amount?: string; mint?: string } | undefined,
+  tokenEntries: HeliusSwapEvent["tokenInputs"] | HeliusSwapEvent["tokenOutputs"] | undefined,
+  nativeEntry: HeliusSwapEvent["nativeInput"] | HeliusSwapEvent["nativeOutput"] | undefined,
   targetMint: string,
 ): HeliusSwapSide | null => {
   let totalRaw = 0n;

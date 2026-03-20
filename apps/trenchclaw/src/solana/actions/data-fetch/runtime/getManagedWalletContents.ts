@@ -1127,8 +1127,10 @@ const loadWalletContentsFromRpc = async (input: {
   const walletErrors: ManagedWalletContentsWalletError[] = [];
   let usedSequentialFallback = false;
 
+  // Process chunks in order so retry fallback behavior stays predictable per batch.
   for (const entryChunk of entryChunks) {
     try {
+      // eslint-disable-next-line no-await-in-loop
       const chunkWallets = await loadWalletContentsBatchFromRpc({
         entries: entryChunk,
         rpcUrl,
@@ -1140,6 +1142,7 @@ const loadWalletContentsFromRpc = async (input: {
         throw error;
       }
 
+      // eslint-disable-next-line no-await-in-loop
       const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
         entries: entryChunk,
         rpcUrl,
