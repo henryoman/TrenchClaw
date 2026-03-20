@@ -84,7 +84,6 @@ afterEach(async () => {
 
 describe("trading settings layering", () => {
   test("defaults to Ultra trading preferences from the runtime settings layer", async () => {
-    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson();
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "95";
     const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
@@ -98,6 +97,10 @@ describe("trading settings layering", () => {
     expect(settings.trading.preferences.scheduleActionName).toBe("scheduleManagedUltraSwap");
     expect(settings.trading.preferences.quickBuyPresets).toEqual([]);
     expect(settings.trading.preferences.customPresets).toEqual([]);
+    expect(settings.trading.jupiter.trigger.enabled).toBe(true);
+    expect(settings.trading.jupiter.trigger.allowOrders).toBe(true);
+    expect(settings.trading.jupiter.trigger.allowReads).toBe(true);
+    expect(settings.trading.jupiter.trigger.allowCancellations).toBe(true);
   });
 
   test("merges active-instance trading.json into resolved and runtime settings", async () => {

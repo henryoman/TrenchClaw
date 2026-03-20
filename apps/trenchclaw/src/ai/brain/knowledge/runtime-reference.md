@@ -43,6 +43,25 @@ For local development, `bun run dev` defaults those roots to persistent external
 
 Those external roots are the preferred dev/test manual workflow because they preserve real per-instance behavior without putting personal state in the repo.
 
+For packaged releases, the shipped bundle is readonly app content only. Mutable runtime state is created on first run under `~/.trenchclaw` by default or under the absolute path set through `TRENCHCLAW_RUNTIME_STATE_ROOT`.
+
+That means users should receive clean generated runtime files such as:
+
+- `instances/active-instance.json`
+- `instances/<id>/instance.json`
+- `instances/<id>/settings/ai.json`
+- `instances/<id>/settings/settings.json`
+- `instances/<id>/settings/trading.json`
+- `instances/<id>/secrets/vault.json`
+
+The bundle must not include developer-local or user-personal state such as:
+
+- populated vault secrets
+- wallet keypairs
+- runtime databases
+- logs, summaries, or cache artifacts
+- developer home-directory paths
+
 Important directories:
 
 - `.runtime-state/instances/active-instance.json`
@@ -86,7 +105,9 @@ If you need runtime truth:
 3. trust the injected release-readiness section over bundled docs, knowledge files, or source references
 4. trust injected resolved settings
 5. for local dev, assume the mutable runtime root may be an external directory selected by `TRENCHCLAW_RUNTIME_STATE_ROOT`
-6. use workspace tools only inside `.runtime-state/instances/<active-id>/workspace/` or the equivalent external runtime root
-7. do not treat core repo source files as part of the runtime workspace tool surface
-8. do not treat `.runtime/` as mutable state
-9. if a feature is not listed as shipped or limited beta, describe it as coming soon instead of guessing
+6. for packaged releases, assume readonly app assets ship separately from mutable runtime state and that first-run defaults are generated into the runtime root
+7. use workspace tools only inside `.runtime-state/instances/<active-id>/workspace/` or the equivalent external runtime root
+8. do not treat core repo source files as part of the runtime workspace tool surface
+9. do not treat `.runtime/` as mutable state
+10. never imply that developer-local vaults, wallets, logs, or databases ship to end users
+11. if a feature is not listed as shipped or limited beta, describe it as coming soon instead of guessing

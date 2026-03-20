@@ -29,6 +29,14 @@
     "enabled": false,
     "liveWalletUse": false,
     "requireUserConfirmationForDangerousActions": true,
+    "jupiter": {
+      "trigger": {
+        "enabled": false,
+        "allowOrders": false,
+        "allowReads": false,
+        "allowCancellations": false
+      }
+    },
     "preferences": {
       "defaultSwapProvider": "ultra",
       "defaultSwapMode": "ExactIn",

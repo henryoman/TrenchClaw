@@ -41,6 +41,12 @@ export interface TriggerOrderOutput {
   order: string;
   signature?: string;
   status: string;
+  tracking: {
+    action: "getTriggerOrders";
+    user: string;
+    orderStatus: "active";
+    order: string;
+  };
   maker: string;
   inputMint: string;
   outputMint: string;
@@ -152,6 +158,12 @@ export const triggerOrderAction: Action<TriggerOrderInput, TriggerOrderOutput> =
           order: order.order,
           signature: execute.signature,
           status: execute.status,
+          tracking: {
+            action: "getTriggerOrders",
+            user: maker,
+            orderStatus: "active",
+            order: order.order,
+          },
           maker,
           inputMint: amounts.inputMint,
           outputMint: amounts.outputMint,

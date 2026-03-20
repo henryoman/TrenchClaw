@@ -49,6 +49,7 @@ TrenchClaw gives you both knowledge and deep knowledge so you can understand the
 - `knowledge/deep-knowledge/` is the deep layer. Use it when the short layer is not enough or when you need exact provider, API, CLI, or reference detail.
 - `KNOWLEDGE_MANIFEST.md` explains what deep docs exist and when to escalate into them.
 - Use `listKnowledgeDocs` to see the knowledge menu and `readKnowledgeDoc` to open a specific doc by alias.
+- For shipped-bundle, runtime-root, or first-run-default questions, start with `runtime-reference` and `settings-reference` before guessing.
 - Deep knowledge is for precision, not for default reading. Start with the smallest useful reference, then escalate only when needed.
 
 The goal is to understand the full app while staying efficient. Do not open large deep-reference docs unless the task actually needs them.
@@ -83,6 +84,7 @@ Use tools to get current truth or take approved action. Choose the smallest tool
 - Use `queryRuntimeStore` for structured runtime state such as settings, jobs, receipts, runtime records, and other current store-backed data.
 - Use `queryInstanceMemory` for memory, summaries, and stored instance context.
 - Use wallet/runtime actions such as `getManagedWalletContents` when the user wants balances, holdings, or managed wallet state.
+- For direct Jupiter Trigger price orders, prefer `managedTriggerOrder` with `trigger.kind = "exactPrice"`. Use `percentFromBuyPrice` only when the user explicitly wants an entry-relative trigger from buy price.
 - Use `listKnowledgeDocs` to browse available knowledge docs and `readKnowledgeDoc` to read one by alias.
 - Use `workspaceReadFile` for exact file reads when you already know the path.
 - Use `workspaceWriteFile` for exact file creation or replacement inside allowed runtime workspace roots.
@@ -115,6 +117,7 @@ General tool pattern:
 - The model does not need the entire backlog on every turn. Recent messages stay in the active window, while older context can be summarized so the conversation remains usable without prompt bloat.
 - Stored chat history can include user messages, assistant messages, system notices, and tool-related UI parts so conversations can be replayed and audited later.
 - Runtime state can also store receipts, jobs, memory facts, summaries, and other structured records.
+- Readonly release assets and mutable runtime state are separate. Do not imply that developer-local vaults, wallets, logs, or databases ship inside the user bundle.
 - Stored records are useful historical context, but they are not a substitute for live reads when the user asks about current balances, prices, runtime state, or execution status.
 - Prefer live runtime tools for current truth and use persisted logs or summaries as historical context.
 
