@@ -2,8 +2,9 @@ import { Chat } from "@ai-sdk/svelte";
 import { DefaultChatTransport } from "ai";
 import type { GuiConversationMessageView, GuiConversationView } from "@trenchclaw/types";
 import type { UIMessage } from "ai";
-import { CHAT_API_PATH, DEFAULT_CHAT_ERROR } from "../../config/app-config";
+import { CHAT_API_PATH, CHAT_STREAM_TIMEOUT_MS, DEFAULT_CHAT_ERROR } from "../../config/app-config";
 import { runtimeApi, toRuntimeUrl } from "../../runtime-api";
+import { createTimedStreamingFetch } from "./chat-transport";
 
 interface ChatUiState {
   input: string;
@@ -58,6 +59,10 @@ const toDisplayErrorText = (rawError: unknown): string => {
     || rawErrorText.includes("502")
   ) {
     return "The selected AI model is temporarily unavailable. Retry, or switch models in AI settings.";
+  }
+
+  if (rawErrorText.includes("Chat request timed out after")) {
+    return "The model stopped responding in time. Retry, or narrow the request.";
   }
 
   return rawErrorText;
@@ -139,6 +144,7 @@ export const createChatController = () => {
   const chat = new Chat({
     transport: new DefaultChatTransport({
       api: toRuntimeUrl(CHAT_API_PATH),
+      fetch: createTimedStreamingFetch(CHAT_STREAM_TIMEOUT_MS),
       prepareSendMessagesRequest: ({ id, messages, body }) => {
         const chatId = ensureActiveConversationId();
         const activeConversation = state.conversations.find((conversation) => conversation.id === chatId);

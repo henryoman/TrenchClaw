@@ -674,4 +674,90 @@ describe("getManagedWalletContentsAction", () => {
       }),
     ]);
   });
+
+  test("falls back to sequential raw RPC reads after batch timeout", async () => {
+    const instanceId = "95";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      [
+        JSON.stringify({
+          walletId: "core-wallets.wallet_000",
+          walletGroup: "core-wallets",
+          walletName: "wallet_000",
+          address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let requestCount = 0;
+    let sawTimeoutSignal = false;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) as unknown[] : [];
+      requestCount += 1;
+      if (body.length > 1) {
+        sawTimeoutSignal = Boolean(init?.signal);
+        throw new Error("request timed out waiting for RPC response");
+      }
+
+      const request = body[0] as { id: string };
+      const responses: Record<string, unknown> = {
+        "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance": {
+          jsonrpc: "2.0",
+          id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance",
+          result: { value: 40_010_000 },
+        },
+        "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:spl": {
+          jsonrpc: "2.0",
+          id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:spl",
+          result: { value: [] },
+        },
+        "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:token2022": {
+          jsonrpc: "2.0",
+          id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:token2022",
+          result: { value: [] },
+        },
+      };
+
+      return new Response(JSON.stringify([responses[request.id]]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const action = createGetManagedWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        walletGroup: "core-wallets",
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(sawTimeoutSignal).toBe(true);
+    expect(requestCount).toBeGreaterThan(1);
+    const payload = result.data as {
+      dataSource: string;
+      wallets: Array<{ walletName: string; balanceLamports: string }>;
+    };
+    expect(payload.dataSource).toBe("rpc-sequential");
+    expect(payload.wallets).toEqual([
+      expect.objectContaining({
+        walletName: "wallet_000",
+        balanceLamports: "40010000",
+      }),
+    ]);
+  });
 });
