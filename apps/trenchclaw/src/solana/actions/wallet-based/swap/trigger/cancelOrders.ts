@@ -53,10 +53,13 @@ export const triggerCancelOrdersAction: Action<
       const signatures: string[] = [];
       const executePayloads: Array<Record<string, unknown>> = [];
 
+      // Keep cancel execution order stable across returned transactions.
       for (const transaction of cancelPayload.transactions) {
+        // eslint-disable-next-line no-await-in-loop
         const signedTransaction = await signTriggerTransactionIfNeeded(ctx, {
           transaction,
         });
+        // eslint-disable-next-line no-await-in-loop
         const execute = await adapter.executeOrder({
           requestId: cancelPayload.requestId,
           signedTransaction,

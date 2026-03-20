@@ -8,6 +8,7 @@ export interface PromptPayloadManifestDefaults {
 }
 
 export type PromptGeneratedSectionSource =
+  | "liveRuntimeRules"
   | "knowledgeManifest"
   | "knowledgeDirectoryTree"
   | "workspaceDirectoryTree"
@@ -103,6 +104,7 @@ export const parsePromptManifest = (raw: unknown, filePath: string): PromptPaylo
         if (kind === "generated") {
           const generatedSource = rawSection.source;
           if (
+            generatedSource !== "liveRuntimeRules" &&
             generatedSource !== "knowledgeManifest" &&
             generatedSource !== "knowledgeDirectoryTree" &&
             generatedSource !== "workspaceDirectoryTree" &&

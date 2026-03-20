@@ -80,7 +80,7 @@ const renderProfileMeaning = (profile: string): string => {
   }
 };
 
-const renderRuntimeContract = async (): Promise<string> => {
+const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
   const [capabilitySnapshot, filesystemPolicy, walletSummary, liveRuntimeContext] = await Promise.all([
     getRuntimeCapabilitySnapshot(settings),
@@ -93,7 +93,7 @@ const renderRuntimeContract = async (): Promise<string> => {
   const confirmationEnabled = settings.trading.confirmations.requireUserConfirmationForDangerousActions;
 
   return [
-    "## Runtime Contract",
+    "## Live Runtime Rules",
     `- active profile: ${settings.profile}`,
     `- profile meaning: ${renderProfileMeaning(settings.profile)}`,
     `- active instance: ${activeInstanceId ?? "none"}`,
@@ -109,6 +109,7 @@ const renderRuntimeContract = async (): Promise<string> => {
     `- readable roots: ${filesystemPolicy.readPaths.join(", ") || "none"}`,
     `- writable roots: ${filesystemPolicy.writePaths.join(", ") || "none"}`,
     `- blocked roots: ${filesystemPolicy.blockedPaths.join(", ") || "none"}`,
+    "- workspace tools are still restricted to the runtime workspace root, and direct reads of protected vault/keypair files are blocked",
     "",
     renderRuntimeToolContractSection(capabilitySnapshot),
     "",
@@ -128,22 +129,23 @@ const renderRuntimeContract = async (): Promise<string> => {
     "- `.trenchclaw-generated/workspace-context.md`",
     "",
     "Use `workspaceReadFile` only for exact runtime-workspace reads when you know the path.",
+    "Use `workspaceWriteFile` only for exact runtime-workspace artifacts such as notes, scratch files, and generated output.",
     "Use `queryRuntimeStore` and `queryInstanceMemory` for structured runtime state instead of reading files when a structured action exists.",
   ].join("\n");
 };
 
 export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]): Promise<SystemPromptPayload> => {
   const resolvedMode = resolveMode(mode);
-  const [kernel, runtimeContract] = await Promise.all([
+  const [kernel, runtimeRules] = await Promise.all([
     loadPromptFile(SYSTEM_PROMPT_FILE, FALLBACK_SYSTEM_PROMPT),
-    renderRuntimeContract(),
+    renderLiveRuntimeRules(),
   ]);
 
-  const systemPrompt = [kernel.text, runtimeContract].filter((value) => value.trim().length > 0).join("\n\n");
+  const systemPrompt = [kernel.text, runtimeRules].filter((value) => value.trim().length > 0).join("\n\n");
 
   return {
     mode: resolvedMode,
-    title: "Primary Runtime Contract",
+    title: "Primary Runtime Rules",
     systemPrompt,
     promptFiles: [kernel.path],
     sections: [
@@ -155,9 +157,9 @@ export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]
       },
       {
         order: 2,
-        title: "Runtime Contract",
+        title: "Live Runtime Rules",
         kind: "generated",
-        source: "generated:runtimeContract",
+        source: "generated:liveRuntimeRules",
       },
     ],
   };

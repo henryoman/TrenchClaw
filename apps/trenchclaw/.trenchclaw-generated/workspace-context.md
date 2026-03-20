@@ -1,6 +1,6 @@
 # Workspace Context Snapshot
 
-Generated at: 2026-03-20T03:29:30.009Z
+Generated at: 2026-03-20T20:42:11.016Z
 Root: apps/trenchclaw/
 
 This file is generated. Refresh with:
@@ -41,6 +41,7 @@ Omitted generated/vendor directories if a tree is requested elsewhere: node_modu
 | /api/gui/sol-price |
 | /api/gui/trading-settings |
 | /api/gui/vault |
+| /api/gui/wakeup-settings |
 | /api/gui/wallets |
 | /api/gui/wallets/download |
 | /v1/chat/stream |

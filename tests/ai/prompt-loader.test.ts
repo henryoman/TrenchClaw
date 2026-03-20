@@ -233,14 +233,14 @@ afterEach(async () => {
 });
 
 describe("loadSystemPromptPayload", () => {
-  test("builds the default primary runtime contract", async () => {
+  test("builds the default primary runtime rules", async () => {
     const payload = await loadSystemPromptPayload();
 
     expect(payload.mode).toBe("primary");
-    expect(payload.title).toBe("Primary Runtime Contract");
+    expect(payload.title).toBe("Primary Runtime Rules");
     expect(payload.sections.length).toBe(2);
     expect(payload.systemPrompt).toContain("TrenchClaw System Kernel");
-    expect(payload.systemPrompt).toContain("## Runtime Contract");
+    expect(payload.systemPrompt).toContain("## Live Runtime Rules");
     expect(payload.systemPrompt).toContain("## Enabled Model Tools");
     expect(payload.systemPrompt).toContain("## Release Readiness");
     expect(payload.systemPrompt).toContain("## Live Runtime Context");
@@ -269,8 +269,8 @@ describe("loadSystemPromptPayload", () => {
     const payload = await loadSystemPromptPayload("primary");
 
     expect(payload.mode).toBe("primary");
-    expect(payload.title).toBe("Primary Runtime Contract");
-    expect(payload.systemPrompt).toContain("## Runtime Contract");
+    expect(payload.title).toBe("Primary Runtime Rules");
+    expect(payload.systemPrompt).toContain("## Live Runtime Rules");
     expect(payload.systemPrompt).not.toContain("## Knowledge Routing");
   });
 

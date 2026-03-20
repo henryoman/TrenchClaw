@@ -39,7 +39,10 @@ export const updateAiSettings = async (
 ): Promise<GuiUpdateAiSettingsResponse> => {
   await ensureAiSettingsFileExists();
   const result = await writeAiSettings(normalizeAiSettingsInput(payload.settings));
-  context.addActivity("runtime", `AI settings updated: ${result.settings.provider}/${result.settings.model}`);
+  context.addActivity(
+    "runtime",
+    `AI settings updated: ${result.settings.provider}/${result.settings.model} (${result.settings.defaultMode})`,
+  );
   return {
     filePath: result.filePath,
     savedAt: new Date().toISOString(),

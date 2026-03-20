@@ -271,7 +271,11 @@ export const buildOrderRequest = async (
 
 export const signOrderTransactionIfNeeded = async (
   ctx: ActionContext,
-  input: z.infer<typeof ultraExecuteInputSchema>,
+  input: {
+    requestId?: string;
+    signedTransaction?: string;
+    transaction?: string;
+  },
 ): Promise<string> => {
   if (input.signedTransaction) {
     return input.signedTransaction;

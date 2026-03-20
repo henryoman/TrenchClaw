@@ -216,7 +216,7 @@ export const createJupiterTriggerAdapter = (config: JupiterTriggerAdapterConfig)
           : undefined;
 
       return {
-        ...(payloadRecord ?? {}),
+        ...payloadRecord,
         status,
         signature,
         raw: payload,

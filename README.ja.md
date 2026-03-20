@@ -110,7 +110,7 @@ flowchart LR
 
 ## ダッシュボード UI
 
-![TrenchClaw main dashboard UI](./public/ui-screenshot-chat.png)
+![TrenchClaw main dashboard UI](./public/v0-ui.png)
 
 ---
 

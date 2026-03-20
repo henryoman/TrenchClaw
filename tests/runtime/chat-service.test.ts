@@ -188,7 +188,7 @@ observability:
 `;
 const DEFAULT_TEST_SYSTEM_PROMPT = [
   "TrenchClaw System Kernel",
-  "## Runtime Contract",
+  "## Live Runtime Rules",
   "## Wallet Summary",
 ].join("\n\n");
 const TEST_WORKSPACE_TOOL_NAMES = [
@@ -843,7 +843,7 @@ describe("RuntimeChatService", () => {
     expect(payload.ok).toBe(true);
     expect(payload.data.echoed).toEqual({ value: 42 });
     expect(capturedSystemPrompt).toContain("TrenchClaw System Kernel");
-    expect(capturedSystemPrompt).toContain("## Runtime Contract");
+    expect(capturedSystemPrompt).toContain("## Live Runtime Rules");
     expect(capturedSystemPrompt).toContain("## Wallet Summary");
   });
 
