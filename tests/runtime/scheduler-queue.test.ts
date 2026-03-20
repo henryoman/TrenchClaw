@@ -336,7 +336,7 @@ describe("Scheduler queue dispatch", () => {
           steps: [
             {
               key: "removed",
-              actionName: "managedTriggerOrder",
+              actionName: "unsupportedQueueAction",
               input: {
                 walletGroup: "core-wallets",
               },

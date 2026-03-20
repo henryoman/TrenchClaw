@@ -291,7 +291,7 @@ describe("runtime capability snapshot", () => {
     );
   });
 
-  test("ignores legacy Jupiter Trigger settings and keeps trigger tools out of the model snapshot", async () => {
+  test("exposes Jupiter Trigger tools when trigger settings are enabled", async () => {
     const originalWarn = console.warn;
     const warnings: string[] = [];
     console.warn = (...args: unknown[]) => {
@@ -304,7 +304,7 @@ describe("runtime capability snapshot", () => {
         .replace("trading:\n  enabled: false", "trading:\n  enabled: true")
         .replace(
           "    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
-          "    trigger:\n      enabled: true\n      allowOrders: true\n      allowExecutions: true\n      allowCancellations: true\n    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
+          "    trigger:\n      enabled: true\n      allowOrders: true\n      allowReads: true\n      allowCancellations: true\n    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
         ),
     );
 
@@ -313,11 +313,10 @@ describe("runtime capability snapshot", () => {
       const snapshot = await getRuntimeCapabilitySnapshot(settings);
       const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
-      expect(modelToolNames).not.toContain("getTriggerOrders");
-      expect(modelToolNames).not.toContain("managedTriggerOrder");
-      expect(modelToolNames).not.toContain("scheduleManagedTriggerOrder");
-      expect(modelToolNames).not.toContain("managedTriggerCancelOrders");
-      expect(warnings.some((warning) => warning.includes('trading.jupiter.trigger'))).toBe(true);
+      expect(modelToolNames).toContain("getTriggerOrders");
+      expect(modelToolNames).toContain("managedTriggerOrder");
+      expect(modelToolNames).toContain("managedTriggerCancelOrders");
+      expect(warnings).toHaveLength(0);
     } finally {
       console.warn = originalWarn;
     }

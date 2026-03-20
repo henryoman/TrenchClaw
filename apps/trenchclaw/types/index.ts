@@ -32,6 +32,7 @@ export interface ActionContext {
   rpc?: unknown;
   rpcUrl?: string;
   jupiter?: unknown;
+  jupiterTrigger?: unknown;
   tokenAccounts?: unknown;
   balances?: Record<string, bigint>;
   policies?: Policy[];

@@ -18,6 +18,9 @@ const OPERATOR_ACTION_ALLOWLIST = [
   "renameWallets",
   "transfer",
   "closeTokenAccount",
+  "getTriggerOrders",
+  "managedTriggerOrder",
+  "managedTriggerCancelOrders",
   "managedUltraSwap",
   "scheduleManagedUltraSwap",
 ] as const;

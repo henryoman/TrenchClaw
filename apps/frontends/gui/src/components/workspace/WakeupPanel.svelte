@@ -27,7 +27,7 @@
   }: WakeupPanelProps = $props();
 
   const DEFAULT_WAKEUP_SETTINGS: GuiWakeupSettingsView = {
-    intervalMinutes: 30,
+    intervalMinutes: 0,
     prompt: "",
   };
 
@@ -45,7 +45,7 @@
   const normalizeInterval = (value: string): number => {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
-      return 30;
+      return 0;
     }
     return Math.max(0, Math.min(24 * 60, Math.trunc(parsed)));
   };
