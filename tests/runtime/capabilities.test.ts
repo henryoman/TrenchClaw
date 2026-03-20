@@ -210,6 +210,8 @@ describe("runtime capability snapshot", () => {
 
     expect(modelToolNames).toContain("workspaceBash");
     expect(modelToolNames).toContain("workspaceReadFile");
+    expect(modelToolNames).toContain("listKnowledgeDocs");
+    expect(modelToolNames).toContain("readKnowledgeDoc");
     expect(modelToolNames).not.toContain("workspaceWriteFile");
     expect(modelToolNames).not.toContain("createWallets");
     expect(snapshot.modelTools.find((toolEntry) => toolEntry.name === "workspaceReadFile")?.releaseReadinessStatus).toBe(

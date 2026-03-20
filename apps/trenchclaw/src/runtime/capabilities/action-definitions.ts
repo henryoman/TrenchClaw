@@ -16,10 +16,12 @@ import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runt
 import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
 import { getManagedWalletContentsAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletContents";
 import { getManagedWalletSolBalancesAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
+import { listKnowledgeDocsAction } from "../../solana/actions/data-fetch/runtime/listKnowledgeDocs";
 import { manageRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/manageRuntimeJob";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
 import { queryRuntimeStoreAction } from "../../solana/actions/data-fetch/runtime/queryRuntimeStore";
+import { readKnowledgeDocAction } from "../../solana/actions/data-fetch/runtime/readKnowledgeDoc";
 import { sleepAction } from "../../solana/actions/data-fetch/runtime/sleep";
 import {
   createWalletGroupDirectoryAction,
@@ -76,6 +78,8 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   renameWallets: SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
   queryRuntimeStore: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
   queryInstanceMemory: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  listKnowledgeDocs: SHIPPED_NOW("Knowledge routing and doc lookup ship in the current release."),
+  readKnowledgeDoc: SHIPPED_NOW("Knowledge routing and doc lookup ship in the current release."),
   mutateInstanceMemory: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
   pingRuntime: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
   sleep: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
@@ -221,6 +225,39 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     exampleInput: {
       jobSerial: 42,
       operation: "resume",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: listKnowledgeDocsAction,
+    description: "List the available TrenchClaw knowledge docs, deep references, and skill packs with short aliases.",
+    purpose: "Give the model a simple menu of app knowledge so it can choose the right doc without guessing long file paths.",
+    routingHint: "you want to browse available knowledge, discover doc aliases, or search for the right reference before reading it",
+    tags: ["knowledge", "docs", "read", "discovery"],
+    exampleInput: {
+      request: {
+        query: "helius cli",
+        tier: "all",
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: readKnowledgeDocAction,
+    description: "Read a knowledge doc or skill file by alias instead of by long repo path.",
+    purpose: "Open the exact knowledge file the model needs using a short alias such as `runtime-reference` or `helius-cli-readme`.",
+    routingHint: "you already know which knowledge doc you need, or `listKnowledgeDocs` returned the alias to open next",
+    tags: ["knowledge", "docs", "read"],
+    exampleInput: {
+      doc: "helius-cli-readme",
+      offset: 1,
+      limit: 120,
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,

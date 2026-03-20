@@ -240,8 +240,9 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.title).toBe("Primary Runtime Rules");
     expect(payload.sections.length).toBe(3);
     expect(payload.systemPrompt).toContain("TrenchClaw System Kernel");
-    expect(payload.systemPrompt).toContain("# Primary Mode Reference");
+    expect(payload.systemPrompt).toContain("# Primary Mode");
     expect(payload.systemPrompt).toContain("## Live Runtime Rules");
+    expect(payload.systemPrompt).toContain("## Knowledge Menu");
     expect(payload.systemPrompt).toContain("### Shell Tooling");
     expect(payload.systemPrompt).toContain("## Enabled Model Tools");
     expect(payload.systemPrompt).toContain("## Release Readiness");
@@ -249,6 +250,9 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("workspaceBash");
     expect(payload.systemPrompt).toContain("queryRuntimeStore");
     expect(payload.systemPrompt).toContain("queryInstanceMemory");
+    expect(payload.systemPrompt).toContain("listKnowledgeDocs");
+    expect(payload.systemPrompt).toContain("readKnowledgeDoc");
+    expect(payload.systemPrompt).toContain("`runtime-reference`");
     expect(payload.systemPrompt).toContain("Release readiness overrides bundled docs");
     expect(payload.systemPrompt).toContain("Helius Sender integration");
     expect(payload.systemPrompt).toContain("coming-soon");
