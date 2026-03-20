@@ -233,8 +233,8 @@ const renderOperatorToolReference = (
 
 const renderOperatorKnowledgeIndex = (): string => [
   "## Knowledge Index",
-  "- `.trenchclaw-generated/knowledge-index.md`: compact folder and file breakdown for available knowledge, titles, and read-when guidance",
-  "- open specific docs only when the request needs them; do not preload full doc bodies in your reasoning",
+  "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
+  "- use `readKnowledgeDoc` with an alias like `runtime-reference` or `helius-cli-readme` to open one directly",
   "- knowledge files are reference material; live tools, release readiness, and runtime state are higher authority",
 ].join("\n");
 

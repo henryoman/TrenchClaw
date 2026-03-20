@@ -734,6 +734,95 @@ describe("getManagedWalletContentsAction", () => {
     ]);
   });
 
+  test("falls back to raw RPC when Helius DAS inventory reads are rate-limited", async () => {
+    const instanceId = "93";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      [
+        JSON.stringify({
+          walletId: "core-wallets.wallet_000",
+          walletGroup: "core-wallets",
+          walletName: "wallet_000",
+          address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let sawHeliusDasRequest = false;
+    let sawRawRpcBatch = false;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) as Array<{ id: string; method: string }> : [];
+      if (body.some((request) => request.method === "getAssetsByOwner")) {
+        sawHeliusDasRequest = true;
+        return new Response("rate limited", {
+          status: 429,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+
+      sawRawRpcBatch = body.length > 1;
+      return new Response(
+        JSON.stringify([
+          {
+            jsonrpc: "2.0",
+            id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance",
+            result: { value: 40_010_000 },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:spl",
+            result: { value: [] },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:token2022",
+            result: { value: [] },
+          },
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+
+    const action = createGetManagedWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://mainnet.helius-rpc.com/?api-key=test-key",
+      }),
+      {
+        walletGroup: "core-wallets",
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(sawHeliusDasRequest).toBe(true);
+    expect(sawRawRpcBatch).toBe(true);
+    const payload = result.data as {
+      dataSource: string;
+      wallets: Array<{ walletName: string; balanceLamports: string }>;
+    };
+    expect(payload.dataSource).toBe("rpc-batch");
+    expect(payload.wallets).toEqual([
+      expect.objectContaining({
+        walletName: "wallet_000",
+        balanceLamports: "40010000",
+      }),
+    ]);
+  });
+
   test("falls back to sequential raw RPC reads after batch timeout", async () => {
     const instanceId = "95";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);

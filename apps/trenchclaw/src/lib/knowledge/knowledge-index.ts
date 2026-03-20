@@ -55,6 +55,19 @@ export interface KnowledgeInventory {
   tree: string;
 }
 
+export interface KnowledgeLookupEntry {
+  kind: "core-doc" | "deep-doc" | "support-doc" | "skill-pack";
+  alias: string;
+  aliases: string[];
+  path: string;
+  title: string;
+  topics: string[];
+  readWhen: string;
+  priority?: KnowledgeDocPriority;
+  authority?: KnowledgeDocEntry["authority"];
+  referenceCount?: number;
+}
+
 type KnowledgeDocMetadata = Omit<KnowledgeDocEntry, "path">;
 
 const KNOWLEDGE_WORKSPACE_ROOT = "src/ai/brain/knowledge";
@@ -426,6 +439,15 @@ const compareDocEntries = (a: KnowledgeDocEntry, b: KnowledgeDocEntry): number =
 
 const compareSkillPacks = (a: KnowledgeSkillPackSummary, b: KnowledgeSkillPackSummary): number => a.path.localeCompare(b.path);
 
+const normalizeSelector = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/\.(md|txt)$/gu, "")
+    .replace(/[`"'"]/gu, "")
+    .replace(/[^a-z0-9]+/gu, "-")
+    .replace(/^-+|-+$/gu, "");
+
 const toDocEntry = (relativePath: string): KnowledgeDocEntry => {
   const metadata = resolveKnownDocMetadata(relativePath) ?? createFallbackDocMetadata(relativePath);
 
@@ -433,6 +455,99 @@ const toDocEntry = (relativePath: string): KnowledgeDocEntry => {
     path: toWorkspaceKnowledgePath(relativePath),
     ...metadata,
   };
+};
+
+const buildDocAliasCandidates = (entry: KnowledgeDocEntry): string[] => {
+  const relativePath = entry.path.replace(`${KNOWLEDGE_WORKSPACE_ROOT}/`, "");
+  const withoutExtension = relativePath.replace(/\.(md|txt)$/u, "");
+  const basename = path.basename(withoutExtension);
+  const withoutDeepPrefix = withoutExtension.replace(/^deep-knowledge\//u, "");
+  const withoutSkillsPrefix = withoutExtension.replace(/^skills\//u, "");
+  const titleAlias = normalizeSelector(entry.title);
+  return [
+    basename,
+    withoutExtension.replaceAll(path.sep, "-"),
+    withoutDeepPrefix.replaceAll(path.sep, "-"),
+    withoutSkillsPrefix.replaceAll(path.sep, "-"),
+    titleAlias,
+  ]
+    .map(normalizeSelector)
+    .filter((value, index, values) => value.length > 0 && values.indexOf(value) === index);
+};
+
+const buildSkillAliasCandidates = (entry: KnowledgeSkillPackSummary): string[] =>
+  [
+    entry.name,
+    `${entry.name}-skill`,
+    `skill-${entry.name}`,
+    normalizeSelector(entry.title),
+    entry.path
+      .replace(`${KNOWLEDGE_WORKSPACE_ROOT}/`, "")
+      .replace(/\.(md|txt)$/u, "")
+      .replaceAll(path.sep, "-"),
+  ]
+    .map(normalizeSelector)
+    .filter((value, index, values) => value.length > 0 && values.indexOf(value) === index);
+
+const choosePrimaryAlias = (candidates: string[], usedAliases: Set<string>, fallbackSeed: string): string => {
+  for (const candidate of candidates) {
+    if (!usedAliases.has(candidate)) {
+      usedAliases.add(candidate);
+      return candidate;
+    }
+  }
+  let suffix = 2;
+  let fallback = `${normalizeSelector(fallbackSeed)}-${suffix}`;
+  while (usedAliases.has(fallback)) {
+    suffix += 1;
+    fallback = `${normalizeSelector(fallbackSeed)}-${suffix}`;
+  }
+  usedAliases.add(fallback);
+  return fallback;
+};
+
+const buildKnowledgeLookupEntries = (inventory: KnowledgeInventory): KnowledgeLookupEntry[] => {
+  const usedAliases = new Set<string>();
+  const entries: KnowledgeLookupEntry[] = [];
+
+  const pushDocEntries = (kind: KnowledgeLookupEntry["kind"], docs: KnowledgeDocEntry[]) => {
+    for (const doc of docs) {
+      const candidates = buildDocAliasCandidates(doc);
+      const alias = choosePrimaryAlias(candidates, usedAliases, doc.title);
+      entries.push({
+        kind,
+        alias,
+        aliases: candidates,
+        path: doc.path,
+        title: doc.title,
+        topics: doc.topics,
+        readWhen: doc.readWhen,
+        priority: doc.priority,
+        authority: doc.authority,
+      });
+    }
+  };
+
+  pushDocEntries("core-doc", inventory.coreDocs);
+  pushDocEntries("deep-doc", inventory.deepDocs);
+  pushDocEntries("support-doc", inventory.supportDocs);
+
+  for (const skill of inventory.skillPacks) {
+    const candidates = buildSkillAliasCandidates(skill);
+    const alias = choosePrimaryAlias(candidates, usedAliases, skill.title);
+    entries.push({
+      kind: "skill-pack",
+      alias,
+      aliases: candidates,
+      path: skill.path,
+      title: skill.title,
+      topics: skill.topics,
+      readWhen: skill.readWhen,
+      referenceCount: skill.referenceCount,
+    });
+  }
+
+  return entries.toSorted((a, b) => a.alias.localeCompare(b.alias));
 };
 
 const buildSkillPackSummary = (skillName: string, referenceCount: number): KnowledgeSkillPackSummary => {
@@ -516,6 +631,52 @@ export const buildKnowledgeInventory = async (targetDir: string): Promise<Knowle
     skillPacks,
     tree,
   };
+};
+
+export const buildKnowledgeLookup = async (targetDir: string): Promise<KnowledgeLookupEntry[]> =>
+  buildKnowledgeLookupEntries(await buildKnowledgeInventory(targetDir));
+
+export const resolveKnowledgeLookupEntry = async (
+  targetDir: string,
+  selector: string,
+): Promise<KnowledgeLookupEntry | null> => {
+  const normalizedSelector = normalizeSelector(selector);
+  if (!normalizedSelector) {
+    return null;
+  }
+  const entries = await buildKnowledgeLookup(targetDir);
+  const exactMatch = entries.find(
+    (entry) =>
+      normalizeSelector(entry.alias) === normalizedSelector
+      || normalizeSelector(entry.path) === normalizedSelector
+      || entry.aliases.some((alias) => normalizeSelector(alias) === normalizedSelector),
+  );
+  if (exactMatch) {
+    return exactMatch;
+  }
+  return (
+    entries.find(
+      (entry) =>
+        normalizeSelector(entry.title) === normalizedSelector
+        || entry.topics.some((topic) => normalizeSelector(topic) === normalizedSelector),
+    ) ?? null
+  );
+};
+
+export const renderKnowledgeAliasMenu = async (targetDir: string): Promise<string> => {
+  const entries = await buildKnowledgeLookup(targetDir);
+  const rows = entries.map((entry) => [
+    `\`${entry.alias}\``,
+    entry.kind,
+    entry.title,
+    entry.readWhen,
+  ]);
+  return [
+    "## Knowledge Menu",
+    "- Use `listKnowledgeDocs` to see the full menu again or narrow it by topic.",
+    "- Use `readKnowledgeDoc` with the alias when you want a specific doc.",
+    renderDocTable(["alias", "kind", "title", "read when"], rows),
+  ].join("\n");
 };
 
 export const renderKnowledgeRoutingSummary = async (targetDir: string): Promise<string> => {

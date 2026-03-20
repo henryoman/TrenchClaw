@@ -9,10 +9,12 @@ import { loadRuntimeSettings } from "../../runtime/load";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
+import { renderKnowledgeAliasMenu } from "../../lib/knowledge/knowledge-index";
 import { resolveVaultFile } from "./vault-file";
 
 const SYSTEM_PROMPT_FILE = "../config/system.md";
 const PRIMARY_MODE_PROMPT_FILE = "../config/agent-modes/primary.md";
+const KNOWLEDGE_ROOT = "../brain/knowledge/";
 const AGENT_MODE_ENV = "TRENCHCLAW_AGENT_MODE";
 const SUPPORTED_MODE = "primary";
 
@@ -98,11 +100,12 @@ const renderShellToolingSummary = (): string => {
 
 const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const [capabilitySnapshot, filesystemPolicy, walletSummary, liveRuntimeContext] = await Promise.all([
+  const [capabilitySnapshot, filesystemPolicy, walletSummary, liveRuntimeContext, knowledgeMenu] = await Promise.all([
     getRuntimeCapabilitySnapshot(settings),
     summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
     renderRuntimeWalletPromptSummary(),
     renderLiveRuntimeContextSection(),
+    renderKnowledgeAliasMenu(resolvePromptFilePath(KNOWLEDGE_ROOT)),
   ]);
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
   const vault = resolveVaultFile({ activeInstanceId });
@@ -135,6 +138,8 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     "",
     liveRuntimeContext,
     "",
+    knowledgeMenu,
+    "",
     "## Wallet Summary",
     walletSummary,
     "",
@@ -146,6 +151,8 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     "- `.trenchclaw-generated/knowledge-index.md`",
     "- `.trenchclaw-generated/workspace-context.md`",
     "",
+    "Use `listKnowledgeDocs` to browse knowledge aliases and `readKnowledgeDoc` to open one by alias.",
+    "Prefer `readKnowledgeDoc` over guessing long knowledge file paths.",
     "Use `workspaceReadFile` only for exact runtime-workspace reads when you know the path.",
     "Use `workspaceWriteFile` only for exact runtime-workspace artifacts such as notes, scratch files, and generated output.",
     "Use `queryRuntimeStore` and `queryInstanceMemory` for structured runtime state instead of reading files when a structured action exists.",

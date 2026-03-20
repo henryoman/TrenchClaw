@@ -36,6 +36,8 @@ const PUBLIC_MAINNET_RPC_INTER_WALLET_DELAY_MS = 500;
 const PUBLIC_MAINNET_RPC_RETRY_COOLDOWN_MS = 2_000;
 const PRIVATE_RPC_INTER_REQUEST_DELAY_MS = 120;
 const PRIVATE_RPC_INTER_WALLET_DELAY_MS = 200;
+const HELIUS_DAS_INTER_PAGE_DELAY_MS = 180;
+const HELIUS_DAS_INTER_WALLET_DELAY_MS = 250;
 const RPC_REQUEST_TIMEOUT_MS = 8_000;
 const HELIUS_DAS_PAGE_LIMIT = 1_000;
 const HELIUS_FUNGIBLE_INTERFACES = new Set(["FungibleAsset", "FungibleToken"]);
@@ -868,96 +870,98 @@ const mergeHeliusDasPage = (
   return { hasMorePages: items.length >= HELIUS_DAS_PAGE_LIMIT };
 };
 
-const loadWalletContentsBatchFromHeliusDas = async (input: {
+const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
   rpcUrl: string;
   entries: ManagedWalletLibraryEntry[];
   includeZeroBalances: boolean;
-}): Promise<ManagedWalletContentsWallet[]> => {
+}): Promise<ManagedWalletContentsLoadOutcome> => {
   if (input.entries.length === 0) {
-    return [];
+    return {
+      wallets: [],
+      walletErrors: [],
+      usedSequentialFallback: false,
+    };
   }
 
-  const accumulators = new Map<string, WalletContentsAccumulator>(
-    input.entries.map((entry) => [
-      entry.address,
-      {
-        entry,
-        lamports: 0n,
-        tokenBalances: [],
-        assetCount: 0,
-        collectibleCount: 0,
-        compressedCollectibleCount: 0,
-      },
-    ]),
-  );
+  const wallets: ManagedWalletContentsWallet[] = [];
+  const walletErrors: ManagedWalletContentsWalletError[] = [];
 
-  const pendingPages = new Map<string, number>(input.entries.map((entry) => [entry.address, 1]));
-
-  while (pendingPages.size > 0) {
-    const pageBatch = input.entries
-      .map((entry) => {
-        const page = pendingPages.get(entry.address);
-        return page ? { entry, page } : null;
-      })
-      .filter((entry): entry is { entry: ManagedWalletLibraryEntry; page: number } => entry !== null);
-
-    const requests = pageBatch.map(({ entry, page }): JsonRpcBatchRequest => ({
-      jsonrpc: "2.0",
-      id: `${entry.address}:helius-das:${page}`,
-      method: "getAssetsByOwner",
-      params: {
-        ownerAddress: entry.address,
-        page,
-        limit: HELIUS_DAS_PAGE_LIMIT,
-        displayOptions: {
-          showFungible: true,
-          showNativeBalance: true,
-          showZeroBalance: input.includeZeroBalances,
-        },
-      },
-    }));
-
-    // DAS pagination is stateful across pages, so each batch must complete before the next one is requested.
-    // eslint-disable-next-line no-await-in-loop
-    const rpcResults = await withRpcRetries(() => postRpcBatch(input.rpcUrl, requests));
-
-    for (const { entry, page } of pageBatch) {
-      const accumulator = accumulators.get(entry.address);
-      if (!accumulator) {
-        continue;
-      }
-
-      const requestId = `${entry.address}:helius-das:${page}`;
-      const pageResult = getRpcBatchResult(rpcResults, requestId);
-      const { hasMorePages } = mergeHeliusDasPage(accumulator, pageResult, page);
-      if (hasMorePages) {
-        pendingPages.set(entry.address, page + 1);
-      } else {
-        pendingPages.delete(entry.address);
-      }
-    }
-  }
-
-  return input.entries.map((entry) => {
-    const accumulator = accumulators.get(entry.address);
-    if (!accumulator) {
-      return buildWalletResult({
-        entry,
-        lamports: 0n,
-        tokenBalances: [],
-      });
-    }
-
-    const tokenBalances = aggregateTokenBalances(accumulator.tokenBalances, input.includeZeroBalances);
-    return buildWalletResult({
+  for (const [walletIndex, entry] of input.entries.entries()) {
+    const accumulator: WalletContentsAccumulator = {
       entry,
-      lamports: accumulator.lamports,
-      tokenBalances,
-      assetCount: accumulator.assetCount,
-      collectibleCount: accumulator.collectibleCount,
-      compressedCollectibleCount: accumulator.compressedCollectibleCount,
-    });
-  });
+      lamports: 0n,
+      tokenBalances: [],
+      assetCount: 0,
+      collectibleCount: 0,
+      compressedCollectibleCount: 0,
+    };
+    let page = 1;
+    let walletFailed = false;
+
+    while (!walletFailed) {
+      const request: JsonRpcBatchRequest = {
+        jsonrpc: "2.0",
+        id: `${entry.address}:helius-das:${page}`,
+        method: "getAssetsByOwner",
+        params: {
+          ownerAddress: entry.address,
+          page,
+          limit: HELIUS_DAS_PAGE_LIMIT,
+          displayOptions: {
+            showFungible: true,
+            showNativeBalance: true,
+            showZeroBalance: input.includeZeroBalances,
+          },
+        },
+      };
+
+      try {
+        // Helius DAS inventory reads are kept fully serialized per wallet/page to avoid request bursts.
+        // eslint-disable-next-line no-await-in-loop
+        const pageResult = await withRpcRetries(() => postRpcSingle(input.rpcUrl, request));
+        const { hasMorePages } = mergeHeliusDasPage(accumulator, pageResult, page);
+        if (!hasMorePages) {
+          break;
+        }
+        page += 1;
+        // Keep page traversal slow and predictable so large wallets do not spike DAS limits.
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(HELIUS_DAS_INTER_PAGE_DELAY_MS);
+      } catch (error) {
+        if (!isRetryableRpcError(error)) {
+          throw error;
+        }
+        walletErrors.push(toWalletReadError(entry, error));
+        walletFailed = true;
+      }
+    }
+
+    if (!walletFailed) {
+      const tokenBalances = aggregateTokenBalances(accumulator.tokenBalances, input.includeZeroBalances);
+      wallets.push(
+        buildWalletResult({
+          entry,
+          lamports: accumulator.lamports,
+          tokenBalances,
+          assetCount: accumulator.assetCount,
+          collectibleCount: accumulator.collectibleCount,
+          compressedCollectibleCount: accumulator.compressedCollectibleCount,
+        }),
+      );
+    }
+
+    if (walletIndex < input.entries.length - 1) {
+      // Leave a short gap between wallets so one broad inventory read does not hammer the provider.
+      // eslint-disable-next-line no-await-in-loop
+      await sleep(HELIUS_DAS_INTER_WALLET_DELAY_MS);
+    }
+  }
+
+  return {
+    wallets,
+    walletErrors,
+    usedSequentialFallback: false,
+  };
 };
 
 const filterWalletEntries = (
@@ -1208,28 +1212,35 @@ export const createGetManagedWalletContentsAction = (
 
         const useHeliusDas = Boolean(heliusConfig?.rpcUrl);
         let dataSource: ManagedWalletContentsDataSource = "rpc-batch";
-        const loadOutcome = deps.loadWalletContents
+        let fellBackFromHeliusDas = false;
+        let loadOutcome = deps.loadWalletContents
           ? await loadWalletsWithLoader(filteredEntries, deps.loadWalletContents, {
               rpcUrl: ctx.rpcUrl,
               includeZeroBalances: input.includeZeroBalances,
             })
           : useHeliusDas && heliusConfig?.rpcUrl
-            ? {
-                wallets: await loadWalletContentsBatchFromHeliusDas({
-                  entries: filteredEntries,
-                  rpcUrl: heliusConfig.rpcUrl,
-                  includeZeroBalances: input.includeZeroBalances,
-                }),
-                walletErrors: [],
-                usedSequentialFallback: false,
-              }
+            ? await loadWalletContentsSequentiallyFromHeliusDas({
+                entries: filteredEntries,
+                rpcUrl: heliusConfig.rpcUrl,
+                includeZeroBalances: input.includeZeroBalances,
+              })
             : await loadWalletContentsFromRpc({
                 entries: filteredEntries,
                 rpcUrl: ctx.rpcUrl,
                 includeZeroBalances: input.includeZeroBalances,
               });
+        if (useHeliusDas && heliusConfig?.rpcUrl && loadOutcome.wallets.length === 0 && loadOutcome.walletErrors.length > 0) {
+          fellBackFromHeliusDas = true;
+          loadOutcome = await loadWalletContentsFromRpc({
+            entries: filteredEntries,
+            rpcUrl: heliusConfig.rpcUrl,
+            includeZeroBalances: input.includeZeroBalances,
+          });
+        }
         if (useHeliusDas) {
-          dataSource = "helius-das";
+          dataSource = fellBackFromHeliusDas
+            ? (loadOutcome.usedSequentialFallback ? "rpc-sequential" : "rpc-batch")
+            : "helius-das";
         } else if (loadOutcome.usedSequentialFallback) {
           dataSource = "rpc-sequential";
         }

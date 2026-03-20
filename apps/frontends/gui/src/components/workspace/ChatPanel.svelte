@@ -561,7 +561,7 @@
                   closeConversationModal();
                 }}
               >
-                {conversation.title}
+                <span class="conversation-option-title">{conversation.title}</span>
               </button>
             {/if}
           {/each}
@@ -1014,6 +1014,7 @@
   }
 
   .conversation-option-title {
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
