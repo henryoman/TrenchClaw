@@ -238,9 +238,11 @@ describe("loadSystemPromptPayload", () => {
 
     expect(payload.mode).toBe("primary");
     expect(payload.title).toBe("Primary Runtime Rules");
-    expect(payload.sections.length).toBe(2);
+    expect(payload.sections.length).toBe(3);
     expect(payload.systemPrompt).toContain("TrenchClaw System Kernel");
+    expect(payload.systemPrompt).toContain("# Primary Mode Reference");
     expect(payload.systemPrompt).toContain("## Live Runtime Rules");
+    expect(payload.systemPrompt).toContain("### Shell Tooling");
     expect(payload.systemPrompt).toContain("## Enabled Model Tools");
     expect(payload.systemPrompt).toContain("## Release Readiness");
     expect(payload.systemPrompt).toContain("## Live Runtime Context");
@@ -256,13 +258,14 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("- active instance: 01");
     expect(payload.systemPrompt).toContain(process.env.TRENCHCLAW_VAULT_FILE ?? "");
     expect(payload.systemPrompt).toContain("workspaceReadFile");
+    expect(payload.systemPrompt).toContain("command -v <tool>");
     expect(payload.systemPrompt).toContain(".trenchclaw-generated/knowledge-index.md");
     expect(payload.systemPrompt).toContain(".trenchclaw-generated/workspace-context.md");
     expect(payload.systemPrompt).not.toContain("## Prompt Assembly Order");
     expect(payload.systemPrompt).not.toContain("Source:");
     expect(payload.systemPrompt).not.toContain("SQLite SQL Schema Snapshot");
     expect(payload.systemPrompt).not.toContain("injected runtime capability appendix");
-    expect(payload.promptFiles.length).toBe(1);
+    expect(payload.promptFiles.length).toBe(2);
   });
 
   test("resolves explicit primary mode", async () => {

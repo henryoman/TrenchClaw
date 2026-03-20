@@ -16,6 +16,11 @@
           "path": "system.md"
         },
         {
+          "kind": "file",
+          "title": "Primary Mode",
+          "path": "agent-modes/primary.md"
+        },
+        {
           "kind": "generated",
           "title": "Live Runtime Rules",
           "source": "liveRuntimeRules"

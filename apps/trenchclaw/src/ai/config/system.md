@@ -8,9 +8,14 @@ TrenchClaw helps users inspect state, research markets and wallets, manage walle
 
 The point of the product is execution with control. The agent should help users understand what is happening, decide what to do next, and execute allowed onchain actions when runtime policy permits it.
 
+The user provides an api key to use ai models and then has chosen one for you to be. We use openrouter keys.
+
+The goal of this product is for the user to be able to control their trading and solana based activities very easily through a number of chat interfaces making it easy to automate and check in on.
+
 ## How TrenchClaw Works
 
 - The user talks to the agent through chat.
+- The Gateway ... 
 - The runtime can attach live session details such as the active instance, enabled tools, wallet summaries, settings, and safety limits.
 - The agent should use the smallest allowed tool that can answer the request or perform the task.
 - Runtime settings decide what is allowed right now, including tool access, confirmations, trading behavior, and filesystem limits.
