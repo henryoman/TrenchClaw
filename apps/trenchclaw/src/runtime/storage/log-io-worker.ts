@@ -1,34 +1,14 @@
-import { appendFile, mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
-type AppendUtf8Request = {
-  id: string;
-  type: "appendUtf8";
-  filePath: string;
-  content: string;
-};
-
-type WriteUtf8Request = {
-  id: string;
-  type: "writeUtf8";
-  filePath: string;
-  content: string;
-};
-
-type LogIoRequest = AppendUtf8Request | WriteUtf8Request;
-
-type LogIoResponse = {
-  id: string;
-  ok: boolean;
-  error?: string;
-  operation?: "appendUtf8" | "writeUtf8";
-  filePath?: string;
-  bytes?: number;
-};
+import {
+  type LogIoOperation,
+  type LogIoRequest,
+  type LogIoRequestWithoutId,
+  type LogIoResponse,
+  performLogIoWrite,
+} from "./log-io-shared";
 
 export interface LogIoWriteEvent {
   ok: boolean;
-  operation: "appendUtf8" | "writeUtf8";
+  operation: LogIoOperation;
   filePath: string;
   bytes: number;
   error?: string;
@@ -89,22 +69,17 @@ export class LogIoWorkerClient {
     });
   }
 
-  private async performDirectWrite(request: Omit<LogIoRequest, "id">): Promise<void> {
-    await mkdir(path.dirname(request.filePath), { recursive: true });
-    if (request.type === "appendUtf8") {
-      await appendFile(request.filePath, request.content, "utf8");
-    } else {
-      await writeFile(request.filePath, request.content, "utf8");
-    }
+  private async performDirectWrite(request: LogIoRequestWithoutId): Promise<void> {
+    const result = await performLogIoWrite(request);
     writeObserver?.({
       ok: true,
-      operation: request.type,
-      filePath: request.filePath,
-      bytes: Buffer.byteLength(request.content, "utf8"),
+      operation: result.operation,
+      filePath: result.filePath,
+      bytes: result.bytes,
     });
   }
 
-  request(request: Omit<LogIoRequest, "id">): Promise<void> {
+  request(request: LogIoRequestWithoutId): Promise<void> {
     if (!this.worker) {
       return this.performDirectWrite(request);
     }

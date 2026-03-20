@@ -1,5 +1,6 @@
-import { address, createSolanaRpc } from "@solana/kit";
+import { address } from "@solana/kit";
 import type { Commitment, DataSlice, Slot } from "@solana/kit";
+import { createRateLimitedSolanaRpc } from "../../../lib/rpc/client";
 import { resolveDefaultSolanaRpcUrl } from "./shared";
 
 const MAX_GET_MULTIPLE_ACCOUNTS_BATCH_SIZE = 100;
@@ -13,7 +14,7 @@ export interface GetMultipleAccountsParams {
   commitment?: Commitment;
   minContextSlot?: Slot;
   dataSlice?: DataSlice;
-  rpcConfig?: Parameters<typeof createSolanaRpc>[1];
+  rpcConfig?: Parameters<typeof createRateLimitedSolanaRpc>[1];
   chunkSize?: number;
 }
 
@@ -42,7 +43,7 @@ function uniqueAccounts(accounts: readonly string[]): string[] {
 export async function getMultipleAccounts(
   params: GetMultipleAccountsParams,
 ): Promise<GetMultipleAccountsResult> {
-  const rpc = createSolanaRpc(params.rpcUrl ?? resolveDefaultSolanaRpcUrl(), params.rpcConfig);
+  const rpc = createRateLimitedSolanaRpc(params.rpcUrl ?? resolveDefaultSolanaRpcUrl(), params.rpcConfig);
   const encoding = params.encoding ?? "base64";
   const chunkSize = Math.min(
     Math.max(1, params.chunkSize ?? MAX_GET_MULTIPLE_ACCOUNTS_BATCH_SIZE),

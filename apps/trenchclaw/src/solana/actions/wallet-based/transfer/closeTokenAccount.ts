@@ -5,7 +5,6 @@ import {
   address,
   appendTransactionMessageInstructions,
   compileTransaction,
-  createSolanaRpc,
   createTransactionMessage,
   getAddressEncoder,
   getBase64EncodedWireTransaction,
@@ -19,6 +18,7 @@ import {
 
 import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
 import type { ActionContext } from "../../../../ai/runtime/types/context";
+import { createRateLimitedSolanaRpc } from "../../../lib/rpc/client";
 import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 import { loadManagedWalletSigner } from "../../../lib/wallet/wallet-signer";
 import { walletGroupNameSchema, walletNameSchema } from "../../../lib/wallet/wallet-types";
@@ -159,7 +159,7 @@ const isCommitmentSatisfied = (actual: CommitmentLevel | null, required: Commitm
 };
 
 const waitForCloseConfirmation = async (input: {
-  rpc: ReturnType<typeof createSolanaRpc>;
+  rpc: ReturnType<typeof createRateLimitedSolanaRpc>;
   txSignature: string;
   timeoutMs?: number;
   commitment?: CommitmentLevel;
@@ -197,7 +197,10 @@ const waitForCloseConfirmation = async (input: {
   throw new Error(`Timed out waiting for close token account confirmation for signature ${input.txSignature}`);
 };
 
-const assertAccountEmpty = async (rpc: ReturnType<typeof createSolanaRpc>, tokenAccountAddress: string): Promise<void> => {
+const assertAccountEmpty = async (
+  rpc: ReturnType<typeof createRateLimitedSolanaRpc>,
+  tokenAccountAddress: string,
+): Promise<void> => {
   const balance = await (rpc as any).getTokenAccountBalance(address(tokenAccountAddress)).send();
   const rawAmount = balance?.value?.amount;
   if (typeof rawAmount !== "string") {
@@ -225,7 +228,7 @@ export const closeTokenAccountAction: Action<CloseTokenAccountInput, CloseTokenA
       }
 
       const rpcUrl = resolveRequiredRpcUrl((ctx as CloseTokenAccountContext).rpcUrl);
-      const rpc = createSolanaRpc(rpcUrl);
+      const rpc = createRateLimitedSolanaRpc(rpcUrl);
       const tokenProgramId = getTokenProgramId(input.tokenProgram);
       const tokenAccountAddress =
         input.tokenAccountAddress ??

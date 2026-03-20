@@ -1,6 +1,5 @@
 import {
   createKeyPairFromPrivateKeyBytes,
-  createSolanaRpc,
   getAddressFromPublicKey,
 } from "@solana/kit";
 import {
@@ -11,6 +10,7 @@ import {
   type TransactionWithBlockhashLifetime,
 } from "@solana/transactions";
 import { loadVaultData, readVaultString } from "../../../ai/llm/vault-file";
+import { createRateLimitedSolanaRpc } from "../rpc/client";
 import { resolveRequiredRpcUrl } from "../rpc/urls";
 
 export interface UltraSignerAdapter {
@@ -23,7 +23,7 @@ export const createUltraSignerAdapter = async (config: {
   rpcUrl?: string;
 }): Promise<UltraSignerAdapter> => {
   const rpcUrl = resolveRequiredRpcUrl(config.rpcUrl);
-  const rpc = createSolanaRpc(rpcUrl);
+  const rpc = createRateLimitedSolanaRpc(rpcUrl);
   const keyPair = await createKeyPairFromPrivateKeyBytes(config.privateKey);
   const signerAddress = await getAddressFromPublicKey(keyPair.publicKey);
 
@@ -99,7 +99,7 @@ function parsePrivateKey(value: string, encoding: string): Uint8Array {
 
 async function ensureBlockhashLifetime(
   transaction: Transaction,
-  rpc: ReturnType<typeof createSolanaRpc>,
+  rpc: ReturnType<typeof createRateLimitedSolanaRpc>,
 ): Promise<Transaction & TransactionWithBlockhashLifetime> {
   if ("lifetimeConstraint" in transaction) {
     return transaction as Transaction & TransactionWithBlockhashLifetime;

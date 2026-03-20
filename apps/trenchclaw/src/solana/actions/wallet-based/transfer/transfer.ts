@@ -5,7 +5,6 @@ import {
   address,
   appendTransactionMessageInstructions,
   compileTransaction,
-  createSolanaRpc,
   createTransactionMessage,
   getAddressEncoder,
   getBase64EncodedWireTransaction,
@@ -19,6 +18,7 @@ import {
 
 import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
 import type { ActionContext } from "../../../../ai/runtime/types/context";
+import { createRateLimitedSolanaRpc } from "../../../lib/rpc/client";
 import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 import { loadManagedWalletSigner } from "../../../lib/wallet/wallet-signer";
 import { walletGroupNameSchema, walletNameSchema } from "../../../lib/wallet/wallet-types";
@@ -223,7 +223,7 @@ const isCommitmentSatisfied = (actual: CommitmentLevel | null, required: Commitm
 };
 
 const waitForTransferConfirmation = async (input: {
-  rpc: ReturnType<typeof createSolanaRpc>;
+  rpc: ReturnType<typeof createRateLimitedSolanaRpc>;
   txSignature: string;
   timeoutMs?: number;
   commitment?: CommitmentLevel;
@@ -337,7 +337,7 @@ const createTransferTokenCheckedInstruction = (params: {
 });
 
 const resolveTokenDecimals = async (
-  rpc: ReturnType<typeof createSolanaRpc>,
+  rpc: ReturnType<typeof createRateLimitedSolanaRpc>,
   mintAddress: string,
   inputDecimals?: number,
 ): Promise<number> => {
@@ -370,7 +370,7 @@ export const transferAction: Action<TransferInput, TransferOutput> = {
       }
 
       const rpcUrl = resolveRequiredRpcUrl((ctx as TransferContext).rpcUrl);
-      const rpc = createSolanaRpc(rpcUrl);
+      const rpc = createRateLimitedSolanaRpc(rpcUrl);
       const latestBlockhash = await rpc.getLatestBlockhash().send();
       const instructions: Instruction[] = [];
 

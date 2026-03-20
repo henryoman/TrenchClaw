@@ -87,6 +87,16 @@ export const formatWalletContentsFastPathText = (data: unknown): string | null =
         : [],
     }))
     .filter((entry) => entry.walletName.length > 0 && entry.address.length > 0);
+  const walletErrors = Array.isArray(data.walletErrors)
+    ? data.walletErrors
+      .filter((entry): entry is Record<string, unknown> => isRecord(entry))
+      .map((entry) => ({
+        walletGroup: typeof entry.walletGroup === "string" ? entry.walletGroup : "",
+        walletName: typeof entry.walletName === "string" ? entry.walletName : "",
+        retryable: entry.retryable === true,
+      }))
+      .filter((entry) => entry.walletName.length > 0)
+    : [];
 
   if (wallets.length === 0) {
     return "No managed wallet contents were found.";
@@ -112,6 +122,15 @@ export const formatWalletContentsFastPathText = (data: unknown): string | null =
     lines.push(`- ${wallet.walletName}: ${wallet.balanceSol} SOL (${wallet.address})`);
     lines.push(...collectibleSummary);
     lines.push(...tokenSummary);
+  }
+
+  if (walletErrors.length > 0) {
+    const skippedLabels = walletErrors
+      .slice(0, 4)
+      .map((entry) => (entry.walletGroup ? `${entry.walletGroup}/${entry.walletName}` : entry.walletName));
+    const skippedSuffix = skippedLabels.length > 0 ? `: ${skippedLabels.join(", ")}` : "";
+    const skippedReason = walletErrors.every((entry) => entry.retryable) ? " due to RPC throttling" : "";
+    lines.push(`Skipped ${walletErrors.length} wallet${walletErrors.length === 1 ? "" : "s"}${skippedReason}${skippedSuffix}.`);
   }
 
   return [header, ...lines].join("\n");
