@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -42,9 +42,17 @@ const getInstanceProfileFilePath = (localInstanceId: string): string =>
 
 const hasStoredInstance = (localInstanceId: string): boolean => existsSync(getInstanceProfileFilePath(localInstanceId));
 
+const hasInstanceDirectory = (localInstanceId: string): boolean => {
+  try {
+    return statSync(path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId))).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
 const resolveStoredInstanceId = (localInstanceId: string): string | null => {
   const normalized = normalizeInstanceId(localInstanceId);
-  return hasStoredInstance(normalized) ? normalized : null;
+  return hasStoredInstance(normalized) || hasInstanceDirectory(normalized) ? normalized : null;
 };
 
 const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | null => {

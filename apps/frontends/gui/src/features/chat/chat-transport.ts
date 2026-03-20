@@ -1,6 +1,11 @@
 const createChatStreamTimeoutError = (timeoutMs: number): Error =>
   new Error(`Chat request timed out after ${timeoutMs}ms`);
 
+type FetchLike = (
+  input: Parameters<typeof fetch>[0],
+  init?: Parameters<typeof fetch>[1],
+) => Promise<Response>;
+
 const combineAbortSignals = (signals: Array<AbortSignal | null | undefined>): AbortSignal | undefined => {
   const activeSignals = signals.filter((signal): signal is AbortSignal => signal != null);
   if (activeSignals.length === 0) {
@@ -32,8 +37,8 @@ const combineAbortSignals = (signals: Array<AbortSignal | null | undefined>): Ab
 
 export const createTimedStreamingFetch = (
   timeoutMs: number,
-  baseFetch: typeof fetch = globalThis.fetch,
-): typeof fetch =>
+  baseFetch: FetchLike = globalThis.fetch,
+): FetchLike =>
   async (input, init) => {
     const timeoutController = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -73,6 +78,8 @@ export const createTimedStreamingFetch = (
         async start(controller) {
           try {
             while (true) {
+              // Stream readers must be consumed sequentially.
+              // eslint-disable-next-line no-await-in-loop
               const { done, value } = await reader.read();
               if (done) {
                 clearTimeoutGuard();

@@ -17,23 +17,23 @@ const SHIPPED_NOW = (note: string): RuntimeReleaseReadinessDescriptor => ({
   note,
 });
 
-const LIMITED_BETA = (note: string): RuntimeReleaseReadinessDescriptor => ({
-  status: "limited-beta",
+const LIMITED = (note: string): RuntimeReleaseReadinessDescriptor => ({
+  status: "limited",
   note,
 });
 
 const toolReleaseReadinessByName: Record<string, RuntimeReleaseReadinessDescriptor> = {
   ...mapToolNames(
     ["createWalletGroupDirectory", "createWallets", "renameWallets"],
-    SHIPPED_NOW("Managed wallet creation and organization ship in the current beta."),
+    SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
   ),
   ...mapToolNames(
     ["queryRuntimeStore", "queryInstanceMemory", "mutateInstanceMemory", "pingRuntime", "sleep"],
-    SHIPPED_NOW("Core runtime state and memory surfaces ship in the current beta."),
+    SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
   ),
   ...mapToolNames(
     ["getManagedWalletContents", "getManagedWalletSolBalances"],
-    SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current beta."),
+    SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
   ),
   ...mapToolNames(
     [
@@ -48,31 +48,31 @@ const toolReleaseReadinessByName: Record<string, RuntimeReleaseReadinessDescript
       "getDexscreenerTopTokenBoosts",
       "searchDexscreenerPairs",
     ],
-    SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current beta."),
+    SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   ),
   ...mapToolNames(
     ["workspaceBash", "workspaceReadFile", "workspaceWriteFile"],
-    SHIPPED_NOW("Runtime workspace tools ship in the current beta when enabled by policy."),
+    SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
   ),
   ...mapToolNames(
     ["devnetAirdrop"],
-    LIMITED_BETA("Available for testing flows, but still a narrow beta surface rather than a headline release feature."),
+    LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
   ),
   ...mapToolNames(
     ["enqueueRuntimeJob", "manageRuntimeJob"],
-    LIMITED_BETA("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
+    LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
   ),
   ...mapToolNames(
     ["getSwapHistory", "transfer", "closeTokenAccount", "privacyTransfer", "privacyAirdrop", "privacySwap"],
-    LIMITED_BETA("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow beta surfaces."),
+    LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   ),
   ...mapToolNames(
     ["ultraQuoteSwap", "ultraExecuteSwap", "managedUltraSwap", "scheduleManagedUltraSwap", "ultraSwap"],
-    LIMITED_BETA("Jupiter Ultra swap flows are available now, but still limited beta surfaces with a narrower supported scope."),
+    LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   ),
   ...mapToolNames(
     ["createBlockchainAlert"],
-    LIMITED_BETA("Alert creation exists, but it is not yet a broad public-beta monitoring platform."),
+    LIMITED("Alert creation exists, but it is not yet a broad monitoring platform."),
   ),
 };
 
@@ -96,7 +96,7 @@ const comingSoonFeatures: RuntimeComingSoonFeatureEntry[] = [
     label: "Helius webhook and streaming integrations beyond current runtime reads",
     aliases: ["helius webhooks", "helius streaming", "helius websockets"],
     status: "coming-soon",
-    note: "Knowledge files may mention these integrations, but they are not shipped runtime features in this beta.",
+    note: "Knowledge files may mention these integrations, but they are not shipped runtime features in this release.",
   },
   {
     id: "dflow-integrations",
@@ -114,7 +114,7 @@ const comingSoonFeatures: RuntimeComingSoonFeatureEntry[] = [
   },
   {
     id: "broad-automation-and-strategies",
-    label: "Broad strategy automation beyond today's queueable beta surfaces",
+    label: "Broad strategy automation beyond today's queueable shipped surfaces",
     aliases: ["automation", "strategies", "strategy engine", "bots", "routines"],
     status: "coming-soon",
     note: "Scheduled jobs exist now, but broad multi-step strategy automation should still be described as coming soon.",
@@ -132,8 +132,8 @@ const statusLabel = (status: ReleaseReadinessStatus): string => {
   switch (status) {
     case "shipped-now":
       return "Shipped Now";
-    case "limited-beta":
-      return "Limited Beta";
+    case "limited":
+      return "Limited";
     case "coming-soon":
       return "Coming Soon";
   }
@@ -173,17 +173,17 @@ export const getRuntimeComingSoonFeatures = (): RuntimeComingSoonFeatureEntry[] 
 export const renderRuntimeReleaseReadinessSection = (snapshot: RuntimeCapabilitySnapshot): string =>
   [
     "## Release Readiness",
-    "Treat this section as the source of truth for what the current beta actually supports.",
+    "Treat this section as the source of truth for what the current release actually supports.",
     "",
     "### Operating Rules",
     "- Release readiness overrides bundled docs, knowledge files, source files, and future-facing references.",
-    "- If a feature is `coming-soon`, say it is not currently shipped in this beta.",
-    "- If a feature is `limited-beta`, describe the exact narrow surface that exists today and do not imply broader support.",
+    "- If a feature is `coming-soon`, say it is not currently shipped in this release.",
+    "- If a feature is `limited`, describe the exact narrow surface that exists today and do not imply broader support.",
     "- If a feature is not listed below and is not an enabled model tool, treat it as `coming-soon` instead of guessing.",
     "",
     renderToolGroup(snapshot.modelTools, "shipped-now"),
     "",
-    renderToolGroup(snapshot.modelTools, "limited-beta"),
+    renderToolGroup(snapshot.modelTools, "limited"),
     "",
     "### Coming Soon",
     ...snapshot.comingSoonFeatures.map(

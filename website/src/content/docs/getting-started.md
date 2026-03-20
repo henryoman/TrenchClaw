@@ -38,11 +38,11 @@ curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linu
 If you need to pin a release:
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.4 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/macos-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0 bash
 ```
 
 ```bash
-curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0-beta.4 bash
+curl --proto '=https' --tlsv1.2 -sSfL https://trenchclaw.vercel.app/install/linux-bootstrap.sh | TRENCHCLAW_VERSION=v0.0.0 bash
 ```
 
 ## Launch And Check Readiness

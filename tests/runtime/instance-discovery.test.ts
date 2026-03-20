@@ -95,6 +95,24 @@ afterEach(async () => {
 });
 
 describe("instance discovery", () => {
+  test("resolves an env-selected directory-only bootstrap instance", async () => {
+    const runtimeRoot = await createRuntimeRoot();
+    await createDirectoryOnlyInstance(runtimeRoot, "00");
+
+    const result = await runScriptJson<string | null>({
+      runtimeRoot,
+      env: {
+        TRENCHCLAW_ACTIVE_INSTANCE_ID: "00",
+      },
+      script: `
+        const { resolveCurrentActiveInstanceIdSync } = await import(${JSON.stringify(INSTANCE_STATE_MODULE_URL)});
+        process.stdout.write(JSON.stringify(resolveCurrentActiveInstanceIdSync()));
+      `,
+    });
+
+    expect(result).toBe("00");
+  });
+
   test("ignores directory-only instance roots and creates the first persisted profile at 01", async () => {
     const runtimeRoot = await createRuntimeRoot();
     await createDirectoryOnlyInstance(runtimeRoot, "01");

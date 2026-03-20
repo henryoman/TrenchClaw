@@ -30,15 +30,27 @@ describe("versioning", () => {
     expect(incrementVersion("0.0.0-beta.1", "beta")).toBe("0.0.0-beta.2");
   });
 
-  test("beta-only track rejects stable versions", () => {
+  test("beta strategy rejects stable versions", () => {
     expect(() => incrementVersion("0.0.0", "beta")).toThrow(
-      'Current version "0.0.0" must stay on the 0.0.0-beta.N track for now.',
+      'Cannot increment "beta" from stable version "0.0.0". Start from an existing prerelease version first.',
     );
   });
 
-  test("beta-only track rejects non-zero release lines", () => {
-    expect(() => incrementVersion("0.0.1-beta.1", "beta")).toThrow(
-      'Current version "0.0.1-beta.1" must stay on the 0.0.0-beta.N track for now.',
+  test("patch strategy promotes a prerelease to its stable version", () => {
+    expect(incrementVersion("0.0.0-beta.4", "patch")).toBe("0.0.0");
+  });
+
+  test("patch strategy increments stable versions", () => {
+    expect(incrementVersion("0.0.0", "patch")).toBe("0.0.1");
+  });
+
+  test("minor strategy increments stable versions", () => {
+    expect(incrementVersion("0.0.0", "minor")).toBe("0.1.0");
+  });
+
+  test("minor strategy rejects prerelease versions", () => {
+    expect(() => incrementVersion("0.0.0-beta.4", "minor")).toThrow(
+      'Cannot auto-increment "minor" from prerelease version "0.0.0-beta.4".',
     );
   });
 
@@ -51,5 +63,13 @@ describe("versioning", () => {
         beta: 4,
       }),
     ).toBe("0.0.0-beta.4");
+    expect(
+      formatVersion({
+        major: 0,
+        minor: 0,
+        patch: 0,
+        beta: null,
+      }),
+    ).toBe("0.0.0");
   });
 });

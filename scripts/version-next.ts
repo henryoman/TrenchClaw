@@ -25,7 +25,7 @@ interface PackageJsonWithVersion extends Record<string, unknown> {
 }
 
 const parseArgs = (argv: string[]): CliArgs => {
-  let strategy: VersioningStrategy = "beta";
+  let strategy: VersioningStrategy = "patch";
   let currentVersion: string | null = null;
   let apply = false;
   let githubOutputPath: string | null = null;
