@@ -25,6 +25,7 @@ const createLayout = async (): Promise<ResolvedLayout> => {
     guiIndexPath,
     coreAssetRoot: path.join(root, "core"),
     runtimeStateRoot: path.join(root, ".trenchclaw"),
+    generatedStateRoot: path.join(root, ".trenchclaw-generated"),
   };
 };
 

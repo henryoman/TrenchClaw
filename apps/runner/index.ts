@@ -37,6 +37,7 @@ export interface ResolvedLayout {
   guiIndexPath: string;
   coreAssetRoot: string;
   runtimeStateRoot: string;
+  generatedStateRoot: string;
 }
 
 type DoctorStatus = "ok" | "warn" | "missing";
@@ -119,6 +120,9 @@ const isReleaseRoot = (candidate: string): boolean =>
 const resolveDefaultRuntimeStateRoot = (): string =>
   path.join(process.env.HOME || process.env.USERPROFILE || process.cwd(), ".trenchclaw");
 
+const resolveDefaultGeneratedStateRoot = (): string =>
+  path.join(process.env.HOME || process.env.USERPROFILE || process.cwd(), ".trenchclaw-generated");
+
 const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
   const configured = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
   if (configured) {
@@ -130,6 +134,19 @@ const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): strin
   }
 
   return resolveDefaultRuntimeStateRoot();
+};
+
+const resolveGeneratedStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
+  const configured = process.env.TRENCHCLAW_GENERATED_ROOT?.trim();
+  if (configured) {
+    return resolveAbsoluteConfiguredPath("TRENCHCLAW_GENERATED_ROOT", configured);
+  }
+
+  if (kind === "workspace") {
+    return path.join(coreAssetRoot, ".trenchclaw-generated");
+  }
+
+  return resolveDefaultGeneratedStateRoot();
 };
 
 const resolveLayout = (): ResolvedLayout => {
@@ -152,6 +169,7 @@ const resolveLayout = (): ResolvedLayout => {
         guiIndexPath: path.join(guiDistDir, "index.html"),
         coreAssetRoot: path.join(candidate, "core"),
         runtimeStateRoot: resolveRuntimeStateRoot("release", path.join(candidate, "core")),
+        generatedStateRoot: resolveGeneratedStateRoot("release", path.join(candidate, "core")),
       };
     }
     if (isWorkspaceRoot(candidate)) {
@@ -164,6 +182,7 @@ const resolveLayout = (): ResolvedLayout => {
         guiIndexPath: path.join(guiDistDir, "index.html"),
         coreAssetRoot,
         runtimeStateRoot: resolveRuntimeStateRoot("workspace", coreAssetRoot),
+        generatedStateRoot: resolveGeneratedStateRoot("workspace", coreAssetRoot),
       };
     }
   }
@@ -925,6 +944,7 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   process.env.TRENCHCLAW_RELEASE_ROOT = LAYOUT.root;
   process.env.TRENCHCLAW_APP_ROOT = LAYOUT.coreAssetRoot;
   process.env.TRENCHCLAW_RUNTIME_STATE_ROOT = LAYOUT.runtimeStateRoot;
+  process.env.TRENCHCLAW_GENERATED_ROOT = LAYOUT.generatedStateRoot;
   process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER =
     process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER || (LAYOUT.kind === "release" ? "1" : "0");
   process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "0";
@@ -942,7 +962,7 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     process.env.TRENCHCLAW_KNOWLEDGE_DIR || path.join(bundledBrainRoot, "knowledge");
   process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE ||
-    path.join(LAYOUT.runtimeStateRoot, "generated/knowledge-index.md");
+    path.join(LAYOUT.generatedStateRoot, "knowledge-index.md");
   process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
     process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE;

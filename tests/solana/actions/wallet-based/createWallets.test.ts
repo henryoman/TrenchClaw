@@ -67,7 +67,7 @@ describe("createWalletsAction", () => {
     expect(result.data?.walletLibraryFilePath).toContain(path.join("instances", TEST_INSTANCE_ID, "keypairs", "wallet-library.jsonl"));
   });
 
-  test("creates multiple flat groups in one batch and defaults wallet names to wallet_000 style", async () => {
+  test("creates multiple flat groups in one batch and defaults wallet names to 000 style", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const coreGroup = `core-wallets-${crypto.randomUUID()}`;
     const snipersGroup = `snipers-${crypto.randomUUID()}`;
@@ -102,15 +102,15 @@ describe("createWalletsAction", () => {
 
     const walletNames = data?.wallets.map((wallet) => `${wallet.walletGroup}.${wallet.walletName}`) ?? [];
     expect(walletNames).toEqual([
-      `${coreGroup}.wallet_000`,
-      `${coreGroup}.wallet_001`,
-      `${coreGroup}.wallet_002`,
+      `${coreGroup}.000`,
+      `${coreGroup}.001`,
+      `${coreGroup}.002`,
       `${snipersGroup}.sniper_alpha`,
       `${snipersGroup}.sniper_beta`,
     ]);
     expect(data?.files.every((filePath) => filePath.includes("/keypairs/"))).toBe(true);
-    expect(data?.files.some((filePath) => filePath.endsWith("/wallet_000.json"))).toBe(true);
-    expect(data?.files.some((filePath) => filePath.endsWith("/wallet_001.json"))).toBe(true);
+    expect(data?.files.some((filePath) => filePath.endsWith("/000.json"))).toBe(true);
+    expect(data?.files.some((filePath) => filePath.endsWith("/001.json"))).toBe(true);
   });
 
   test("creates wallets inside the selected wallet group directory and appends library metadata", async () => {
@@ -164,7 +164,7 @@ describe("createWalletsAction", () => {
     const keypairJson = await Bun.file(data.files[0] ?? "").json();
     expect(Array.isArray(keypairJson)).toBe(true);
     expect(keypairJson).toHaveLength(64);
-    expect(path.basename(data.files[0] ?? "")).toBe("wallet_000.json");
+    expect(path.basename(data.files[0] ?? "")).toBe("000.json");
 
     const walletLabelJson = await Bun.file(libraryEntry.walletLabelFilePath).json();
     expect(walletLabelJson.walletId).toBe(`${walletGroup}.one`);
@@ -251,8 +251,8 @@ describe("createWalletsAction", () => {
     createdPaths.add(instanceRoot);
 
     await Bun.$`mkdir -p ${walletGroupPath}`.quiet();
-    await Bun.write(path.join(walletGroupPath, "wallet_000.json"), "[0]\n");
-    await Bun.write(path.join(walletGroupPath, "wallet_002.json"), "[2]\n");
+    await Bun.write(path.join(walletGroupPath, "000.json"), "[0]\n");
+    await Bun.write(path.join(walletGroupPath, "002.json"), "[2]\n");
 
     const result = await createWalletsAction.execute({} as never, {
       groups: [
@@ -268,7 +268,7 @@ describe("createWalletsAction", () => {
       return;
     }
 
-    expect(result.data?.files.map((filePath) => path.basename(filePath))).toEqual(["wallet_001.json", "wallet_003.json"]);
+    expect(result.data?.files.map((filePath) => path.basename(filePath))).toEqual(["001.json", "003.json"]);
     expect(result.data?.wallets.map((wallet) => wallet.walletName)).toEqual(["alpha", "beta"]);
   });
 });

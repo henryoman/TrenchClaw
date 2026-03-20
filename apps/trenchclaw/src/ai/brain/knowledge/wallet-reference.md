@@ -22,9 +22,9 @@ Current layout under that root:
 Example shape:
 
 - `.runtime-state/instances/<id>/keypairs/wallet-library.jsonl`
-- `.runtime-state/instances/<id>/keypairs/core-wallets/wallet_000.json`
-- `.runtime-state/instances/<id>/keypairs/core-wallets/wallet_000.label.json`
-- `.runtime-state/instances/<id>/keypairs/snipers/wallet_000.json`
+- `.runtime-state/instances/<id>/keypairs/core-wallets/000.json`
+- `.runtime-state/instances/<id>/keypairs/core-wallets/000.label.json`
+- `.runtime-state/instances/<id>/keypairs/snipers/000.json`
 
 The default wallet library path can be overridden with:
 
@@ -43,7 +43,7 @@ That path still must stay under protected runtime roots.
 
 ## Wallet Source Of Truth
 
-The preferred index is `wallet-library.jsonl`.
+The required index is `wallet-library.jsonl`.
 
 Each library entry records:
 
@@ -56,11 +56,10 @@ Each library entry records:
 - `createdAt`
 - `updatedAt`
 
-Fallback discovery rule:
+Library rules:
 
-- if the library file is missing, runtime can infer managed wallets from `*.label.json` files under the keypair root
-- `getManagedWalletContents` and `getManagedWalletSolBalances` also fall back when the library exists but is empty
-- prompt wallet context rendering and managed-wallet lookup helpers use label-file inference when the library file is missing
+- if the library file is missing, runtime treats the managed-wallet set as empty
+- wallet discovery does not fall back to `*.label.json` files
 - reads can report `invalidLibraryLineCount`
 - `renameWallets` refuses to rewrite a library that contains invalid lines
 
@@ -72,7 +71,7 @@ Fallback discovery rule:
 - `walletId` allows dots because it is derived as `group.name`
 - `createWallets` supports up to 25 groups per call
 - each wallet group supports at most 100 wallet files
-- if wallet names are omitted, default names are `wallet_000`, `wallet_001`, `wallet_002`, and so on
+- if wallet names are omitted, default names are `000`, `001`, `002`, and so on
 - wallet filenames are allocated by the next free numeric slot in that group directory and do not need to match the wallet label exactly
 
 ## Allowed Mutation Paths
@@ -100,7 +99,7 @@ Current mutation behavior:
 - prefer runtime actions over manual file edits
 - never edit vaults, keypair files, `wallet-library.jsonl`, or `*.label.json` directly with file tools
 - if the user refers to a managed wallet, identify it by `walletGroup` plus `walletName`
-- signing actions resolve managed wallets from managed-wallet metadata, with label-file fallback when the library file is missing
+- signing actions resolve managed wallets from `wallet-library.jsonl`
 - use `getManagedWalletContents` for full holdings
 - use `getManagedWalletSolBalances` when only SOL balances are needed
 
@@ -110,7 +109,7 @@ Current mutation behavior:
 
 - returns SOL plus fungible token balances for each managed wallet
 - supports optional filters: `instanceId`, `walletGroup`, `walletNames`, `includeZeroBalances`
-- reports whether wallets were discovered via `wallet-library` or `label-files`
+- reports wallet-library metadata path plus `invalidLibraryLineCount`
 - aggregates token totals across the selected wallet set
 - prefers Helius DAS when Helius is the selected private RPC
 - otherwise uses raw RPC batch reads
@@ -122,7 +121,7 @@ Current mutation behavior:
 
 `getManagedWalletSolBalances` is the faster SOL-only read.
 
-- uses the same wallet discovery rules as `getManagedWalletContents`
+- uses the same wallet-library-only discovery rules as `getManagedWalletContents`
 - supports optional `instanceId`, `walletGroup`, and `walletNames` filters
 - returns wallet-level SOL balances plus aggregate SOL totals
 

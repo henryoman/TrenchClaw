@@ -34,8 +34,8 @@ describe("renderRuntimeWalletPromptContext", () => {
         walletGroup: "core-wallets",
         walletName: "maker-1",
         address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
-        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/000.label.json"),
       })}\n`,
       "utf8",
     );
@@ -49,7 +49,7 @@ describe("renderRuntimeWalletPromptContext", () => {
 
     expect(prompt).toContain("### Allowed Wallet Organization Writes");
     expect(prompt).toContain("Use `createWallets` to create new wallets.");
-    expect(prompt).toContain("wallet_000");
+    expect(prompt).toContain("000.json");
     expect(prompt).toContain("Each wallet group can create at most 100 wallets per call.");
     expect(prompt).toContain("Use `renameWallets` to update wallet organization labels only.");
     expect(prompt).toContain("There is no wallet delete tool in chat.");
@@ -58,37 +58,37 @@ describe("renderRuntimeWalletPromptContext", () => {
     expect(prompt).not.toContain('"groups": [');
   });
 
-  test("falls back to wallet label files when the wallet library is missing", async () => {
+  test("treats missing wallet libraries as no managed wallets even when label files exist", async () => {
     const instanceId = "95";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
     const keypairsDirectory = path.join(instanceDirectory, "keypairs");
     const walletGroupDirectory = path.join(keypairsDirectory, "core");
     tempInstanceDirectories.push(instanceDirectory);
     await mkdir(walletGroupDirectory, { recursive: true });
-    await writeFile(path.join(walletGroupDirectory, "wallet_000.json"), "[1,2,3]\n", "utf8");
+    await writeFile(path.join(walletGroupDirectory, "000.json"), "[1,2,3]\n", "utf8");
     await writeFile(
-      path.join(walletGroupDirectory, "wallet_000.label.json"),
+      path.join(walletGroupDirectory, "000.label.json"),
       `${JSON.stringify({
         version: 1,
         walletId: "practice-wallets.practice001",
         walletGroup: "practice-wallets",
         walletName: "practice001",
-        walletFileName: "wallet_000.json",
+        walletFileName: "000.json",
         address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
         createdAt: "2026-03-12T00:00:00.000Z",
         updatedAt: "2026-03-12T00:00:00.000Z",
       })}\n`,
       "utf8",
     );
-    await writeFile(path.join(walletGroupDirectory, "wallet_001.json"), "[4,5,6]\n", "utf8");
+    await writeFile(path.join(walletGroupDirectory, "001.json"), "[4,5,6]\n", "utf8");
     await writeFile(
-      path.join(walletGroupDirectory, "wallet_001.label.json"),
+      path.join(walletGroupDirectory, "001.label.json"),
       `${JSON.stringify({
         version: 1,
         walletId: "practice-wallets.practice002",
         walletGroup: "practice-wallets",
         walletName: "practice002",
-        walletFileName: "wallet_001.json",
+        walletFileName: "001.json",
         address: "2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq",
         createdAt: "2026-03-12T00:00:00.000Z",
         updatedAt: "2026-03-12T00:00:00.000Z",
@@ -103,11 +103,10 @@ describe("renderRuntimeWalletPromptContext", () => {
     });
 
     expect(prompt).toContain("WALLET_LIBRARY_STATUS=missing");
-    expect(prompt).toContain("WALLET_DISCOVERY_FALLBACK=label-files (2 wallets discovered)");
-    expect(prompt).toContain("getManagedWalletContents");
-    expect(prompt).toContain("getManagedWalletSolBalances");
-    expect(prompt).toContain("practice-wallets");
-    expect(prompt).toContain("DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
-    expect(prompt).toContain("2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq");
+    expect(prompt).toContain("no managed wallets are configured right now");
+    expect(prompt).not.toContain("WALLET_DISCOVERY_FALLBACK");
+    expect(prompt).not.toContain("practice-wallets");
+    expect(prompt).not.toContain("DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
+    expect(prompt).not.toContain("2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq");
   });
 });

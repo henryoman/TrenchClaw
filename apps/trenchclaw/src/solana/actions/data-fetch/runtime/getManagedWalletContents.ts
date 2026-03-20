@@ -6,7 +6,6 @@ import type { Action } from "../../../../ai/runtime/types/action";
 import { resolveHeliusRpcConfig } from "../../../lib/rpc/helius";
 import { resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 import {
-  inferManagedWalletLibraryEntriesFromFilesystem,
   readManagedWalletLibraryEntries,
   resolveWalletKeypairRootPathForInstanceId,
 } from "../../../lib/wallet/wallet-manager";
@@ -78,7 +77,7 @@ interface ManagedWalletAggregatedTokenBalance extends ManagedWalletTokenBalance 
 interface ManagedWalletContentsOutput {
   instanceId: string;
   walletCount: number;
-  discoveredVia: "wallet-library" | "label-files";
+  discoveredVia: "wallet-library";
   walletLibraryFilePath: string;
   invalidLibraryLineCount: number;
   includeZeroBalances: boolean;
@@ -986,12 +985,8 @@ export const createGetManagedWalletContentsAction = (
           allowMissing: true,
         });
 
-        let discoveredVia: "wallet-library" | "label-files" = "wallet-library";
-        let entries = walletLibrary.entries;
-        if (entries.length === 0) {
-          entries = await inferManagedWalletLibraryEntriesFromFilesystem({ keypairRootPath });
-          discoveredVia = "label-files";
-        }
+        const discoveredVia = "wallet-library";
+        const entries = walletLibrary.entries;
 
         const filteredEntries = filterWalletEntries(entries, input);
         const heliusConfig = deps.loadWalletContents

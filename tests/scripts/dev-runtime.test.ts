@@ -85,6 +85,48 @@ describe("developer runtime workflow", () => {
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "instance.json")).text()).toContain("sticky-name");
   });
 
+  test("re-running developer runtime init migrates legacy auto-generated instance names", async () => {
+    const runtimeRoot = await createTempRoot("trenchclaw-dev-runtime-");
+    const generatedRoot = await createTempRoot("trenchclaw-dev-generated-");
+
+    await initializeDeveloperRuntime({
+      runtimeRoot,
+      generatedRoot,
+      instanceId: "01",
+      instanceName: "dev-01",
+    });
+    await writeFile(
+      path.join(runtimeRoot, "instances", "01", "instance.json"),
+      JSON.stringify({
+        instance: {
+          name: "dev-01",
+          localInstanceId: "01",
+          userPin: null,
+        },
+        runtime: {
+          safetyProfile: "dangerous",
+          createdAt: "2026-03-19T00:00:00.000Z",
+          updatedAt: "2026-03-19T00:00:00.000Z",
+        },
+      }, null, 2) + "\n",
+      "utf8",
+    );
+
+    await initializeDeveloperRuntime({
+      runtimeRoot,
+      generatedRoot,
+      instanceId: "01",
+    });
+
+    const instanceJson = JSON.parse(await readFile(path.join(runtimeRoot, "instances", "01", "instance.json"), "utf8")) as {
+      instance: { name: string; localInstanceId: string };
+    };
+    expect(instanceJson.instance).toMatchObject({
+      name: "default",
+      localInstanceId: "01",
+    });
+  });
+
   test("clones selected instance parts into a developer runtime root", async () => {
     const sourceRoot = await createTempRoot("trenchclaw-dev-source-");
     const targetRoot = await createTempRoot("trenchclaw-dev-target-");
