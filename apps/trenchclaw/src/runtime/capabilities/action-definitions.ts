@@ -267,7 +267,7 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     kind: "action",
     action: queryRuntimeStoreAction,
     description: "Read conversations, jobs, receipts, runtime search results, and other durable runtime state.",
-    purpose: "Inspect runtime history and state without mutating it.",
+    purpose: "Inspect runtime history and state without mutating it, including queued wallet-scan job status and results.",
     tags: ["runtime", "search", "state", "read"],
     exampleInput: {
       request: {
@@ -442,7 +442,7 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     kind: "action",
     action: getManagedWalletContentsAction,
     description: "Fetch full managed-wallet contents: SOL, fungible balances, and collectible counts for each wallet.",
-    purpose: "Answer managed-wallet holdings questions directly, preferring Helius DAS metadata when Helius is the active private RPC.",
+    purpose: "Answer managed-wallet holdings questions directly, preferring Helius DAS metadata when Helius is the active private RPC and queueing heavier scans when inline reads would be less reliable.",
     tags: ["wallets", "balances", "tokens", "read"],
     exampleInput: {
       walletGroup: "practice-wallets",

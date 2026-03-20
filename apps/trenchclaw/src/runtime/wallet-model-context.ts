@@ -94,6 +94,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     `- WALLET_GROUPS=${groups.join(", ") || "(none)"}`,
     `- WALLET_INVALID_LIBRARY_LINES=${invalidLineCount}`,
     "- For questions about full holdings or token balances of managed wallets, call `getManagedWalletContents` instead of using workspaceBash.",
+    "- Large wallet inventory reads may queue a background job; use `queryRuntimeStore` if you need the status of a queued scan.",
     "- For SOL-only balance summaries of managed wallets, call `getManagedWalletSolBalances`.",
   ];
 
@@ -131,7 +132,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     "- For multi-wallet read tools like `getManagedWalletContents` and `getManagedWalletSolBalances`, prefer passing `wallets` as an array of wallet name strings when the names are unique in this active instance.",
     "- If a wallet name is ambiguous across groups, pass `wallet` as an object like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
     "- If multiple wallet names are ambiguous across groups, pass `wallets` as objects like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
-    "- Do not pass RPC provider details to wallet tools. Runtime action context resolves RPC and rate limiting automatically.",
+    "- Do not pass RPC provider details to wallet tools. Runtime action context resolves RPC, throttling, and queued scan routing automatically.",
   );
 
   for (const entry of visibleEntries) {
@@ -192,7 +193,7 @@ export const renderRuntimeWalletPromptSummary = async (
       `- wallet library file: ${walletLibraryContractPath}`,
       `- managed wallet status: missing library file (${DEFAULT_WALLET_LIBRARY_FILE_NAME})`,
       "- use `getManagedWalletContents` for holdings and token balances",
-      "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC",
+      "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC and may queue heavier scans for safety",
       "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
       "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
     ].join("\n");
@@ -216,7 +217,7 @@ export const renderRuntimeWalletPromptSummary = async (
     `- wallet preview: ${previewWallets.join("; ") || "none"}`,
     "- use `createWallets` for wallet creation and `renameWallets` for label changes",
     "- use `getManagedWalletContents` for holdings and token balances",
-    "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC",
+    "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC and may queue heavier scans for safety",
     "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
     "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
   ].join("\n");

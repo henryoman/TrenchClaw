@@ -26,6 +26,19 @@ const actionSequenceRoutineConfigSchema = z.object({
     .min(1),
 });
 
+const walletInventoryScanRoutineConfigSchema = z.object({
+  requestKey: z.string().min(1),
+  summaryDepth: z.enum(["summary", "full"]).default("full"),
+  input: z.object({
+    instanceId: z.string().trim().min(1).max(64).optional(),
+    wallet: z.string().trim().min(1).optional(),
+    wallets: z.array(z.string().trim().min(1)).max(100).optional(),
+    walletGroup: z.string().trim().min(1).optional(),
+    walletNames: z.array(z.string().trim().min(1)).max(100).optional(),
+    includeZeroBalances: z.boolean().default(false),
+  }),
+});
+
 export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
   const config = actionSequenceRoutineConfigSchema.parse(job.config);
   const seenKeys = new Set<string>();
@@ -58,9 +71,22 @@ export const actionSequenceRoutine: RoutinePlanner = async (_ctx, job) => {
   });
 };
 
+export const walletInventoryScanRoutine: RoutinePlanner = async (_ctx, job) => {
+  const config = walletInventoryScanRoutineConfigSchema.parse(job.config);
+  return [
+    {
+      key: "wallet-inventory-scan",
+      actionName: "getManagedWalletContents",
+      input: config.input,
+      idempotencyKey: `${job.id}:wallet-inventory-scan`,
+    },
+  ];
+};
+
 const BUILTIN_ROUTINES: Record<string, RoutinePlanner> = {
   actionSequence: actionSequenceRoutine,
   createWallets: createWalletsRoutine,
+  walletInventoryScan: walletInventoryScanRoutine,
 };
 
 const workspaceRoutineNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
