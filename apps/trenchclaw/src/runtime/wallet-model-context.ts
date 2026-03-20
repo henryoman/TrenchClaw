@@ -1,7 +1,4 @@
-import path from "node:path";
-
 import {
-  inferManagedWalletLibraryEntriesFromFilesystem,
   readManagedWalletLibraryEntries,
   resolveWalletLibraryFilePath,
 } from "../solana/lib/wallet/wallet-manager";
@@ -55,67 +52,6 @@ No active wallet instance is selected, so no wallet variables are loaded for thi
   const walletLibraryContractPath = toRuntimeContractRelativePath(walletLibraryFilePath);
   const walletLibraryFile = Bun.file(walletLibraryFilePath);
   if (!(await walletLibraryFile.exists())) {
-    const inferredEntries = await inferManagedWalletLibraryEntriesFromFilesystem({
-      keypairRootPath: path.dirname(walletLibraryFilePath),
-    });
-    if (inferredEntries.length > 0) {
-      const inferredWalletJson = inferredEntries.map((entry) => ({
-        alias: toWalletAlias(entry),
-        walletId: entry.walletId,
-        walletGroup: entry.walletGroup,
-        walletName: entry.walletName,
-        address: entry.address,
-        keypairFile: toContractPath(entry.keypairFilePath),
-        walletLabelFile: toContractPath(entry.walletLabelFilePath),
-      }));
-      return [
-        "## Wallet Runtime Variables",
-        "These wallet variables are loaded from the active instance wallet library at request time.",
-        "",
-        `- ACTIVE_INSTANCE_ID=${activeInstanceId}`,
-        `- WALLET_LIBRARY_FILE=${walletLibraryContractPath}`,
-        "- WALLET_LIBRARY_STATUS=missing",
-        `- WALLET_LIBRARY_EXPECTED_FILE_NAME=${DEFAULT_WALLET_LIBRARY_FILE_NAME}`,
-        `- WALLET_DISCOVERY_FALLBACK=label-files (${inferredEntries.length} wallets discovered)`,
-        "- For questions about full holdings or token balances of managed wallets, call `getManagedWalletContents` instead of using workspaceBash.",
-        "- For SOL-only balance summaries of managed wallets, call `getManagedWalletSolBalances`.",
-        "",
-        "### Wallet Alias Variables",
-        ...inferredEntries.flatMap((entry) => {
-          const alias = toWalletAlias(entry);
-          const lines = [
-            `- WALLET__${alias}__ID=${entry.walletId}`,
-            `- WALLET__${alias}__GROUP=${entry.walletGroup}`,
-            `- WALLET__${alias}__NAME=${entry.walletName}`,
-            `- WALLET__${alias}__ADDRESS=${entry.address}`,
-          ];
-          const keypairFile = toContractPath(entry.keypairFilePath);
-          if (keypairFile) {
-            lines.push(`- WALLET__${alias}__KEYPAIR_FILE=${keypairFile}`);
-          }
-          const walletLabelFile = toContractPath(entry.walletLabelFilePath);
-          if (walletLabelFile) {
-            lines.push(`- WALLET__${alias}__LABEL_FILE=${walletLabelFile}`);
-          }
-          return lines;
-        }),
-        "",
-        "### Wallet JSON",
-        "```json",
-        JSON.stringify(
-          {
-            activeInstanceId,
-            walletLibraryFile: walletLibraryContractPath,
-            walletCount: inferredEntries.length,
-            walletGroups: [...new Set(inferredEntries.map((entry) => entry.walletGroup))],
-            wallets: inferredWalletJson,
-          },
-          null,
-          2,
-        ),
-        "```",
-      ].join("\n");
-    }
     return `## Wallet Runtime Variables
 These wallet variables are loaded from the active instance wallet library at request time.
 
@@ -131,7 +67,6 @@ Do not ask follow-up questions before giving that direct answer unless the user 
 
   const { entries, invalidLineCount } = await readManagedWalletLibraryEntries({
     filePath: walletLibraryFilePath,
-    inferFromFilesystem: true,
   });
   const maxWallets = Math.max(1, Math.trunc(input.maxWallets ?? DEFAULT_MAX_PROMPT_WALLETS));
   const orderedEntries = [...entries].toSorted((left, right) =>
@@ -172,7 +107,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     "- There is no wallet delete tool in chat.",
     "- Wallet groups must be flat single-level names only.",
     "- Each wallet group can create at most 100 wallets per call.",
-    "- If `walletNames` is omitted for a group, names default to `wallet_000`, `wallet_001`, `wallet_002`, and so on.",
+    "- If `walletNames` is omitted for a group, names default to `000`, `001`, `002`, and so on.",
     "This updates protected wallet metadata only. It does not delete wallets and does not change secret key bytes.",
   );
 
@@ -244,14 +179,10 @@ export const renderRuntimeWalletPromptSummary = async (
   const walletLibraryContractPath = toRuntimeContractRelativePath(walletLibraryFilePath);
   const walletLibraryFile = Bun.file(walletLibraryFilePath);
   if (!(await walletLibraryFile.exists())) {
-    const inferredEntries = await inferManagedWalletLibraryEntriesFromFilesystem({
-      keypairRootPath: path.dirname(walletLibraryFilePath),
-    });
     return [
       `- active instance wallet scope: ${activeInstanceId}`,
       `- wallet library file: ${walletLibraryContractPath}`,
       `- managed wallet status: missing library file (${DEFAULT_WALLET_LIBRARY_FILE_NAME})`,
-      `- discovered managed wallets from labels: ${inferredEntries.length}`,
       "- use `getManagedWalletContents` for holdings and token balances",
       "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC",
       "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
@@ -261,7 +192,6 @@ export const renderRuntimeWalletPromptSummary = async (
 
   const { entries, invalidLineCount } = await readManagedWalletLibraryEntries({
     filePath: walletLibraryFilePath,
-    inferFromFilesystem: true,
   });
   const groups = [...new Set(entries.map((entry) => entry.walletGroup))];
   const previewWallets = [...entries]

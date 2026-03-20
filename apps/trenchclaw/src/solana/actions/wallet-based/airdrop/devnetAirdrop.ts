@@ -68,7 +68,7 @@ const resolveRecipients = async (input: DevnetAirdropInput): Promise<Array<{
   }
 
   if (input.walletGroup) {
-    const { entries } = await readManagedWalletLibraryEntries({ inferFromFilesystem: true, allowMissing: true });
+    const { entries } = await readManagedWalletLibraryEntries({ allowMissing: true });
     const requestedWalletNames = input.walletNames ? new Set(input.walletNames) : null;
     for (const entry of entries) {
       if (entry.walletGroup !== input.walletGroup) {

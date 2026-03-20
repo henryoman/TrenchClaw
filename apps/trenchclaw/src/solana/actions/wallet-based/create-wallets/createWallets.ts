@@ -25,7 +25,6 @@ import {
 } from "../../../lib/wallet/wallet-types";
 
 const MAX_WALLETS_PER_GROUP = 100;
-const DEFAULT_WALLET_NAME_PREFIX = "wallet_";
 const walletSegmentSchema = z
   .string()
   .trim()
@@ -48,7 +47,7 @@ const walletGroupBatchSchema = z
       .min(1)
       .max(MAX_WALLETS_PER_GROUP)
       .optional()
-      .describe("Optional explicit wallet names. If omitted, names default to wallet_000, wallet_001, wallet_002, ..."),
+      .describe("Optional explicit wallet names. If omitted, names default to 000, 001, 002, ..."),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -196,7 +195,7 @@ interface PlannedWalletGroup {
   walletPlans: PlannedWalletCreation[];
 }
 
-const toDefaultWalletName = (index: number): string => `${DEFAULT_WALLET_NAME_PREFIX}${String(index).padStart(3, "0")}`;
+const toDefaultWalletName = (index: number): string => String(index).padStart(3, "0");
 
 const normalizeLegacyWalletNames = (input: LegacyCreateWalletsInput): string[] => {
   if (input.walletNames) {
@@ -261,7 +260,7 @@ const resolveNextWalletFilePaths = async (outputDirectory: string, count: number
       continue;
     }
     existingWalletFileCount += 1;
-    const numericMatch = /^wallet_(\d{3})\.json$/u.exec(entry.name);
+    const numericMatch = /^(\d{3})\.json$/u.exec(entry.name);
     if (numericMatch?.[1]) {
       usedNumericIndexes.add(Number(numericMatch[1]));
     }
@@ -274,7 +273,7 @@ const resolveNextWalletFilePaths = async (outputDirectory: string, count: number
   const plannedPaths: string[] = [];
   for (let index = 0; index < MAX_WALLETS_PER_GROUP; index += 1) {
     if (!usedNumericIndexes.has(index)) {
-      plannedPaths.push(path.join(outputDirectory, `wallet_${String(index).padStart(3, "0")}.json`));
+      plannedPaths.push(path.join(outputDirectory, `${String(index).padStart(3, "0")}.json`));
       if (plannedPaths.length === count) {
         return plannedPaths;
       }

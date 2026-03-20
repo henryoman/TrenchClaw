@@ -6,12 +6,15 @@ import { fileURLToPath } from "node:url";
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const CORE_APP_ROOT = path.join(REPO_ROOT, "apps", "trenchclaw");
 const RUNTIME_TEMPLATE_ROOT = path.join(CORE_APP_ROOT, ".runtime");
+const REPO_LOCAL_RUNTIME_ROOT = path.join(CORE_APP_ROOT, ".runtime-state");
 const TEMPLATE_INSTANCE_ID = "01";
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const GITIGNORE_MARKER_START = "# >>> trenchclaw dev runtime >>>";
 const GITIGNORE_MARKER_END = "# <<< trenchclaw dev runtime <<<";
 const DEFAULT_DEV_RUNTIME_ROOT = path.join(os.homedir(), "trenchclaw-dev-runtime");
 const DEFAULT_DEV_GENERATED_ROOT = path.join(os.homedir(), "trenchclaw-dev-generated");
+const DEFAULT_INSTANCE_NAME = "default";
+const LEGACY_AUTO_INSTANCE_NAME_PATTERN = /^dev[- ](\d{2})$/u;
 
 const DEV_RUNTIME_GITIGNORE_BLOCK = [
   GITIGNORE_MARKER_START,
@@ -180,11 +183,55 @@ const writeRuntimeReadme = async (runtimeRoot: string, generatedRoot: string, in
   await writeFile(readmePath, `${content}\n`, "utf8");
 };
 
+const shouldWriteRuntimeReadme = (runtimeRoot: string): boolean =>
+  path.resolve(runtimeRoot) !== path.resolve(REPO_LOCAL_RUNTIME_ROOT);
+
 const templateInstancePath = (...segments: string[]): string =>
   path.join(RUNTIME_TEMPLATE_ROOT, "instances", TEMPLATE_INSTANCE_ID, ...segments);
 
 const runtimeInstancePath = (runtimeRoot: string, instanceId: string, ...segments: string[]): string =>
   path.join(runtimeRoot, "instances", instanceId, ...segments);
+
+const toDefaultInstanceName = (instanceId: string): string =>
+  instanceId === TEMPLATE_INSTANCE_ID ? DEFAULT_INSTANCE_NAME : `instance-${instanceId}`;
+
+const isLegacyAutoInstanceName = (value: string, instanceId: string): boolean => {
+  const match = LEGACY_AUTO_INSTANCE_NAME_PATTERN.exec(value.trim());
+  return match?.[1] === instanceId;
+};
+
+const migrateLegacyInstanceProfileName = async (
+  instanceProfilePath: string,
+  instanceId: string,
+  instanceName: string,
+): Promise<void> => {
+  if (!(await fileExists(instanceProfilePath))) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(await readFile(instanceProfilePath, "utf8")) as {
+      instance?: { name?: unknown; localInstanceId?: unknown };
+    } & Record<string, unknown>;
+    const storedName = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
+    const storedInstanceId = typeof parsed.instance?.localInstanceId === "string" ? parsed.instance.localInstanceId.trim() : "";
+
+    if (!storedName || storedInstanceId !== instanceId || !isLegacyAutoInstanceName(storedName, instanceId)) {
+      return;
+    }
+
+    await writeJson(instanceProfilePath, {
+      ...parsed,
+      instance: {
+        ...(parsed.instance ?? {}),
+        name: instanceName,
+        localInstanceId: instanceId,
+      },
+    });
+  } catch {
+    // Preserve invalid custom files as-is; init only migrates the known legacy auto-name shape.
+  }
+};
 
 const ensureDeveloperInstanceLayout = async (
   runtimeRoot: string,
@@ -219,6 +266,7 @@ const ensureDeveloperInstanceLayout = async (
     instance?: { name?: string; localInstanceId?: string };
     runtime?: Record<string, unknown>;
   };
+  const instanceProfilePath = runtimeInstancePath(runtimeRoot, instanceId, "instance.json");
   const nextInstance = {
     ...templateInstance,
     instance: {
@@ -227,7 +275,8 @@ const ensureDeveloperInstanceLayout = async (
       localInstanceId: instanceId,
     },
   };
-  await writeJsonIfMissing(runtimeInstancePath(runtimeRoot, instanceId, "instance.json"), nextInstance);
+  await writeJsonIfMissing(instanceProfilePath, nextInstance);
+  await migrateLegacyInstanceProfileName(instanceProfilePath, instanceId, instanceName);
 
   await Promise.all([
     copyFileIfMissing(templateInstancePath("settings", "ai.json"), runtimeInstancePath(runtimeRoot, instanceId, "settings", "ai.json")),
@@ -276,12 +325,14 @@ export const initializeDeveloperRuntime = async (input: DeveloperRuntimeInitInpu
   const runtimeRoot = resolveAbsolutePath(input.runtimeRoot ?? DEFAULT_DEV_RUNTIME_ROOT, "runtime root");
   const generatedRoot = resolveAbsolutePath(input.generatedRoot ?? DEFAULT_DEV_GENERATED_ROOT, "generated root");
   const instanceId = normalizeInstanceId(input.instanceId);
-  const instanceName = input.instanceName?.trim() || `dev-${instanceId}`;
+  const instanceName = input.instanceName?.trim() || toDefaultInstanceName(instanceId);
 
   await Promise.all([ensureDirectory(runtimeRoot), ensureDirectory(path.join(runtimeRoot, "instances")), ensureDirectory(generatedRoot)]);
   const instanceRoot = await ensureDeveloperInstanceLayout(runtimeRoot, instanceId, instanceName);
   await writeJson(path.join(runtimeRoot, "instances", "active-instance.json"), { localInstanceId: instanceId });
-  await writeRuntimeReadme(runtimeRoot, generatedRoot, instanceId);
+  if (shouldWriteRuntimeReadme(runtimeRoot)) {
+    await writeRuntimeReadme(runtimeRoot, generatedRoot, instanceId);
+  }
   if (input.writeGitignore !== false) {
     await updateGitignoreBlock(path.join(runtimeRoot, ".gitignore"));
   }
@@ -302,7 +353,7 @@ export const cloneDeveloperInstance = async (input: CloneDeveloperInstanceInput)
   const parts = expandCloneParts(input.parts);
 
   await ensureDirectory(path.join(toRoot, "instances"));
-  await ensureDeveloperInstanceLayout(toRoot, toInstanceId, `dev-${toInstanceId}`);
+  await ensureDeveloperInstanceLayout(toRoot, toInstanceId, toDefaultInstanceName(toInstanceId));
   if (input.setActive !== false) {
     await writeJson(path.join(toRoot, "instances", "active-instance.json"), { localInstanceId: toInstanceId });
   }

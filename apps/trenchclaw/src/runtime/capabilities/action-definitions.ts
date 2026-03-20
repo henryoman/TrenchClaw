@@ -456,7 +456,7 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     tags: ["transfers", "wallet", "cleanup"],
     exampleInput: {
       walletGroup: "core-wallets",
-      walletName: "wallet_001",
+      walletName: "001",
       mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
       userConfirmationToken: "confirm",
     },

@@ -9,7 +9,6 @@ import {
   type ManagedWalletLibraryEntry,
 } from "../../../lib/wallet/wallet-types";
 import {
-  inferManagedWalletLibraryEntriesFromFilesystem,
   readManagedWalletLibraryEntries,
   resolveWalletKeypairRootPathForInstanceId,
 } from "../../../lib/wallet/wallet-manager";
@@ -91,12 +90,8 @@ export const createGetManagedWalletSolBalancesAction = (
           allowMissing: true,
         });
 
-        let discoveredVia: "wallet-library" | "label-files" = "wallet-library";
-        let entries = walletLibrary.entries;
-        if (entries.length === 0) {
-          entries = await inferManagedWalletLibraryEntriesFromFilesystem({ keypairRootPath });
-          discoveredVia = "label-files";
-        }
+        const discoveredVia = "wallet-library";
+        const entries = walletLibrary.entries;
 
         const filteredEntries = filterWalletEntries(entries, input);
         const wallets = await Promise.all(

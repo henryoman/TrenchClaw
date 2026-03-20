@@ -19,7 +19,7 @@ const printHelp = (): void => {
       "  --runtime-root <path>     External runtime root (default: ~/trenchclaw-dev-runtime)",
       "  --generated-root <path>   External generated root (default: ~/trenchclaw-dev-generated)",
       "  --instance <id>           Two-digit instance id (default: 01)",
-      "  --instance-name <name>    Instance display name (default: dev-<id>)",
+      "  --instance-name <name>    Instance display name (default: default for 01, otherwise instance-<id>)",
       "  --no-gitignore            Do not write the managed .gitignore block",
       "  --help                    Show this help",
     ].join("\n"),
