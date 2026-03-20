@@ -3,6 +3,7 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
+import { scheduleRateLimitedRpcRequest } from "../../../lib/rpc/client";
 import { resolveHeliusRpcConfig } from "../../../lib/rpc/helius";
 import { resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 import {
@@ -23,7 +24,13 @@ const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const RPC_RETRY_MAX_ATTEMPTS = 4;
 const RPC_RETRY_BASE_DELAY_MS = 300;
-const PUBLIC_MAINNET_RPC_SEQUENTIAL_COOLDOWN_MS = 6_000;
+const PUBLIC_MAINNET_RPC_BATCH_WALLET_LIMIT = 4;
+const DEFAULT_RPC_BATCH_WALLET_LIMIT = 12;
+const PUBLIC_MAINNET_RPC_INTER_REQUEST_DELAY_MS = 350;
+const PUBLIC_MAINNET_RPC_INTER_WALLET_DELAY_MS = 500;
+const PUBLIC_MAINNET_RPC_RETRY_COOLDOWN_MS = 2_000;
+const PRIVATE_RPC_INTER_REQUEST_DELAY_MS = 120;
+const PRIVATE_RPC_INTER_WALLET_DELAY_MS = 200;
 const RPC_REQUEST_TIMEOUT_MS = 8_000;
 const HELIUS_DAS_PAGE_LIMIT = 1_000;
 const HELIUS_FUNGIBLE_INTERFACES = new Set(["FungibleAsset", "FungibleToken"]);
@@ -83,7 +90,9 @@ interface ManagedWalletContentsOutput {
   invalidLibraryLineCount: number;
   includeZeroBalances: boolean;
   dataSource: ManagedWalletContentsDataSource;
+  partial: boolean;
   wallets: ManagedWalletContentsWallet[];
+  walletErrors: ManagedWalletContentsWalletError[];
   totalBalanceLamports: string;
   totalBalanceSol: number;
   totalCollectibleCount: number;
@@ -135,6 +144,21 @@ interface WalletContentsAccumulator {
   compressedCollectibleCount: number;
 }
 
+interface ManagedWalletContentsWalletError {
+  walletId: string;
+  walletGroup: string;
+  walletName: string;
+  address: string;
+  error: string;
+  retryable: boolean;
+}
+
+interface ManagedWalletContentsLoadOutcome {
+  wallets: ManagedWalletContentsWallet[];
+  walletErrors: ManagedWalletContentsWalletError[];
+  usedSequentialFallback: boolean;
+}
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -162,11 +186,18 @@ const createRpcRequestSignal = (): AbortSignal | undefined => {
   return undefined;
 };
 
-const withRpcRetries = async <T>(operation: () => Promise<T>): Promise<T> => {
+const withRpcRetries = async <T>(
+  operation: () => Promise<T>,
+  options: {
+    maxAttempts?: number;
+    onRetry?: (context: { attempt: number; delayMs: number; error: unknown }) => void | Promise<void>;
+  } = {},
+): Promise<T> => {
+  const maxAttempts = options.maxAttempts ?? RPC_RETRY_MAX_ATTEMPTS;
   let attempt = 0;
   let lastError: unknown;
 
-  while (attempt < RPC_RETRY_MAX_ATTEMPTS) {
+  while (attempt < maxAttempts) {
     try {
       // Retry/backoff must stay sequential so one transient failure does not fan out more RPC load.
       // eslint-disable-next-line no-await-in-loop
@@ -174,12 +205,16 @@ const withRpcRetries = async <T>(operation: () => Promise<T>): Promise<T> => {
     } catch (error) {
       lastError = error;
       attempt += 1;
-      if (attempt >= RPC_RETRY_MAX_ATTEMPTS || !isRetryableRpcError(error)) {
+      if (attempt >= maxAttempts || !isRetryableRpcError(error)) {
         throw error;
       }
+      const delayMs = RPC_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1);
+      // Retry hooks must stay serialized with backoff state.
+      // eslint-disable-next-line no-await-in-loop
+      await options.onRetry?.({ attempt, delayMs, error });
       // Backoff waits must stay sequential between retry attempts.
       // eslint-disable-next-line no-await-in-loop
-      await sleep(RPC_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1));
+      await sleep(delayMs);
     }
   }
 
@@ -415,20 +450,45 @@ const parseTokenAccountEntries = (result: unknown): unknown[] => {
   return Array.isArray(result.value) ? result.value : [];
 };
 
+const chunkEntries = <T>(entries: T[], chunkSize: number): T[][] => {
+  if (chunkSize <= 0 || entries.length === 0) {
+    return entries.length === 0 ? [] : [entries];
+  }
+
+  const chunks: T[][] = [];
+  for (let index = 0; index < entries.length; index += chunkSize) {
+    chunks.push(entries.slice(index, index + chunkSize));
+  }
+  return chunks;
+};
+
+const toWalletReadError = (
+  entry: ManagedWalletLibraryEntry,
+  error: unknown,
+): ManagedWalletContentsWalletError => ({
+  walletId: entry.walletId,
+  walletGroup: entry.walletGroup,
+  walletName: entry.walletName,
+  address: entry.address,
+  error: error instanceof Error ? error.message : String(error),
+  retryable: isRetryableRpcError(error),
+});
+
 const postRpcBatch = async (
   rpcUrl: string,
   requests: JsonRpcBatchRequest[],
 ): Promise<Map<string, unknown>> => {
   let response: Response;
   try {
-    response = await fetch(rpcUrl, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(requests),
-      signal: createRpcRequestSignal(),
-    });
+    response = await scheduleRateLimitedRpcRequest(rpcUrl, async () =>
+      await fetch(rpcUrl, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(requests),
+        signal: createRpcRequestSignal(),
+      }));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/timed out|timeout|abort/iu.test(message)) {
@@ -578,7 +638,12 @@ const loadWalletContentsBatchFromRpc = async (input: {
     },
   ]);
 
-  const rpcResults = await withRpcRetries(() => postRpcBatch(rpcUrl, requests));
+  const rpcResults = await withRpcRetries(
+    () => postRpcBatch(rpcUrl, requests),
+    {
+      maxAttempts: isOfficialSolanaPublicRpcUrl(rpcUrl) ? 2 : RPC_RETRY_MAX_ATTEMPTS,
+    },
+  );
 
   return input.entries.map((entry) =>
     parseWalletRpcBatchResult({
@@ -592,14 +657,22 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
   rpcUrl?: string;
   entries: ManagedWalletLibraryEntry[];
   includeZeroBalances: boolean;
-}): Promise<ManagedWalletContentsWallet[]> => {
+}): Promise<ManagedWalletContentsLoadOutcome> => {
   if (input.entries.length === 0) {
-    return [];
+    return {
+      wallets: [],
+      walletErrors: [],
+      usedSequentialFallback: false,
+    };
   }
 
   const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
   const wallets: ManagedWalletContentsWallet[] = [];
-  const cooldownMs = isOfficialSolanaPublicRpcUrl(rpcUrl) ? PUBLIC_MAINNET_RPC_SEQUENTIAL_COOLDOWN_MS : 120;
+  const walletErrors: ManagedWalletContentsWalletError[] = [];
+  const isPublicRpc = isOfficialSolanaPublicRpcUrl(rpcUrl);
+  const interRequestDelayMs = isPublicRpc ? PUBLIC_MAINNET_RPC_INTER_REQUEST_DELAY_MS : PRIVATE_RPC_INTER_REQUEST_DELAY_MS;
+  const interWalletDelayMs = isPublicRpc ? PUBLIC_MAINNET_RPC_INTER_WALLET_DELAY_MS : PRIVATE_RPC_INTER_WALLET_DELAY_MS;
+  const maxAttempts = isPublicRpc ? 2 : RPC_RETRY_MAX_ATTEMPTS;
 
   for (const entry of input.entries) {
     const balanceRequest: JsonRpcBatchRequest = {
@@ -638,13 +711,42 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
     };
 
     const rpcResults = new Map<string, unknown>();
+    let walletFailed = false;
     for (const request of [balanceRequest, splRequest, token2022Request]) {
+      let requestSawRetry = false;
       // Keep these reads fully serialized so public RPCs do not reject inventory lookups.
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const result = await withRpcRetries(
+          () => postRpcSingle(rpcUrl, request),
+          {
+            maxAttempts,
+            onRetry: () => {
+              requestSawRetry = true;
+            },
+          },
+        );
+        rpcResults.set(request.id, result);
+      } catch (error) {
+        if (!isRetryableRpcError(error)) {
+          throw error;
+        }
+        walletErrors.push(toWalletReadError(entry, error));
+        walletFailed = true;
+        if (isPublicRpc) {
+          // Give public RPCs a short reset window after a throttled wallet before moving on.
+          // eslint-disable-next-line no-await-in-loop
+          await sleep(PUBLIC_MAINNET_RPC_RETRY_COOLDOWN_MS);
+        }
+        break;
+      }
+
+      // Avoid fixed long sleeps on healthy reads; only slow down aggressively after actual retries.
       // eslint-disable-next-line no-await-in-loop
-      const result = await withRpcRetries(() => postRpcSingle(rpcUrl, request));
-      rpcResults.set(request.id, result);
-      // eslint-disable-next-line no-await-in-loop
-      await sleep(cooldownMs);
+      await sleep(requestSawRetry && isPublicRpc ? PUBLIC_MAINNET_RPC_RETRY_COOLDOWN_MS : interRequestDelayMs);
+    }
+    if (walletFailed) {
+      continue;
     }
     wallets.push(
       parseWalletRpcBatchResult({
@@ -655,13 +757,17 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
     );
 
     // Give public RPCs a short breather between wallets when we already had to degrade from batching.
-    if (wallets.length < input.entries.length) {
+    if (wallets.length + walletErrors.length < input.entries.length) {
       // eslint-disable-next-line no-await-in-loop
-      await sleep(200);
+      await sleep(interWalletDelayMs);
     }
   }
 
-  return wallets;
+  return {
+    wallets,
+    walletErrors,
+    usedSequentialFallback: true,
+  };
 };
 
 const parseHeliusNativeLamports = (result: unknown): bigint => {
@@ -877,21 +983,25 @@ const loadWalletsWithLoader = async (
     rpcUrl?: string;
     includeZeroBalances: boolean;
   },
-): Promise<ManagedWalletContentsWallet[]> => {
-  return Promise.all(
-    entries.map(async (entry) => {
-      const contents = await loadWalletContents({
-        rpcUrl: options.rpcUrl,
-        address: entry.address,
-        includeZeroBalances: options.includeZeroBalances,
-      });
-      return buildWalletResult({
-        entry,
-        lamports: contents.lamports,
-        tokenBalances: contents.tokenBalances,
-      });
-    }),
-  );
+): Promise<ManagedWalletContentsLoadOutcome> => {
+  return {
+    wallets: await Promise.all(
+      entries.map(async (entry) => {
+        const contents = await loadWalletContents({
+          rpcUrl: options.rpcUrl,
+          address: entry.address,
+          includeZeroBalances: options.includeZeroBalances,
+        });
+        return buildWalletResult({
+          entry,
+          lamports: contents.lamports,
+          tokenBalances: contents.tokenBalances,
+        });
+      }),
+    ),
+    walletErrors: [],
+    usedSequentialFallback: false,
+  };
 };
 
 const buildTokenTotals = (wallets: ManagedWalletContentsWallet[]): ManagedWalletAggregatedTokenBalance[] => {
@@ -973,6 +1083,58 @@ const buildTokenTotals = (wallets: ManagedWalletContentsWallet[]): ManagedWallet
     });
 };
 
+const loadWalletContentsFromRpc = async (input: {
+  rpcUrl?: string;
+  entries: ManagedWalletLibraryEntry[];
+  includeZeroBalances: boolean;
+}): Promise<ManagedWalletContentsLoadOutcome> => {
+  if (input.entries.length === 0) {
+    return {
+      wallets: [],
+      walletErrors: [],
+      usedSequentialFallback: false,
+    };
+  }
+
+  const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
+  const isPublicRpc = isOfficialSolanaPublicRpcUrl(rpcUrl);
+  const walletBatchLimit = isPublicRpc ? PUBLIC_MAINNET_RPC_BATCH_WALLET_LIMIT : DEFAULT_RPC_BATCH_WALLET_LIMIT;
+  const entryChunks = chunkEntries(input.entries, walletBatchLimit);
+  const wallets: ManagedWalletContentsWallet[] = [];
+  const walletErrors: ManagedWalletContentsWalletError[] = [];
+  let usedSequentialFallback = false;
+
+  for (const entryChunk of entryChunks) {
+    try {
+      const chunkWallets = await loadWalletContentsBatchFromRpc({
+        entries: entryChunk,
+        rpcUrl,
+        includeZeroBalances: input.includeZeroBalances,
+      });
+      wallets.push(...chunkWallets);
+    } catch (error) {
+      if (!isRetryableRpcError(error)) {
+        throw error;
+      }
+
+      const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
+        entries: entryChunk,
+        rpcUrl,
+        includeZeroBalances: input.includeZeroBalances,
+      });
+      usedSequentialFallback = true;
+      wallets.push(...sequentialOutcome.wallets);
+      walletErrors.push(...sequentialOutcome.walletErrors);
+    }
+  }
+
+  return {
+    wallets,
+    walletErrors,
+    usedSequentialFallback,
+  };
+};
+
 export const createGetManagedWalletContentsAction = (
   deps: GetManagedWalletContentsDeps = {},
 ): Action<GetManagedWalletContentsInput, ManagedWalletContentsOutput> => {
@@ -1020,41 +1182,35 @@ export const createGetManagedWalletContentsAction = (
 
         const useHeliusDas = Boolean(heliusConfig?.rpcUrl);
         let dataSource: ManagedWalletContentsDataSource = "rpc-batch";
-        const wallets = deps.loadWalletContents
+        const loadOutcome = deps.loadWalletContents
           ? await loadWalletsWithLoader(filteredEntries, deps.loadWalletContents, {
               rpcUrl: ctx.rpcUrl,
               includeZeroBalances: input.includeZeroBalances,
             })
           : useHeliusDas && heliusConfig?.rpcUrl
-            ? await loadWalletContentsBatchFromHeliusDas({
+            ? {
+                wallets: await loadWalletContentsBatchFromHeliusDas({
+                  entries: filteredEntries,
+                  rpcUrl: heliusConfig.rpcUrl,
+                  includeZeroBalances: input.includeZeroBalances,
+                }),
+                walletErrors: [],
+                usedSequentialFallback: false,
+              }
+            : await loadWalletContentsFromRpc({
                 entries: filteredEntries,
-                rpcUrl: heliusConfig.rpcUrl,
+                rpcUrl: ctx.rpcUrl,
                 includeZeroBalances: input.includeZeroBalances,
-              })
-            : await (async () => {
-                try {
-                  return await loadWalletContentsBatchFromRpc({
-                    entries: filteredEntries,
-                    rpcUrl: ctx.rpcUrl,
-                    includeZeroBalances: input.includeZeroBalances,
-                  });
-                } catch (error) {
-                  if (!isRetryableRpcError(error)) {
-                    throw error;
-                  }
-                  if (ctx.rpcUrl && isOfficialSolanaPublicRpcUrl(ctx.rpcUrl)) {
-                    await sleep(PUBLIC_MAINNET_RPC_SEQUENTIAL_COOLDOWN_MS);
-                  }
-                  dataSource = "rpc-sequential";
-                  return loadWalletContentsSequentiallyFromRpc({
-                    entries: filteredEntries,
-                    rpcUrl: ctx.rpcUrl,
-                    includeZeroBalances: input.includeZeroBalances,
-                  });
-                }
-              })();
+              });
         if (useHeliusDas) {
           dataSource = "helius-das";
+        } else if (loadOutcome.usedSequentialFallback) {
+          dataSource = "rpc-sequential";
+        }
+
+        const wallets = loadOutcome.wallets;
+        if (wallets.length === 0 && loadOutcome.walletErrors.length > 0) {
+          throw new Error(loadOutcome.walletErrors[0]?.error ?? "Managed-wallet RPC reads failed.");
         }
 
         const totalBalanceLamports = wallets.reduce((sum, wallet) => sum + BigInt(wallet.balanceLamports), 0n);
@@ -1071,7 +1227,9 @@ export const createGetManagedWalletContentsAction = (
             invalidLibraryLineCount: walletLibrary.invalidLineCount,
             includeZeroBalances: input.includeZeroBalances,
             dataSource,
+            partial: loadOutcome.walletErrors.length > 0,
             wallets,
+            walletErrors: loadOutcome.walletErrors,
             totalBalanceLamports: totalBalanceLamports.toString(),
             totalBalanceSol: Number(totalBalanceLamports) / LAMPORTS_PER_SOL,
             totalCollectibleCount: wallets.reduce((sum, wallet) => sum + wallet.collectibleCount, 0),

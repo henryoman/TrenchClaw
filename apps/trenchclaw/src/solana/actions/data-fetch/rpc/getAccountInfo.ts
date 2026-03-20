@@ -1,5 +1,6 @@
-import { address, createSolanaRpc } from "@solana/kit";
+import { address } from "@solana/kit";
 import type { Commitment, DataSlice, Slot } from "@solana/kit";
+import { createRateLimitedSolanaRpc } from "../../../lib/rpc/client";
 import { resolveDefaultSolanaRpcUrl } from "./shared";
 
 export type AccountInfoEncoding = "base64" | "jsonParsed";
@@ -11,7 +12,7 @@ export interface GetAccountInfoParams {
   commitment?: Commitment;
   minContextSlot?: Slot;
   dataSlice?: DataSlice;
-  rpcConfig?: Parameters<typeof createSolanaRpc>[1];
+  rpcConfig?: Parameters<typeof createRateLimitedSolanaRpc>[1];
 }
 
 export interface GetAccountInfoResult {
@@ -20,7 +21,7 @@ export interface GetAccountInfoResult {
 }
 
 export async function getAccountInfo(params: GetAccountInfoParams): Promise<GetAccountInfoResult> {
-  const rpc = createSolanaRpc(params.rpcUrl ?? resolveDefaultSolanaRpcUrl(), params.rpcConfig);
+  const rpc = createRateLimitedSolanaRpc(params.rpcUrl ?? resolveDefaultSolanaRpcUrl(), params.rpcConfig);
   const accountAddress = address(params.account);
   const encoding = params.encoding ?? "base64";
 

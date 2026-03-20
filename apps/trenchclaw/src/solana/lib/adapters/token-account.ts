@@ -1,4 +1,5 @@
-import { address, createSolanaRpc } from "@solana/kit";
+import { address } from "@solana/kit";
+import { createRateLimitedSolanaRpc } from "../rpc/client";
 import { resolveRequiredRpcUrl } from "../rpc/urls";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -17,7 +18,7 @@ export const createTokenAccountAdapter = (
   config: TokenAccountAdapterConfig = {},
 ): TokenAccountAdapter => {
   const rpcUrl = resolveRequiredRpcUrl(config.rpcUrl);
-  const rpc = createSolanaRpc(rpcUrl);
+  const rpc = createRateLimitedSolanaRpc(rpcUrl);
   const decimalsCache = new Map<string, number>();
 
   return {

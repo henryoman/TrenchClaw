@@ -1,4 +1,5 @@
-import { createSolanaRpc, signature } from "@solana/kit";
+import { signature } from "@solana/kit";
+import { createRateLimitedSolanaRpc } from "../../../../lib/rpc/client";
 
 export type UltraTrackedStatus = "pending" | "confirmed" | "finalized" | "failed" | "unknown";
 
@@ -115,7 +116,7 @@ async function checkSignature(
   }
 
   try {
-    const rpc = createSolanaRpc(rpcUrl);
+    const rpc = createRateLimitedSolanaRpc(rpcUrl);
     const response = await rpc.getSignatureStatuses([signature(signatureValue)], {
       searchTransactionHistory: true,
     }).send();
