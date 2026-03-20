@@ -55,12 +55,12 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   getManagedWalletContents: {
     useWhen: "the user asks what is in the managed wallets, what coins or tokens are held, what balances exist, or asks for a wallet update in plain English",
     avoidWhen: "the user only wants SOL balances, or is asking about market prices, trading history, or external token liquidity",
-    inputAdvice: "Pass `wallets` when the user names specific wallets, `walletGroup` when the user names a whole group, or omit both to inspect all active managed wallets. Large scans may queue a background job instead of blocking inline.",
+    inputAdvice: "To inspect all active managed wallets, omit `wallet`, `wallets`, `walletGroup`, and `walletNames`. To inspect one group, pass `walletGroup` only. To inspect specific wallets, pass `wallets` or `walletNames`. Never use a wallet-group name like `core-wallets` inside the single-wallet `wallet` field, and never invent synthetic selectors like `all` for whole-group reads. Large scans may queue a background job instead of blocking inline.",
   },
   getManagedWalletSolBalances: {
     useWhen: "the user only wants SOL balances or a quick SOL-only summary",
     avoidWhen: "the user asks about SPL tokens, collectibles, or full wallet contents",
-    inputAdvice: "Pass `wallets` when the user names specific wallets, `walletGroup` when the scope is one wallet group, or omit both to inspect all active managed wallets.",
+    inputAdvice: "To inspect all active managed wallets, omit `wallet`, `wallets`, `walletGroup`, and `walletNames`. To inspect one group, pass `walletGroup` only. To inspect specific wallets, pass `wallets` or `walletNames`. Never use a wallet-group name like `core-wallets` inside the single-wallet `wallet` field, and never invent synthetic selectors like `all` for whole-group reads.",
   },
   queryRuntimeStore: {
     useWhen: "the user asks about runtime state like jobs, conversations, receipts, stored runtime records, or wants the status of a queued wallet scan",
@@ -172,6 +172,8 @@ const renderOperatorDecisionRules = (): string => [
   "- If the user already gave an exact address, pair, wallet, or mint, skip discovery and go straight to the most specific tool.",
   "- Use discovery tools only when the user gave a fuzzy symbol, nickname, or broad market question.",
   "- Read before write: inspect wallet state first, then execute transfers or cleanup only after the user explicitly asked and the inputs are concrete.",
+  "- For managed-wallet reads across every wallet, omit wallet selectors entirely rather than inventing an `all` wallet selector.",
+  "- For managed-wallet reads across one group, pass `walletGroup` only. Do not put a group name into the single-wallet `wallet` field.",
   "- For direct trigger-order asks with a concrete target price, prefer `managedTriggerOrder` with `trigger.kind = \"exactPrice\"`.",
   "- Use `percentFromBuyPrice` only when the user explicitly frames the trigger relative to entry price, buy price, stop loss, or take profit percentage.",
   "- Never use a write tool just because it is available. Use it only when the user clearly requested the mutation.",

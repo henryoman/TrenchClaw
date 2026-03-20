@@ -128,10 +128,14 @@ Do not ask follow-up questions before giving that direct answer unless the user 
   lines.push(
     "",
     "### Wallet Alias Variables",
+    "- To read all managed wallets in the active instance, omit `wallet`, `wallets`, `walletGroup`, and `walletNames` entirely.",
+    "- To read one whole wallet group, pass `walletGroup` only and optionally `walletNames` for a named subset inside that group.",
     "- For single-wallet mutation tools like `transfer`, `closeTokenAccount`, `managedUltraSwap`, `managedTriggerOrder`, and `managedTriggerCancelOrders`, prefer passing `wallet` as the wallet name string when it is unique in this active instance.",
     "- For multi-wallet read tools like `getManagedWalletContents` and `getManagedWalletSolBalances`, prefer passing `wallets` as an array of wallet name strings when the names are unique in this active instance.",
     "- If a wallet name is ambiguous across groups, pass `wallet` as an object like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
     "- If multiple wallet names are ambiguous across groups, pass `wallets` as objects like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
+    "- Never pass a wallet group name like `core-wallets` through the single-wallet `wallet` field.",
+    "- Never invent synthetic whole-group selectors like `wallet: \"core-wallets\"` or `{ \"id\": \"core-wallets\", \"name\": \"all\" }`.",
     "- Do not pass RPC provider details to wallet tools. Runtime action context resolves RPC, throttling, and queued scan routing automatically.",
   );
 
@@ -215,6 +219,9 @@ export const renderRuntimeWalletPromptSummary = async (
     `- wallet groups: ${groups.join(", ") || "(none)"}`,
     `- invalid library lines: ${invalidLineCount}`,
     `- wallet preview: ${previewWallets.join("; ") || "none"}`,
+    "- all-wallet reads: omit `wallet`, `wallets`, `walletGroup`, and `walletNames`",
+    "- whole-group reads: pass `walletGroup` only",
+    "- never use a wallet group name inside the single-wallet `wallet` field and never invent an `all` wallet selector",
     "- use `createWallets` for wallet creation and `renameWallets` for label changes",
     "- use `getManagedWalletContents` for holdings and token balances",
     "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC and may queue heavier scans for safety",

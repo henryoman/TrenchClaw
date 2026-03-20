@@ -62,13 +62,34 @@ const resolveWalletEntries = async (
   entries: ManagedWalletLibraryEntry[],
   input: GetManagedWalletSolBalancesInput,
 ): Promise<ManagedWalletLibraryEntry[]> => {
-  const selectedEntries = await resolveManagedWalletEntriesBySelection(input);
-  if (!selectedEntries) {
-    return filterWalletEntries(entries, input);
-  }
+  const filteredEntries = filterWalletEntries(entries, input);
+  const hasLegacyFilters = Boolean(input.walletGroup) || Boolean(input.walletNames?.length);
 
-  const selectedWalletIds = new Set(selectedEntries.map((entry) => entry.walletId));
-  return entries.filter((entry) => selectedWalletIds.has(entry.walletId));
+  try {
+    const selectedEntries = await resolveManagedWalletEntriesBySelection(input);
+    if (!selectedEntries) {
+      return filteredEntries;
+    }
+
+    const selectedWalletIds = new Set(selectedEntries.map((entry) => entry.walletId));
+    const narrowedEntries = entries.filter((entry) => selectedWalletIds.has(entry.walletId));
+    if (!hasLegacyFilters) {
+      return narrowedEntries;
+    }
+
+    const filteredWalletIds = new Set(filteredEntries.map((entry) => entry.walletId));
+    return narrowedEntries.filter((entry) => filteredWalletIds.has(entry.walletId));
+  } catch (error) {
+    if (
+      hasLegacyFilters
+      && error instanceof Error
+      && /Managed wallet not found:/u.test(error.message)
+    ) {
+      return filteredEntries;
+    }
+
+    throw error;
+  }
 };
 
 export const createGetManagedWalletSolBalancesAction = (
