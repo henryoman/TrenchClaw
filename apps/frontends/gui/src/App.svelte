@@ -16,6 +16,7 @@
     SettingsPanel,
     SolPriceStrip,
     SummaryPanel,
+    WakeupPanel,
     WalletsPanel,
     WorkspaceShell,
   } from "./components";
@@ -28,7 +29,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
-  let activeTab: "chat" | "keys" | "settings" | "info" | "wallets" | "schedule" = $state("chat");
+  let activeTab: "chat" | "keys" | "settings" | "wakeup" | "info" | "wallets" | "schedule" = $state("chat");
   const appVersionLabel = APP_BUILD_COMMIT === "local" ? APP_BUILD_VERSION : `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
 
   const ensureChatController = async (): Promise<void> => {
@@ -189,6 +190,20 @@
         }}
         onSaveSecret={(input) => {
           void runtime.upsertSecret(input);
+        }}
+      />
+    {:else if activeTab === "wakeup"}
+      <WakeupPanel
+        wakeupSettingsFilePath={runtime.state.wakeupSettingsFilePath}
+        wakeupSettings={runtime.state.wakeupSettings}
+        defaultPrompt={runtime.state.wakeupSettingsDefaultPrompt}
+        busy={runtime.state.wakeupSettingsBusy}
+        error={runtime.state.wakeupSettingsError}
+        onReload={() => {
+          void runtime.loadWakeupSettings();
+        }}
+        onSave={(settings) => {
+          void runtime.saveWakeupSettings(settings);
         }}
       />
     {:else if activeTab === "info"}

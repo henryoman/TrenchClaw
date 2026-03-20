@@ -1,8 +1,4 @@
-import { mkdirSync } from "node:fs";
-import path from "node:path";
 import { Database } from "bun:sqlite";
-import { assertRuntimeSystemWritePath } from "../security/write-scope";
-import { resolveRuntimeContractPath } from "../runtime-paths";
 
 import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
@@ -44,6 +40,7 @@ import {
   type SaveOhlcvBarsInput,
 } from "./schema";
 import { getSqliteSchemaSnapshot, syncSqliteSchema, type SqliteSchemaSyncReport } from "./sqlite-orm";
+import { initializeStorageFilePath } from "./storage-shared";
 import {
   sqliteChatMessageRowSchema,
   sqliteConversationRowSchema,
@@ -79,9 +76,6 @@ const parseJsonWithSchema = <T>(
   return result.data;
 };
 
-const toAbsolutePath = (filePath: string): string =>
-  path.isAbsolute(filePath) ? filePath : resolveRuntimeContractPath(filePath);
-
 const toFiniteNumber = (value: unknown): number | null => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -103,9 +97,7 @@ export class SqliteStateStore implements StateStore {
 
   constructor(config: SqliteStateStoreConfig) {
     this.config = sqliteStateStoreConfigSchema.parse(config);
-    const absolutePath = toAbsolutePath(this.config.path);
-    assertRuntimeSystemWritePath(absolutePath, "initialize sqlite runtime store");
-    mkdirSync(path.dirname(absolutePath), { recursive: true });
+    const absolutePath = initializeStorageFilePath(this.config.path, "initialize sqlite runtime store");
     this.db = new Database(absolutePath, { create: true, strict: true });
 
     this.configureConnection();

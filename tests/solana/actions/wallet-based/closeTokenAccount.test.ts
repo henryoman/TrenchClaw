@@ -54,10 +54,10 @@ describe("closeTokenAccountAction", () => {
       return;
     }
     expect(result.code).toBe("CLOSE_TOKEN_ACCOUNT_FAILED");
-    expect(result.error).toContain("Provide ctx.ultraSigner or input.walletGroup and input.walletName");
+    expect(result.error).toContain("Provide ctx.ultraSigner or a managed wallet selector");
   });
 
-  test("uses managed wallet signers when walletGroup and walletName are provided", async () => {
+  test("uses managed wallet signers when wallet is provided as a simple name", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
     process.env.TRENCHCLAW_WALLET_LIBRARY_FILE = walletLibraryFile;
@@ -78,8 +78,7 @@ describe("closeTokenAccountAction", () => {
     }
 
     const result = await closeTokenAccountAction.execute({} as never, {
-      walletGroup: "core-wallets",
-      walletName: "wallet_000",
+      wallet: "wallet_000",
       mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
     });
 

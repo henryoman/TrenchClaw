@@ -54,6 +54,12 @@ export const resolveInstanceAiSettingsPath = (instanceId: string): string =>
 export const resolveInstanceCompatibilitySettingsPath = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "settings", "settings.json");
 
+export const resolveInstanceTradingSettingsPath = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "settings", "trading.json");
+
+export const resolveInstanceWakeupSettingsPath = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "settings", "wakeup.json");
+
 export const resolveInstanceShellHomeRoot = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "shell-home");
 

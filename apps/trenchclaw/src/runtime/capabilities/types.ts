@@ -14,6 +14,7 @@ export interface RuntimeCapabilityMetadata {
   description: string;
   purpose: string;
   tags: readonly string[];
+  releaseReadiness: RuntimeReleaseReadinessDescriptor;
   exampleInput?: unknown;
   routingHint?: string;
   sideEffectLevel?: CapabilitySideEffectLevel;

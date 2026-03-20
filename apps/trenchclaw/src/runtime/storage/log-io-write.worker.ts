@@ -3,7 +3,7 @@ import {
   type LogIoRequest,
   type LogIoResponse,
   performLogIoWrite,
-} from "./log-io-shared";
+} from "./log-io-core";
 
 const postResponse = (response: LogIoResponse): void => {
   (postMessage as (message: LogIoResponse) => void)(response);

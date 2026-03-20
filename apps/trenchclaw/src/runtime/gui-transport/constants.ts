@@ -1,7 +1,6 @@
 import type { GuiPublicRpcOptionView, GuiRpcProviderOptionView, GuiSecretOptionView } from "@trenchclaw/types";
 import {
   RUNTIME_INSTANCE_ROOT,
-  resolveCoreRelativePath,
 } from "../runtime-paths";
 
 export const MAX_ACTIVITY_ITEMS = 250;
@@ -13,10 +12,6 @@ export const CORS_HEADERS = {
   "access-control-allow-headers": "content-type,accept",
 };
 export const INSTANCE_DIRECTORY = RUNTIME_INSTANCE_ROOT;
-export const AI_SETTINGS_TEMPLATE_FILE_PATH = resolveCoreRelativePath("src/ai/config/ai.template.json");
-export const VAULT_TEMPLATE_FILE_PATH = resolveCoreRelativePath("src/ai/config/vault.template.json");
-export const DISPATCH_TEST_DEFAULT_WAIT_MS = 4000;
-export const DISPATCH_TEST_MAX_WAIT_MS = 20000;
 
 export const PUBLIC_RPC_OPTIONS: GuiPublicRpcOptionView[] = [
   { id: "solana-mainnet-beta", label: "Solana Mainnet (public)", url: "https://api.mainnet-beta.solana.com" },

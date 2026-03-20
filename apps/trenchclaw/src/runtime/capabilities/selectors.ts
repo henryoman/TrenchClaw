@@ -2,7 +2,7 @@ import type { Action } from "../../ai/runtime/types/action";
 import type { RuntimeSettings } from "../load";
 import { summarizeFilesystemPolicy } from "../security/filesystem-manifest";
 import { runtimeActionCapabilityDefinitions } from "./action-definitions";
-import { getRuntimeComingSoonFeatures, getToolReleaseReadinessDescriptor } from "./release-readiness";
+import { getRuntimeComingSoonFeatures } from "./release-readiness";
 import { workspaceToolCapabilityDefinitions } from "./workspace-tool-definitions";
 import type {
   CapabilitySideEffectLevel,
@@ -99,7 +99,7 @@ const toActionSnapshotEntry = async (
   const routingHint = (definition.routingHint ?? definition.purpose).trim();
   const sideEffectLevel = inferActionSideEffectLevel(definition);
   const requiresConfirmation = definition.requiresUserConfirmation === true;
-  const releaseReadiness = getToolReleaseReadinessDescriptor(action.name);
+  const releaseReadiness = definition.releaseReadiness;
   return {
     kind: "action",
     name: action.name,
@@ -144,7 +144,7 @@ const toWorkspaceToolSnapshotEntry = async (
   const enabledBySettings = definition.enabledBySettings(predicateContext);
   const routingHint = (definition.routingHint ?? definition.purpose).trim();
   const sideEffectLevel = inferWorkspaceSideEffectLevel(definition);
-  const releaseReadiness = getToolReleaseReadinessDescriptor(definition.name);
+  const releaseReadiness = definition.releaseReadiness;
   return {
     kind: "workspace-tool",
     name: definition.name,
@@ -172,9 +172,6 @@ const toWorkspaceToolSnapshotEntry = async (
     }),
   };
 };
-
-export const getRuntimeActionCapabilityDefinitions = (): readonly RuntimeActionCapabilityDefinition[] =>
-  runtimeActionCapabilityDefinitions;
 
 export const getRuntimeActionCatalog = async (settings: RuntimeSettings): Promise<Action<any, any>[]> => {
   const filesystemPolicy = await summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 32 });
@@ -256,17 +253,3 @@ export const getRuntimeCapabilitySnapshot = async (settings: RuntimeSettings): P
   };
 };
 
-export const buildRuntimeChatToolNameCatalog = async (
-  input:
-    | RuntimeSettings
-    | {
-        actionNames: string[];
-        workspaceToolNames: string[];
-      },
-): Promise<string[]> => {
-  if ("actionNames" in input) {
-    return [...input.actionNames, ...input.workspaceToolNames].toSorted((left, right) => left.localeCompare(right));
-  }
-
-  return (await getRuntimeCapabilitySnapshot(input)).modelTools.map((toolEntry) => toolEntry.name);
-};

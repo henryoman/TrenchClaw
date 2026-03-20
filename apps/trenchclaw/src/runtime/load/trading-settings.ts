@@ -1,11 +1,7 @@
-import { mkdir } from "node:fs/promises";
-import path from "node:path";
 import { z } from "zod";
 
-import { parseStructuredFile } from "../../ai/llm/shared";
-import { resolveCurrentActiveInstanceIdSync } from "../instance-state";
-import { RUNTIME_INSTANCE_ROOT } from "../runtime-paths";
-import { assertInstanceSystemWritePath } from "../security/write-scope";
+import { resolveInstanceTradingSettingsPath } from "../instance-paths";
+import { loadInstanceSettingsDocument, writeInstanceSettingsDocument } from "./instance-settings-io";
 
 const LEGACY_TRIGGER_SCHEDULE_ACTION = "scheduleManagedTriggerOrder";
 const SUPPORTED_SCHEDULE_ACTION = "scheduleManagedUltraSwap";
@@ -94,44 +90,20 @@ export interface InstanceTradingSettingsPayload {
 
 export const DEFAULT_TRADING_PREFERENCES: TradingPreferences = tradingPreferencesSchema.parse({});
 
-export const resolveInstanceTradingSettingsPath = (instanceId: string): string =>
-  path.join(RUNTIME_INSTANCE_ROOT, instanceId, "settings", "trading.json");
-
 export const loadInstanceTradingSettings = async (input?: {
   instanceId?: string | null;
 }): Promise<InstanceTradingSettingsPayload> => {
-  const instanceId = input?.instanceId ?? resolveCurrentActiveInstanceIdSync();
-  if (!instanceId) {
-    return {
-      instanceId: null,
-      settingsPath: null,
-      exists: false,
-      rawSettings: {},
-      resolvedSettings: {},
-    };
-  }
-
-  const settingsPath = resolveInstanceTradingSettingsPath(instanceId);
-  const file = Bun.file(settingsPath);
-  if (!(await file.exists())) {
-    return {
-      instanceId,
-      settingsPath,
-      exists: false,
-      rawSettings: {},
-      resolvedSettings: {},
-    };
-  }
-
-  const rawSettings = await parseStructuredFile(settingsPath);
-  const resolvedSettings = instanceTradingSettingsSchema.parse(rawSettings);
-
+  const payload = await loadInstanceSettingsDocument({
+    instanceId: input?.instanceId,
+    resolvePath: resolveInstanceTradingSettingsPath,
+    parseDocument: (rawSettings) => instanceTradingSettingsSchema.parse(rawSettings),
+  });
   return {
-    instanceId,
-    settingsPath,
-    exists: true,
-    rawSettings,
-    resolvedSettings,
+    instanceId: payload.instanceId,
+    settingsPath: payload.filePath,
+    exists: payload.exists,
+    rawSettings: payload.rawSettings,
+    resolvedSettings: payload.resolvedSettings,
   };
 };
 
@@ -139,9 +111,11 @@ export const writeInstanceTradingSettings = async (
   instanceId: string,
   document: InstanceTradingSettingsInput,
 ): Promise<string> => {
-  const settingsPath = resolveInstanceTradingSettingsPath(instanceId);
-  assertInstanceSystemWritePath(settingsPath, "write instance trading settings");
-  await mkdir(path.dirname(settingsPath), { recursive: true });
-  await Bun.write(settingsPath, `${JSON.stringify(instanceTradingSettingsSchema.parse(document), null, 2)}\n`);
-  return settingsPath;
+  return writeInstanceSettingsDocument({
+    instanceId,
+    document,
+    resolvePath: resolveInstanceTradingSettingsPath,
+    parseDocument: (nextDocument) => instanceTradingSettingsSchema.parse(nextDocument),
+    operation: "write instance trading settings",
+  });
 };

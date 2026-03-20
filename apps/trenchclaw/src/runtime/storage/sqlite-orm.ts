@@ -1,40 +1,14 @@
 import type { Database } from "bun:sqlite";
 import { z, type ZodType } from "zod";
 
-import { sqliteTables } from "./sqlite-schema";
-
-type SqlitePrimitive = "TEXT" | "INTEGER" | "REAL" | "BLOB";
-
-type ForeignKeySpec = {
-  table: string;
-  column: string;
-  onDelete?: "CASCADE" | "SET NULL" | "RESTRICT" | "NO ACTION";
-};
-
-type ColumnSpec = {
-  name: string;
-  type: SqlitePrimitive;
-  notNull?: boolean;
-  primaryKey?: boolean;
-  unique?: boolean;
-  check?: string;
-  references?: ForeignKeySpec;
-};
-
-type IndexSpec = {
-  name: string;
-  columns: string[];
-  unique?: boolean;
-};
-
-type TableSpec = {
-  name: keyof typeof sqliteTables;
-  rowSchema: ZodType;
-  columns: readonly ColumnSpec[];
-  tableChecks?: readonly string[];
-  tableConstraints?: readonly string[];
-  indexes?: readonly IndexSpec[];
-};
+import {
+  getSqliteTableContracts,
+  type ColumnSpec,
+  type IndexSpec,
+  type SqliteAnyTableContract,
+  type SqlitePrimitive,
+  type SqliteTableName,
+} from "./sqlite-schema";
 
 type TableInfoRow = {
   name: string;
@@ -63,6 +37,11 @@ export type SqliteSchemaInspectionReport = {
   missingIndexes: string[];
   warnings: string[];
 };
+
+const SQLITE_TABLE_CONTRACTS = getSqliteTableContracts();
+const TABLE_SPEC_BY_NAME = new Map(SQLITE_TABLE_CONTRACTS.map((spec) => [spec.name, spec]));
+const DEPRECATED_TABLE_NAMES = ["policy_hits", "decision_logs"] as const;
+const PRIMARY_KEY_CONSTRAINT_PATTERN = /^PRIMARY KEY\s*\((.+)\)$/iu;
 
 const quoteIdentifier = (name: string): string => `"${name.replace(/"/g, "\"\"")}"`;
 
@@ -142,15 +121,13 @@ const inferSqlitePrimitiveFromZodSchema = (schema: z.ZodType): SqlitePrimitive |
   }
 };
 
-const getRowSchemaShape = (table: TableSpec): Record<string, z.ZodType> => {
+const getRowSchemaShape = (table: SqliteAnyTableContract): Record<string, z.ZodType> => {
   const shape = (table.rowSchema as ZodType & { shape?: Record<string, z.ZodType> }).shape;
   if (!shape) {
     throw new Error(`sqlite table ${table.name} row schema must be a Zod object`);
   }
   return shape;
 };
-
-const PRIMARY_KEY_CONSTRAINT_PATTERN = /^PRIMARY KEY\s*\((.+)\)$/iu;
 
 const parsePrimaryKeyConstraintColumns = (constraint: string): string[] => {
   const match = PRIMARY_KEY_CONSTRAINT_PATTERN.exec(constraint.trim());
@@ -165,7 +142,7 @@ const parsePrimaryKeyConstraintColumns = (constraint: string): string[] => {
     .filter(Boolean);
 };
 
-const getExpectedPrimaryKeyColumns = (table: TableSpec): Set<string> => {
+const getExpectedPrimaryKeyColumns = (table: SqliteAnyTableContract): Set<string> => {
   const primaryKeyColumns = new Set<string>();
 
   for (const column of table.columns) {
@@ -183,7 +160,7 @@ const getExpectedPrimaryKeyColumns = (table: TableSpec): Set<string> => {
   return primaryKeyColumns;
 };
 
-const getSqliteTableContractViolations = (tables: readonly TableSpec[]): string[] => {
+const getSqliteTableContractViolations = (tables: readonly SqliteAnyTableContract[]): string[] => {
   const violations: string[] = [];
 
   for (const table of tables) {
@@ -238,229 +215,16 @@ const getSqliteTableContractViolations = (tables: readonly TableSpec[]): string[
   return violations;
 };
 
-const SQLITE_TABLE_SPECS: readonly TableSpec[] = [
-  {
-    name: "schema_migrations",
-    rowSchema: sqliteTables.schema_migrations,
-    columns: [
-      { name: "version", type: "INTEGER", primaryKey: true },
-      { name: "applied_at", type: "INTEGER", notNull: true },
-    ],
-  },
-  {
-    name: "jobs",
-    rowSchema: sqliteTables.jobs,
-    columns: [
-      { name: "id", type: "TEXT", primaryKey: true },
-      { name: "serial_number", type: "INTEGER", check: "serial_number IS NULL OR serial_number > 0" },
-      { name: "bot_id", type: "TEXT", notNull: true },
-      { name: "routine_name", type: "TEXT", notNull: true },
-      {
-        name: "status",
-        type: "TEXT",
-        notNull: true,
-        check: "status IN ('pending', 'running', 'paused', 'stopped', 'failed')",
-      },
-      { name: "config_json", type: "TEXT", notNull: true },
-      { name: "next_run_at", type: "INTEGER" },
-      { name: "last_run_at", type: "INTEGER" },
-      { name: "cycles_completed", type: "INTEGER", notNull: true, check: "cycles_completed >= 0" },
-      { name: "total_cycles", type: "INTEGER", check: "total_cycles IS NULL OR total_cycles >= 0" },
-      { name: "last_result_json", type: "TEXT" },
-      { name: "attempt_count", type: "INTEGER", check: "attempt_count IS NULL OR attempt_count >= 0" },
-      { name: "lease_owner", type: "TEXT" },
-      { name: "lease_expires_at", type: "INTEGER", check: "lease_expires_at IS NULL OR lease_expires_at >= 0" },
-      { name: "last_error", type: "TEXT" },
-      { name: "created_at", type: "INTEGER", notNull: true },
-      { name: "updated_at", type: "INTEGER", notNull: true },
-    ],
-    indexes: [
-      { name: "idx_jobs_serial_number", columns: ["serial_number"], unique: true },
-      { name: "idx_jobs_status_next_run_at", columns: ["status", "next_run_at"] },
-      { name: "idx_jobs_bot_id_status", columns: ["bot_id", "status"] },
-      { name: "idx_jobs_lease_expires_at", columns: ["status", "lease_expires_at"] },
-    ],
-  },
-  {
-    name: "action_receipts",
-    rowSchema: sqliteTables.action_receipts,
-    columns: [
-      { name: "idempotency_key", type: "TEXT", primaryKey: true },
-      { name: "payload_json", type: "TEXT", notNull: true },
-      { name: "timestamp", type: "INTEGER", notNull: true },
-    ],
-    indexes: [{ name: "idx_action_receipts_timestamp", columns: ["timestamp"] }],
-  },
-  {
-    name: "conversations",
-    rowSchema: sqliteTables.conversations,
-    columns: [
-      { name: "id", type: "TEXT", primaryKey: true },
-      { name: "session_id", type: "TEXT" },
-      { name: "title", type: "TEXT" },
-      { name: "summary", type: "TEXT" },
-      { name: "created_at", type: "INTEGER", notNull: true },
-      { name: "updated_at", type: "INTEGER", notNull: true },
-    ],
-    indexes: [{ name: "idx_conversations_updated_at", columns: ["updated_at"] }],
-  },
-  {
-    name: "chat_messages",
-    rowSchema: sqliteTables.chat_messages,
-    columns: [
-      { name: "id", type: "TEXT", primaryKey: true },
-      {
-        name: "conversation_id",
-        type: "TEXT",
-        notNull: true,
-        references: { table: "conversations", column: "id", onDelete: "CASCADE" },
-      },
-      { name: "role", type: "TEXT", notNull: true, check: "role IN ('system', 'user', 'assistant', 'tool')" },
-      { name: "content", type: "TEXT", notNull: true },
-      { name: "metadata_json", type: "TEXT" },
-      { name: "created_at", type: "INTEGER", notNull: true },
-    ],
-    indexes: [{ name: "idx_chat_messages_conversation_created_at", columns: ["conversation_id", "created_at"] }],
-  },
-  {
-    name: "instance_profiles",
-    rowSchema: sqliteTables.instance_profiles,
-    columns: [
-      { name: "instance_id", type: "TEXT", primaryKey: true },
-      { name: "display_name", type: "TEXT" },
-      { name: "summary", type: "TEXT" },
-      { name: "trading_style", type: "TEXT" },
-      { name: "risk_tolerance", type: "TEXT" },
-      { name: "preferred_assets_json", type: "TEXT" },
-      { name: "disliked_assets_json", type: "TEXT" },
-      { name: "metadata_json", type: "TEXT" },
-      { name: "created_at", type: "INTEGER", notNull: true },
-      { name: "updated_at", type: "INTEGER", notNull: true },
-    ],
-    indexes: [{ name: "idx_instance_profiles_updated_at", columns: ["updated_at"] }],
-  },
-  {
-    name: "instance_facts",
-    rowSchema: sqliteTables.instance_facts,
-    columns: [
-      { name: "id", type: "TEXT", primaryKey: true },
-      { name: "instance_id", type: "TEXT", notNull: true },
-      { name: "fact_key", type: "TEXT", notNull: true },
-      { name: "fact_value_json", type: "TEXT", notNull: true },
-      { name: "confidence", type: "REAL", notNull: true, check: "confidence >= 0 AND confidence <= 1" },
-      { name: "source", type: "TEXT", notNull: true },
-      { name: "source_message_id", type: "TEXT" },
-      { name: "created_at", type: "INTEGER", notNull: true },
-      { name: "updated_at", type: "INTEGER", notNull: true },
-      { name: "expires_at", type: "INTEGER", check: "expires_at IS NULL OR expires_at >= 0" },
-    ],
-    tableConstraints: ["UNIQUE(instance_id, fact_key)"],
-    indexes: [
-      { name: "idx_instance_facts_instance_updated", columns: ["instance_id", "updated_at"] },
-      { name: "idx_instance_facts_expires_at", columns: ["expires_at"] },
-    ],
-  },
-  {
-    name: "market_instruments",
-    rowSchema: sqliteTables.market_instruments,
-    columns: [
-      { name: "id", type: "INTEGER", primaryKey: true },
-      { name: "chain", type: "TEXT", notNull: true },
-      { name: "address", type: "TEXT", notNull: true },
-      { name: "symbol", type: "TEXT" },
-      { name: "name", type: "TEXT" },
-      { name: "decimals", type: "INTEGER", check: "decimals IS NULL OR decimals >= 0" },
-      { name: "created_at", type: "INTEGER", notNull: true },
-      { name: "updated_at", type: "INTEGER", notNull: true },
-    ],
-    tableConstraints: ["UNIQUE(chain, address)"],
-    indexes: [{ name: "idx_market_instruments_chain_symbol", columns: ["chain", "symbol"] }],
-  },
-  {
-    name: "ohlcv_bars",
-    rowSchema: sqliteTables.ohlcv_bars,
-    columns: [
-      {
-        name: "instrument_id",
-        type: "INTEGER",
-        notNull: true,
-        references: { table: "market_instruments", column: "id", onDelete: "CASCADE" },
-      },
-      { name: "source", type: "TEXT", notNull: true },
-      { name: "interval", type: "TEXT", notNull: true },
-      { name: "open_time", type: "INTEGER", notNull: true },
-      { name: "close_time", type: "INTEGER", notNull: true },
-      { name: "open", type: "REAL", notNull: true },
-      { name: "high", type: "REAL", notNull: true },
-      { name: "low", type: "REAL", notNull: true },
-      { name: "close", type: "REAL", notNull: true },
-      { name: "volume", type: "REAL" },
-      { name: "trades", type: "INTEGER" },
-      { name: "vwap", type: "REAL" },
-      { name: "fetched_at", type: "INTEGER", notNull: true },
-      { name: "raw_json", type: "TEXT" },
-    ],
-    tableConstraints: ["PRIMARY KEY(instrument_id, source, interval, open_time)"],
-    indexes: [
-      { name: "idx_ohlcv_lookup", columns: ["instrument_id", "source", "interval", "open_time"] },
-      { name: "idx_ohlcv_fetched_at", columns: ["fetched_at"] },
-    ],
-  },
-  {
-    name: "market_snapshots",
-    rowSchema: sqliteTables.market_snapshots,
-    columns: [
-      { name: "id", type: "TEXT", primaryKey: true },
-      {
-        name: "instrument_id",
-        type: "INTEGER",
-        notNull: true,
-        references: { table: "market_instruments", column: "id", onDelete: "CASCADE" },
-      },
-      { name: "source", type: "TEXT", notNull: true },
-      { name: "snapshot_type", type: "TEXT", notNull: true },
-      { name: "data_json", type: "TEXT", notNull: true },
-      { name: "timestamp", type: "INTEGER", notNull: true },
-    ],
-    indexes: [
-      { name: "idx_market_snapshots_lookup", columns: ["instrument_id", "source", "snapshot_type", "timestamp"] },
-    ],
-  },
-  {
-    name: "http_cache",
-    rowSchema: sqliteTables.http_cache,
-    columns: [
-      { name: "cache_key", type: "TEXT", primaryKey: true },
-      { name: "source", type: "TEXT", notNull: true },
-      { name: "endpoint", type: "TEXT", notNull: true },
-      { name: "request_hash", type: "TEXT", notNull: true },
-      { name: "response_json", type: "TEXT", notNull: true },
-      { name: "status_code", type: "INTEGER", notNull: true },
-      { name: "etag", type: "TEXT" },
-      { name: "last_modified", type: "TEXT" },
-      { name: "fetched_at", type: "INTEGER", notNull: true },
-      { name: "expires_at", type: "INTEGER" },
-    ],
-    indexes: [
-      { name: "idx_http_cache_expires_at", columns: ["expires_at"] },
-      { name: "idx_http_cache_source_endpoint", columns: ["source", "endpoint"] },
-    ],
-  },
-];
-
-const SQLITE_TABLE_CONTRACT_VIOLATIONS = getSqliteTableContractViolations(SQLITE_TABLE_SPECS);
+const SQLITE_TABLE_CONTRACT_VIOLATIONS = getSqliteTableContractViolations(SQLITE_TABLE_CONTRACTS);
 if (SQLITE_TABLE_CONTRACT_VIOLATIONS.length > 0) {
   throw new Error(`SQLite table contract drift detected:\n- ${SQLITE_TABLE_CONTRACT_VIOLATIONS.join("\n- ")}`);
 }
 
-const DEPRECATED_TABLE_NAMES = ["policy_hits", "decision_logs"] as const;
-
-const TABLE_SPEC_BY_NAME = new Map(SQLITE_TABLE_SPECS.map((spec) => [spec.name, spec]));
-
-const renderCreateTableStatement = (table: TableSpec): string => {
+const renderCreateTableStatement = (table: SqliteAnyTableContract): string => {
   const columnDefinitions = table.columns.map((column) => renderColumnDefinition(column));
+  const checks = (table.tableChecks ?? []).map((check) => `CHECK (${check})`);
   const constraints = table.tableConstraints ? [...table.tableConstraints] : [];
-  const defs = [...columnDefinitions, ...constraints].join(",\n  ");
+  const defs = [...columnDefinitions, ...checks, ...constraints].join(",\n  ");
 
   return `CREATE TABLE IF NOT EXISTS ${quoteIdentifier(table.name)} (\n  ${defs}\n);`;
 };
@@ -523,7 +287,7 @@ export const inspectSqliteSchema = (db: Database): SqliteSchemaInspectionReport 
     warnings: [],
   };
 
-  for (const table of SQLITE_TABLE_SPECS) {
+  for (const table of SQLITE_TABLE_CONTRACTS) {
     if (!tableExists(db, table.name)) {
       report.missingTables.push(table.name);
       report.warnings.push(`missing table ${table.name}`);
@@ -613,7 +377,7 @@ export const syncSqliteSchema = (db: Database): SqliteSchemaSyncReport => {
       db.exec(`DROP TABLE ${quoteIdentifier(deprecatedTableName)};`);
     }
 
-    for (const table of SQLITE_TABLE_SPECS) {
+    for (const table of SQLITE_TABLE_CONTRACTS) {
       const existed = tableExists(db, table.name);
       db.exec(renderCreateTableStatement(table));
       if (!existed) {
@@ -662,8 +426,8 @@ export const syncSqliteSchema = (db: Database): SqliteSchemaSyncReport => {
 
 export const getSqliteSchemaSnapshot = (): string => {
   const lines: string[] = [];
-  lines.push(`SQLite schema snapshot (${SQLITE_TABLE_SPECS.length} tables)`);
-  for (const table of SQLITE_TABLE_SPECS) {
+  lines.push(`SQLite schema snapshot (${SQLITE_TABLE_CONTRACTS.length} tables)`);
+  for (const table of SQLITE_TABLE_CONTRACTS) {
     const columnSummary = table.columns
       .map((column) => {
         const flags: string[] = [];
@@ -686,7 +450,7 @@ export const getSqliteSchemaSnapshot = (): string => {
   return lines.join("\n");
 };
 
-export const getSqliteTableNames = (): string[] => SQLITE_TABLE_SPECS.map((table) => table.name);
-export const getSqliteTableSpec = (tableName: keyof typeof sqliteTables): TableSpec | undefined =>
+export const getSqliteTableNames = (): string[] => SQLITE_TABLE_CONTRACTS.map((table) => table.name);
+export const getSqliteTableSpec = (tableName: SqliteTableName): SqliteAnyTableContract | undefined =>
   TABLE_SPEC_BY_NAME.get(tableName);
 export const getSqliteTableContractViolationsSnapshot = (): string[] => [...SQLITE_TABLE_CONTRACT_VIOLATIONS];

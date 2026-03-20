@@ -37,7 +37,9 @@ import {
   ultraQuoteSwapAction,
   ultraSwapAction,
 } from "../../solana/actions/wallet-based";
-import type { RuntimeActionCapabilityDefinition } from "./types";
+import type { RuntimeActionCapabilityDefinition, RuntimeReleaseReadinessDescriptor } from "./types";
+
+type RuntimeActionCapabilityDefinitionWithoutReadiness = Omit<RuntimeActionCapabilityDefinition, "releaseReadiness">;
 
 const canUseWalletSigningTransfers = ({ settings }: { settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"] }): boolean =>
   settings.trading.enabled &&
@@ -50,7 +52,55 @@ const canUseUltraSwap = ({ settings }: { settings: Parameters<RuntimeActionCapab
   settings.trading.jupiter.ultra.allowQuotes &&
   settings.trading.jupiter.ultra.allowExecutions;
 
-export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilityDefinition[] = [
+const SHIPPED_NOW = (note: string): RuntimeReleaseReadinessDescriptor => ({
+  status: "shipped-now",
+  note,
+});
+
+const LIMITED = (note: string): RuntimeReleaseReadinessDescriptor => ({
+  status: "limited",
+  note,
+});
+
+const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseReadinessDescriptor> = {
+  createWalletGroupDirectory: SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
+  createWallets: SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
+  renameWallets: SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
+  queryRuntimeStore: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  queryInstanceMemory: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  mutateInstanceMemory: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  pingRuntime: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  sleep: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  getManagedWalletContents: SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
+  getManagedWalletSolBalances: SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
+  getDexscreenerLatestAds: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerLatestCommunityTakeovers: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerLatestTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerLatestTokenProfiles: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerOrdersByToken: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerPairByChainAndPairId: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerTokenPairsByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerTokensByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerTopTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  searchDexscreenerPairs: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  devnetAirdrop: LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
+  enqueueRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
+  manageRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
+  getSwapHistory: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  transfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  closeTokenAccount: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  privacyTransfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  privacyAirdrop: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  privacySwap: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  ultraQuoteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  ultraExecuteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  managedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  scheduleManagedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  ultraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  createBlockchainAlert: LIMITED("Alert creation exists, but it is not yet a broad monitoring platform."),
+};
+
+const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDefinitionWithoutReadiness[] = [
   {
     kind: "action",
     action: devnetAirdropAction,
@@ -607,3 +657,13 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     chatExposed: true,
   },
 ];
+
+export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilityDefinition[] =
+  runtimeActionCapabilityDefinitionsBase.map((definition): RuntimeActionCapabilityDefinition => {
+    const releaseReadiness = RUNTIME_ACTION_RELEASE_READINESS_BY_NAME[definition.action.name];
+    if (!releaseReadiness) {
+      throw new Error(`Missing release readiness classification for runtime action "${definition.action.name}".`);
+    }
+
+    return Object.assign({}, definition, { releaseReadiness });
+  });

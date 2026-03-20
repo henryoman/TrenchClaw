@@ -25,10 +25,6 @@ export const INSTANCE_SYSTEM_WRITE_ROOTS = [
   ".runtime-state/instances",
 ] as const;
 
-export const PROTECTED_NO_READ_WRITE_ROOTS = [
-  ".runtime/instances",
-] as const;
-
 export const assertWritePathInRoots = (input: {
   targetPath: string;
   roots: readonly string[];
@@ -61,15 +57,6 @@ export const assertInstanceSystemWritePath = (targetPath: string, operation: str
     targetPath,
     roots: INSTANCE_SYSTEM_WRITE_ROOTS,
     scope: "instance-system-write",
-    operation,
-  });
-};
-
-export const assertProtectedNoReadWritePath = (targetPath: string, operation: string): void => {
-  assertWritePathInRoots({
-    targetPath,
-    roots: PROTECTED_NO_READ_WRITE_ROOTS,
-    scope: "protected-no-read-write",
     operation,
   });
 };

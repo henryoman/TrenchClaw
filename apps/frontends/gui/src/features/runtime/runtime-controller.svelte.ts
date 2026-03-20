@@ -11,6 +11,7 @@ import type {
   GuiSecretEntryView,
   GuiSecretOptionView,
   GuiTradingSettingsView,
+  GuiWakeupSettingsView,
   GuiWalletNodeView,
 } from "@trenchclaw/types";
 import {
@@ -64,6 +65,11 @@ interface RuntimeUiState {
   tradingSettings: GuiTradingSettingsView | null;
   tradingSettingsBusy: boolean;
   tradingSettingsError: string;
+  wakeupSettingsFilePath: string;
+  wakeupSettingsDefaultPrompt: string;
+  wakeupSettings: GuiWakeupSettingsView | null;
+  wakeupSettingsBusy: boolean;
+  wakeupSettingsError: string;
   secretsOptions: GuiSecretOptionView[];
   secretEntries: GuiSecretEntryView[];
   publicRpcOptions: GuiPublicRpcOptionView[];
@@ -143,6 +149,11 @@ export const createRuntimeController = () => {
     tradingSettings: null,
     tradingSettingsBusy: false,
     tradingSettingsError: "",
+    wakeupSettingsFilePath: "",
+    wakeupSettingsDefaultPrompt: "",
+    wakeupSettings: null,
+    wakeupSettingsBusy: false,
+    wakeupSettingsError: "",
     secretsOptions: [],
     secretEntries: [],
     publicRpcOptions: [],
@@ -323,6 +334,7 @@ export const createRuntimeController = () => {
         await loadAppData();
         await loadAiSettings();
         await loadTradingSettings();
+        await loadWakeupSettings();
         await loadSecrets();
         await checkLlm();
         await loadWallets();
@@ -396,6 +408,7 @@ export const createRuntimeController = () => {
       await loadAppData();
       await loadAiSettings();
       await loadTradingSettings();
+      await loadWakeupSettings();
       await loadSecrets();
       await checkLlm();
       await loadWallets();
@@ -430,6 +443,7 @@ export const createRuntimeController = () => {
       await loadAppData();
       await loadAiSettings();
       await loadTradingSettings();
+      await loadWakeupSettings();
       await loadSecrets();
       await checkLlm();
       await loadWallets();
@@ -518,6 +532,37 @@ export const createRuntimeController = () => {
       state.tradingSettingsError = error instanceof Error ? error.message : "Failed to save trading settings.";
     } finally {
       state.tradingSettingsBusy = false;
+    }
+  };
+
+  const loadWakeupSettings = async (): Promise<void> => {
+    state.wakeupSettingsBusy = true;
+    state.wakeupSettingsError = "";
+    try {
+      const payload = await runtimeApi.wakeupSettings();
+      state.wakeupSettingsFilePath = payload.filePath ?? "";
+      state.wakeupSettingsDefaultPrompt = payload.defaultPrompt;
+      state.wakeupSettings = payload.settings;
+    } catch (error) {
+      state.wakeupSettings = null;
+      state.wakeupSettingsError = error instanceof Error ? error.message : "Failed to load wakeup settings.";
+    } finally {
+      state.wakeupSettingsBusy = false;
+    }
+  };
+
+  const saveWakeupSettings = async (settings: GuiWakeupSettingsView): Promise<void> => {
+    state.wakeupSettingsBusy = true;
+    state.wakeupSettingsError = "";
+    try {
+      const result = await runtimeApi.updateWakeupSettings({ settings });
+      state.wakeupSettingsFilePath = result.filePath;
+      state.wakeupSettingsDefaultPrompt = result.defaultPrompt;
+      state.wakeupSettings = result.settings;
+    } catch (error) {
+      state.wakeupSettingsError = error instanceof Error ? error.message : "Failed to save wakeup settings.";
+    } finally {
+      state.wakeupSettingsBusy = false;
     }
   };
 
@@ -619,9 +664,11 @@ export const createRuntimeController = () => {
     loadSecrets,
     loadAiSettings,
     loadTradingSettings,
+    loadWakeupSettings,
     loadWallets,
     saveAiSettings,
     saveTradingSettings,
+    saveWakeupSettings,
     upsertSecret,
     clearSecret,
     checkLlm,

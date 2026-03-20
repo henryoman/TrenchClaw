@@ -12,9 +12,9 @@ import {
   assertInstanceSystemWritePath,
 } from "../../security/write-scope";
 import { ensureInstanceLayout } from "../../instance-layout";
+import { isRecord } from "../../object-utils";
 import { persistActiveInstance } from "../../instance-state";
 import { INSTANCE_DIRECTORY } from "../constants";
-import { isRecord } from "../parsers";
 import type { RuntimeGuiDomainContext } from "../contracts";
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";

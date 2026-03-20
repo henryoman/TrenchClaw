@@ -4,8 +4,7 @@ import path from "node:path";
 import { RuntimeLogger, type RuntimeLogEntry } from "../../../apps/trenchclaw/src/runtime/logging/runtime-logger";
 import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/session-log-store";
 import { SessionSummaryStore } from "../../../apps/trenchclaw/src/runtime/storage/session-summary-store";
-import { SummaryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/summary-log-store";
-import { SystemLogStore } from "../../../apps/trenchclaw/src/runtime/storage/system-log-store";
+import { SummaryLogStore, SystemLogStore } from "../../../apps/trenchclaw/src/runtime/storage/runtime-log-stores";
 import { runtimeStatePath } from "../../helpers/core-paths";
 
 const tmpTargets: string[] = [];

@@ -7,6 +7,11 @@ import { scheduleRateLimitedRpcRequest } from "../../../lib/rpc/client";
 import { resolveHeliusRpcConfig } from "../../../lib/rpc/helius";
 import { resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 import {
+  managedWalletSelectorListSchema,
+  managedWalletSelectorSchema,
+  resolveManagedWalletEntriesBySelection,
+} from "../../../lib/wallet/wallet-selector";
+import {
   readManagedWalletLibraryEntries,
   resolveWalletKeypairRootPathForInstanceId,
 } from "../../../lib/wallet/wallet-manager";
@@ -37,6 +42,8 @@ const HELIUS_FUNGIBLE_INTERFACES = new Set(["FungibleAsset", "FungibleToken"]);
 
 const getManagedWalletContentsInputSchema = z.object({
   instanceId: z.string().trim().min(1).max(64).optional(),
+  wallet: managedWalletSelectorSchema.optional(),
+  wallets: managedWalletSelectorListSchema.optional(),
   walletGroup: walletGroupNameSchema.optional(),
   walletNames: z.array(walletNameSchema).max(maxWalletNames).optional(),
   includeZeroBalances: z.boolean().default(false),
@@ -972,6 +979,22 @@ const filterWalletEntries = (
       `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`));
 };
 
+const resolveWalletEntries = async (
+  entries: ManagedWalletLibraryEntry[],
+  input: GetManagedWalletContentsInput,
+): Promise<ManagedWalletLibraryEntry[]> => {
+  const selectedEntries = await resolveManagedWalletEntriesBySelection(input);
+  if (!selectedEntries) {
+    return filterWalletEntries(entries, input);
+  }
+
+  const selectedWalletIds = new Set(selectedEntries.map((entry) => entry.walletId));
+  return entries
+    .filter((entry) => selectedWalletIds.has(entry.walletId))
+    .toSorted((left, right) =>
+      `${left.walletGroup}.${left.walletName}`.localeCompare(`${right.walletGroup}.${right.walletName}`));
+};
+
 const loadWalletsWithLoader = async (
   entries: ManagedWalletLibraryEntry[],
   loadWalletContents: (input: {
@@ -1171,7 +1194,7 @@ export const createGetManagedWalletContentsAction = (
         const discoveredVia = "wallet-library";
         const entries = walletLibrary.entries;
 
-        const filteredEntries = filterWalletEntries(entries, input);
+        const filteredEntries = await resolveWalletEntries(entries, input);
         const heliusConfig = deps.loadWalletContents
           ? null
           : await resolveHeliusRpcConfig({

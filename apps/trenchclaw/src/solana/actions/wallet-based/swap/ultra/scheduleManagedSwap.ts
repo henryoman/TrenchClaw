@@ -3,14 +3,16 @@ import { z } from "zod";
 import type { Action, ActionStep } from "../../../../../ai/runtime/types/action";
 import type { RuntimeJobEnqueueRequest } from "../../../../../ai/runtime/types/context";
 import type { JobState } from "../../../../../ai/runtime/types/state";
+import { managedWalletSelectorSchema } from "../../../../lib/wallet/wallet-selector";
 import { walletGroupNameSchema } from "../../../../lib/wallet/wallet-types";
 import { amountInputSchema } from "./shared";
 
 const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
 
 const managedUltraSwapBaseSchema = amountInputSchema.extend({
-  walletGroup: walletGroupNameSchema,
-  walletName: walletNameSchema,
+  wallet: managedWalletSelectorSchema.optional(),
+  walletGroup: walletGroupNameSchema.optional(),
+  walletName: walletNameSchema.optional(),
   swapType: z.literal("ultra").default("ultra"),
   inputCoin: z.string().min(1),
   outputCoin: z.string().min(1),
@@ -19,6 +21,23 @@ const managedUltraSwapBaseSchema = amountInputSchema.extend({
   referralAccount: z.string().min(1).optional(),
   referralFee: z.number().int().nonnegative().max(10_000).optional(),
   coinAliases: z.record(z.string(), z.string()).optional(),
+}).superRefine((value, ctx) => {
+  const hasWalletGroup = typeof value.walletGroup === "string";
+  const hasWalletName = typeof value.walletName === "string";
+  if (!value.wallet && !hasWalletGroup && !hasWalletName) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide wallet or walletGroup and walletName.",
+      path: ["wallet"],
+    });
+  }
+  if ((hasWalletGroup || hasWalletName) && hasWalletGroup !== hasWalletName) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide walletGroup and walletName together.",
+      path: hasWalletGroup ? ["walletName"] : ["walletGroup"],
+    });
+  }
 });
 
 const singleScheduleSchema = z.object({
@@ -183,6 +202,7 @@ const buildScheduledSwapPlan = (input: ScheduleManagedUltraSwapInput): Scheduled
   const {
     botId: _botId,
     schedule,
+    wallet,
     walletGroup,
     walletName,
     swapType,
@@ -198,6 +218,7 @@ const buildScheduledSwapPlan = (input: ScheduleManagedUltraSwapInput): Scheduled
   } = input;
 
   const baseSwapInput = {
+    wallet,
     walletGroup,
     walletName,
     swapType,

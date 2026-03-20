@@ -1,9 +1,12 @@
-import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { createSessionId, type SessionId } from "../../ai/runtime/types/ids";
-import { assertRuntimeSystemWritePath } from "../security/write-scope";
-import { resolveRuntimeContractPath } from "../runtime-paths";
-import { getLogIoWorkerClient } from "./log-io-worker";
+import {
+  appendJsonLineAsync,
+  ensureWritableStoragePath,
+  getStorageWriter,
+  initializeStorageDirectory,
+  type StorageWriter,
+} from "./storage-shared";
 
 type SessionMessageRole = "system" | "user" | "assistant" | "toolResult";
 
@@ -83,9 +86,6 @@ export interface ActiveSessionStats {
   eventCount: number;
 }
 
-const toAbsolutePath = (targetPath: string): string =>
-  path.isAbsolute(targetPath) ? targetPath : resolveRuntimeContractPath(targetPath);
-
 const indexFileName = "index.json";
 
 const createEmptyStore = (): SessionStoreData => ({
@@ -104,18 +104,16 @@ export class SessionLogStore {
   private readonly reuseSessionOnBoot: boolean;
   private active: ActiveSessionInfo | null = null;
   private writeChain: Promise<void> = Promise.resolve();
-  private readonly writer = getLogIoWorkerClient();
+  private readonly writer: StorageWriter = getStorageWriter();
 
   constructor(config: SessionLogStoreConfig) {
-    this.directory = toAbsolutePath(config.directory);
+    this.directory = initializeStorageDirectory(config.directory, "initialize session log directory");
     this.indexFilePath = path.join(this.directory, indexFileName);
-    assertRuntimeSystemWritePath(this.directory, "initialize session log directory");
-    assertRuntimeSystemWritePath(this.indexFilePath, "initialize sessions index file");
+    ensureWritableStoragePath(this.indexFilePath, "initialize sessions index file");
     this.agentId = config.agentId.trim() || "main";
     this.sessionKey = config.sessionKey.trim() || `agent:${this.agentId}:main`;
     this.source = config.source.trim() || "cli";
     this.reuseSessionOnBoot = config.reuseSessionOnBoot ?? true;
-    mkdirSync(this.directory, { recursive: true });
   }
 
   async open(): Promise<ActiveSessionInfo> {
@@ -164,7 +162,7 @@ export class SessionLogStore {
     await this.writeStore(store);
 
     const sessionFilePath = path.join(this.directory, `${sessionId}.jsonl`);
-    assertRuntimeSystemWritePath(sessionFilePath, "create session log file");
+    ensureWritableStoragePath(sessionFilePath, "create session log file");
     this.active = {
       agentId: this.agentId,
       sessionKey: this.sessionKey,
@@ -279,16 +277,14 @@ export class SessionLogStore {
   }
 
   private async writeStore(store: SessionStoreData): Promise<void> {
-    assertRuntimeSystemWritePath(this.indexFilePath, "write sessions index file");
+    ensureWritableStoragePath(this.indexFilePath, "write sessions index file");
     await this.writer.writeUtf8(this.indexFilePath, `${JSON.stringify(store, null, 2)}\n`);
   }
 
   private async appendRaw(line: SessionJsonLine): Promise<void> {
     const active = await this.ensureOpen();
-    const encoded = `${JSON.stringify(line)}\n`;
     this.writeChain = this.writeChain.then(async () => {
-      assertRuntimeSystemWritePath(active.sessionFilePath, "append session log entry");
-      await this.writer.appendUtf8(active.sessionFilePath, encoded);
+      await appendJsonLineAsync(this.writer, active.sessionFilePath, line, "append session log entry");
     });
     await this.writeChain;
   }
