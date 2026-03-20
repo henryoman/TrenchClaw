@@ -25,6 +25,9 @@ import {
   createWalletGroupDirectoryAction,
   createWalletsAction,
   devnetAirdropAction,
+  getTriggerOrdersAction,
+  managedTriggerCancelOrdersAction,
+  managedTriggerOrderAction,
   managedUltraSwapAction,
   scheduleManagedUltraSwapAction,
   privacyAirdropAction,
@@ -51,6 +54,11 @@ const canUseUltraSwap = ({ settings }: { settings: Parameters<RuntimeActionCapab
   settings.trading.jupiter.ultra.enabled &&
   settings.trading.jupiter.ultra.allowQuotes &&
   settings.trading.jupiter.ultra.allowExecutions;
+
+const canUseTriggerOrders = ({ settings }: { settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"] }): boolean =>
+  settings.trading.enabled &&
+  settings.trading.jupiter.trigger.enabled &&
+  settings.trading.jupiter.trigger.allowOrders;
 
 const SHIPPED_NOW = (note: string): RuntimeReleaseReadinessDescriptor => ({
   status: "shipped-now",
@@ -89,6 +97,9 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   getSwapHistory: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   transfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   closeTokenAccount: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  getTriggerOrders: LIMITED("Jupiter Trigger V1 order reads and managed-wallet order flows are available now, but still a narrow supported surface."),
+  managedTriggerOrder: LIMITED("Jupiter Trigger V1 order reads and managed-wallet order flows are available now, but still a narrow supported surface."),
+  managedTriggerCancelOrders: LIMITED("Jupiter Trigger V1 order reads and managed-wallet order flows are available now, but still a narrow supported surface."),
   privacyTransfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   privacyAirdrop: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   privacySwap: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
@@ -543,6 +554,66 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     },
     includeInCatalog: canUseWalletSigningTransfers,
     enabledBySettings: canUseWalletSigningTransfers,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTriggerOrdersAction,
+    description: "List active or historical Jupiter Trigger V1 orders for a managed wallet or raw address.",
+    purpose: "Inspect current and historical trigger orders before creating replacements or cancelling existing orders.",
+    tags: ["trigger", "orders", "jupiter", "read"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      orderStatus: "active",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
+    enabledBySettings: ({ settings }) =>
+      settings.trading.enabled &&
+      settings.trading.jupiter.trigger.enabled &&
+      settings.trading.jupiter.trigger.allowReads,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedTriggerOrderAction,
+    description: "Create and submit a Jupiter Trigger V1 order from a managed wallet.",
+    purpose: "Place a single managed-wallet trigger order using exact price or percent-from-buy-price input without exposing raw pool-rate math to the model.",
+    tags: ["trigger", "orders", "jupiter", "wallets", "execution"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "JUP",
+      outputCoin: "SOL",
+      amount: "25%",
+      direction: "sellAbove",
+      trigger: {
+        kind: "percentFromBuyPrice",
+        percent: 30,
+      },
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
+    enabledBySettings: canUseTriggerOrders,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedTriggerCancelOrdersAction,
+    description: "Cancel one or more Jupiter Trigger V1 orders for a managed wallet.",
+    purpose: "Withdraw managed trigger orders cleanly when the user wants to stop or replace existing trigger exposure.",
+    tags: ["trigger", "orders", "jupiter", "wallets", "cancel"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      orders: ["7nE9GJoYHNmtaQvTQpota3KV2oz4pQ2dA6nvYK8EUJHV"],
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
+    enabledBySettings: ({ settings }) =>
+      settings.trading.enabled &&
+      settings.trading.jupiter.trigger.enabled &&
+      settings.trading.jupiter.trigger.allowCancellations,
     requiresUserConfirmation: true,
     chatExposed: true,
   },

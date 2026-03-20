@@ -25,7 +25,6 @@ const SETTINGS_FILE_BY_PROFILE: Record<RuntimeSettingsProfile, string> = {
 const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
 const SETTINGS_BASE_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_BASE_FILE";
 const SETTINGS_AGENT_FILE_ENV_KEY = "TRENCHCLAW_SETTINGS_AGENT_FILE";
-const LOADER_WARNINGS = new Set<string>();
 
 const toStringValue = (value: unknown, fallback: string): string =>
   typeof value === "string" && value.trim().length > 0 ? value : fallback;
@@ -38,14 +37,6 @@ const toBooleanValue = (value: unknown, fallback: boolean): boolean =>
 
 const toStringArray = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : [];
-
-const warnLoaderOnce = (message: string): void => {
-  if (LOADER_WARNINGS.has(message)) {
-    return;
-  }
-  LOADER_WARNINGS.add(message);
-  console.warn(message);
-};
 
 const resolveDefaultStoragePaths = (): {
   sqlitePath: string;
@@ -142,11 +133,7 @@ const normalizeRuntimeSettings = (
     "ultra";
   const ultraEnabled = requestedSwapProvider !== "standard";
   const triggerSettings = isRecord(tradingJupiter.trigger) ? tradingJupiter.trigger : null;
-  if (triggerSettings) {
-    warnLoaderOnce(
-      'Ignoring deprecated runtime settings under "trading.jupiter.trigger"; Jupiter Trigger order flows are no longer shipped.',
-    );
-  }
+  const triggerEnabled = toBooleanValue(triggerSettings?.enabled, false);
   const maxTradeSizeFromSizing = isRecord(trading.sizing) ? toNumberValue(trading.sizing.maxTradeSize, 0.5) : 0.5;
   const maxTradeSize = Math.max(0, maxTradeSizeFromSizing);
 
@@ -226,6 +213,12 @@ const normalizeRuntimeSettings = (
         maxSlippageBps: Math.max(0, Math.trunc(toNumberValue(tradingLimits.maxSlippageBps ?? trading.maxSlippageBps, 300))),
       },
       jupiter: {
+        trigger: {
+          enabled: triggerEnabled,
+          allowOrders: toBooleanValue(triggerSettings?.allowOrders, triggerEnabled),
+          allowReads: toBooleanValue(triggerSettings?.allowReads, triggerEnabled),
+          allowCancellations: toBooleanValue(triggerSettings?.allowCancellations, triggerEnabled),
+        },
         ultra: {
           enabled: ultraEnabled,
           allowQuotes: ultraEnabled,

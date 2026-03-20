@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { zodSchema } from "ai";
 
+import { getTriggerOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/getOrders";
+import { managedTriggerCancelOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/cancelOrders";
+import { managedTriggerOrderAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/managedCreateOrder";
 import { managedUltraSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/managedSwap";
 import { scheduleManagedUltraSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/scheduleManagedSwap";
 import { ultraSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/swap";
@@ -8,6 +11,9 @@ import { privacySwapAction, privacyTransferAction } from "../../../../apps/trenc
 
 describe("wallet action tool schema serialization", () => {
   test.each([
+    getTriggerOrdersAction,
+    managedTriggerOrderAction,
+    managedTriggerCancelOrdersAction,
     managedUltraSwapAction,
     scheduleManagedUltraSwapAction,
     ultraSwapAction,

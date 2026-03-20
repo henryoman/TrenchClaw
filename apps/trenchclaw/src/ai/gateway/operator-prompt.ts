@@ -21,6 +21,8 @@ const MUTATING_OPERATOR_TOOLS = new Set([
   "closeTokenAccount",
   "createWallets",
   "renameWallets",
+  "managedTriggerOrder",
+  "managedTriggerCancelOrders",
   "managedUltraSwap",
   "scheduleManagedUltraSwap",
 ]);
@@ -122,6 +124,21 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     useWhen: "the user explicitly wants to reclaim rent from an empty token account after the balance has already been moved out",
     avoidWhen: "the token account still holds tokens or the user did not ask for cleanup",
     inputAdvice: "Use `wallet` for the managed wallet selector, and either `mintAddress` or `tokenAccountAddress`, plus `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
+  },
+  getTriggerOrders: {
+    useWhen: "the user asks what trigger orders are currently open, wants prior trigger-order history, or needs to identify exact order ids before cancelling or replacing them",
+    avoidWhen: "the user wants wallet balances, current token prices, or direct swap execution",
+    inputAdvice: "Use `wallet` for the managed wallet selector when possible, otherwise pass `user` as a raw wallet address. Include `orderStatus` as `active` or `history`.",
+  },
+  managedTriggerOrder: {
+    useWhen: "the user explicitly wants to place a Jupiter Trigger order from a managed wallet and you know the wallet selector, token pair, amount, trigger specification, and confirmation token if policy requires it",
+    avoidWhen: "the user did not explicitly request a trigger order, the managed wallet is unknown, or the confirmation token is missing when policy requires it",
+    inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, `direction`, and a `trigger` object. Prefer `trigger.kind = \"percentFromBuyPrice\"` for relative exits or `exactPrice` for exact ratio targeting.",
+  },
+  managedTriggerCancelOrders: {
+    useWhen: "the user explicitly wants to cancel one or more existing Jupiter Trigger orders and you know the wallet plus exact order ids",
+    avoidWhen: "you have not identified the order ids yet or the user has not asked to cancel them",
+    inputAdvice: "Resolve the order ids first with `getTriggerOrders`, then pass `wallet` and `orders` plus `userConfirmationToken` when required.",
   },
   managedUltraSwap: {
     useWhen: "the user explicitly wants to swap through Jupiter Ultra using a managed wallet and you know the wallet selector, inputCoin, outputCoin, amount, and confirmation token if policy requires it",

@@ -61,6 +61,12 @@ const tradingSchema = z.object({
     maxSlippageBps: z.number().int().nonnegative(),
   }),
   jupiter: z.object({
+    trigger: z.object({
+      enabled: z.boolean(),
+      allowOrders: z.boolean(),
+      allowReads: z.boolean(),
+      allowCancellations: z.boolean(),
+    }),
     ultra: z.object({
       enabled: z.boolean(),
       allowQuotes: z.boolean(),

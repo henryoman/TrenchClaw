@@ -11,7 +11,7 @@ export const DEFAULT_WAKEUP_PROMPT = [
 ].join("\n");
 
 const createDefaultWakeupSettings = () => ({
-  intervalMinutes: 30,
+  intervalMinutes: 0,
   prompt: DEFAULT_WAKEUP_PROMPT,
 });
 
@@ -21,7 +21,7 @@ const createDefaultInstanceWakeupSettings = () => ({
 });
 
 export const wakeupSettingsSchema = z.object({
-  intervalMinutes: z.number().int().min(0).max(24 * 60).default(30),
+  intervalMinutes: z.number().int().min(0).max(24 * 60).default(0),
   prompt: z.string().max(12_000).default(DEFAULT_WAKEUP_PROMPT),
 }).default(createDefaultWakeupSettings);
 

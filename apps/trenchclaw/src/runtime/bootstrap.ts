@@ -24,6 +24,7 @@ import {
   type LlmGenerateInput,
   type LlmGenerateResult,
 } from "../ai";
+import { createJupiterTriggerAdapterFromConfig } from "../solana/lib/adapters/jupiter-trigger";
 import { createJupiterUltraAdapterFromConfig } from "../solana/lib/adapters/jupiter-ultra";
 import { createTokenAccountAdapter } from "../solana/lib/adapters/token-account";
 import { createUltraSignerAdapterFromVault } from "../solana/lib/adapters/ultra-signer";
@@ -61,7 +62,15 @@ import { GENERATED_STATE_ROOT } from "./runtime-paths";
 import { migrateLegacyRuntimeState } from "./runtime-state-migration";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
-const TRADE_ACTIONS = new Set(["executeSwap", "ultraExecuteSwap", "ultraSwap", "managedUltraSwap", "privacySwap"]);
+const TRADE_ACTIONS = new Set([
+  "executeSwap",
+  "ultraExecuteSwap",
+  "ultraSwap",
+  "managedUltraSwap",
+  "managedTriggerOrder",
+  "managedTriggerCancelOrders",
+  "privacySwap",
+]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
 const GENERATED_WORKSPACE_CONTEXT_PATH = path.join(GENERATED_STATE_ROOT, "workspace-context.md");
 const GENERATED_KNOWLEDGE_INDEX_PATH = path.join(GENERATED_STATE_ROOT, "knowledge-index.md");
@@ -621,6 +630,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     registry.register(action);
   }
 
+  const jupiterTrigger = await createJupiterTriggerAdapterFromConfig();
   const jupiterUltra = await createJupiterUltraAdapterFromConfig();
   const tokenAccounts = createTokenAccountAdapter({ rpcUrl: runtimeRpcUrl });
   const ultraSigner = await createUltraSignerAdapterFromVault({ rpcUrl: runtimeRpcUrl });
@@ -630,6 +640,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       actor: overrides.actor ?? "agent",
       eventBus,
       rpcUrl: runtimeRpcUrl,
+      jupiterTrigger,
       jupiterUltra,
       tokenAccounts,
       ultraSigner,
@@ -884,6 +895,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       eventBus,
       stateStore,
       rpcUrl: runtimeRpcUrl,
+      jupiterTrigger,
       jupiterUltra,
       tokenAccounts,
       ultraSigner,
