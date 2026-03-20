@@ -12,6 +12,7 @@ import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-conte
 import { resolveVaultFile } from "./vault-file";
 
 const SYSTEM_PROMPT_FILE = "../config/system.md";
+const PRIMARY_MODE_PROMPT_FILE = "../config/agent-modes/primary.md";
 const AGENT_MODE_ENV = "TRENCHCLAW_AGENT_MODE";
 const SUPPORTED_MODE = "primary";
 
@@ -80,6 +81,21 @@ const renderProfileMeaning = (profile: string): string => {
   }
 };
 
+const renderShellToolingSummary = (): string => {
+  const detectedCommands = [
+    Bun.which("solana") ? "`solana`" : null,
+    Bun.which("solana-keygen") ? "`solana-keygen`" : null,
+    Bun.which("helius") ? "`helius`" : null,
+  ].filter((value): value is string => value !== null);
+
+  return [
+    "### Shell Tooling",
+    "- `workspaceBash` runs in an instance-scoped shell with its own `HOME`, `TMPDIR`, and a `tool-bin`-first `PATH`.",
+    `- detected CLI commands on PATH: ${detectedCommands.join(", ") || "none detected"}`,
+    "- Use shell tools for real local investigation when needed, and verify CLI availability with `command -v <tool>` or `<tool> --version` before depending on it.",
+  ].join("\n");
+};
+
 const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
   const [capabilitySnapshot, filesystemPolicy, walletSummary, liveRuntimeContext] = await Promise.all([
@@ -111,6 +127,8 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     `- blocked roots: ${filesystemPolicy.blockedPaths.join(", ") || "none"}`,
     "- workspace tools are still restricted to the runtime workspace root, and direct reads of protected vault/keypair files are blocked",
     "",
+    renderShellToolingSummary(),
+    "",
     renderRuntimeToolContractSection(capabilitySnapshot),
     "",
     renderRuntimeReleaseReadinessSection(capabilitySnapshot),
@@ -136,18 +154,19 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
 
 export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]): Promise<SystemPromptPayload> => {
   const resolvedMode = resolveMode(mode);
-  const [kernel, runtimeRules] = await Promise.all([
+  const [kernel, primaryMode, runtimeRules] = await Promise.all([
     loadPromptFile(SYSTEM_PROMPT_FILE, FALLBACK_SYSTEM_PROMPT),
+    loadPromptFile(PRIMARY_MODE_PROMPT_FILE),
     renderLiveRuntimeRules(),
   ]);
 
-  const systemPrompt = [kernel.text, runtimeRules].filter((value) => value.trim().length > 0).join("\n\n");
+  const systemPrompt = [kernel.text, primaryMode.text, runtimeRules].filter((value) => value.trim().length > 0).join("\n\n");
 
   return {
     mode: resolvedMode,
     title: "Primary Runtime Rules",
     systemPrompt,
-    promptFiles: [kernel.path],
+    promptFiles: [kernel.path, primaryMode.path],
     sections: [
       {
         order: 1,
@@ -157,6 +176,12 @@ export const loadSystemPromptPayload = async (mode = process.env[AGENT_MODE_ENV]
       },
       {
         order: 2,
+        title: "Primary Mode",
+        kind: "file",
+        source: primaryMode.path,
+      },
+      {
+        order: 3,
         title: "Live Runtime Rules",
         kind: "generated",
         source: "generated:liveRuntimeRules",

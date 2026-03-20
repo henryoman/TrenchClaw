@@ -83,20 +83,20 @@ Use the docs for install and first-run:
 
 ## Developer Runtime State
 
-Local development and manual testing should use the same per-instance runtime shape as the shipped product, but the mutable state should live outside the repo.
+Local development should use the same per-instance runtime shape as the shipped product, while keeping mutable state outside the repo.
 
 Default local dev behavior:
 
 - `bun run dev` uses `~/trenchclaw-dev-runtime` for runtime state
 - `bun run dev` uses `~/trenchclaw-dev-generated` for generated prompt-support files
 - that state persists across reconnects and restarts
-- that state is personal/local and is not part of the repo
+- that state is personal/local and never part of the repo
 
 Important rules for contributors, reviewers, and agents:
 
 - do not store personal vaults, wallets, logs, databases, or generated runtime state in this repository
 - `.runtime/` is the tracked contract only; runtime code must never write there
-- the external dev runtime is intentionally separate so local testing behaves like a real user install without polluting PRs
+- the external dev runtime keeps local testing close to a real user install without polluting PRs
 - tests should use temporary runtime roots, not a shared developer runtime
 
 Common setup:
@@ -157,7 +157,13 @@ flowchart LR
 
 ## Dashboard UI
 
-![TrenchClaw main dashboard UI](./public/v0-ui.png)
+<p align="center">
+  <img src="./public/v0-ui.png" alt="TrenchClaw main dashboard UI" width="1100" />
+</p>
+
+<p align="center">
+  <em>Desktop chat, activity feed, wallet controls, settings, and live runtime console in one operator surface.</em>
+</p>
 
 ---
 
@@ -396,17 +402,15 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Registers and dispatches typed Solana actions with policy gates, retries, and idempotency
 - Ships managed wallet reads, wallet management, Dexscreener research, Jupiter Ultra swaps, and direct wallet execution flows
 - Composes explicit action sequences, queued jobs, and narrow scheduled swap flows without a broad trigger framework
-- Persists runtime state + chat history in Bun SQLite (restart-safe)
-- Auto-syncs SQLite schema from declared table specs on boot and warns when existing DB columns drift from the contract
-- Emits structured events on a typed bus consumed by CLI logs and future alerting
-- Exposes an operator control surface through the CLI
-- Keeps agent knowledge (soul, rules, skills, outside context) in `src/ai/brain/`, loaded by orchestration in `src/ai/`
-- Uses RPC/Jupiter/token-account adapters so the runtime is provider-agnostic (swap Helius for QuickNode without touching action code)
-- Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) — no hand-rolled instruction builders
+- Persists runtime state, chat history, and receipts in Bun SQLite so local sessions survive restarts
+- Uses RPC, Jupiter, and token-account adapters so the runtime stays provider-agnostic
+- Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) instead of hand-rolled instruction builders
 
-The current public release does not promise a broad autonomous strategy engine yet. Treat scheduling and queued jobs as the current automation surface, and treat broader strategy automation plus non-Ultra public swap paths as coming soon.
+The current public release does not promise a broad autonomous strategy engine yet. Scheduling and queued jobs are the current automation surface; broader strategy automation and non-Ultra public swap paths are still coming.
 
-## Download Dependencies
+## Local Setup
+
+### Install dev tooling
 
 Use the runner bootstrap script to install or upgrade the local development toolchain:
 
@@ -414,7 +418,7 @@ Use the runner bootstrap script to install or upgrade the local development tool
 sh ./apps/runner/scripts/bootstrap-deps.sh
 ```
 
-That dev helper manages:
+That helper manages:
 
 - Bun
 - Solana CLI
@@ -422,7 +426,8 @@ That dev helper manages:
 
 Public standalone installs do not require Bun, Solana CLI, or Helius CLI for first launch. Install those CLIs only when a workflow explicitly needs them.
 
-Manual equivalents (if you need them):
+<details>
+<summary>Manual install + update commands</summary>
 
 ```bash
 # Bun (macOS/Linux)
@@ -433,25 +438,21 @@ sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
 
 # Helius CLI
 bun add -g helius-cli@latest
-```
 
-Verify everything is installed:
-
-```bash
+# verify installs
 bun --version
 solana --version
 helius --version
-```
 
-Update commands:
-
-```bash
+# update commands
 bun upgrade
 agave-install update
 bun add -g helius-cli@latest
 ```
 
-## Unified App Runner (Local)
+</details>
+
+### Run the app locally
 
 Use one command to start the runtime and GUI together:
 
@@ -471,7 +472,7 @@ What `bun run start` does:
 - Prompts `launch GUI now?` and opens browser after Enter (type `skip` to keep runtime CLI-only)
 - Supports `bun run start -- doctor` for local preflight checks
 
-Local development still uses Vite:
+Local GUI development still uses Vite:
 
 ```bash
 bun run gui:dev

@@ -110,7 +110,13 @@ flowchart LR
 
 ## ダッシュボード UI
 
-![TrenchClaw main dashboard UI](./public/v0-ui.png)
+<p align="center">
+  <img src="./public/v0-ui.png" alt="TrenchClaw main dashboard UI" width="1100" />
+</p>
+
+<p align="center">
+  <em>チャット、アクティビティ、ウォレット操作、設定、ランタイムコンソールを 1 つにまとめたデスクトップ操作面です。</em>
+</p>
 
 ---
 
@@ -340,17 +346,15 @@ TrenchClaw は、ランタイムジョブ、レシート、ポリシー / 判断
 - 型付き Solana アクションを登録・ディスパッチし、ポリシーゲート、リトライ、冪等性を適用
 - 管理対象ウォレット読み取り、ウォレット管理、Dexscreener 調査、Jupiter Ultra スワップ、直接ウォレット実行フローを提供
 - 広範なトリガーフレームワークなしで、明示的アクションシーケンス、キュージョブ、限定的な予約スワップフローを構成
-- ランタイム状態 + チャット履歴を Bun SQLite に永続化（再起動に強い）
-- 宣言されたテーブル仕様から起動時に SQLite スキーマを自動同期し、既存 DB カラムが契約からずれている場合は警告
-- CLI ログと将来のアラートで消費される構造化イベントを型付きバスで送出
-- CLI を通じてオペレーター制御面を公開
-- エージェント知識（soul、rules、skills、外部コンテキスト）を `src/ai/brain/` に保持し、`src/ai/` のオーケストレーションから読み込み
-- RPC / Jupiter / token-account アダプターを使うため、ランタイムはプロバイダー非依存（アクションコードに触れず Helius を QuickNode へ差し替え可能）
-- [Codama](https://github.com/codama-idl/codama) により Anchor IDL から型付きプログラムクライアントを生成 — 手書きの instruction builder は不要
+- ランタイム状態、チャット履歴、レシートを Bun SQLite に永続化し、再起動後も扱いやすく維持
+- RPC、Jupiter、token-account アダプターにより、ランタイムはプロバイダー非依存のまま保てる
+- [Codama](https://github.com/codama-idl/codama) により Anchor IDL から型付きプログラムクライアントを生成し、手書きの instruction builder を避ける
 
-現在の公開ベータは、幅広い自律戦略エンジンをまだ約束していません。スケジューリングとキュージョブを現時点の自動化面として扱い、より広い戦略自動化と Ultra 以外の公開スワップパスは今後の予定と考えてください。
+現在の公開リリースは、幅広い自律戦略エンジンをまだ約束していません。スケジューリングとキュージョブを現時点の自動化面として扱い、より広い戦略自動化と Ultra 以外の公開スワップパスは今後の予定です。
 
-## 依存関係の導入
+## ローカルセットアップ
+
+### 開発ツールの導入
 
 ローカル開発ツールチェーンのインストールや更新には、runner のブートストラップスクリプトを使ってください。
 
@@ -366,7 +370,8 @@ sh ./apps/runner/scripts/bootstrap-deps.sh
 
 公開用スタンドアロン版のインストールでは、初回起動に Bun、Solana CLI、Helius CLI は不要です。ワークフロー上で明示的に必要になった場合のみ、これらの CLI を導入してください。
 
-手動で行う場合の同等コマンド（必要な場合）:
+<details>
+<summary>手動インストール + 更新コマンド</summary>
 
 ```bash
 # Bun (macOS/Linux)
@@ -377,25 +382,21 @@ sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
 
 # Helius CLI
 bun add -g helius-cli@latest
-```
 
-すべて正常に入っているか確認:
-
-```bash
+# 確認
 bun --version
 solana --version
 helius --version
-```
 
-更新コマンド:
-
-```bash
+# 更新
 bun upgrade
 agave-install update
 bun add -g helius-cli@latest
 ```
 
-## Unified App Runner（ローカル）
+</details>
+
+### アプリをローカル起動
 
 ランタイムと GUI を一緒に起動するには 1 コマンドで済みます。
 
@@ -415,7 +416,7 @@ bun run start
 - `launch GUI now?` と確認し、Enter 後にブラウザを開く（`skip` と入力すると CLI のみで継続）
 - ローカル事前確認には `bun run start -- doctor` をサポート
 
-ローカル開発では引き続き Vite を使います。
+ローカル GUI 開発では引き続き Vite を使います。
 
 ```bash
 bun run gui:dev
