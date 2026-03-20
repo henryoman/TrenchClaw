@@ -5,6 +5,7 @@ export const CREATE_NEW_OPTION = "__create_new__";
 export const CHAT_API_PATH = "/v1/chat/stream";
 export const GUI_API_BASE_PATH = "/api/gui";
 export const REQUEST_TIMEOUT_MS = 8000;
+export const CHAT_STREAM_TIMEOUT_MS = 90000;
 export const GUI_QUEUE_PANEL_ENABLED = __TRENCHCLAW_GUI_ENABLE_QUEUE_PANEL__;
 
 export const RUNTIME_ACTIVITY_LIMIT = 80;

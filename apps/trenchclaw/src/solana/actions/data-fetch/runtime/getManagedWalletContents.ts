@@ -24,6 +24,7 @@ const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const RPC_RETRY_MAX_ATTEMPTS = 4;
 const RPC_RETRY_BASE_DELAY_MS = 300;
 const PUBLIC_MAINNET_RPC_SEQUENTIAL_COOLDOWN_MS = 6_000;
+const RPC_REQUEST_TIMEOUT_MS = 8_000;
 const HELIUS_DAS_PAGE_LIMIT = 1_000;
 const HELIUS_FUNGIBLE_INTERFACES = new Set(["FungibleAsset", "FungibleToken"]);
 
@@ -148,7 +149,17 @@ const isRetryableRpcError = (error: unknown): boolean => {
     || /too many requests/iu.test(message)
     || /\b503\b/u.test(message)
     || /\b504\b/u.test(message)
-    || /temporarily unavailable/iu.test(message);
+    || /temporarily unavailable/iu.test(message)
+    || /timed out/iu.test(message)
+    || /\btimeout\b/iu.test(message)
+    || /\babort(?:ed)?\b/iu.test(message);
+};
+
+const createRpcRequestSignal = (): AbortSignal | undefined => {
+  if (typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(RPC_REQUEST_TIMEOUT_MS);
+  }
+  return undefined;
 };
 
 const withRpcRetries = async <T>(operation: () => Promise<T>): Promise<T> => {
@@ -408,13 +419,23 @@ const postRpcBatch = async (
   rpcUrl: string,
   requests: JsonRpcBatchRequest[],
 ): Promise<Map<string, unknown>> => {
-  const response = await fetch(rpcUrl, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(requests),
-  });
+  let response: Response;
+  try {
+    response = await fetch(rpcUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(requests),
+      signal: createRpcRequestSignal(),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/timed out|timeout|abort/iu.test(message)) {
+      throw new Error(`RPC request timed out after ${RPC_REQUEST_TIMEOUT_MS}ms`, { cause: error });
+    }
+    throw error;
+  }
   const responseText = await response.text();
 
   if (!response.ok) {

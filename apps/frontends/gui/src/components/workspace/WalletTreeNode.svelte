@@ -9,7 +9,6 @@
   $: indentPx = depth * 14;
   $: isFile = node.kind === "file";
   $: displayName = isFile ? node.displayName ?? node.walletName ?? node.name.replace(/\.json$/i, "") : node.name;
-  $: shortAddress = node.address ? `${node.address.slice(0, 4)}...${node.address.slice(-4)}` : "";
 
   let expanded = false;
   let copyFeedback = "";
@@ -78,12 +77,7 @@
       aria-expanded={expanded}
     >
       <span class="icon" aria-hidden="true">🔑</span>
-      <span class="wallet-copy">
-        <span class="name">{displayName}</span>
-        {#if shortAddress}
-          <span class="address-preview">{shortAddress}</span>
-        {/if}
-      </span>
+      <span class="name">{displayName}</span>
       <span class="actions">
         <button
           type="button"
@@ -180,27 +174,14 @@
     flex: 0 0 auto;
   }
 
-  .wallet-copy {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.12rem;
-    flex: 1 1 auto;
-  }
-
   .name {
     color: var(--tc-color-gray-1);
     font-size: 0.8rem;
     letter-spacing: 0.04em;
     text-transform: none;
     word-break: break-word;
-  }
-
-  .address-preview {
-    color: var(--tc-color-gray-3);
-    font-size: 0.68rem;
-    letter-spacing: 0.04em;
-    text-transform: none;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .actions {
@@ -212,8 +193,8 @@
   }
 
   .icon-button {
-    width: 1.8rem;
-    height: 1.8rem;
+    width: 1.5rem;
+    height: 1.35rem;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -222,6 +203,7 @@
     color: var(--tc-color-turquoise);
     cursor: pointer;
     padding: 0;
+    box-sizing: border-box;
   }
 
   .icon-button svg {

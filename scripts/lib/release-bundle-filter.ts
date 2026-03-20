@@ -57,6 +57,15 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
   const lower = normalized.toLowerCase();
   const fileName = path.posix.basename(normalized).toLowerCase();
 
+  if (
+    fileName === "active-instance.json"
+    || normalized.includes("/.runtime-state/")
+    || normalized.startsWith(".runtime-state/")
+    || normalized.includes("/runtime-state/")
+    || normalized.startsWith("runtime-state/")
+  ) {
+    return `runtime state file should not be bundled: ${normalized}`;
+  }
   if (normalized === "core/src/ai/brain/protected/wallet-library.jsonl") {
     return `blocked file present: ${normalized}`;
   }
