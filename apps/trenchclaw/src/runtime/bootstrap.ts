@@ -807,6 +807,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
           jobMeta: {
             jobId: job.id,
             botId: job.botId,
+            routineName: job.routineName,
             cycle: job.cyclesCompleted + 1,
           },
         }),

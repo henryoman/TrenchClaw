@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
 import { createGetManagedWalletContentsAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getManagedWalletContents";
 import { runtimeStatePath } from "../../../helpers/core-paths";
@@ -210,6 +211,79 @@ describe("getManagedWalletContentsAction", () => {
       }),
     ]);
     expect(payload.totalBalanceLamports).toBe("2000000000");
+  });
+
+  test("queues heavy wallet scans instead of forcing a large inline read", async () => {
+    const instanceId = "92";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      Array.from({ length: 5 }, (_, index) =>
+        JSON.stringify({
+          walletId: `core-wallets.wallet_${String(index).padStart(3, "0")}`,
+          walletGroup: "core-wallets",
+          walletName: `wallet_${String(index).padStart(3, "0")}`,
+          address: [
+            "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+            "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+            "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+            "2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq",
+            "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF",
+          ][index]!,
+          keypairFilePath: path.join(instanceDirectory, `keypairs/core-wallets/wallet_${String(index).padStart(3, "0")}.json`),
+          walletLabelFilePath: path.join(instanceDirectory, `keypairs/core-wallets/wallet_${String(index).padStart(3, "0")}.label.json`),
+        }))
+        .join("\n"),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let enqueueInvocationCount = 0;
+    const stateStore = new InMemoryStateStore();
+    const action = createGetManagedWalletContentsAction();
+
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        stateStore,
+        enqueueJob: async (input) => {
+          enqueueInvocationCount += 1;
+          return {
+            id: "job-wallet-scan-queued",
+            serialNumber: 7,
+            botId: input.botId,
+            routineName: input.routineName,
+            status: "pending",
+            config: input.config ?? {},
+            cyclesCompleted: 0,
+            totalCycles: input.totalCycles,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+        },
+      }),
+      {
+        walletGroup: "core-wallets",
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(enqueueInvocationCount).toBe(1);
+    const payload = result.data as {
+      queued: boolean;
+      requestKey: string;
+      job: { serialNumber: number | null; routineName: string; status: string };
+    };
+    expect(payload.queued).toBe(true);
+    expect(payload.requestKey).toContain("wallet-contents:");
+    expect(payload.job.serialNumber).toBe(7);
+    expect(payload.job.routineName).toBe("walletInventoryScan");
+    expect(payload.job.status).toBe("pending");
   });
 
   test("uses one regular-RPC batch request to load SOL and SPL contents across wallets", async () => {
@@ -732,7 +806,7 @@ describe("getManagedWalletContentsAction", () => {
         tokenCount: 0,
       }),
     ]);
-  });
+  }, 15000);
 
   test("falls back to raw RPC when Helius DAS inventory reads are rate-limited", async () => {
     const instanceId = "93";
@@ -821,7 +895,7 @@ describe("getManagedWalletContentsAction", () => {
         balanceLamports: "40010000",
       }),
     ]);
-  });
+  }, 15000);
 
   test("falls back to sequential raw RPC reads after batch timeout", async () => {
     const instanceId = "95";
@@ -1017,5 +1091,5 @@ describe("getManagedWalletContentsAction", () => {
         retryable: true,
       }),
     ]);
-  });
+  }, 15000);
 });

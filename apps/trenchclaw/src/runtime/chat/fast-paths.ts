@@ -37,6 +37,18 @@ export const shouldUseWalletContentsFastPath = (userMessage: string): boolean =>
 };
 
 export const formatWalletInventoryFastPathText = (data: unknown): string | null => {
+  if (isRecord(data) && data.queued === true && isRecord(data.job)) {
+    const job = data.job;
+    const serialNumber = typeof job.serialNumber === "number" ? `#${job.serialNumber}` : `\`${typeof job.id === "string" ? job.id : "unknown-job"}\``;
+    const status = typeof job.status === "string" ? job.status : "pending";
+    const message = typeof data.message === "string" ? data.message : "Queued a wallet inventory scan in the background.";
+    return [
+      message,
+      `Job ${serialNumber} is currently ${status}.`,
+      "Ask again after it finishes, or inspect the job with `queryRuntimeStore`.",
+    ].join("\n");
+  }
+
   if (!isRecord(data) || !Array.isArray(data.wallets)) {
     return null;
   }
@@ -70,6 +82,18 @@ export const formatWalletInventoryFastPathText = (data: unknown): string | null 
 };
 
 export const formatWalletContentsFastPathText = (data: unknown): string | null => {
+  if (isRecord(data) && data.queued === true && isRecord(data.job)) {
+    const job = data.job;
+    const serialNumber = typeof job.serialNumber === "number" ? `#${job.serialNumber}` : `\`${typeof job.id === "string" ? job.id : "unknown-job"}\``;
+    const status = typeof job.status === "string" ? job.status : "pending";
+    const message = typeof data.message === "string" ? data.message : "Queued a wallet inventory scan in the background.";
+    return [
+      message,
+      `Job ${serialNumber} is currently ${status}.`,
+      "Ask for wallet contents again after it finishes, or inspect the job with `queryRuntimeStore`.",
+    ].join("\n");
+  }
+
   if (!isRecord(data) || !Array.isArray(data.wallets)) {
     return null;
   }
@@ -148,9 +172,9 @@ export const formatWalletContentsRateLimitText = (toolName: string, error: strin
     || normalized.includes("rate limit")
   ) {
     return [
-      "I couldn't load wallet contents because the current RPC provider is rate-limiting this request.",
-      "`getManagedWalletContents` hit `429 Too Many Requests` while reading managed-wallet balances.",
-      "Try again after the cooldown, or configure a dedicated private RPC provider such as Helius.",
+      "The wallet inventory read hit provider throttling before a safe fallback completed.",
+      "`getManagedWalletContents` received a rate-limit response while reading managed-wallet balances.",
+      "Retry after the cooldown, or let the runtime queue the heavier scan path instead of forcing it inline.",
     ].join("\n");
   }
 

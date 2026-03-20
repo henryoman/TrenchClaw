@@ -28,6 +28,16 @@ const listJobsRequestSchema = z.object({
   limit: z.number().int().positive().max(maxLimit).default(50),
 });
 
+const getJobRequestSchema = z.object({
+  type: z.literal("getJob"),
+  jobId: z.string().trim().min(1),
+});
+
+const getJobBySerialRequestSchema = z.object({
+  type: z.literal("getJobBySerial"),
+  serialNumber: z.number().int().positive(),
+});
+
 const getRecentReceiptsRequestSchema = z.object({
   type: z.literal("getRecentReceipts"),
   limit: z.number().int().positive().max(maxLimit).default(50),
@@ -70,6 +80,8 @@ const queryRuntimeStoreRequestSchema = z.preprocess(
     getConversationRequestSchema,
     listChatMessagesRequestSchema,
     listJobsRequestSchema,
+    getJobRequestSchema,
+    getJobBySerialRequestSchema,
     getRecentReceiptsRequestSchema,
     searchRuntimeTextRequestSchema,
     getRuntimeKnowledgeSurfaceRequestSchema,
@@ -126,6 +138,10 @@ export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = 
           status: request.status,
           botId: request.botId,
         }).slice(0, request.limit);
+      } else if (request.type === "getJob") {
+        data = store.getJob(request.jobId);
+      } else if (request.type === "getJobBySerial") {
+        data = store.getJobBySerialNumber(request.serialNumber);
       } else if (request.type === "searchRuntimeText") {
         data = store.searchRuntimeText({
           query: request.query,

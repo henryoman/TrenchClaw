@@ -55,7 +55,7 @@ describe("renderRuntimeWalletPromptContext", () => {
     expect(prompt).toContain("There is no wallet delete tool in chat.");
     expect(prompt).toContain("prefer passing `wallet` as the wallet name string");
     expect(prompt).toContain("prefer passing `wallets` as an array of wallet name strings");
-    expect(prompt).toContain("Runtime action context resolves RPC and rate limiting automatically.");
+    expect(prompt).toContain("Runtime action context resolves RPC, throttling, and queued scan routing automatically.");
     expect(prompt).not.toContain("#### createWallets JSON Shape");
     expect(prompt).not.toContain("#### renameWallets JSON Shape");
     expect(prompt).not.toContain('"groups": [');

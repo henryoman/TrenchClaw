@@ -24,5 +24,15 @@
         }
       ]
     }
+  },
+  "walletInventoryScan": {
+    "routineName": "walletInventoryScan",
+    "command": "walletInventoryScan requestKey=<request-key> input='{\"instanceId\":\"<id>\",\"walletGroup\":\"core-wallets\",\"includeZeroBalances\":false}' [summaryDepth=summary|full]",
+    "defaults": {
+      "summaryDepth": "full",
+      "input": {
+        "includeZeroBalances": false
+      }
+    }
   }
 }

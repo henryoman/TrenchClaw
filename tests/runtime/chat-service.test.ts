@@ -556,6 +556,70 @@ describe("RuntimeChatService", () => {
     expect(assistant?.content).toContain("Token So11111111111111111111111111111111111111112: 1.5");
   });
 
+  test("surfaces queued wallet scan jobs in the direct wallet contents fast path", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    let streamInvocationCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({
+            results: [
+              makeActionResult({
+                ok: true,
+                data: {
+                  queued: true,
+                  requestKey: "wallet-contents:test",
+                  job: {
+                    id: "job-wallet-scan-queued",
+                    serialNumber: 12,
+                    status: "pending",
+                    routineName: "walletInventoryScan",
+                    createdAt: Date.now(),
+                    updatedAt: Date.now(),
+                  },
+                  message: "Queued wallet scan job #12 because this inventory read is large enough to run more safely in the background.",
+                },
+              }),
+            ],
+            policyHits: [],
+          }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        streamText: (() => {
+          streamInvocationCount += 1;
+          throw new Error("model path should not be used for queued wallet contents fast path");
+        }) as never,
+      },
+    );
+
+    const response = await service.stream([
+      {
+        id: "user-fast-wallet-contents-queued-1",
+        role: "user",
+        parts: [{ type: "text", text: "what are the contents of our wallets" }],
+      },
+    ], {
+      chatId: "chat-fast-wallet-contents-queued-1",
+    });
+
+    const body = await response.text();
+    expect(streamInvocationCount).toBe(0);
+    expect(body).toContain("Queued wallet scan job #12");
+    expect(body).toContain("queryRuntimeStore");
+
+    const assistant = stateStore
+      .listChatMessages("chat-fast-wallet-contents-queued-1", 10)
+      .find((message) => message.role === "assistant");
+    expect(assistant?.content).toContain("Job #12 is currently pending");
+  });
+
   test("bypasses the model for varied plain-English wallet questions", async () => {
     const registry = new ActionRegistry();
     const stateStore = new InMemoryStateStore();
@@ -2731,8 +2795,8 @@ describe("RuntimeChatService", () => {
     const assistant = stateStore
       .listChatMessages("chat-tool-fail-wallet-contents-1", 10)
       .find((message) => message.role === "assistant");
-    expect(assistant?.content).toContain("rate-limiting this request");
-    expect(assistant?.content).toContain("429 Too Many Requests");
+    expect(assistant?.content).toContain("provider throttling");
+    expect(assistant?.content).toContain("rate-limit response");
   });
 
   test("persists chat history in SQLite across store reopen", async () => {

@@ -29,7 +29,10 @@ const listKnowledgeDocsRequestSchema = z.object({
 });
 
 const listKnowledgeDocsInputSchema = z.object({
-  request: z.preprocess(parseJsonObject, listKnowledgeDocsRequestSchema).default({}),
+  request: z.preprocess(parseJsonObject, listKnowledgeDocsRequestSchema).default({
+    tier: "all",
+    limit: 80,
+  }),
 });
 
 type ListKnowledgeDocsInput = z.output<typeof listKnowledgeDocsInputSchema>;

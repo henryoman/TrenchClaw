@@ -207,6 +207,51 @@ describe("queryRuntimeStoreAction", () => {
     store.close();
   });
 
+  test("returns a queued job by serial number", async () => {
+    const dbPath = createTestDbPath();
+    dbPaths.push(dbPath);
+
+    const store = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const now = Date.now();
+    store.saveJob({
+      id: "job-wallet-scan-1",
+      serialNumber: 42,
+      botId: "wallet-contents:test",
+      routineName: "walletInventoryScan",
+      status: "running",
+      config: {
+        requestKey: "wallet-contents:test",
+      },
+      cyclesCompleted: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const ctx = createActionContext({ actor: "agent", stateStore: store });
+    const result = await queryRuntimeStoreAction.execute(ctx, {
+      request: {
+        type: "getJobBySerial",
+        serialNumber: 42,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      requestType: string;
+      result: { id: string; routineName: string; status: string };
+    };
+    expect(payload.requestType).toBe("getJobBySerial");
+    expect(payload.result.id).toBe("job-wallet-scan-1");
+    expect(payload.result.routineName).toBe("walletInventoryScan");
+    expect(payload.result.status).toBe("running");
+
+    store.close();
+  });
+
   test("accepts stringified request payloads produced by model tool calls", () => {
     const parsed = queryRuntimeStoreAction.inputSchema!.parse({
       request: "{\"type\":\"getRuntimeKnowledgeSurface\",\"recentConversationsLimit\":20,\"recentJobsLimit\":20,\"recentReceiptsLimit\":20}",

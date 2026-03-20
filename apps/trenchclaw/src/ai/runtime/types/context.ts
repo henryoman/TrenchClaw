@@ -23,6 +23,7 @@ export interface RuntimeJobControlRequest {
 export interface JobMeta {
   jobId?: JobId;
   botId?: BotId;
+  routineName?: string;
   cycle?: number;
 }
 

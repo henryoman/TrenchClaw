@@ -55,7 +55,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   getManagedWalletContents: {
     useWhen: "the user asks what is in the managed wallets, what coins or tokens are held, what balances exist, or asks for a wallet update in plain English",
     avoidWhen: "the user only wants SOL balances, or is asking about market prices, trading history, or external token liquidity",
-    inputAdvice: "Pass `wallets` when the user names specific wallets, `walletGroup` when the user names a whole group, or omit both to inspect all active managed wallets.",
+    inputAdvice: "Pass `wallets` when the user names specific wallets, `walletGroup` when the user names a whole group, or omit both to inspect all active managed wallets. Large scans may queue a background job instead of blocking inline.",
   },
   getManagedWalletSolBalances: {
     useWhen: "the user only wants SOL balances or a quick SOL-only summary",
@@ -63,7 +63,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     inputAdvice: "Pass `wallets` when the user names specific wallets, `walletGroup` when the scope is one wallet group, or omit both to inspect all active managed wallets.",
   },
   queryRuntimeStore: {
-    useWhen: "the user asks about runtime state like jobs, conversations, receipts, or stored runtime records",
+    useWhen: "the user asks about runtime state like jobs, conversations, receipts, stored runtime records, or wants the status of a queued wallet scan",
     avoidWhen: "the user is asking about wallets, tokens, balances, swaps, or market data",
   },
   queryInstanceMemory: {

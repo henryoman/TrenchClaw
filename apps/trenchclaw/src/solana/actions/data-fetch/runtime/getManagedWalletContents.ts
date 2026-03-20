@@ -38,6 +38,9 @@ const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const TOKEN_2022_PROGRAM_ID = "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb";
 const RPC_RETRY_MAX_ATTEMPTS = 4;
 const RPC_RETRY_BASE_DELAY_MS = 300;
+const WALLET_BATCH_RETRY_MAX_ATTEMPTS = 1;
+const WALLET_SEQUENTIAL_RETRY_MAX_ATTEMPTS = 2;
+const HELIUS_DAS_RETRY_MAX_ATTEMPTS = 1;
 const PUBLIC_MAINNET_RPC_BATCH_WALLET_LIMIT = 4;
 const DEFAULT_RPC_BATCH_WALLET_LIMIT = 12;
 const PUBLIC_MAINNET_RPC_INTER_REQUEST_DELAY_MS = 350;
@@ -865,7 +868,7 @@ const loadWalletContentsBatchFromRpc = async (input: {
       lane: input.lane,
     }),
     {
-      maxAttempts: isOfficialSolanaPublicRpcUrl(rpcUrl) ? 2 : RPC_RETRY_MAX_ATTEMPTS,
+      maxAttempts: WALLET_BATCH_RETRY_MAX_ATTEMPTS,
     },
   );
 
@@ -897,7 +900,7 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
   const isPublicRpc = isOfficialSolanaPublicRpcUrl(rpcUrl);
   const interRequestDelayMs = isPublicRpc ? PUBLIC_MAINNET_RPC_INTER_REQUEST_DELAY_MS : PRIVATE_RPC_INTER_REQUEST_DELAY_MS;
   const interWalletDelayMs = isPublicRpc ? PUBLIC_MAINNET_RPC_INTER_WALLET_DELAY_MS : PRIVATE_RPC_INTER_WALLET_DELAY_MS;
-  const maxAttempts = isPublicRpc ? 2 : RPC_RETRY_MAX_ATTEMPTS;
+  const maxAttempts = isPublicRpc ? 2 : WALLET_SEQUENTIAL_RETRY_MAX_ATTEMPTS;
 
   for (const entry of input.entries) {
     const balanceRequest: JsonRpcBatchRequest = {
@@ -1139,12 +1142,17 @@ const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
       try {
         // Helius DAS inventory reads are kept fully serialized per wallet/page to avoid request bursts.
         // eslint-disable-next-line no-await-in-loop
-        const pageResult = await withRpcRetries(() =>
-          postRpcSingle(input.rpcUrl, request, {
-            providerHint: "helius-das",
-            methodFamily: request.method,
-            lane: input.lane,
-          }));
+        const pageResult = await withRpcRetries(
+          () =>
+            postRpcSingle(input.rpcUrl, request, {
+              providerHint: "helius-das",
+              methodFamily: request.method,
+              lane: input.lane,
+            }),
+          {
+            maxAttempts: HELIUS_DAS_RETRY_MAX_ATTEMPTS,
+          },
+        );
         const { hasMorePages } = mergeHeliusDasPage(accumulator, pageResult, page);
         if (!hasMorePages) {
           break;
@@ -1430,7 +1438,7 @@ const buildManagedWalletContentsPayload = (input: {
 
 export const createGetManagedWalletContentsAction = (
   deps: GetManagedWalletContentsDeps = {},
-): Action<GetManagedWalletContentsInput, ManagedWalletContentsOutput> => {
+): Action<GetManagedWalletContentsInput, ManagedWalletContentsActionData> => {
   return {
     name: "getManagedWalletContents",
     category: "data-based",
@@ -1461,7 +1469,6 @@ export const createGetManagedWalletContentsAction = (
           allowMissing: true,
         });
 
-        const discoveredVia = "wallet-library";
         const entries = walletLibrary.entries;
 
         const filteredEntries = await resolveWalletEntries(entries, input);
@@ -1474,6 +1481,77 @@ export const createGetManagedWalletContentsAction = (
             });
 
         const useHeliusDas = Boolean(heliusConfig?.rpcUrl);
+        const requestLane = getWalletContentsRequestLane(ctx);
+        const requestKey = buildWalletScanRequestKey({
+          instanceId,
+          includeZeroBalances: input.includeZeroBalances,
+          useHeliusDas,
+          entries: filteredEntries,
+        });
+        const readMode = classifyWalletContentsRead({
+          ctx,
+          walletCount: filteredEntries.length,
+          useHeliusDas,
+          hasCustomLoader: Boolean(deps.loadWalletContents),
+        });
+
+        if (readMode === "queued") {
+          const reusableJob = resolveReusableWalletScanJob(ctx, requestKey);
+          if (reusableJob?.status === "completed" && reusableJob.job.lastResult?.ok === true && reusableJob.job.lastResult.data) {
+            return {
+              ok: true,
+              retryable: false,
+              data: reusableJob.job.lastResult.data as ManagedWalletContentsActionData,
+              durationMs: Date.now() - startedAt,
+              timestamp: Date.now(),
+              idempotencyKey,
+            };
+          }
+          if (reusableJob) {
+            return {
+              ok: true,
+              retryable: false,
+              data: createQueuedWalletContentsPayload(
+                reusableJob.job,
+                requestKey,
+                `Wallet scan job #${reusableJob.job.serialNumber ?? reusableJob.job.id} is already ${reusableJob.job.status} in the background.`,
+              ),
+              durationMs: Date.now() - startedAt,
+              timestamp: Date.now(),
+              idempotencyKey,
+            };
+          }
+
+          const scanJob = await ctx.enqueueJob?.({
+            botId: requestKey,
+            routineName: WALLET_INVENTORY_SCAN_ROUTINE_NAME,
+            totalCycles: 1,
+            config: {
+              requestKey,
+              summaryDepth: "full",
+              input: {
+                ...input,
+                instanceId,
+              },
+            },
+          });
+
+          if (scanJob) {
+            return {
+              ok: true,
+              retryable: false,
+              data: createQueuedWalletContentsPayload(
+                scanJob,
+                requestKey,
+                `Queued wallet scan job #${scanJob.serialNumber ?? scanJob.id} because this inventory read is large enough to run more safely in the background.`,
+              ),
+              durationMs: Date.now() - startedAt,
+              timestamp: Date.now(),
+              idempotencyKey,
+            };
+          }
+        }
+
         let dataSource: ManagedWalletContentsDataSource = "rpc-batch";
         let fellBackFromHeliusDas = false;
         let loadOutcome = deps.loadWalletContents
@@ -1486,11 +1564,13 @@ export const createGetManagedWalletContentsAction = (
                 entries: filteredEntries,
                 rpcUrl: heliusConfig.rpcUrl,
                 includeZeroBalances: input.includeZeroBalances,
+                lane: requestLane,
               })
             : await loadWalletContentsFromRpc({
                 entries: filteredEntries,
                 rpcUrl: ctx.rpcUrl,
                 includeZeroBalances: input.includeZeroBalances,
+                lane: requestLane,
               });
         if (useHeliusDas && heliusConfig?.rpcUrl && loadOutcome.wallets.length === 0 && loadOutcome.walletErrors.length > 0) {
           fellBackFromHeliusDas = true;
@@ -1498,6 +1578,7 @@ export const createGetManagedWalletContentsAction = (
             entries: filteredEntries,
             rpcUrl: heliusConfig.rpcUrl,
             includeZeroBalances: input.includeZeroBalances,
+            lane: requestLane,
           });
         }
         if (useHeliusDas) {
@@ -1513,32 +1594,17 @@ export const createGetManagedWalletContentsAction = (
           throw new Error(loadOutcome.walletErrors[0]?.error ?? "Managed-wallet RPC reads failed.");
         }
 
-        const totalBalanceLamports = wallets.reduce((sum, wallet) => sum + BigInt(wallet.balanceLamports), 0n);
-        const aggregatedTokenTotals = buildTokenTotals(wallets);
-
         return {
           ok: true,
           retryable: false,
-          data: {
+          data: buildManagedWalletContentsPayload({
             instanceId,
-            walletCount: wallets.length,
-            discoveredVia,
             walletLibraryFilePath,
             invalidLibraryLineCount: walletLibrary.invalidLineCount,
             includeZeroBalances: input.includeZeroBalances,
             dataSource,
-            partial: loadOutcome.walletErrors.length > 0,
-            wallets,
-            walletErrors: loadOutcome.walletErrors,
-            totalBalanceLamports: totalBalanceLamports.toString(),
-            totalBalanceSol: Number(totalBalanceLamports) / LAMPORTS_PER_SOL,
-            totalCollectibleCount: wallets.reduce((sum, wallet) => sum + wallet.collectibleCount, 0),
-            totalPricedTokenUsd: wallets.reduce<number | null>(
-              (sum, wallet) => sumKnownNumbers(sum, wallet.pricedTokenTotalUsd),
-              null,
-            ),
-            tokenTotals: aggregatedTokenTotals,
-          },
+            loadOutcome,
+          }),
           durationMs: Date.now() - startedAt,
           timestamp: Date.now(),
           idempotencyKey,
