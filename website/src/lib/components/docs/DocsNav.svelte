@@ -15,6 +15,16 @@
 </script>
 
 <div class="docs-sidebar">
+  <nav>
+    <a
+      class={`docs-nav-link ${currentSlug === null ? 'docs-nav-link-active' : ''}`}
+      href={resolve('/docs', {})}
+      aria-current={currentSlug === null ? 'page' : undefined}
+    >
+      Home
+    </a>
+  </nav>
+
   <p class="docs-sidebar-label">Setup</p>
   <nav class="mt-2">
     {#each sections.primary as doc (doc.slug)}

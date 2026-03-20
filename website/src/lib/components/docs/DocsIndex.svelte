@@ -7,6 +7,24 @@
   const sections = $derived(splitDocsBySection(docs));
   const startHere = $derived(sections.primary.find((doc) => doc.slug === 'getting-started') ?? sections.primary[0]);
   const keysGuide = $derived(sections.primary.find((doc) => doc.slug === 'keys-and-settings') ?? sections.primary[1]);
+  const currentCapabilities = [
+    {
+      title: 'Swap with Ultra',
+      description: 'Use Jupiter Ultra for the supported swap path when you add an Ultra API key.',
+    },
+    {
+      title: 'Research with AI',
+      description: 'Run the recommended OpenRouter setup for chat and scoped Solana workflow help.',
+    },
+    {
+      title: 'Use private RPC when needed',
+      description: 'Add Helius or another private RPC only when you want higher quality reads or provider-specific flows.',
+    },
+    {
+      title: 'Manage local instances and wallets',
+      description: 'Keep your instance state, vaults, and wallet metadata local to the runtime.',
+    },
+  ] as const;
 </script>
 
 <div class="docs-index-hero">
@@ -52,6 +70,22 @@
     OpenRouter API Key, set OpenRouter plus GPT-5.4 Nano, test the AI connection, then stop there unless you
     specifically want a private RPC or Ultra swaps.
   </p>
+</section>
+
+<section class="docs-index-section mt-8" aria-labelledby="docs-capabilities-title">
+  <p class="docs-kicker">Right now</p>
+  <h2 id="docs-capabilities-title" class="docs-index-section-title">What you can do with TrenchClaw today.</h2>
+  <p class="docs-index-section-intro">
+    The scope is intentionally narrow right now. These are the main things the current docs and setup are built around.
+  </p>
+  <div class="docs-capability-grid mt-5">
+    {#each currentCapabilities as capability (capability.title)}
+      <div class="docs-capability-card">
+        <h3 class="docs-capability-title">{capability.title}</h3>
+        <p class="docs-capability-description">{capability.description}</p>
+      </div>
+    {/each}
+  </div>
 </section>
 
 {#if docs.length === 0}

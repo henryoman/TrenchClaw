@@ -18,9 +18,7 @@
 <div class="min-h-screen bg-background text-foreground">
   <nav class="fixed inset-x-0 top-0 z-50 border-b border-border-subtle bg-background/85 backdrop-blur-xl">
     <div class="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-      <a href={resolve('/', {})} class="flex items-center gap-3">
-        <img src="/logo.png" alt="TrenchClaw" class="logo-white h-8 w-8 object-contain" width="32" height="32" />
-        <img src="/trenchclaw.png" alt="" class="hidden" width="32" height="32" aria-hidden="true" />
+      <a href={resolve('/', {})} class="flex items-center">
         <span class="text-sm font-semibold tracking-[-0.02em] text-foreground">TrenchClaw</span>
       </a>
 
