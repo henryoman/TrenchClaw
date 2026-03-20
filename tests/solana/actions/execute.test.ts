@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
@@ -18,6 +18,7 @@ const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_BOOT_REFRESH_CONTEXT",
   "TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE",
   "TRENCHCLAW_WALLET_LIBRARY_FILE",
+  "TRENCHCLAW_DISABLE_LOG_IO_WORKER",
 ] as const;
 
 const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
@@ -72,6 +73,10 @@ const writeVaultJson = async (): Promise<string> =>
       },
     },
   });
+
+beforeEach(() => {
+  process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER = "1";
+});
 
 afterEach(async () => {
   globalThis.fetch = previousFetch;
