@@ -80,7 +80,7 @@ export class LogIoClient {
   }
 
   request(request: LogIoRequestWithoutId): Promise<void> {
-    if (!this.worker) {
+    if (process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER === "1" || !this.worker) {
       return this.performDirectWrite(request);
     }
 
