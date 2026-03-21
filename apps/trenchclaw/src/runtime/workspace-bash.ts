@@ -366,7 +366,7 @@ class HostWorkspaceSandbox {
     const visitDirectory = async (currentDirectory: string, remainingDepth: number): Promise<void> => {
       const directoryEntries = (await readdir(currentDirectory, { withFileTypes: true }))
         .filter((entry) => input.includeHidden || !entry.name.startsWith("."))
-        .sort(compareDirectoryEntries);
+        .toSorted(compareDirectoryEntries);
 
       for (const entry of directoryEntries) {
         if (entries.length >= input.limit) {
@@ -379,6 +379,8 @@ class HostWorkspaceSandbox {
           continue;
         }
         try {
+          // Keep traversal order stable so `limit` and `truncated` match the returned entry order.
+          // eslint-disable-next-line no-await-in-loop
           await assertModelFilesystemReadAllowed({
             actor: this.actor,
             targetPath: absoluteEntryPath,
@@ -397,6 +399,7 @@ class HostWorkspaceSandbox {
         });
 
         if (entry.isDirectory() && remainingDepth > 0) {
+          // eslint-disable-next-line no-await-in-loop
           await visitDirectory(absoluteEntryPath, remainingDepth - 1);
           if (truncated) {
             return;
