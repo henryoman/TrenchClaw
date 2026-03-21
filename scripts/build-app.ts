@@ -18,6 +18,7 @@ const DEFAULT_OUTPUT_ROOT = path.join(REPO_ROOT, "dist", "app");
 
 interface CliArgs {
   outputRoot: string;
+  version: string | null;
 }
 
 const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
@@ -40,6 +41,7 @@ const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
 
 const parseArgs = (argv: string[]): CliArgs => {
   let outputRoot = DEFAULT_OUTPUT_ROOT;
+  let version: string | null = null;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -50,10 +52,19 @@ const parseArgs = (argv: string[]): CliArgs => {
       }
       outputRoot = path.resolve(value);
       i += 1;
+      continue;
+    }
+    if (arg === "--version") {
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Missing value for --version");
+      }
+      version = value.trim();
+      i += 1;
     }
   }
 
-  return { outputRoot };
+  return { outputRoot, version };
 };
 
 const runCapture = async (command: string[], cwd = REPO_ROOT): Promise<string> => {
@@ -254,6 +265,9 @@ const main = async (): Promise<void> => {
   console.log("[build-app] cleaning old output");
   await rm(outputRoot, { recursive: true, force: true });
 
+  if (args.version && args.version.length > 0) {
+    process.env.TRENCHCLAW_BUILD_VERSION = args.version;
+  }
   const buildMetadata = await resolveBuildMetadata();
   process.env.TRENCHCLAW_BUILD_VERSION = buildMetadata.version;
   process.env.TRENCHCLAW_BUILD_COMMIT = buildMetadata.commit;

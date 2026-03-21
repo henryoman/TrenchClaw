@@ -162,7 +162,7 @@ jobs:
       - name: Build release assets
         run: |
           bun run app:clean
-          bun run app:build
+          bun run app:build -- --version "${{ needs.prepare_release.outputs.release_tag }}"
           bun run bundle:verify
 
       - name: Package standalone artifact
