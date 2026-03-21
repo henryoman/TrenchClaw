@@ -1,4 +1,4 @@
-import { getFeaturedDocs } from '$lib/docs';
+import { getFeaturedDocs } from '../docs';
 
 export const githubUrl = 'https://github.com/henryoman/trenchclaw';
 export const xUrl = 'https://x.com/trenchclawagent';

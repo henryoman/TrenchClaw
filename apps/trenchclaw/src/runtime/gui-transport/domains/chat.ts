@@ -7,6 +7,34 @@ import type { UIMessage } from "ai";
 import { CORS_HEADERS } from "../constants";
 import type { RuntimeGuiDomainContext } from "../contracts";
 
+const countToolUiParts = (parts: unknown): number =>
+  Array.isArray(parts)
+    ? parts.filter((part) => part && typeof part === "object" && "type" in part && typeof part.type === "string" && part.type.startsWith("tool-")).length
+    : 0;
+
+const buildAssistantResponseActivitySummary = (context: RuntimeGuiDomainContext, chatId: string): string => {
+  const messages = context.runtime.stateStore.listChatMessages(chatId, 500);
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (!message || message.role !== "assistant") {
+      continue;
+    }
+
+    const content = message.content.trim();
+    if (content) {
+      return "Assistant response finished";
+    }
+
+    const toolPartCount = countToolUiParts(message.metadata?.uiParts);
+    if (toolPartCount > 0) {
+      return `Assistant response finished (${toolPartCount} tool update${toolPartCount === 1 ? "" : "s"})`;
+    }
+    break;
+  }
+
+  return "Assistant response finished";
+};
+
 export const streamChat = async (
   context: RuntimeGuiDomainContext,
   messages: UIMessage[],
@@ -14,13 +42,43 @@ export const streamChat = async (
 ): Promise<Response> => {
   const chatId = input?.chatId?.trim() || context.resolveDefaultChatId();
   context.setActiveChatId(chatId);
-  context.addActivity("chat", `Streaming prompt received (${messages.length} message${messages.length === 1 ? "" : "s"})`);
-  return context.runtime.chat.stream(messages, {
+  context.addActivity("chat", `Prompt sent (${messages.length} message${messages.length === 1 ? "" : "s"})`);
+  const response = await context.runtime.chat.stream(messages, {
     headers: CORS_HEADERS,
     chatId,
     sessionId: context.getActiveInstance()?.localInstanceId,
     conversationTitle: input?.conversationTitle,
     abortSignal: input?.abortSignal,
+  });
+
+  if (!response.body) {
+    context.addActivity("chat", buildAssistantResponseActivitySummary(context, chatId));
+    return response;
+  }
+
+  let responseStarted = false;
+  const monitoredBody = response.body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        if (!responseStarted) {
+          responseStarted = true;
+          context.addActivity("chat", "Assistant response started");
+        }
+        controller.enqueue(chunk);
+      },
+      flush() {
+        if (!responseStarted) {
+          context.addActivity("chat", "Assistant response started");
+        }
+        context.addActivity("chat", buildAssistantResponseActivitySummary(context, chatId));
+      },
+    }),
+  );
+
+  return new Response(monitoredBody, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: response.headers,
   });
 };
 

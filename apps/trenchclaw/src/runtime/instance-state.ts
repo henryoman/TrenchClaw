@@ -12,23 +12,6 @@ const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
 const INSTANCE_PROFILE_FILE_NAME = "instance.json";
 
-const isPersistedInstanceView = (value: unknown): value is GuiInstanceProfileView => {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-
-  const candidate = value as Partial<GuiInstanceProfileView>;
-  return (
-    typeof candidate.fileName === "string"
-    && typeof candidate.localInstanceId === "string"
-    && typeof candidate.name === "string"
-    && typeof candidate.safetyProfile === "string"
-    && typeof candidate.userPinRequired === "boolean"
-    && typeof candidate.createdAt === "string"
-    && typeof candidate.updatedAt === "string"
-  );
-};
-
 const normalizeInstanceId = (localInstanceId: string): string => {
   const normalized = localInstanceId.trim();
   if (!normalized || !INSTANCE_ID_PATTERN.test(normalized)) {
@@ -55,21 +38,66 @@ const resolveStoredInstanceId = (localInstanceId: string): string | null => {
   return hasStoredInstance(normalized) || hasInstanceDirectory(normalized) ? normalized : null;
 };
 
-const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | null => {
+const toPersistedActiveInstanceId = (value: unknown): string | null => {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const candidate = value as { localInstanceId?: unknown };
+  return typeof candidate.localInstanceId === "string" ? candidate.localInstanceId.trim() : null;
+};
+
+const readStoredInstanceProfileSync = (localInstanceId: string): GuiInstanceProfileView | null => {
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!isPersistedInstanceView(parsed)) {
+    const normalizedInstanceId = normalizeInstanceId(localInstanceId);
+    const profilePath = getInstanceProfileFilePath(normalizedInstanceId);
+    if (!existsSync(profilePath)) {
       return null;
     }
 
-    if (!hasStoredInstance(parsed.localInstanceId)) {
+    const parsed = JSON.parse(readFileSync(profilePath, "utf8")) as {
+      instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
+      runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };
+    };
+    const name = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
+    const parsedInstanceId =
+      typeof parsed.instance?.localInstanceId === "string" ? normalizeInstanceId(parsed.instance.localInstanceId) : "";
+    const safetyProfile =
+      parsed.runtime?.safetyProfile === "safe"
+      || parsed.runtime?.safetyProfile === "dangerous"
+      || parsed.runtime?.safetyProfile === "veryDangerous"
+        ? parsed.runtime.safetyProfile
+        : "dangerous";
+    const createdAt =
+      typeof parsed.runtime?.createdAt === "string" ? parsed.runtime.createdAt : new Date(0).toISOString();
+    const updatedAt = typeof parsed.runtime?.updatedAt === "string" ? parsed.runtime.updatedAt : createdAt;
+
+    if (!name || !parsedInstanceId) {
       return null;
     }
 
     return {
-      ...parsed,
-      localInstanceId: normalizeInstanceId(parsed.localInstanceId),
+      fileName: INSTANCE_PROFILE_FILE_NAME,
+      localInstanceId: parsedInstanceId,
+      name,
+      safetyProfile,
+      userPinRequired: parsed.instance?.userPin !== null && parsed.instance?.userPin !== undefined,
+      createdAt,
+      updatedAt,
     };
+  } catch {
+    return null;
+  }
+};
+
+const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | null => {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    const localInstanceId = toPersistedActiveInstanceId(parsed);
+    if (!localInstanceId) {
+      return null;
+    }
+    return readStoredInstanceProfileSync(localInstanceId);
   } catch {
     return null;
   }
@@ -89,42 +117,7 @@ const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
       return null;
     }
 
-    const fileName = INSTANCE_PROFILE_FILE_NAME;
-    const profilePath = getInstanceProfileFilePath(localInstanceId);
-    if (existsSync(profilePath)) {
-      const content = readFileSync(profilePath, "utf8");
-      const parsed = JSON.parse(content) as {
-        instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
-        runtime?: { safetyProfile?: unknown; createdAt?: unknown; updatedAt?: unknown };
-      };
-
-      const name = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
-      const parsedInstanceId =
-        typeof parsed.instance?.localInstanceId === "string" ? normalizeInstanceId(parsed.instance.localInstanceId) : "";
-      const safetyProfile =
-        parsed.runtime?.safetyProfile === "safe"
-        || parsed.runtime?.safetyProfile === "dangerous"
-        || parsed.runtime?.safetyProfile === "veryDangerous"
-          ? parsed.runtime.safetyProfile
-          : "dangerous";
-      const createdAt =
-        typeof parsed.runtime?.createdAt === "string" ? parsed.runtime.createdAt : new Date(0).toISOString();
-      const updatedAt = typeof parsed.runtime?.updatedAt === "string" ? parsed.runtime.updatedAt : createdAt;
-
-      if (name && parsedInstanceId) {
-        return {
-          fileName,
-          localInstanceId: parsedInstanceId,
-          name,
-          safetyProfile,
-          userPinRequired: parsed.instance?.userPin !== null && parsed.instance?.userPin !== undefined,
-          createdAt,
-          updatedAt,
-        };
-      }
-    }
-
-    return null;
+    return readStoredInstanceProfileSync(localInstanceId);
   } catch {
     return null;
   }
@@ -189,7 +182,6 @@ export const persistActiveInstance = async (instance: GuiInstanceProfileView | n
     ACTIVE_INSTANCE_STATE_FILE,
     `${JSON.stringify(
       {
-        ...instance,
         localInstanceId,
       },
       null,

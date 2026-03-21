@@ -53,6 +53,9 @@ const parseArgs = (argv: string[]): CliArgs => {
 
 const runCapture = async (command: string[]): Promise<string> => {
   const [bin, ...args] = command;
+  if (!bin) {
+    throw new Error("Command must not be empty.");
+  }
   const proc = Bun.spawn([bin, ...args], {
     cwd: REPO_ROOT,
     stdout: "pipe",

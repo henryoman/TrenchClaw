@@ -1,7 +1,12 @@
+import { fileURLToPath } from "node:url";
+
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
+import { buildKnowledgeLookup } from "../../lib/knowledge/knowledge-index";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
+
+const KNOWLEDGE_ROOT = fileURLToPath(new URL("../brain/knowledge/", import.meta.url));
 
 const OPERATOR_KERNEL_PROMPT = [
   "You are TrenchClaw's operator chat assistant.",
@@ -9,7 +14,7 @@ const OPERATOR_KERNEL_PROMPT = [
   "Never invent balances, prices, volume, transactions, or file contents.",
   "Use only enabled operator tools.",
   "For greetings or acknowledgements, reply in one short natural sentence.",
-  "Do not list capabilities, examples, or menus unless the user explicitly asks what you can do.",
+  "Do not list capabilities, examples, or menus in the user-facing answer unless the user explicitly asks what you can do.",
   "Do not mention hidden capabilities or unavailable tools.",
   "Keep answers short and concrete unless the user asks for more.",
 ].join("\n");
@@ -61,6 +66,16 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     useWhen: "the user only wants SOL balances or a quick SOL-only summary",
     avoidWhen: "the user asks about SPL tokens, collectibles, or full wallet contents",
     inputAdvice: "To inspect all active managed wallets, omit `wallet`, `wallets`, `walletGroup`, and `walletNames`. To inspect one group, pass `walletGroup` only. To inspect specific wallets, pass `wallets` or `walletNames`. Never use a wallet-group name like `core-wallets` inside the single-wallet `wallet` field, and never invent synthetic selectors like `all` for whole-group reads.",
+  },
+  listKnowledgeDocs: {
+    useWhen: "you need to discover which repo-authored knowledge doc, deep reference, or skill pack to read before answering",
+    avoidWhen: "you already know the exact knowledge alias to open next or the answer should come from a live runtime tool instead of docs",
+    inputAdvice: "Pass `request.query` for topic search and `request.tier` when you want only `core`, `deep`, `support`, or `skills`. Use `tier = \"skills\"` when you specifically need a skill pack.",
+  },
+  readKnowledgeDoc: {
+    useWhen: "you already know the exact alias for the knowledge doc or skill pack you need to read",
+    avoidWhen: "you do not know the alias yet and should call `listKnowledgeDocs` first, or when a live runtime tool is the higher-authority source",
+    inputAdvice: "Pass `doc` as the alias from `listKnowledgeDocs`, plus `offset` and `limit` only when you need another window of a long doc.",
   },
   queryRuntimeStore: {
     useWhen: "the user asks about runtime state like jobs, conversations, receipts, stored runtime records, or wants the status of a queued wallet scan",
@@ -236,23 +251,40 @@ const renderOperatorToolReference = (
   return lines.join("\n");
 };
 
-const renderOperatorKnowledgeIndex = (): string => [
-  "## Knowledge Index",
-  "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
-  "- use `readKnowledgeDoc` with an alias like `runtime-reference` or `helius-cli-readme` to open one directly",
-  "- use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults",
-  "- use `settings-reference` for settings ownership, load order, and active-instance overrides",
-  "- knowledge files are reference material; live tools, release readiness, and runtime state are higher authority",
-].join("\n");
+const renderOperatorKnowledgeIndex = async (): Promise<string> => {
+  const entries = await buildKnowledgeLookup(KNOWLEDGE_ROOT);
+  const coreAliases = entries
+    .filter((entry) => entry.kind === "core-doc")
+    .map((entry) => `\`${entry.alias}\``)
+    .join(", ");
+  const skillAliases = entries
+    .filter((entry) => entry.kind === "skill-pack")
+    .map((entry) => `\`${entry.alias}\``)
+    .join(", ");
+
+  return [
+    "## Knowledge Index",
+    "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
+    "- use `readKnowledgeDoc` with an alias like `runtime-reference` or `helius-cli-readme` to open one directly",
+    coreAliases ? `- core doc aliases: ${coreAliases}` : "",
+    skillAliases ? `- skill pack aliases: ${skillAliases}` : "",
+    "- use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults",
+    "- use `settings-reference` for settings ownership, load order, and active-instance overrides",
+    "- knowledge files are reference material; live tools, release readiness, and runtime state are higher authority",
+  ]
+    .filter((line) => line.trim().length > 0)
+    .join("\n");
+};
 
 export const buildOperatorChatPrompt = async (input: {
   settings: RuntimeSettings;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
   toolNames: string[];
 }): Promise<string> => {
-  const [walletSummary, liveRuntimeContext] = await Promise.all([
+  const [walletSummary, liveRuntimeContext, knowledgeIndex] = await Promise.all([
     renderRuntimeWalletPromptSummary(),
     renderLiveRuntimeContextSection(),
+    renderOperatorKnowledgeIndex(),
   ]);
 
   return [
@@ -267,7 +299,7 @@ export const buildOperatorChatPrompt = async (input: {
     renderMemeCoinRoutine(),
     renderDexscreenerRoutingPlaybook(),
     renderOperatorToolReference(input.capabilitySnapshot, input.toolNames),
-    renderOperatorKnowledgeIndex(),
+    knowledgeIndex,
     "## Wallet Summary",
     walletSummary,
     [

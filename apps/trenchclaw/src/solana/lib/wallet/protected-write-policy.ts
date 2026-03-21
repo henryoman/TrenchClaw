@@ -7,13 +7,11 @@ import {
 } from "../../../runtime/security/filesystem-manifest";
 import {
   RUNTIME_INSTANCE_ROOT,
-  GENERATED_STATE_ROOT,
   resolveRuntimeContractPath,
 } from "../../../runtime/runtime-paths";
 
 const PROTECTED_WRITE_ROOT_DIRECTORIES = [
   RUNTIME_INSTANCE_ROOT,
-  GENERATED_STATE_ROOT,
 ] as const;
 
 export class ProtectedWriteForbiddenError extends Error {

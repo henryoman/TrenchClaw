@@ -144,7 +144,7 @@ export const createChatController = () => {
   const chat = new Chat({
     transport: new DefaultChatTransport({
       api: toRuntimeUrl(CHAT_API_PATH),
-      fetch: createTimedStreamingFetch(CHAT_STREAM_TIMEOUT_MS),
+      fetch: createTimedStreamingFetch(CHAT_STREAM_TIMEOUT_MS) as unknown as typeof fetch,
       prepareSendMessagesRequest: ({ id, messages, body }) => {
         const chatId = ensureActiveConversationId();
         const activeConversation = state.conversations.find((conversation) => conversation.id === chatId);

@@ -32,3 +32,4 @@ report.*.*.*.*.json
 
 # Local runtime state
 .runtime-state/
+.trenchclaw-generated/

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import process from "node:process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig, type PluginOption } from "vite";
 
 const runtimeUrl =
   process.env.VITE_TRENCHCLAW_RUNTIME_URL ?? process.env.TRENCHCLAW_RUNTIME_URL ?? "http://127.0.0.1:4020";
@@ -24,7 +24,7 @@ const queuePanelEnabled = new Set(["1", "true", "yes", "on"]).has(
 );
 
 export default defineConfig({
-  plugins: [svelte()],
+  plugins: [svelte() as unknown as PluginOption],
   define: {
     __TRENCHCLAW_APP_VERSION__: JSON.stringify(appVersion),
     __TRENCHCLAW_APP_COMMIT__: JSON.stringify(appCommit),

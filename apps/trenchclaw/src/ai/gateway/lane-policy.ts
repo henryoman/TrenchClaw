@@ -4,6 +4,8 @@ import type { GatewayLane, GatewayLanePolicy, GatewayLaneStatus } from "./types"
 const OPERATOR_ACTION_ALLOWLIST = [
   "getManagedWalletContents",
   "getManagedWalletSolBalances",
+  "listKnowledgeDocs",
+  "readKnowledgeDoc",
   "queryRuntimeStore",
   "queryInstanceMemory",
   "getSwapHistory",

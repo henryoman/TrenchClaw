@@ -13,10 +13,6 @@
     {
       "path": ".runtime-state/instances",
       "model": "write"
-    },
-    {
-      "path": ".trenchclaw-generated",
-      "model": "read"
     }
   ]
 }

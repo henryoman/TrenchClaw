@@ -17,9 +17,7 @@ export class WriteScopeViolationError extends Error {
   }
 }
 
-export const RUNTIME_SYSTEM_WRITE_ROOTS = [
-  ".trenchclaw-generated",
-] as const;
+export const RUNTIME_SYSTEM_WRITE_ROOTS: readonly string[] = [];
 
 export const INSTANCE_SYSTEM_WRITE_ROOTS = [
   ".runtime-state/instances",

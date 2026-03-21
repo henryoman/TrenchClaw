@@ -16,6 +16,7 @@ config/.env.*
 
 # App runtime state
 apps/trenchclaw/.runtime-state/
+apps/trenchclaw/.trenchclaw-generated/
 
 # Runtime data (Bun SQLite)
 *.db

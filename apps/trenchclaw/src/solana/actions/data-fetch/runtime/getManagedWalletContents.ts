@@ -1202,7 +1202,7 @@ const filterWalletEntries = (
   entries: ManagedWalletLibraryEntry[],
   input: GetManagedWalletContentsInput,
 ): ManagedWalletLibraryEntry[] => {
-  const requestedNames = input.walletNames ? new Set(input.walletNames) : null;
+  const requestedNames = input.walletNames && input.walletNames.length > 0 ? new Set(input.walletNames) : null;
   return entries
     .filter((entry) => {
       if (input.walletGroup && entry.walletGroup !== input.walletGroup) {

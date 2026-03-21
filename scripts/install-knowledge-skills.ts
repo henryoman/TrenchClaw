@@ -75,6 +75,9 @@ const run = async (): Promise<void> => {
   } else {
     for (let index = 0; index < passthroughArgs.length; index += 1) {
       const arg = passthroughArgs[index];
+      if (!arg) {
+        continue;
+      }
       if (arg === "--dest") {
         index += 1;
         continue;

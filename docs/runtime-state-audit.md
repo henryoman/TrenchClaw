@@ -25,13 +25,13 @@ These are the paths a brand new local install needs. Some should be created eage
 Must exist immediately or during first runtime boot:
 
 - `.runtime-state/instances/`
-- `.trenchclaw-generated/`
+- `.runtime-state/instances/<id>/cache/generated/`
 
 Files created eagerly or on first access:
 
 - `.runtime-state/instances/active-instance.json`
-- `.trenchclaw-generated/workspace-context.md`
-- `.trenchclaw-generated/knowledge-index.md`
+- `.runtime-state/instances/<id>/cache/generated/workspace-context.md`
+- `.runtime-state/instances/<id>/cache/generated/knowledge-index.md`
 
 ### Current Per-instance
 
@@ -56,6 +56,8 @@ For a newly created or first-signed-in instance `NN`, the runtime should ensure:
 - `.runtime-state/instances/NN/tmp/`
 - `.runtime-state/instances/NN/tool-bin/`
 
+Instance numbering should begin at `00` for the first real created instance.
+
 Created lazily later:
 
 - `.runtime-state/instances/NN/data/runtime.db`
@@ -69,7 +71,7 @@ Created lazily later:
 ### Runtime-global
 
 - `.runtime-state/instances/active-instance.json`
-- `.trenchclaw-generated/`
+- `.runtime-state/instances/<id>/cache/generated/`
 
 ### Per-instance
 
@@ -94,20 +96,20 @@ Created lazily later:
 
 ### Mixed behavior worth revisiting later
 
-- Generated prompt/context artifacts remain shared across instances.
+- The repo still contains a tracked seed layout under `.runtime/`, while live mutable state is instance-first under `.runtime-state/instances/<id>/`.
 
 ## Rule Of Thumb
 
 Use this ownership rule unless there is a strong reason not to:
 
-- Put infrastructure, cache, and derived artifacts in runtime-global state.
+- Keep only routing/selection metadata in runtime-global state.
 - Put identity, spend authority, strategy behavior, and operator-specific state in per-instance state.
 
 That means:
 
 ### Keep shared
 
-- generated prompt/context artifacts
+- `instances/active-instance.json` as the active selector only
 - knowledge manifests and default knowledge files
 - release metadata and bundled readonly assets
 

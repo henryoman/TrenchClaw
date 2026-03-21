@@ -5,13 +5,17 @@ import { Database } from "bun:sqlite";
 
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import { CORE_APP_ROOT, GENERATED_STATE_ROOT } from "../../runtime/runtime-paths";
-import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
-import { resolveInstanceRuntimeDbPath } from "../../runtime/instance-paths";
+import { CORE_APP_ROOT } from "../../runtime/runtime-paths";
+import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
+import {
+  resolveInstanceGeneratedRoot,
+  resolveInstanceKnowledgeIndexPath,
+  resolveInstanceRuntimeDbPath,
+  resolveInstanceWorkspaceContextPath,
+} from "../../runtime/instance-paths";
 
 const APP_ROOT_DIR = CORE_APP_ROOT;
 const CONTEXT_ROOT_LABEL = existsSync(join(APP_ROOT_DIR, "package.json")) ? "apps/trenchclaw" : "core";
-const PROTECTED_CONTEXT_FILE = `${GENERATED_STATE_ROOT}/workspace-context.md`;
 const SQLITE_SQL_SNAPSHOT_FILE = join(APP_ROOT_DIR, "..", "..", "docs", "storage-schema.snapshot.sql");
 const GUI_TRANSPORT_FILE = join(APP_ROOT_DIR, "src/runtime/gui-transport/router.ts");
 const CONTEXT_DB_PATH_ENV = "TRENCHCLAW_CONTEXT_DB_PATH";
@@ -120,7 +124,7 @@ const renderImportantWorkspacePaths = (): string =>
     .filter((relativePath) => existsSync(join(APP_ROOT_DIR, relativePath)))
     .map((relativePath) => `- \`${CONTEXT_ROOT_LABEL}/${relativePath}/\``)
     .concat([
-      "- `.trenchclaw-generated/knowledge-index.md`",
+      "- `.runtime-state/instances/<id>/cache/generated/knowledge-index.md`",
       "- `.runtime-state/instances/<id>/settings/ai.json`",
       "- `.runtime-state/instances/<id>/settings/settings.json`",
       "- `.runtime-state/instances/<id>/data/runtime.db`",
@@ -141,6 +145,12 @@ const getGuiApiRoutesTable = async (): Promise<string> => {
 };
 
 export const refreshWorkspaceContext = async (): Promise<string[]> => {
+  const activeInstanceId = resolveRequiredActiveInstanceIdSync(
+    "No active instance selected. Workspace context snapshots are instance-scoped.",
+  );
+  const generatedRoot = resolveInstanceGeneratedRoot(activeInstanceId);
+  const protectedContextFile = resolveInstanceWorkspaceContextPath(activeInstanceId);
+  const knowledgeIndexPath = resolveInstanceKnowledgeIndexPath(activeInstanceId);
   const generatedAt = new Date().toISOString();
   const sqliteSchemaSnapshot = getSqliteSchemaSnapshot();
   const canonicalSchemaSql = getCanonicalSchemaSqlDump();
@@ -159,7 +169,7 @@ This file is generated. Refresh with:
 ## Workspace Scope
 This file intentionally omits the full directory tree to avoid prompt bloat.
 
-Use \`.trenchclaw-generated/knowledge-index.md\` for documentation inventory and workspace tools for exact path discovery.
+Use \`${knowledgeIndexPath}\` for documentation inventory and workspace tools for exact path discovery.
 
 Important paths:
 ${importantWorkspacePaths}
@@ -193,14 +203,14 @@ ${DEFAULT_LIVE_DB_PATH_CANDIDATES.map((pathCandidate) => `- \`${pathCandidate}\`
 }
 `;
 
-    await mkdir(dirname(PROTECTED_CONTEXT_FILE), { recursive: true });
+  await mkdir(dirname(protectedContextFile), { recursive: true });
   assertWritePathInRoots({
-    targetPath: PROTECTED_CONTEXT_FILE,
-    roots: [".trenchclaw-generated"],
+    targetPath: protectedContextFile,
+    roots: [generatedRoot],
     scope: "system-context-refresh",
     operation: "write workspace context snapshot",
   });
-  await writeFile(PROTECTED_CONTEXT_FILE, markdown, "utf8");
+  await writeFile(protectedContextFile, markdown, "utf8");
   const docsRoot = dirname(SQLITE_SQL_SNAPSHOT_FILE);
   if (existsSync(docsRoot)) {
     await mkdir(docsRoot, { recursive: true });
@@ -215,10 +225,10 @@ ${DEFAULT_LIVE_DB_PATH_CANDIDATES.map((pathCandidate) => `- \`${pathCandidate}\`
 
   return existsSync(docsRoot)
     ? [
-        `Workspace context refreshed: ${PROTECTED_CONTEXT_FILE}`,
+        `Workspace context refreshed: ${protectedContextFile}`,
         `Canonical SQLite SQL snapshot written: ${SQLITE_SQL_SNAPSHOT_FILE}`,
       ]
-    : [`Workspace context refreshed: ${PROTECTED_CONTEXT_FILE}`];
+    : [`Workspace context refreshed: ${protectedContextFile}`];
 };
 
 if (import.meta.main) {

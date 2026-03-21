@@ -6,6 +6,7 @@
 import {
   airdropFactory,
   appendTransactionMessageInstructions,
+  assertIsTransactionWithBlockhashLifetime,
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
@@ -50,6 +51,7 @@ const transactionMessage = pipe(
 );
 
 const signedTransaction = await signTransactionMessageWithSigners(transactionMessage);
+assertIsTransactionWithBlockhashLifetime(signedTransaction);
 await sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions })(signedTransaction, {
   commitment: "confirmed",
 });

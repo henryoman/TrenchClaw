@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,7 +12,6 @@ const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const GITIGNORE_MARKER_START = "# >>> trenchclaw dev runtime >>>";
 const GITIGNORE_MARKER_END = "# <<< trenchclaw dev runtime <<<";
 const DEFAULT_DEV_RUNTIME_ROOT = path.join(os.homedir(), "trenchclaw-dev-runtime");
-const DEFAULT_DEV_GENERATED_ROOT = path.join(os.homedir(), "trenchclaw-dev-generated");
 const DEFAULT_INSTANCE_NAME = "default";
 const LEGACY_AUTO_INSTANCE_NAME_PATTERN = /^dev[- ](\d{2})$/u;
 
@@ -171,14 +170,15 @@ const writeRuntimeReadme = async (runtimeRoot: string, generatedRoot: string, in
     "",
     "```bash",
     `export TRENCHCLAW_RUNTIME_STATE_ROOT="${runtimeRoot}"`,
-    `export TRENCHCLAW_GENERATED_ROOT="${generatedRoot}"`,
     "bun run scripts/dev-bootstrap.ts",
     "```",
     "",
     `Active developer instance: ${instanceId}`,
+    `Generated artifacts: ${generatedRoot}`,
     "",
-    "The runtime format matches the shipped product layout under instances/<id>/...",
-    "but this root is intentionally separate from the main repository.",
+    "The runtime format matches the shipped product layout under instances/<id>/...,",
+    "including generated prompt-support artifacts under instances/<id>/cache/generated/.",
+    "This root is intentionally separate from the main repository.",
   ].join("\n");
   await writeFile(readmePath, `${content}\n`, "utf8");
 };
@@ -191,6 +191,9 @@ const templateInstancePath = (...segments: string[]): string =>
 
 const runtimeInstancePath = (runtimeRoot: string, instanceId: string, ...segments: string[]): string =>
   path.join(runtimeRoot, "instances", instanceId, ...segments);
+
+const resolveDefaultGeneratedRoot = (runtimeRoot: string, instanceId: string): string =>
+  runtimeInstancePath(runtimeRoot, instanceId, "cache", "generated");
 
 const toDefaultInstanceName = (instanceId: string): string =>
   instanceId === TEMPLATE_INSTANCE_ID ? DEFAULT_INSTANCE_NAME : `instance-${instanceId}`;
@@ -233,34 +236,44 @@ const migrateLegacyInstanceProfileName = async (
   }
 };
 
+const syncTemplateInstanceMissingEntries = async (runtimeRoot: string, instanceId: string): Promise<void> => {
+  const sourceRoot = templateInstancePath();
+  const destinationRoot = runtimeInstancePath(runtimeRoot, instanceId);
+
+  const walk = async (sourcePath: string, destinationPath: string): Promise<void> => {
+    const entries = await readdir(sourcePath, { withFileTypes: true });
+    for (const entry of entries) {
+      const nextSourcePath = path.join(sourcePath, entry.name);
+      const nextDestinationPath = path.join(destinationPath, entry.name);
+      if (entry.isDirectory()) {
+        await ensureDirectory(nextDestinationPath);
+        await walk(nextSourcePath, nextDestinationPath);
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      if (path.relative(sourceRoot, nextSourcePath) === "instance.json") {
+        continue;
+      }
+
+      await copyFileIfMissing(nextSourcePath, nextDestinationPath);
+    }
+  };
+
+  await ensureDirectory(destinationRoot);
+  await walk(sourceRoot, destinationRoot);
+};
+
 const ensureDeveloperInstanceLayout = async (
   runtimeRoot: string,
   instanceId: string,
   instanceName: string,
 ): Promise<string> => {
   const instanceRoot = runtimeInstancePath(runtimeRoot, instanceId);
-  const directories = [
-    runtimeInstancePath(runtimeRoot, instanceId, "settings"),
-    runtimeInstancePath(runtimeRoot, instanceId, "secrets"),
-    runtimeInstancePath(runtimeRoot, instanceId, "data"),
-    runtimeInstancePath(runtimeRoot, instanceId, "logs", "live"),
-    runtimeInstancePath(runtimeRoot, instanceId, "logs", "sessions"),
-    runtimeInstancePath(runtimeRoot, instanceId, "logs", "summaries"),
-    runtimeInstancePath(runtimeRoot, instanceId, "logs", "system"),
-    runtimeInstancePath(runtimeRoot, instanceId, "cache", "memory"),
-    runtimeInstancePath(runtimeRoot, instanceId, "keypairs"),
-    runtimeInstancePath(runtimeRoot, instanceId, "workspace", "strategies"),
-    runtimeInstancePath(runtimeRoot, instanceId, "workspace", "configs"),
-    runtimeInstancePath(runtimeRoot, instanceId, "workspace", "typescript"),
-    runtimeInstancePath(runtimeRoot, instanceId, "workspace", "notes"),
-    runtimeInstancePath(runtimeRoot, instanceId, "workspace", "scratch"),
-    runtimeInstancePath(runtimeRoot, instanceId, "workspace", "output"),
-    runtimeInstancePath(runtimeRoot, instanceId, "workspace", "routines"),
-    runtimeInstancePath(runtimeRoot, instanceId, "shell-home"),
-    runtimeInstancePath(runtimeRoot, instanceId, "tmp"),
-    runtimeInstancePath(runtimeRoot, instanceId, "tool-bin"),
-  ];
-  await Promise.all(directories.map(ensureDirectory));
+  await syncTemplateInstanceMissingEntries(runtimeRoot, instanceId);
 
   const templateInstance = JSON.parse(await readFile(templateInstancePath("instance.json"), "utf8")) as {
     instance?: { name?: string; localInstanceId?: string };
@@ -277,13 +290,6 @@ const ensureDeveloperInstanceLayout = async (
   };
   await writeJsonIfMissing(instanceProfilePath, nextInstance);
   await migrateLegacyInstanceProfileName(instanceProfilePath, instanceId, instanceName);
-
-  await Promise.all([
-    copyFileIfMissing(templateInstancePath("settings", "ai.json"), runtimeInstancePath(runtimeRoot, instanceId, "settings", "ai.json")),
-    copyFileIfMissing(templateInstancePath("settings", "settings.json"), runtimeInstancePath(runtimeRoot, instanceId, "settings", "settings.json")),
-    copyFileIfMissing(templateInstancePath("settings", "trading.json"), runtimeInstancePath(runtimeRoot, instanceId, "settings", "trading.json")),
-    copyFileIfMissing(templateInstancePath("secrets", "vault.json"), runtimeInstancePath(runtimeRoot, instanceId, "secrets", "vault.json")),
-  ]);
 
   return instanceRoot;
 };
@@ -302,7 +308,7 @@ export const getDefaultDeveloperRuntimeRoots = (): {
   generatedRoot: string;
 } => ({
   runtimeRoot: DEFAULT_DEV_RUNTIME_ROOT,
-  generatedRoot: DEFAULT_DEV_GENERATED_ROOT,
+  generatedRoot: resolveDefaultGeneratedRoot(DEFAULT_DEV_RUNTIME_ROOT, TEMPLATE_INSTANCE_ID),
 });
 
 export const resolveDeveloperBootstrapRoots = (input: {
@@ -315,16 +321,27 @@ export const resolveDeveloperBootstrapRoots = (input: {
 } => {
   const defaults = getDefaultDeveloperRuntimeRoots();
   const env = input.env ?? process.env;
+  const runtimeRoot = resolveAbsolutePath(
+    input.runtimeRoot?.trim() || env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim() || defaults.runtimeRoot,
+    "runtime root",
+  );
   return {
-    runtimeRoot: resolveAbsolutePath(input.runtimeRoot?.trim() || env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim() || defaults.runtimeRoot, "runtime root"),
-    generatedRoot: resolveAbsolutePath(input.generatedRoot?.trim() || env.TRENCHCLAW_GENERATED_ROOT?.trim() || defaults.generatedRoot, "generated root"),
+    runtimeRoot,
+    generatedRoot: resolveAbsolutePath(
+      input.generatedRoot?.trim()
+      || resolveDefaultGeneratedRoot(runtimeRoot, TEMPLATE_INSTANCE_ID),
+      "generated root",
+    ),
   };
 };
 
 export const initializeDeveloperRuntime = async (input: DeveloperRuntimeInitInput = {}): Promise<DeveloperRuntimeInitResult> => {
   const runtimeRoot = resolveAbsolutePath(input.runtimeRoot ?? DEFAULT_DEV_RUNTIME_ROOT, "runtime root");
-  const generatedRoot = resolveAbsolutePath(input.generatedRoot ?? DEFAULT_DEV_GENERATED_ROOT, "generated root");
   const instanceId = normalizeInstanceId(input.instanceId);
+  const generatedRoot = resolveAbsolutePath(
+    input.generatedRoot ?? resolveDefaultGeneratedRoot(runtimeRoot, instanceId),
+    "generated root",
+  );
   const instanceName = input.instanceName?.trim() || toDefaultInstanceName(instanceId);
 
   await Promise.all([ensureDirectory(runtimeRoot), ensureDirectory(path.join(runtimeRoot, "instances")), ensureDirectory(generatedRoot)]);

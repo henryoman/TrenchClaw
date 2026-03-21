@@ -409,7 +409,7 @@ bun run start
 `bun run start` が行うこと:
 
 - 専用 runner（`apps/runner`）を起動し、そこからコアランタイムプロセス（`apps/trenchclaw runtime:start`）を起動
-- 起動時に不足している `.trenchclaw-generated/` アーティファクトを再生成し、`TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1` でフル更新を強制可能
+- 起動時に不足している `.runtime-state/instances/<id>/cache/generated/` 配下のインスタンス別アーティファクトを再生成し、`TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1` でフル更新を強制可能
 - localhost 上でランタイム API を起動
 - 静的な `apps/frontends/gui/dist` から GUI を配信
 - GUI サーバーから runtime server へ `/api/*` をプロキシ

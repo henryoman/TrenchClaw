@@ -113,7 +113,7 @@ describe("instance discovery", () => {
     expect(result).toBe("00");
   });
 
-  test("ignores directory-only instance roots and creates the first persisted profile at 01", async () => {
+  test("ignores directory-only instance roots and creates the first persisted profile at 00", async () => {
     const runtimeRoot = await createRuntimeRoot();
     await createDirectoryOnlyInstance(runtimeRoot, "01");
 
@@ -143,10 +143,10 @@ describe("instance discovery", () => {
     });
 
     expect(result.listed.instances).toHaveLength(0);
-    expect(result.created.instance.localInstanceId).toBe("01");
-    expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
-    expect(await Bun.file(path.join(runtimeRoot, "instances/01/secrets/vault.json")).exists()).toBe(true);
-    expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
+    expect(result.created.instance.localInstanceId).toBe("00");
+    expect(await Bun.file(path.join(runtimeRoot, "instances/00/settings/trading.json")).exists()).toBe(true);
+    expect(await Bun.file(path.join(runtimeRoot, "instances/00/secrets/vault.json")).exists()).toBe(true);
+    expect((await stat(path.join(runtimeRoot, "instances/00/keypairs"))).isDirectory()).toBe(true);
   });
 
   test("lists and signs into a persisted instance profile", async () => {
@@ -281,13 +281,7 @@ describe("instance discovery", () => {
     await writeFile(
       path.join(runtimeRoot, "instances/active-instance.json"),
       `${JSON.stringify({
-        fileName: "instance.json",
         localInstanceId: "01",
-        name: "one",
-        safetyProfile: "dangerous",
-        userPinRequired: false,
-        createdAt: "2026-03-11T00:00:00.000Z",
-        updatedAt: "2026-03-11T00:00:00.000Z",
       })}\n`,
       "utf8",
     );

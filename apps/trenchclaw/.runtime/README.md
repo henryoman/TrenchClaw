@@ -1,13 +1,32 @@
 # Runtime Contract
 
-This directory is the repo-tracked template for runtime state.
+This directory is the repo-tracked runtime contract and seed template.
+
+Contract map:
+
+- `README.md` defines the runtime roots, layout, and repo boundaries.
+- `instances/<id>/WAKEUP.md` defines runtime boot, restart, crash-recovery, and resume semantics for that instance.
+
+Root model:
+
+- `.runtime/` is tracked repo content. It is not live mutable runtime state.
+- `.runtime/instances/01/` is the tracked seed instance template used by developer-runtime initialization.
+- `.runtime-state/instances/<id>/` is the live mutable runtime state when using the repo-local runtime root.
+- An external runtime root such as `~/trenchclaw-dev-runtime` uses the same `instances/<id>/...` layout, just outside the repo.
+- Generated prompt-support artifacts are instance-scoped under `instances/<id>/cache/generated/`.
+
+Current shipping behavior:
+
+- Local dev bootstrap reads tracked seed/template content from `.runtime/`.
+- Runtime boot reads and writes mutable instance state under `.runtime-state/instances/<id>/...` or the external root selected by `TRENCHCLAW_RUNTIME_STATE_ROOT`, including generated snapshots under `cache/generated/`.
+- Packaged releases currently do not ship `.runtime/` as the live runtime root. Mutable runtime state is created on first run under `~/.trenchclaw` by default or under `TRENCHCLAW_RUNTIME_STATE_ROOT`.
 
 Rules:
 
 - `.runtime/` is documentation and contract only.
 - Runtime code must never write into `.runtime/`.
 - Mutable runtime state lives under `.runtime-state/instances/<id>/`.
-- Generated prompt-support artifacts live under `.trenchclaw-generated/`.
+- Generated prompt-support artifacts live under `.runtime-state/instances/<id>/cache/generated/`.
 - The only cross-instance mutable file is `.runtime-state/instances/active-instance.json`.
 - Append-only logs use `.jsonl`.
 - Session summary snapshots use `.json`.
@@ -15,8 +34,8 @@ Rules:
 Developer workflow notes:
 
 - `bun run dev` defaults to a persistent external runtime root at `~/trenchclaw-dev-runtime`.
-- `bun run dev` defaults to a persistent external generated root at `~/trenchclaw-dev-generated`.
-- Those external roots are for local development and tester state, not for committed repo data.
+- Generated prompt-support artifacts default to the active instance's `cache/generated/` directory inside that runtime root.
+- That external runtime root is for local development and tester state, not for committed repo data.
 - Personal vaults, keypairs, databases, logs, caches, and generated artifacts must stay outside the repo.
 - Tests should use temporary runtime roots, not the persistent developer runtime.
 - Agents and contributors should treat `.runtime/` as the source-of-truth contract and the external runtime root as mutable local state.
@@ -28,6 +47,7 @@ Tracked instance layout:
   instances/
     active-instance.json
     01/
+      WAKEUP.md
       instance.json
       settings/
         ai.json
@@ -43,6 +63,7 @@ Tracked instance layout:
         system/
       cache/
         memory/
+        generated/
       keypairs/
       workspace/
         strategies/
@@ -56,3 +77,8 @@ Tracked instance layout:
       tmp/
       tool-bin/
 ```
+
+Important distinction:
+
+- `.runtime/instances/01/` is a tracked seed instance, not an active runtime instance.
+- The active runtime instance lives under `.runtime-state/instances/<id>/` or the configured external runtime root.

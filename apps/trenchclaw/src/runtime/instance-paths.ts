@@ -45,6 +45,15 @@ export const resolveInstanceCacheRoot = (instanceId: string): string =>
 export const resolveInstanceMemoryRoot = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "cache", "memory");
 
+export const resolveInstanceGeneratedRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "cache", "generated");
+
+export const resolveInstanceWorkspaceContextPath = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "cache", "generated", "workspace-context.md");
+
+export const resolveInstanceKnowledgeIndexPath = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "cache", "generated", "knowledge-index.md");
+
 export const resolveInstanceMemoryLongTermFilePath = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "cache", "memory", "MEMORY.md");
 

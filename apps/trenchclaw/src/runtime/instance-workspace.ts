@@ -2,16 +2,9 @@ import path from "node:path";
 
 import { resolveCurrentActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
+import { INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES } from "./instance-layout-schema";
 
-export const INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES = [
-  "strategies",
-  "configs",
-  "typescript",
-  "notes",
-  "scratch",
-  "output",
-  "routines",
-] as const;
+export { INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES } from "./instance-layout-schema";
 
 export const resolveInstanceWorkspaceRoot = (instanceId: string): string => {
   const workspaceRoot = path.join(resolveInstanceDirectoryPath(instanceId), "workspace");

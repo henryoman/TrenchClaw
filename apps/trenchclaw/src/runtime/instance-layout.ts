@@ -6,40 +6,13 @@ import { ensureCompatibilitySettingsFileExists } from "../ai/llm/user-settings-l
 import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
 import {
   resolveInstanceAiSettingsPath,
-  resolveInstanceCacheRoot,
-  resolveInstanceDataRoot,
-  resolveInstanceLiveLogsRoot,
-  resolveInstanceMemoryRoot,
-  resolveInstanceSecretsRoot,
-  resolveInstanceSessionsRoot,
-  resolveInstanceShellHomeRoot,
-  resolveInstanceSummariesRoot,
-  resolveInstanceSystemLogsRoot,
   resolveInstanceTradingSettingsPath,
-  resolveInstanceTmpRoot,
-  resolveInstanceToolBinRoot,
   resolveInstanceCompatibilitySettingsPath,
 } from "./instance-paths";
-import {
-  INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
-  resolveInstanceWorkspaceRoot,
-} from "./instance-workspace";
 import { writeInstanceTradingSettings } from "./load/trading-settings";
 import { resolveInstanceDirectoryPath } from "./instance-state";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
-
-const INSTANCE_LAYOUT_DIRECTORIES = [
-  "secrets",
-  "data",
-  "logs",
-  "cache",
-  "keypairs",
-  "settings",
-  "workspace",
-  "shell-home",
-  "tmp",
-  "tool-bin",
-] as const;
+import { INSTANCE_LAYOUT_DIRECTORY_PATHS } from "./instance-layout-schema";
 
 export interface EnsuredInstanceLayout {
   instanceRoot: string;
@@ -61,42 +34,9 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
   };
 
   const createdDirectories = (await Promise.all(
-    INSTANCE_LAYOUT_DIRECTORIES.map(async (directoryName) => {
-      const directoryPath = path.join(instanceRoot, directoryName);
-      assertInstanceSystemWritePath(directoryPath, `initialize instance ${directoryName} directory`);
-      const existed = await directoryExists(directoryPath);
-      await mkdir(directoryPath, { recursive: true });
-      return existed ? null : directoryPath;
-    }),
-  )).filter((directoryPath): directoryPath is string => directoryPath != null);
-
-  const workspaceRoot = resolveInstanceWorkspaceRoot(instanceId);
-  const createdWorkspaceDirectories = (await Promise.all(
-    INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES.map(async (directoryName) => {
-      const directoryPath = path.join(workspaceRoot, directoryName);
-      assertInstanceSystemWritePath(directoryPath, `initialize instance workspace ${directoryName} directory`);
-      const existed = await directoryExists(directoryPath);
-      await mkdir(directoryPath, { recursive: true });
-      return existed ? null : directoryPath;
-    }),
-  )).filter((directoryPath): directoryPath is string => directoryPath != null);
-
-  const nestedInstanceDirectories = [
-    resolveInstanceSecretsRoot(instanceId),
-    resolveInstanceDataRoot(instanceId),
-    resolveInstanceLiveLogsRoot(instanceId),
-    resolveInstanceSessionsRoot(instanceId),
-    resolveInstanceSummariesRoot(instanceId),
-    resolveInstanceSystemLogsRoot(instanceId),
-    resolveInstanceMemoryRoot(instanceId),
-    resolveInstanceCacheRoot(instanceId),
-    resolveInstanceShellHomeRoot(instanceId),
-    resolveInstanceTmpRoot(instanceId),
-    resolveInstanceToolBinRoot(instanceId),
-  ];
-  const createdNestedDirectories = (await Promise.all(
-    nestedInstanceDirectories.map(async (directoryPath) => {
-      assertInstanceSystemWritePath(directoryPath, "initialize nested instance directory");
+    INSTANCE_LAYOUT_DIRECTORY_PATHS.map(async (relativePath) => {
+      const directoryPath = path.join(instanceRoot, relativePath);
+      assertInstanceSystemWritePath(directoryPath, `initialize instance directory ${relativePath}`);
       const existed = await directoryExists(directoryPath);
       await mkdir(directoryPath, { recursive: true });
       return existed ? null : directoryPath;
@@ -132,7 +72,7 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
 
   return {
     instanceRoot,
-    createdDirectories: [...createdDirectories, ...createdWorkspaceDirectories, ...createdNestedDirectories],
+    createdDirectories,
     createdFiles,
   };
 };

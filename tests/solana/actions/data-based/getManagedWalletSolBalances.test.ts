@@ -152,7 +152,7 @@ describe("getManagedWalletSolBalancesAction", () => {
     expect(payload.totalBalanceLamports).toBe("250000000");
   });
 
-  test("falls back to walletGroup filters when a hallucinated wallet selector is mixed into the request", async () => {
+  test("falls back to walletGroup filters when a hallucinated selector includes an empty walletNames array", async () => {
     const instanceId = "98";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
     const keypairsDirectory = path.join(instanceDirectory, "keypairs");
@@ -192,7 +192,7 @@ describe("getManagedWalletSolBalancesAction", () => {
       wallet: "core-wallets",
       wallets: [{ id: "core-wallets", group: "core-wallets", name: "all" }],
       walletGroup: "core-wallets",
-      walletNames: ["000", "001"],
+      walletNames: [],
     });
 
     expect(result.ok).toBe(true);

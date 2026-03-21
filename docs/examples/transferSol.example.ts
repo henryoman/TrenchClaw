@@ -3,8 +3,6 @@
  * This file is intentionally not part of `src/**` so it does not affect production typechecks.
  */
 
-import { createLogger } from "@solana/example-utils/createLogger.js";
-import pressAnyKeyPrompt from "@solana/example-utils/pressAnyKeyPrompt.js";
 import {
   address,
   appendTransactionMessageInstruction,
@@ -26,7 +24,12 @@ import {
 } from "@solana/kit";
 import { getSystemErrorMessage, getTransferSolInstruction, isSystemError } from "@solana-program/system";
 
-const log = createLogger("Transfer");
+const log = {
+  error: (message: string, detail?: string): void => {
+    console.error(message, detail ?? "");
+  },
+};
+const pressAnyKeyPrompt = async (_message: string): Promise<void> => {};
 
 const SOURCE_ACCOUNT_SIGNER = await createKeyPairSignerFromBytes(
   new Uint8Array(

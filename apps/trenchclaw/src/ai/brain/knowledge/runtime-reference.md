@@ -34,14 +34,13 @@ This file explains the current runtime shape in the smallest possible form.
 
 The repo tracks the intended layout under `.runtime/`.
 
-The runtime writes mutable state to `.runtime-state/instances/` and generated prompt-support artifacts to `.trenchclaw-generated/`.
+The runtime writes mutable state to `.runtime-state/instances/`, including per-instance generated prompt-support artifacts under `cache/generated/`.
 
-For local development, `bun run dev` defaults those roots to persistent external directories:
+For local development, `bun run dev` defaults to a persistent external runtime root:
 
 - `~/trenchclaw-dev-runtime`
-- `~/trenchclaw-dev-generated`
 
-Those external roots are the preferred dev/test manual workflow because they preserve real per-instance behavior without putting personal state in the repo.
+That external root is the preferred dev/test manual workflow because it preserves real per-instance behavior without putting personal state in the repo.
 
 For packaged releases, the shipped bundle is readonly app content only. Mutable runtime state is created on first run under `~/.trenchclaw` by default or under the absolute path set through `TRENCHCLAW_RUNTIME_STATE_ROOT`.
 
@@ -65,7 +64,7 @@ The bundle must not include developer-local or user-personal state such as:
 Important directories:
 
 - `.runtime-state/instances/active-instance.json`
-  - selected instance pointer
+  - selected instance pointer only, currently `{ "localInstanceId": "NN" }`
 
 - `.runtime-state/instances/<id>/`
   - `instance.json`
@@ -84,17 +83,19 @@ Important directories:
   - `keypairs/`
   - `workspace/`
 
-- `.trenchclaw-generated/`
+- `.runtime-state/instances/<id>/cache/generated/`
   - `workspace-context.md`
   - `knowledge-index.md`
 
 ## Active Instance Rules
 
 - Active instance selection comes from `.runtime-state/instances/active-instance.json`
+- `active-instance.json` is a selector, not a cached copy of the whole profile
 - Instance identity comes from `.runtime-state/instances/<id>/instance.json`
 - Display name comes from `instance.name`
 - There is no legacy flat instance file format
 - There is no fallback name derived from directory names
+- New GUI-created instances allocate from `00`, then `01`, `02`, and so on
 
 ## Model Operating Rule
 
