@@ -9,6 +9,7 @@ import type {
   GuiUpsertSecretRequest,
 } from "@trenchclaw/types";
 import { safeValidateUIMessages, type UIMessage } from "ai";
+import type { GatewayLane } from "../../ai/gateway";
 import { createChatMessageId } from "../../ai/runtime/types/ids";
 import { tradingPreferencesSchema } from "../load/trading-settings";
 import { isRecord } from "../object-utils";
@@ -22,7 +23,16 @@ const toUserMessage = (text: string): UIMessage => ({
 
 export const parseUiChatRequest = async (
   request: Request,
-): Promise<{ messages: UIMessage[]; chatId?: string; conversationTitle?: string; metadata?: Record<string, unknown> } | null> => {
+): Promise<{
+  messages: UIMessage[];
+  chatId?: string;
+  conversationTitle?: string;
+  lane?: GatewayLane;
+  metadata?: Record<string, unknown>;
+} | null> => {
+  const toGatewayLane = (value: unknown): GatewayLane | undefined =>
+    value === "operator-chat" || value === "workspace-agent" || value === "background-summary" ? value : undefined;
+
   const toSafeTextParts = (value: unknown): UIMessage["parts"] => {
     if (!Array.isArray(value)) {
       return [];
@@ -148,6 +158,7 @@ export const parseUiChatRequest = async (
           : undefined;
     const metadata =
       isRecord(body.metadata) ? body.metadata : isRecord(payload.metadata) ? payload.metadata : undefined;
+    const lane = toGatewayLane(body.lane) ?? toGatewayLane(payload.lane) ?? toGatewayLane(metadata?.lane);
     const validation = await safeValidateUIMessages({
       messages,
     });
@@ -159,6 +170,7 @@ export const parseUiChatRequest = async (
       messages: validation.data,
       chatId,
       conversationTitle,
+      lane,
       metadata,
     };
   } catch {

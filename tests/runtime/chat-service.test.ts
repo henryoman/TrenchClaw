@@ -1100,7 +1100,75 @@ describe("RuntimeChatService", () => {
     expect(seenToolNames).toEqual(["enabledAction"]);
   });
 
-  test("filters operator-chat tools through the gateway allowlist and excludes workspace tools", async () => {
+  test("forces explicit named tool use only on the first model step", async () => {
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
+    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+      actions: [],
+      workspaceTools: [],
+      comingSoonFeatures: [],
+      modelTools: [
+        {
+          kind: "action",
+          name: "readKnowledgeDoc",
+          description: "read knowledge doc",
+          purpose: "read knowledge doc",
+          routingHint: "read knowledge doc",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { doc: "runtime-reference" },
+          toolDescription: "read knowledge doc",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+      ],
+    };
+
+    let firstStepConfig: Record<string, unknown> | undefined;
+    let secondStepConfig: Record<string, unknown> | undefined;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry: new ActionRegistry(),
+        eventBus,
+        stateStore,
+        capabilitySnapshot,
+      },
+      {
+        convertToModelMessages: async () => [],
+        streamText: ((args: {
+          prepareStep?: (input: { stepNumber: number }) => Record<string, unknown> | undefined;
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+        }) => {
+          firstStepConfig = args.prepareStep?.({ stepNumber: 1 });
+          secondStepConfig = args.prepareStep?.({ stepNumber: 2 });
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([
+      {
+        id: "user-force-tool-1",
+        role: "user",
+        parts: [{ type: "text", text: "Use readKnowledgeDoc to open runtime-reference." }],
+      },
+    ]);
+
+    expect(firstStepConfig).toEqual({
+      toolChoice: { type: "tool", toolName: "readKnowledgeDoc" },
+      activeTools: ["readKnowledgeDoc"],
+    });
+    expect(secondStepConfig).toEqual({ toolChoice: "auto" });
+  });
+
+  test("filters operator-chat tools through the gateway allowlist and keeps read-only workspace tools", async () => {
     const settings = await loadRuntimeSettings("dangerous");
     const endpoints = resolvePrimaryRuntimeEndpoints(settings);
     const eventBus = new InMemoryRuntimeEventBus();
@@ -1196,6 +1264,20 @@ describe("RuntimeChatService", () => {
         },
         {
           kind: "workspace-tool",
+          name: WORKSPACE_BASH_TOOL_NAME,
+          description: "workspace bash",
+          purpose: "workspace bash",
+          routingHint: "workspace bash",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { command: "pwd" },
+          toolDescription: "workspace bash",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+        {
+          kind: "workspace-tool",
           name: WORKSPACE_READ_FILE_TOOL_NAME,
           description: "workspace read",
           purpose: "workspace read",
@@ -1253,6 +1335,8 @@ describe("RuntimeChatService", () => {
       "queryRuntimeStore",
       "readKnowledgeDoc",
       "transfer",
+      "workspaceBash",
+      "workspaceReadFile",
     ]);
   });
 
@@ -1501,6 +1585,20 @@ describe("RuntimeChatService", () => {
           },
           {
             kind: "workspace-tool",
+            name: WORKSPACE_BASH_TOOL_NAME,
+            description: "workspace bash",
+            purpose: "workspace bash",
+            routingHint: "workspace bash",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { command: "pwd" },
+            toolDescription: "workspace bash",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+          {
+            kind: "workspace-tool",
             name: WORKSPACE_READ_FILE_TOOL_NAME,
             description: "workspace read",
             purpose: "workspace read",
@@ -1534,9 +1632,15 @@ describe("RuntimeChatService", () => {
       return;
     }
     expect(execution.toolNames.length).toBeLessThanOrEqual(12);
-    expect(execution.maxToolSteps).toBeUndefined();
-    expect(execution.toolNames).toEqual(["getManagedWalletContents", "queryRuntimeStore"]);
-    expect(execution.toolNames).not.toContain(WORKSPACE_READ_FILE_TOOL_NAME);
+    expect(execution.maxToolSteps).toBe(4);
+    expect(execution.toolNames).toEqual([
+      "getManagedWalletContents",
+      "queryRuntimeStore",
+      WORKSPACE_BASH_TOOL_NAME,
+      WORKSPACE_READ_FILE_TOOL_NAME,
+    ]);
+    expect(execution.toolNames).toContain(WORKSPACE_BASH_TOOL_NAME);
+    expect(execution.toolNames).toContain(WORKSPACE_READ_FILE_TOOL_NAME);
     expect(execution.systemPrompt).toContain("## Knowledge Index");
     expect(execution.systemPrompt).toContain("use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults");
   });
