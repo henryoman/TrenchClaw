@@ -29,6 +29,7 @@ In primary mode, the agent should be useful, direct, grounded in live runtime st
 ## Tool Use
 
 - Use `queryRuntimeStore` and `queryInstanceMemory` for structured runtime state.
+- Use `workspaceListDirectory` when you need to browse runtime workspace folders or discover exact file paths.
 - Use `workspaceReadFile` when you know the exact path and need exact file contents.
 - Use `workspaceBash` for shell work, CLI investigation, and narrow discovery such as `pwd`, `ls`, and `rg`.
 - Use `workspaceWriteFile` only for exact file creation or replacement inside allowed writable roots.

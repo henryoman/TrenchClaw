@@ -92,6 +92,7 @@ const renderShellToolingSummary = (): string => {
 
   return [
     "### Shell Tooling",
+    "- `workspaceListDirectory` is the default tool for browsing runtime workspace files and folders without using the shell.",
     "- `workspaceBash` runs in an instance-scoped shell with its own `HOME`, `TMPDIR`, and a `tool-bin`-first `PATH`.",
     `- detected CLI commands on PATH: ${detectedCommands.join(", ") || "none detected"}`,
     "- Use shell tools for real local investigation when needed, and verify CLI availability with `command -v <tool>` or `<tool> --version` before depending on it.",
@@ -153,6 +154,7 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     "",
     "Use `listKnowledgeDocs` to browse knowledge aliases and `readKnowledgeDoc` to open one by alias.",
     "Prefer `readKnowledgeDoc` over guessing long knowledge file paths.",
+    "Use `workspaceListDirectory` first when you need to browse the runtime workspace or discover exact file paths.",
     "Use `workspaceReadFile` only for exact runtime-workspace reads when you know the path.",
     "Use `workspaceWriteFile` only for exact runtime-workspace artifacts such as notes, scratch files, and generated output.",
     "Use `queryRuntimeStore` and `queryInstanceMemory` for structured runtime state instead of reading files when a structured action exists.",
