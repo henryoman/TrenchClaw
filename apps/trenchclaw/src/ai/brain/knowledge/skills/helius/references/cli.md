@@ -17,10 +17,10 @@ pnpm add -g helius-cli@latest
 TrenchClaw helper-managed install:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
+./scripts/install-required-tools.sh
 ```
 
-That helper installs or updates `helius-cli` when `bun` or `pnpm` is present.
+That helper installs or updates `helius-cli` when `bun` or `pnpm` is present in a TrenchClaw source checkout.
 
 ## Quick Start
 
