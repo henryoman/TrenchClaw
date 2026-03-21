@@ -1,7 +1,9 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import type { Dirent } from "node:fs";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createBashTool } from "bash-tool";
 import { tool } from "ai";
+import { z } from "zod";
 
 import {
   FilesystemPermissionDeniedError,
@@ -79,6 +81,26 @@ const BLOCKED_DIRECT_FILE_PATTERNS: RegExp[] = [
   /\/\.runtime-state\/instances\/[^/]+\/vault\.json$/u,
   /\/\.runtime-state\/instances\/[^/]+\/keypairs(\/|$)/u,
 ];
+const DEFAULT_DIRECTORY_LIST_DEPTH = 2;
+const MAX_DIRECTORY_LIST_DEPTH = 6;
+const DEFAULT_DIRECTORY_LIST_LIMIT = 200;
+const MAX_DIRECTORY_LIST_LIMIT = 1_000;
+
+const listWorkspaceDirectoryInputSchema = z.object({
+  path: z.string().trim().min(1).default("."),
+  depth: z.number().int().min(0).max(MAX_DIRECTORY_LIST_DEPTH).default(DEFAULT_DIRECTORY_LIST_DEPTH),
+  limit: z.number().int().min(1).max(MAX_DIRECTORY_LIST_LIMIT).default(DEFAULT_DIRECTORY_LIST_LIMIT),
+  includeHidden: z.boolean().default(false),
+});
+
+type WorkspaceDirectoryListResult = {
+  directory: string;
+  entries: Array<{
+    path: string;
+    type: "directory" | "file" | "symlink" | "other";
+  }>;
+  truncated: boolean;
+};
 
 const assertWithinRoot = (rootDirectory: string, targetPath: string): string => {
   const resolvedPath = path.isAbsolute(targetPath) ? path.resolve(targetPath) : path.resolve(rootDirectory, targetPath);
@@ -92,14 +114,23 @@ const assertWithinRoot = (rootDirectory: string, targetPath: string): string => 
 };
 
 const assertDirectFilePathAllowed = (targetPath: string): void => {
+  if (isDirectFilePathAllowed(targetPath)) {
+    return;
+  }
+  const normalized = path.resolve(targetPath).replaceAll(path.sep, "/");
+  throw new FilesystemPermissionDeniedError(
+    `Direct file tools cannot access protected secret or key material at "${normalized}"`,
+  );
+};
+
+const isDirectFilePathAllowed = (targetPath: string): boolean => {
   const normalized = path.resolve(targetPath).replaceAll(path.sep, "/");
   for (const pattern of BLOCKED_DIRECT_FILE_PATTERNS) {
     if (pattern.test(normalized)) {
-      throw new FilesystemPermissionDeniedError(
-        `Direct file tools cannot access protected secret or key material at "${normalized}"`,
-      );
+      return false;
     }
   }
+  return true;
 };
 
 const sanitizeCommand = (command: string): string => {
@@ -120,6 +151,33 @@ const sanitizeCommand = (command: string): string => {
 
 const isMutatingCommand = (command: string): boolean =>
   MUTATING_COMMAND_PATTERNS.some((pattern) => pattern.test(command));
+
+const toWorkspaceRelativePath = (rootDirectory: string, targetPath: string): string => {
+  const relativePath = path.relative(rootDirectory, targetPath).replaceAll(path.sep, "/");
+  return relativePath.length > 0 ? relativePath : ".";
+};
+
+const compareDirectoryEntries = (left: Dirent, right: Dirent): number => {
+  const leftRank = left.isDirectory() ? 0 : 1;
+  const rightRank = right.isDirectory() ? 0 : 1;
+  if (leftRank !== rightRank) {
+    return leftRank - rightRank;
+  }
+  return left.name.localeCompare(right.name);
+};
+
+const toDirectoryEntryType = (entry: Dirent): WorkspaceDirectoryListResult["entries"][number]["type"] => {
+  if (entry.isDirectory()) {
+    return "directory";
+  }
+  if (entry.isFile()) {
+    return "file";
+  }
+  if (entry.isSymbolicLink()) {
+    return "symlink";
+  }
+  return "other";
+};
 
 const resolveInstanceIdFromWorkspaceRoot = (workspaceRootDirectory: string): string | null => {
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
@@ -289,6 +347,73 @@ class HostWorkspaceSandbox {
     return readFile(absolutePath, "utf8");
   }
 
+  async listDirectory(input: {
+    directoryPath: string;
+    depth: number;
+    limit: number;
+    includeHidden: boolean;
+  }): Promise<WorkspaceDirectoryListResult> {
+    const absoluteDirectoryPath = assertWithinRoot(this.readRoot, input.directoryPath);
+    assertDirectFilePathAllowed(absoluteDirectoryPath);
+    await assertModelFilesystemReadAllowed({
+      actor: this.actor,
+      targetPath: absoluteDirectoryPath,
+      reason: "list workspace directory",
+    });
+
+    const entries: WorkspaceDirectoryListResult["entries"] = [];
+    let truncated = false;
+    const visitDirectory = async (currentDirectory: string, remainingDepth: number): Promise<void> => {
+      const directoryEntries = (await readdir(currentDirectory, { withFileTypes: true }))
+        .filter((entry) => input.includeHidden || !entry.name.startsWith("."))
+        .sort(compareDirectoryEntries);
+
+      for (const entry of directoryEntries) {
+        if (entries.length >= input.limit) {
+          truncated = true;
+          return;
+        }
+
+        const absoluteEntryPath = path.join(currentDirectory, entry.name);
+        if (!isDirectFilePathAllowed(absoluteEntryPath)) {
+          continue;
+        }
+        try {
+          await assertModelFilesystemReadAllowed({
+            actor: this.actor,
+            targetPath: absoluteEntryPath,
+            reason: "list workspace directory entry",
+          });
+        } catch (error) {
+          if (error instanceof FilesystemPermissionDeniedError) {
+            continue;
+          }
+          throw error;
+        }
+
+        entries.push({
+          path: toWorkspaceRelativePath(this.readRoot, absoluteEntryPath),
+          type: toDirectoryEntryType(entry),
+        });
+
+        if (entry.isDirectory() && remainingDepth > 0) {
+          await visitDirectory(absoluteEntryPath, remainingDepth - 1);
+          if (truncated) {
+            return;
+          }
+        }
+      }
+    };
+
+    await visitDirectory(absoluteDirectoryPath, input.depth);
+
+    return {
+      directory: toWorkspaceRelativePath(this.readRoot, absoluteDirectoryPath),
+      entries,
+      truncated,
+    };
+  }
+
   async writeFiles(files: Array<{ path: string; content: string | Buffer }>): Promise<void> {
     await Promise.all(files.map(async (file) => {
       const absolutePath = assertWithinRoot(this.writeRoot, file.path);
@@ -314,6 +439,7 @@ const wrapTool = (input: {
   });
 
 export const WORKSPACE_BASH_TOOL_NAME = "workspaceBash";
+export const WORKSPACE_LIST_DIRECTORY_TOOL_NAME = "workspaceListDirectory";
 export const WORKSPACE_READ_FILE_TOOL_NAME = "workspaceReadFile";
 export const WORKSPACE_WRITE_FILE_TOOL_NAME = "workspaceWriteFile";
 
@@ -327,18 +453,20 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
       mkdir(path.join(writeRootDirectory, directory), { recursive: true }),
     ),
   );
+  const sandbox = new HostWorkspaceSandbox({
+    ...options,
+    workspaceRootDirectory: bashRootDirectory,
+    writeRootDirectory,
+  });
 
   const toolkit = await createBashTool({
-    sandbox: new HostWorkspaceSandbox({
-      ...options,
-      workspaceRootDirectory: bashRootDirectory,
-      writeRootDirectory,
-    }),
+    sandbox,
     destination: bashRootDirectory,
     extraInstructions: [
       `Only run commands from ${bashRootDirectory}.`,
       "Do not use parent traversal or absolute paths.",
-      "Use workspaceBash only for simple local inspection inside the runtime workspace.",
+      "Use workspaceListDirectory to browse files and folders inside the runtime workspace.",
+      "Use workspaceBash only for shell commands and CLI investigation inside the runtime workspace.",
       "Use workspaceReadFile only for exact runtime workspace file reads.",
       "Use workspaceWriteFile for exact runtime workspace edits.",
     ].join(" "),
@@ -353,10 +481,25 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
   const writableSession = (options.allowMutatingCommands ?? DEFAULT_ALLOW_MUTATING_COMMANDS) ? "writable" : "read-only";
 
   return {
+    [WORKSPACE_LIST_DIRECTORY_TOOL_NAME]: tool({
+      description:
+        `List files and folders from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. ` +
+        "Prefer this first for browsing the available runtime workspace paths before calling workspaceReadFile. " +
+        "Returns exact workspace-relative paths that can be passed directly into workspaceReadFile. " +
+        "Protected vault and keypair paths are omitted.",
+      inputSchema: listWorkspaceDirectoryInputSchema,
+      execute: async ({ path: targetPath, depth, limit, includeHidden }) =>
+        sandbox.listDirectory({
+          directoryPath: targetPath,
+          depth,
+          limit,
+          includeHidden,
+        }),
+    }),
     [WORKSPACE_BASH_TOOL_NAME]: wrapTool({
       description:
         `Run safe shell commands from the runtime workspace root ${bashRootDirectory}. This session is ${writableSession}. ` +
-        "Prefer this for simple local inspection commands like `pwd`, `ls`, `find`, or `rg` that stay inside the runtime workspace.",
+        "Prefer this for shell-native tasks like `pwd`, `rg`, `command -v`, or CLI investigation after you already know what path or command you need.",
       rawTool: rawBashTool,
     }),
     [WORKSPACE_READ_FILE_TOOL_NAME]: wrapTool({

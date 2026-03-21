@@ -77,6 +77,11 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     avoidWhen: "you do not know the alias yet and should call `listKnowledgeDocs` first, or when a live runtime tool is the higher-authority source",
     inputAdvice: "Pass `doc` as the alias from `listKnowledgeDocs`, plus `offset` and `limit` only when you need another window of a long doc.",
   },
+  workspaceListDirectory: {
+    useWhen: "you need to browse the runtime workspace to discover which files or folders exist before opening an exact file",
+    avoidWhen: "you already know the exact file path and should call `workspaceReadFile`, or when you need an actual shell command or CLI instead",
+    inputAdvice: "Pass `path` for the folder to browse. Increase `depth` only when you truly need recursive results. Use the returned workspace-relative paths directly with `workspaceReadFile`.",
+  },
   queryRuntimeStore: {
     useWhen: "the user asks about runtime state like jobs, conversations, receipts, stored runtime records, or wants the status of a queued wallet scan",
     avoidWhen: "the user is asking about wallets, tokens, balances, swaps, or market data",

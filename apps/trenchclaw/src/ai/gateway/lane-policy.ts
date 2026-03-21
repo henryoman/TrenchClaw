@@ -26,6 +26,7 @@ const OPERATOR_TOOL_ALLOWLIST = [
   "managedUltraSwap",
   "scheduleManagedUltraSwap",
   "workspaceBash",
+  "workspaceListDirectory",
   "workspaceReadFile",
 ] as const;
 

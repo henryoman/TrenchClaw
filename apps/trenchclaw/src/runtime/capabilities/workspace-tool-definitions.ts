@@ -1,5 +1,6 @@
 import {
   WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
 } from "../workspace-bash";
@@ -26,6 +27,22 @@ const SHIPPED_NOW = (note: string): RuntimeReleaseReadinessDescriptor => ({
 });
 
 export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilityDefinition[] = [
+  {
+    kind: "workspace-tool",
+    name: WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
+    description: "List files and folders from the runtime workspace and return exact workspace-relative paths.",
+    purpose: "Browse the available runtime workspace surface before reading exact files.",
+    routingHint: "you need to see what files or folders are available in the runtime workspace before choosing an exact file path",
+    sideEffectLevel: "read",
+    tags: ["workspace", "filesystem", "read", "browse"],
+    exampleInput: {
+      path: ".",
+      depth: 2,
+    },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
+    enabledBySettings: hasReadableWorkspaceSurface,
+    chatExposed: true,
+  },
   {
     kind: "workspace-tool",
     name: WORKSPACE_READ_FILE_TOOL_NAME,
