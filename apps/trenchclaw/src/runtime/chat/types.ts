@@ -2,6 +2,7 @@ import type { LanguageModel, UIMessage } from "ai";
 import type { RuntimeCapabilitySnapshot } from "../capabilities";
 import type { RuntimeLogger } from "../logging/runtime-logger";
 import type { RuntimeGateway } from "../../ai/gateway";
+import type { GatewayLane } from "../../ai/gateway";
 import type {
   ActionDispatcher,
   ActionRegistry,
@@ -15,7 +16,7 @@ import type {
 import type { convertToModelMessages, generateText, streamText } from "ai";
 
 export interface RuntimeChatService {
-  listToolNames: () => string[];
+  listToolNames: (lane?: GatewayLane) => string[];
   stream: (
     messages: UIMessage[],
     input?: {
@@ -23,6 +24,7 @@ export interface RuntimeChatService {
       chatId?: string;
       sessionId?: string;
       conversationTitle?: string;
+      lane?: GatewayLane;
       abortSignal?: AbortSignal;
     },
   ) => Promise<Response>;
@@ -64,5 +66,5 @@ export interface PreparedChatExecution {
   maxToolSteps?: number;
   provider: string | null;
   modelId: string | null;
-  lane: "operator-chat" | "workspace-agent" | "background-summary";
+  lane: GatewayLane;
 }

@@ -226,7 +226,10 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
     return poll();
   }
 
-  async streamChat(messages: UIMessage[], input?: { chatId?: string; conversationTitle?: string; abortSignal?: AbortSignal }): Promise<Response> {
+  async streamChat(
+    messages: UIMessage[],
+    input?: { chatId?: string; conversationTitle?: string; lane?: import("../../ai/gateway").GatewayLane; abortSignal?: AbortSignal },
+  ): Promise<Response> {
     return streamChat(this, messages, input);
   }
 

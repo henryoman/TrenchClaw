@@ -3,6 +3,7 @@ import type {
   GuiConversationsResponse,
   GuiDeleteConversationResponse,
 } from "@trenchclaw/types";
+import type { GatewayLane } from "../../../ai/gateway";
 import type { UIMessage } from "ai";
 import { CORS_HEADERS } from "../constants";
 import type { RuntimeGuiDomainContext } from "../contracts";
@@ -38,7 +39,7 @@ const buildAssistantResponseActivitySummary = (context: RuntimeGuiDomainContext,
 export const streamChat = async (
   context: RuntimeGuiDomainContext,
   messages: UIMessage[],
-  input?: { chatId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
+  input?: { chatId?: string; conversationTitle?: string; lane?: GatewayLane; abortSignal?: AbortSignal },
 ): Promise<Response> => {
   const chatId = input?.chatId?.trim() || context.resolveDefaultChatId();
   context.setActiveChatId(chatId);
@@ -48,6 +49,7 @@ export const streamChat = async (
     chatId,
     sessionId: context.getActiveInstance()?.localInstanceId,
     conversationTitle: input?.conversationTitle,
+    lane: input?.lane,
     abortSignal: input?.abortSignal,
   });
 

@@ -87,6 +87,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
         return logResponse(await streamChat(context, payload.messages, {
           chatId: payload.chatId,
           conversationTitle: payload.conversationTitle,
+          lane: payload.lane,
           abortSignal: request.signal,
         }));
       } catch (error) {

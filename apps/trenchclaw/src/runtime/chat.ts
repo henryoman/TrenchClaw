@@ -12,6 +12,7 @@ import {
   type UIMessageChunk,
 } from "ai";
 import { z } from "zod";
+import type { GatewayLane } from "../ai/gateway";
 import { createActionContext } from "../ai/runtime/types/context";
 import { createChatMessageId, createToolCallId } from "../ai/runtime/types/ids";
 import { createWorkspaceBashTools } from "./workspace-bash";
@@ -199,6 +200,70 @@ const buildActionTools = (
   return tools;
 };
 
+const normalizeToolNameForPromptMatch = (toolName: string): string =>
+  toolName
+    .replace(/([a-z0-9])([A-Z])/gu, "$1 $2")
+    .replace(/[_-]+/gu, " ")
+    .toLowerCase();
+
+const resolveRequestedToolChoice = (
+  userMessage: string,
+  toolNames: string[],
+): "required" | { type: "tool"; toolName: string } | undefined => {
+  const normalizedUserMessage = userMessage.trim().toLowerCase();
+  if (!normalizedUserMessage) {
+    return undefined;
+  }
+
+  const explicitlyNamedTools = toolNames.filter((toolName) => {
+    const normalizedToolName = toolName.toLowerCase();
+    return normalizedUserMessage.includes(normalizedToolName)
+      || normalizedUserMessage.includes(normalizeToolNameForPromptMatch(toolName));
+  });
+
+  if (explicitlyNamedTools.length === 1) {
+    return { type: "tool", toolName: explicitlyNamedTools[0]! };
+  }
+
+  if (explicitlyNamedTools.length > 1) {
+    return "required";
+  }
+
+  const asksForShell =
+    toolNames.includes("workspaceBash")
+    && /(bash tool|shell command|use bash|use shell|run bash|run shell|run pwd|run ls|run rg)/iu.test(normalizedUserMessage);
+  const asksForKnowledge =
+    (toolNames.includes("listKnowledgeDocs") || toolNames.includes("readKnowledgeDoc"))
+    && /(knowledge docs?|read (its|your|the) own knowledge|read .*knowledge|pull up .*knowledge|retrieve .*knowledge)/iu.test(normalizedUserMessage);
+
+  if (asksForShell || asksForKnowledge) {
+    return "required";
+  }
+
+  return undefined;
+};
+
+const createForcedFirstStepToolConfig = (
+  toolChoice: "required" | { type: "tool"; toolName: string } | undefined,
+): ((input: { stepNumber: number }) => {
+  toolChoice?: "auto" | "required" | { type: "tool"; toolName: string };
+  activeTools?: string[];
+}) | undefined => {
+  if (!toolChoice) {
+    return undefined;
+  }
+
+  return ({ stepNumber }) => {
+    if (stepNumber <= 1) {
+      return toolChoice === "required"
+        ? { toolChoice }
+        : { toolChoice, activeTools: [toolChoice.toolName] };
+    }
+
+    return { toolChoice: "auto" };
+  };
+};
+
 export const createRuntimeChatService = (
   deps: RuntimeChatServiceDeps,
   overrides: RuntimeChatServiceOverrides = {},
@@ -208,11 +273,18 @@ export const createRuntimeChatService = (
   const generateWithModel = overrides.generateText ?? generateText;
   const workspaceToolPromises = new Map<string, Promise<Record<string, unknown>>>();
 
-  const listToolNames = (): string[] => deps.gateway.listToolNames("operator-chat");
+  const listToolNames = (lane: GatewayLane = "operator-chat"): string[] => deps.gateway.listToolNames(lane);
 
   const stream = async (
     messages: UIMessage[],
-    input?: { headers?: HeadersInit; chatId?: string; sessionId?: string; conversationTitle?: string; abortSignal?: AbortSignal },
+    input?: {
+      headers?: HeadersInit;
+      chatId?: string;
+      sessionId?: string;
+      conversationTitle?: string;
+      lane?: GatewayLane;
+      abortSignal?: AbortSignal;
+    },
   ): Promise<Response> => {
     const streamStartedAt = Date.now();
     const chatId = resolveChatId(input?.chatId);
@@ -376,7 +448,7 @@ export const createRuntimeChatService = (
 
       const prepareModelInputStartedAt = Date.now();
       const preparedExecution = await deps.gateway.prepareChatExecution({
-        lane: "operator-chat",
+        lane: input?.lane ?? "operator-chat",
         messages,
         userMessage: latestUserMessage,
         sessionId: input?.sessionId,
@@ -414,6 +486,8 @@ export const createRuntimeChatService = (
       const maxOutputTokens = preparedExecution.maxOutputTokens;
       const temperature = preparedExecution.temperature;
       const maxToolSteps = preparedExecution.maxToolSteps;
+      const toolChoice = resolveRequestedToolChoice(latestUserMessage, preparedExecution.toolNames);
+      const prepareStep = createForcedFirstStepToolConfig(toolChoice);
       const provider = preparedExecution.provider;
       const modelId = preparedExecution.modelId;
 
@@ -500,6 +574,7 @@ export const createRuntimeChatService = (
         ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
         ...(typeof temperature === "number" ? { temperature } : {}),
         ...(typeof maxToolSteps === "number" && enabledTools ? { stopWhen: stepCountIs(maxToolSteps) } : {}),
+        ...(prepareStep && enabledTools ? { prepareStep } : {}),
         ...(enabledTools ? { tools: enabledTools } : {}),
       });
 

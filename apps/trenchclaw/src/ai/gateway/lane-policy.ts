@@ -1,7 +1,7 @@
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { GatewayLane, GatewayLanePolicy, GatewayLaneStatus } from "./types";
 
-const OPERATOR_ACTION_ALLOWLIST = [
+const OPERATOR_TOOL_ALLOWLIST = [
   "getManagedWalletContents",
   "getManagedWalletSolBalances",
   "listKnowledgeDocs",
@@ -25,6 +25,8 @@ const OPERATOR_ACTION_ALLOWLIST = [
   "managedTriggerCancelOrders",
   "managedUltraSwap",
   "scheduleManagedUltraSwap",
+  "workspaceBash",
+  "workspaceReadFile",
 ] as const;
 
 const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
@@ -32,11 +34,13 @@ const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
     lane: "operator-chat",
     promptKind: "operator",
     maxOutputTokens: 32_768,
+    maxToolSteps: 4,
   },
   "workspace-agent": {
     lane: "workspace-agent",
     promptKind: "workspace",
     maxOutputTokens: 32_768,
+    maxToolSteps: 4,
   },
   "background-summary": {
     lane: "background-summary",
@@ -99,8 +103,8 @@ export const getGatewayToolNamesForLane = (
     return [];
   }
 
-  const allowedNames = new Set<string>(OPERATOR_ACTION_ALLOWLIST);
+  const allowedNames = new Set<string>(OPERATOR_TOOL_ALLOWLIST);
   return snapshot.modelTools
-    .filter((toolEntry) => toolEntry.kind === "action" && allowedNames.has(toolEntry.name))
+    .filter((toolEntry) => allowedNames.has(toolEntry.name))
     .map((toolEntry) => toolEntry.name);
 };

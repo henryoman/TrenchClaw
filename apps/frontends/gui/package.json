@@ -14,11 +14,11 @@
     "lint:fix": "oxlint --fix ."
   },
   "dependencies": {
-    "@ai-sdk/svelte": "^4.0.116",
+    "@ai-sdk/svelte": "^4.0.134",
     "@openrouter/ai-sdk-provider": "^2.3.3",
     "@trenchclaw/types": "workspace:*",
-    "ai": "^6.0.116",
-    "marked": "^17.0.4",
+    "ai": "^6.0.134",
+    "marked": "^17.0.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
