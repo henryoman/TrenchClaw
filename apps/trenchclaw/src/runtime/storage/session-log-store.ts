@@ -117,6 +117,26 @@ export class SessionLogStore {
   }
 
   async open(): Promise<ActiveSessionInfo> {
+    if (this.active) {
+      return this.active;
+    }
+    return this.enqueueWrite(async () => this.openInternal());
+  }
+
+  async flush(): Promise<void> {
+    await this.writeChain;
+  }
+
+  private enqueueWrite<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.writeChain.then(operation);
+    this.writeChain = next.then(
+      () => undefined,
+      () => undefined,
+    );
+    return next;
+  }
+
+  private async openInternal(): Promise<ActiveSessionInfo> {
     const store = await this.readStore();
     const now = nowIso();
     const existing = store.sessions[this.sessionKey];
@@ -217,41 +237,45 @@ export class SessionLogStore {
     text: string,
     usage?: SessionMessageRecord["message"]["usage"],
   ): Promise<void> {
-    const active = await this.ensureOpen();
-    const line: SessionMessageRecord = {
-      type: "message",
-      timestamp: nowIso(),
-      sessionKey: active.sessionKey,
-      sessionId: active.sessionId,
-      message: {
-        role,
-        content: [{ type: "text", text }],
-        usage,
-      },
-    };
-    await this.appendRaw(line);
-    await this.bumpCounters({ messageCountDelta: 1 });
+    await this.enqueueWrite(async () => {
+      const active = await this.ensureOpenInternal();
+      const line: SessionMessageRecord = {
+        type: "message",
+        timestamp: nowIso(),
+        sessionKey: active.sessionKey,
+        sessionId: active.sessionId,
+        message: {
+          role,
+          content: [{ type: "text", text }],
+          usage,
+        },
+      };
+      await this.appendRaw(line);
+      await this.bumpCounters({ messageCountDelta: 1 });
+    });
   }
 
   async appendEvent(eventType: string, payload: unknown): Promise<void> {
-    const active = await this.ensureOpen();
-    const line: SessionEventRecord = {
-      type: "event",
-      timestamp: nowIso(),
-      sessionKey: active.sessionKey,
-      sessionId: active.sessionId,
-      eventType,
-      payload,
-    };
-    await this.appendRaw(line);
-    await this.bumpCounters({ eventCountDelta: 1 });
+    await this.enqueueWrite(async () => {
+      const active = await this.ensureOpenInternal();
+      const line: SessionEventRecord = {
+        type: "event",
+        timestamp: nowIso(),
+        sessionKey: active.sessionKey,
+        sessionId: active.sessionId,
+        eventType,
+        payload,
+      };
+      await this.appendRaw(line);
+      await this.bumpCounters({ eventCountDelta: 1 });
+    });
   }
 
-  private async ensureOpen(): Promise<ActiveSessionInfo> {
+  private async ensureOpenInternal(): Promise<ActiveSessionInfo> {
     if (this.active) {
       return this.active;
     }
-    return this.open();
+    return this.openInternal();
   }
 
   private async readStore(): Promise<SessionStoreData> {
@@ -282,11 +306,8 @@ export class SessionLogStore {
   }
 
   private async appendRaw(line: SessionJsonLine): Promise<void> {
-    const active = await this.ensureOpen();
-    this.writeChain = this.writeChain.then(async () => {
-      await appendJsonLineAsync(this.writer, active.sessionFilePath, line, "append session log entry");
-    });
-    await this.writeChain;
+    const active = await this.ensureOpenInternal();
+    await appendJsonLineAsync(this.writer, active.sessionFilePath, line, "append session log entry");
   }
 
   private async bumpCounters(input: { messageCountDelta?: number; eventCountDelta?: number }): Promise<void> {

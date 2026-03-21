@@ -914,12 +914,9 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       const pendingJobsAtStop = stateStore.listJobs({ status: "pending" }).length;
       const closableStateStore = stateStore as StateStore & { close?: () => void };
       if (sessionLogStore) {
-        void sessionLogStore.appendMessage("system", "Runtime stopped");
-        void (async () => {
-          const stats = await sessionLogStore.getActiveSessionStats();
-          if (!stats) {
-            return;
-          }
+        await sessionLogStore.appendMessage("system", "Runtime stopped");
+        const stats = await sessionLogStore.getActiveSessionStats();
+        if (stats) {
           await sessionSummaryStore.writeSummary({
             ...stats,
             profile: settings.profile,
@@ -927,7 +924,8 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
             registeredActions: registry.list().map((action) => action.name),
             pendingJobsAtStop,
           });
-        })();
+        }
+        await sessionLogStore.flush();
       }
       if (memoryLogStore) {
         memoryLogStore.appendDaily(
