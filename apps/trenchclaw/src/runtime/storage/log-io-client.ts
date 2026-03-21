@@ -69,6 +69,16 @@ export class LogIoClient {
     });
   }
 
+  isWorkerEnabled(): boolean {
+    return this.worker !== null;
+  }
+
+  dispose(): void {
+    this.worker?.terminate();
+    this.worker = null;
+    this.pending.clear();
+  }
+
   private async performDirectWrite(request: LogIoRequestWithoutId): Promise<void> {
     const result = await performLogIoWrite(request);
     writeObserver?.({
@@ -117,6 +127,10 @@ export class LogIoClient {
 let sharedClient: LogIoClient | null = null;
 
 export const getLogIoClient = (): LogIoClient => {
+  if (process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER === "1" && sharedClient?.isWorkerEnabled()) {
+    sharedClient.dispose();
+    sharedClient = null;
+  }
   sharedClient ??= new LogIoClient();
   return sharedClient;
 };

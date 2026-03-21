@@ -7,8 +7,8 @@ Use this file for high-signal Helius operations: wallet creation, funding, trans
 ## One-Time Setup
 
 ```bash
-# Helper-managed path for Solana CLI + Helius CLI
-curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh
+# Helper-managed path for Solana CLI + Helius CLI from a source checkout
+./scripts/install-required-tools.sh
 
 # Manual Helius CLI install (official)
 bun add -g helius-cli@latest
