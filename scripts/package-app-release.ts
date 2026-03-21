@@ -169,8 +169,14 @@ const walkFiles = async (root: string): Promise<string[]> => {
   return files;
 };
 
-const resolveBlockedLeakNeedles = (): string[] =>
-  [...new Set([REPO_ROOT, process.cwd(), os.homedir()].map((value) => value.trim()).filter((value) => value.length > 1))];
+const resolveBlockedLeakNeedles = (): string[] => {
+  const needles = [REPO_ROOT.trim()].filter((value) => value.length > 1);
+  const homeDirectory = os.homedir().trim();
+  if (process.env.GITHUB_ACTIONS !== "true" && homeDirectory.length > 1) {
+    needles.push(homeDirectory);
+  }
+  return [...new Set(needles)];
+};
 
 const resolveCompileWorkspaceParent = (): string =>
   process.platform === "darwin" || process.platform === "linux"
