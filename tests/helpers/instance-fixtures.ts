@@ -40,13 +40,7 @@ export const createPersistedTestInstance = async (
     await writeFile(
       runtimeStatePath("instances", "active-instance.json"),
       `${JSON.stringify({
-        fileName: "instance.json",
         localInstanceId: instanceId,
-        name: input?.name ?? `instance-${instanceId}`,
-        safetyProfile: "dangerous",
-        userPinRequired: false,
-        createdAt: "2026-03-19T00:00:00.000Z",
-        updatedAt: "2026-03-19T00:00:00.000Z",
       }, null, 2)}\n`,
       "utf8",
     );

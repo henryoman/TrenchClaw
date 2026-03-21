@@ -69,6 +69,9 @@ const toDisplayDirectory = (relativeDirectory: string): string =>
 
 const run = async (command: string[], cwd: string): Promise<void> => {
   const [bin, ...args] = command;
+  if (!bin) {
+    throw new Error("Command must not be empty.");
+  }
   const proc = Bun.spawn([bin, ...args], {
     cwd,
     stdout: "inherit",

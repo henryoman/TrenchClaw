@@ -1,4 +1,4 @@
-import { getDocsList } from '$lib/docs';
+import { getDocsList } from '../../lib/docs';
 
 export const prerender = true;
 

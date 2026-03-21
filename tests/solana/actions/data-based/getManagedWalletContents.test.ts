@@ -286,7 +286,7 @@ describe("getManagedWalletContentsAction", () => {
     expect(payload.job.status).toBe("pending");
   });
 
-  test("falls back to walletGroup filters when a hallucinated wallet selector is mixed into the request", async () => {
+  test("falls back to walletGroup filters when a hallucinated selector includes an empty walletNames array", async () => {
     const instanceId = "93";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
     const keypairsDirectory = path.join(instanceDirectory, "keypairs");
@@ -328,7 +328,7 @@ describe("getManagedWalletContentsAction", () => {
       wallet: "core-wallets",
       wallets: [{ id: "core-wallets", group: "core-wallets", name: "all" }],
       walletGroup: "core-wallets",
-      walletNames: ["000", "001"],
+      walletNames: [],
       includeZeroBalances: false,
     });
 

@@ -17,7 +17,7 @@ const printHelp = (): void => {
       "",
       "Options:",
       "  --runtime-root <path>     External runtime root (default: ~/trenchclaw-dev-runtime)",
-      "  --generated-root <path>   External generated root (default: ~/trenchclaw-dev-generated)",
+      "  --generated-root <path>   Generated root override (default: <runtime-root>/instances/<id>/cache/generated)",
       "  --instance <id>           Two-digit instance id (default: 01)",
       "  --instance-name <name>    Instance display name (default: default for 01, otherwise instance-<id>)",
       "  --no-gitignore            Do not write the managed .gitignore block",
@@ -85,4 +85,3 @@ console.log(`[dev-runtime:init] active instance: ${result.instanceId}`);
 console.log("");
 console.log("Export these before local development:");
 console.log(`export TRENCHCLAW_RUNTIME_STATE_ROOT="${result.runtimeRoot}"`);
-console.log(`export TRENCHCLAW_GENERATED_ROOT="${result.generatedRoot}"`);

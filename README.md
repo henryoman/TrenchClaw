@@ -88,7 +88,7 @@ Local development should use the same per-instance runtime shape as the shipped 
 Default local dev behavior:
 
 - `bun run dev` uses `~/trenchclaw-dev-runtime` for runtime state
-- `bun run dev` uses `~/trenchclaw-dev-generated` for generated prompt-support files
+- generated prompt-support files live under `~/trenchclaw-dev-runtime/instances/<id>/cache/generated/`
 - that state persists across reconnects and restarts
 - that state is personal/local and never part of the repo
 
@@ -119,9 +119,8 @@ bun run dev:instance:clone -- \
 
 Useful overrides:
 
-- `bun run dev -- --runtime-root /path/to/runtime --generated-root /path/to/generated`
+- `bun run dev -- --runtime-root /path/to/runtime --generated-root /path/to/runtime/instances/01/cache/generated`
 - `TRENCHCLAW_RUNTIME_STATE_ROOT=/path/to/runtime`
-- `TRENCHCLAW_GENERATED_ROOT=/path/to/generated`
 
 The external dev runtime writes a managed `.gitignore` so secrets, keypairs, databases, logs, caches, and other personal testing state stay out of git by default.
 
@@ -465,7 +464,7 @@ bun run start
 What `bun run start` does:
 
 - Starts the dedicated runner (`apps/runner`) which then starts the core runtime process (`apps/trenchclaw runtime:start`)
-- Rebuilds missing `.trenchclaw-generated/` artifacts on startup, and you can force a full refresh with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1`
+- Rebuilds missing instance-scoped generated artifacts under `.runtime-state/instances/<id>/cache/generated/` on startup, and you can force a full refresh with `TRENCHCLAW_BOOT_REFRESH_CONTEXT=1` / `TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE=1`
 - Starts runtime API on localhost
 - Serves GUI from static `apps/frontends/gui/dist`
 - Proxies `/api/*` from GUI server to runtime server

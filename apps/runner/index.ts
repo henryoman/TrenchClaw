@@ -120,8 +120,8 @@ const isReleaseRoot = (candidate: string): boolean =>
 const resolveDefaultRuntimeStateRoot = (): string =>
   path.join(process.env.HOME || process.env.USERPROFILE || process.cwd(), ".trenchclaw");
 
-const resolveDefaultGeneratedStateRoot = (): string =>
-  path.join(process.env.HOME || process.env.USERPROFILE || process.cwd(), ".trenchclaw-generated");
+const resolveDefaultGeneratedStateRoot = (runtimeStateRoot: string): string =>
+  path.join(runtimeStateRoot, "instances", DEFAULT_BOOTSTRAP_INSTANCE_ID, "cache", "generated");
 
 const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
   const configured = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
@@ -136,17 +136,8 @@ const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): strin
   return resolveDefaultRuntimeStateRoot();
 };
 
-const resolveGeneratedStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
-  const configured = process.env.TRENCHCLAW_GENERATED_ROOT?.trim();
-  if (configured) {
-    return resolveAbsoluteConfiguredPath("TRENCHCLAW_GENERATED_ROOT", configured);
-  }
-
-  if (kind === "workspace") {
-    return path.join(coreAssetRoot, ".trenchclaw-generated");
-  }
-
-  return resolveDefaultGeneratedStateRoot();
+const resolveGeneratedStateRoot = (runtimeStateRoot: string): string => {
+  return resolveDefaultGeneratedStateRoot(runtimeStateRoot);
 };
 
 const resolveLayout = (): ResolvedLayout => {
@@ -162,27 +153,29 @@ const resolveLayout = (): ResolvedLayout => {
   for (const candidate of candidates) {
     if (isReleaseRoot(candidate)) {
       const guiDistDir = path.join(candidate, "gui");
+      const runtimeStateRoot = resolveRuntimeStateRoot("release", path.join(candidate, "core"));
       return {
         kind: "release",
         root: candidate,
         guiDistDir,
         guiIndexPath: path.join(guiDistDir, "index.html"),
         coreAssetRoot: path.join(candidate, "core"),
-        runtimeStateRoot: resolveRuntimeStateRoot("release", path.join(candidate, "core")),
-        generatedStateRoot: resolveGeneratedStateRoot("release", path.join(candidate, "core")),
+        runtimeStateRoot,
+        generatedStateRoot: resolveGeneratedStateRoot(runtimeStateRoot),
       };
     }
     if (isWorkspaceRoot(candidate)) {
       const guiDistDir = path.join(candidate, "apps/frontends/gui/dist");
       const coreAssetRoot = path.join(candidate, "apps/trenchclaw");
+      const runtimeStateRoot = resolveRuntimeStateRoot("workspace", coreAssetRoot);
       return {
         kind: "workspace",
         root: candidate,
         guiDistDir,
         guiIndexPath: path.join(guiDistDir, "index.html"),
         coreAssetRoot,
-        runtimeStateRoot: resolveRuntimeStateRoot("workspace", coreAssetRoot),
-        generatedStateRoot: resolveGeneratedStateRoot("workspace", coreAssetRoot),
+        runtimeStateRoot,
+        generatedStateRoot: resolveGeneratedStateRoot(runtimeStateRoot),
       };
     }
   }
@@ -904,7 +897,6 @@ const ensureRuntimeStateLayout = (): void => {
     path.join(LAYOUT.runtimeStateRoot, "db/events"),
     path.join(LAYOUT.runtimeStateRoot, "runtime"),
     path.join(LAYOUT.runtimeStateRoot, "instances"),
-    path.join(LAYOUT.runtimeStateRoot, "generated"),
     path.join(LAYOUT.runtimeStateRoot, "protected/keypairs"),
   ];
 
@@ -935,6 +927,8 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   const { resolveRuntimeSettingsProfile } = await loadRuntimeImports();
   const profile = resolveRuntimeSettingsProfile();
   const bundledBrainRoot = path.join(LAYOUT.coreAssetRoot, "src/ai/brain");
+  const activeInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim() || resolveRuntimeBootstrapInstanceId();
+  const generatedStateRoot = path.join(LAYOUT.runtimeStateRoot, "instances", activeInstanceId, "cache", "generated");
 
   process.env.RUNTIME_HOST = RUNTIME_HOST;
   process.env.RUNTIME_PORT = String(runtimePort);
@@ -944,7 +938,7 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   process.env.TRENCHCLAW_RELEASE_ROOT = LAYOUT.root;
   process.env.TRENCHCLAW_APP_ROOT = LAYOUT.coreAssetRoot;
   process.env.TRENCHCLAW_RUNTIME_STATE_ROOT = LAYOUT.runtimeStateRoot;
-  process.env.TRENCHCLAW_GENERATED_ROOT = LAYOUT.generatedStateRoot;
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = activeInstanceId;
   process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER =
     process.env.TRENCHCLAW_DISABLE_LOG_IO_WORKER || (LAYOUT.kind === "release" ? "1" : "0");
   process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT ?? "0";
@@ -962,7 +956,7 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     process.env.TRENCHCLAW_KNOWLEDGE_DIR || path.join(bundledBrainRoot, "knowledge");
   process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE ||
-    path.join(LAYOUT.generatedStateRoot, "knowledge-index.md");
+    path.join(generatedStateRoot, "knowledge-index.md");
   process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
     process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE;
@@ -971,8 +965,6 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
   process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
     process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/vault.template.json");
-  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID =
-    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim() || resolveRuntimeBootstrapInstanceId();
 };
 
 const logOptionalToolDiagnostics = (): void => {

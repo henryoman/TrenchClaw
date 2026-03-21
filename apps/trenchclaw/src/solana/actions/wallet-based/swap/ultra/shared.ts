@@ -5,6 +5,11 @@ import type { ActionResult } from "../../../../../ai/runtime/types/action";
 import type { JupiterUltraAdapter, JupiterUltraOrderRequest } from "../../../../lib/adapters/jupiter-ultra";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";
+const SOL_LAMPORTS = 1_000_000_000n;
+const NEW_TOKEN_ACCOUNT_RENT_LAMPORTS = 2_039_280n;
+const TRANSACTION_FEE_BUFFER_LAMPORTS = 5_000n;
+const NEW_TOKEN_ACCOUNT_RESERVE_LAMPORTS = NEW_TOKEN_ACCOUNT_RENT_LAMPORTS + TRANSACTION_FEE_BUFFER_LAMPORTS;
+const SOLANA_ADDRESS_REGEX = /([1-9A-HJ-NP-Za-km-z]{32,44})/;
 
 const DEFAULT_COIN_ALIASES: Record<string, string> = {
   SOL: SOL_MINT,
@@ -19,6 +24,7 @@ type AmountUnit = "ui" | "native" | "percent";
 interface TokenBalanceReader {
   getSolBalance(walletAddress: string): Promise<number>;
   getTokenBalance(walletAddress: string, mintAddress: string): Promise<number>;
+  hasTokenAccount?(walletAddress: string, mintAddress: string): Promise<boolean>;
   getDecimals(mintAddress: string): Promise<number>;
 }
 
@@ -125,7 +131,12 @@ export const normalizeCoinToMint = (coinOrMint: string, aliases?: Record<string,
 
   const upper = trimmed.toUpperCase();
   const aliasHit = aliases?.[upper] ?? aliases?.[trimmed] ?? DEFAULT_COIN_ALIASES[upper];
-  return aliasHit ?? trimmed;
+  if (aliasHit) {
+    return aliasHit;
+  }
+
+  const embeddedAddress = trimmed.match(SOLANA_ADDRESS_REGEX)?.[1];
+  return embeddedAddress ?? trimmed;
 };
 
 export const parseAmountAndUnit = (
@@ -172,6 +183,14 @@ const getTokenReader = (ctx: ActionContext): TokenBalanceReader => {
     throw new Error("Missing token account adapter in action context (ctx.tokenAccounts)");
   }
   return tokenAccounts;
+};
+
+const formatLamportsAsSol = (lamports: bigint): string => {
+  const negative = lamports < 0n;
+  const absolute = negative ? -lamports : lamports;
+  const whole = absolute / SOL_LAMPORTS;
+  const fraction = (absolute % SOL_LAMPORTS).toString().padStart(9, "0").replace(/0+$/, "");
+  return `${negative ? "-" : ""}${whole.toString()}${fraction ? `.${fraction}` : ""}`;
 };
 
 const toRawTokenAmount = (uiAmount: number, decimals: number): bigint => {
@@ -248,8 +267,29 @@ export const buildOrderRequest = async (
   const inputMint = normalizeCoinToMint(input.inputCoin, input.coinAliases);
   const outputMint = normalizeCoinToMint(input.outputCoin, input.coinAliases);
   const taker = input.taker ?? getTakerFromContext(ctx);
+  const tokenReader = getTokenReader(ctx);
 
   const rawAmount = await resolveRawAmount(ctx, inputMint, taker, input.amount, input.amountUnit);
+  if (
+    taker &&
+    inputMint === SOL_MINT &&
+    outputMint !== SOL_MINT &&
+    typeof tokenReader.hasTokenAccount === "function"
+  ) {
+    const hasDestinationTokenAccount = await tokenReader.hasTokenAccount(taker, outputMint);
+    if (!hasDestinationTokenAccount) {
+      const totalSolBalance = await tokenReader.getSolBalance(taker);
+      const totalLamports = toRawTokenAmount(totalSolBalance, 9);
+      const remainingLamports = totalLamports - rawAmount;
+
+      if (remainingLamports < NEW_TOKEN_ACCOUNT_RESERVE_LAMPORTS) {
+        throw new Error(
+          `Insufficient SOL for a first-time buy into ${outputMint}. Remaining after swap would be ${formatLamportsAsSol(remainingLamports)} SOL, but creating the destination token account and paying fees needs about ${formatLamportsAsSol(NEW_TOKEN_ACCOUNT_RESERVE_LAMPORTS)} SOL.`,
+        );
+      }
+    }
+  }
+
   const orderRequest: JupiterUltraOrderRequest = {
     inputMint,
     outputMint,

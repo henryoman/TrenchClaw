@@ -299,7 +299,7 @@ describe("Runtime v1 API", () => {
       }
     }
 
-    transport.addActivity("chat", "Streaming prompt received (1 message)");
+    transport.addActivity("chat", "Prompt sent (1 message)");
 
     let updatedPayloadText = "";
     for (let index = 0; index < 8; index += 1) {
@@ -308,16 +308,99 @@ describe("Runtime v1 API", () => {
         break;
       }
       updatedPayloadText += new TextDecoder().decode(chunk.value);
-      if (updatedPayloadText.includes("Streaming prompt received (1 message)")) {
+      if (updatedPayloadText.includes("Prompt sent (1 message)")) {
         break;
       }
     }
 
     expect(updatedPayloadText).toContain("event: activity");
-    expect(updatedPayloadText).toContain("Streaming prompt received (1 message)");
+    expect(updatedPayloadText).toContain("Prompt sent (1 message)");
 
     abortController.abort();
     await reader.cancel();
+  });
+
+  test("runtime event bus entries are mirrored into GUI activity", async () => {
+    const runtime = buildRuntime();
+    const transport = new RuntimeGuiTransport(runtime);
+
+    runtime.eventBus.emit("action:start", {
+      actionName: "getManagedWalletContents",
+      idempotencyKey: "idem-1",
+      inputSummary: "{\"includeZeroBalances\":false}",
+    });
+    runtime.eventBus.emit("action:success", {
+      actionName: "getManagedWalletContents",
+      idempotencyKey: "idem-1",
+      durationMs: 42,
+    });
+    runtime.eventBus.emit("queue:enqueue", {
+      jobId: "job-1",
+      serialNumber: 1,
+      botId: "bot-1",
+      routineName: "actionSequence",
+      queueSize: 3,
+      queuePosition: 2,
+      nextRunAt: Date.now(),
+    });
+
+    await Bun.sleep(0);
+
+    expect(transport.getActivityEntries(10).map((entry) => entry.summary)).toEqual([
+      "Started getManagedWalletContents: {\"includeZeroBalances\":false}",
+      "Completed getManagedWalletContents",
+      "Queued actionSequence for bot-1 (2/3)",
+    ]);
+  });
+
+  test("POST /v1/chat/stream records assistant response lifecycle activity without duplicating chat text", async () => {
+    let runtime!: RuntimeBootstrap;
+    runtime = buildRuntime({
+      streamImpl: async (_messages, options) => {
+        const now = Date.now();
+        runtime.stateStore.saveConversation({
+          id: options?.chatId ?? "chat-response-1",
+          title: "Runtime chat",
+          createdAt: now,
+          updatedAt: now,
+        });
+        runtime.stateStore.saveChatMessage({
+          id: "assistant-1",
+          conversationId: options?.chatId ?? "chat-response-1",
+          role: "assistant",
+          content: "Here is the final answer from the assistant.",
+          metadata: {
+            uiParts: [{ type: "text", text: "Here is the final answer from the assistant." }],
+          },
+          createdAt: now,
+        });
+
+        return new Response("event: message\ndata: chunk\n\nevent: done\ndata: [DONE]\n\n", {
+          status: 200,
+          headers: { "content-type": "text/event-stream" },
+        });
+      },
+    });
+    const transport = new RuntimeGuiTransport(runtime);
+    const handler = transport.createApiHandler();
+
+    const response = await handler(new Request("http://localhost/v1/chat/stream", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        messages: [{ role: "user", parts: [{ type: "text", text: "hello" }] }],
+        chatId: "chat-response-1",
+      }),
+    }));
+
+    expect(response.status).toBe(200);
+    await response.text();
+
+    expect(transport.getActivityEntries(10).map((entry) => entry.summary)).toEqual([
+      "Prompt sent (1 message)",
+      "Assistant response started",
+      "Assistant response finished",
+    ]);
   });
 
   test("GET /api/gui/sol-price returns the cached runtime price and collapses burst refreshes", async () => {

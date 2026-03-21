@@ -11,6 +11,7 @@ export interface TokenAccountAdapterConfig {
 export interface TokenAccountAdapter {
   getSolBalance(walletAddress: string): Promise<number>;
   getTokenBalance(walletAddress: string, mintAddress: string): Promise<number>;
+  hasTokenAccount(walletAddress: string, mintAddress: string): Promise<boolean>;
   getDecimals(mintAddress: string): Promise<number>;
 }
 
@@ -75,6 +76,23 @@ export const createTokenAccountAdapter = (
       }
 
       return totalUiAmount;
+    },
+
+    async hasTokenAccount(walletAddress: string, mintAddress: string): Promise<boolean> {
+      const response = await (rpc as any)
+        .getTokenAccountsByOwner(
+          address(walletAddress),
+          {
+            mint: address(mintAddress),
+          },
+          {
+            encoding: "jsonParsed",
+          },
+        )
+        .send();
+
+      const entries: unknown[] = Array.isArray(response?.value) ? response.value : [];
+      return entries.length > 0;
     },
 
     async getDecimals(mintAddress: string): Promise<number> {

@@ -1,11 +1,11 @@
 import { error, redirect } from '@sveltejs/kit';
-import { getDocRouteEntries, resolveDocRequest } from '$lib/docs';
+import { getDocRouteEntries, resolveDocRequest } from '../../../lib/docs';
 
 export const prerender = true;
 
 export const entries = () => getDocRouteEntries();
 
-export const load = ({ params }) => {
+export const load = ({ params }: { params: { slug: string } }) => {
   const resolved = resolveDocRequest(params.slug);
 
   if (resolved.type === 'redirect') {

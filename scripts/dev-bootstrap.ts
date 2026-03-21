@@ -249,7 +249,6 @@ const run = async (): Promise<void> => {
       RUNTIME_REQUIRE_SERVER: "1",
       TRENCHCLAW_GUI_URL: guiUrl,
       TRENCHCLAW_RUNTIME_STATE_ROOT: path.resolve(runtimeStateRoot),
-      TRENCHCLAW_GENERATED_ROOT: path.resolve(generatedRoot),
     },
   });
 

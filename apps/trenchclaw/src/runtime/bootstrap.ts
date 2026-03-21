@@ -57,8 +57,8 @@ import {
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
+import { resolveInstanceKnowledgeIndexPath, resolveInstanceWorkspaceContextPath } from "./instance-paths";
 import { isRecord } from "./object-utils";
-import { GENERATED_STATE_ROOT } from "./runtime-paths";
 import { migrateLegacyRuntimeState } from "./runtime-state-migration";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
@@ -72,9 +72,6 @@ const TRADE_ACTIONS = new Set([
   "privacySwap",
 ]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
-const GENERATED_WORKSPACE_CONTEXT_PATH = path.join(GENERATED_STATE_ROOT, "workspace-context.md");
-const GENERATED_KNOWLEDGE_INDEX_PATH = path.join(GENERATED_STATE_ROOT, "knowledge-index.md");
-
 const trimOrUndefined = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
   return trimmed && trimmed.length > 0 ? trimmed : undefined;
@@ -112,10 +109,15 @@ const runBootstrapTask = async (
 const generatedArtifactExists = async (filePath: string): Promise<boolean> => await Bun.file(filePath).exists();
 
 const runBootContextRefresh = async (logger: RuntimeLogger): Promise<void> => {
+  const activeInstanceId = resolveRequiredActiveInstanceIdSync(
+    "No active instance selected. Generated runtime context is instance-scoped.",
+  );
   const refreshContext = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_CONTEXT", false);
   const refreshKnowledge = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE", true);
-  const missingWorkspaceContext = !(await generatedArtifactExists(GENERATED_WORKSPACE_CONTEXT_PATH));
-  const missingKnowledgeIndex = !(await generatedArtifactExists(GENERATED_KNOWLEDGE_INDEX_PATH));
+  const workspaceContextPath = resolveInstanceWorkspaceContextPath(activeInstanceId);
+  const knowledgeIndexPath = resolveInstanceKnowledgeIndexPath(activeInstanceId);
+  const missingWorkspaceContext = !(await generatedArtifactExists(workspaceContextPath));
+  const missingKnowledgeIndex = !(await generatedArtifactExists(knowledgeIndexPath));
 
   if (refreshContext || missingWorkspaceContext) {
     await runBootstrapTask(logger, "refresh-workspace-context", refreshWorkspaceContext);

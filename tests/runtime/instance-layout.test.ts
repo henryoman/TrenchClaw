@@ -9,6 +9,9 @@ const CORE_APP_ROOT = path.join(WORKSPACE_ROOT, "apps/trenchclaw");
 const INSTANCE_LAYOUT_MODULE_URL = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/runtime/instance-layout.ts"),
 ).href;
+const INSTANCE_LAYOUT_SCHEMA_MODULE_URL = pathToFileURL(
+  path.join(CORE_APP_ROOT, "src/runtime/instance-layout-schema.ts"),
+).href;
 
 const createdRuntimeRoots: string[] = [];
 
@@ -59,42 +62,28 @@ describe("ensureInstanceLayout", () => {
     const runtimeRoot = await createRuntimeRoot();
 
     const result = await runScriptJson<{
-      first: { createdDirectories: string[]; createdFiles: string[] };
+      first: { instanceRoot: string; createdDirectories: string[]; createdFiles: string[] };
       second: { createdDirectories: string[]; createdFiles: string[] };
+      expectedDirectoryPaths: string[];
     }>({
       runtimeRoot,
       script: `
         const { ensureInstanceLayout } = await import(${JSON.stringify(INSTANCE_LAYOUT_MODULE_URL)});
+        const { INSTANCE_LAYOUT_DIRECTORY_PATHS } = await import(${JSON.stringify(INSTANCE_LAYOUT_SCHEMA_MODULE_URL)});
         const first = await ensureInstanceLayout("01");
         const second = await ensureInstanceLayout("01");
-        process.stdout.write(JSON.stringify({ first, second }));
+        process.stdout.write(JSON.stringify({
+          first,
+          second,
+          expectedDirectoryPaths: INSTANCE_LAYOUT_DIRECTORY_PATHS,
+        }));
       `,
     });
 
-    expect(result.first.createdDirectories.map((directoryPath) => path.basename(directoryPath))).toEqual([
-      "secrets",
-      "data",
-      "logs",
-      "cache",
-      "keypairs",
-      "settings",
-      "workspace",
-      "shell-home",
-      "tmp",
-      "tool-bin",
-      "strategies",
-      "configs",
-      "typescript",
-      "notes",
-      "scratch",
-      "output",
-      "routines",
-      "live",
-      "sessions",
-      "summaries",
-      "system",
-      "memory",
-    ]);
+    expect(
+      result.first.createdDirectories.map((directoryPath) =>
+        path.relative(result.first.instanceRoot, directoryPath).split(path.sep).join("/")),
+    ).toEqual(result.expectedDirectoryPaths);
     expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual([
       "ai.json",
       "settings.json",

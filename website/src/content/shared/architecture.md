@@ -163,7 +163,7 @@ If a tool is not in the injected runtime tool catalog for the current run, it is
 
 ## Generated Runtime Support Files
 
-TrenchClaw also writes prompt-support artifacts under `.trenchclaw-generated/`.
+TrenchClaw also writes prompt-support artifacts under the active instance at `.runtime-state/instances/<id>/cache/generated/`.
 
 Those generated files support runtime context injection, but they are not the same thing as the per-instance mutable state root.
 

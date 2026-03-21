@@ -46,6 +46,9 @@ describe("ultra swap actions", () => {
           async getTokenBalance() {
             return 0;
           },
+          async hasTokenAccount() {
+            return true;
+          },
           async getDecimals(mintAddress: string) {
             return mintAddress === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? 6 : 9;
           },
@@ -96,5 +99,132 @@ describe("ultra swap actions", () => {
     expect(result.data?.execute?.signature).toBe("swap-sig-1");
     expect(result.data?.telemetry.slippageStrategy).toBe("ultra-managed");
     expect(result.data?.telemetry.feeStrategy).toBe("ultra-managed");
+  });
+
+  test("extracts a mint from label-style token input", async () => {
+    let capturedOrderRequest: JupiterUltraOrderRequest | null = null;
+
+    const result = await ultraSwapAction.execute(
+      {
+        jupiterUltra: {
+          async getOrder(request: Record<string, unknown>) {
+            capturedOrderRequest = request as unknown as JupiterUltraOrderRequest;
+            return {
+              requestId: "req-2",
+              transaction: "unsigned-swap-tx",
+              raw: {
+                requestId: "req-2",
+              },
+            };
+          },
+          async executeOrder() {
+            return {
+              status: "Success",
+              raw: {
+                status: "Success",
+              },
+            };
+          },
+        },
+        tokenAccounts: {
+          async getSolBalance() {
+            return 1;
+          },
+          async getTokenBalance() {
+            return 0;
+          },
+          async hasTokenAccount() {
+            return true;
+          },
+          async getDecimals() {
+            return 9;
+          },
+        },
+        ultraSigner: {
+          address: "wallet-2",
+          async signBase64Transaction(base64Transaction: string) {
+            return `signed:${base64Transaction}`;
+          },
+        },
+        rpcUrl: "https://rpc.example",
+      } as never,
+      {
+        inputCoin: "SOL",
+        outputCoin: "YEPE - GaREwVYcNnvi55vPXtQFQYgspmzv3wypZfLSWWgJpump",
+        amount: "0.1",
+        amountUnit: "ui",
+        mode: "ExactIn",
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(capturedOrderRequest).not.toBeNull();
+    if (!capturedOrderRequest) {
+      return;
+    }
+
+    const orderRequest = capturedOrderRequest as JupiterUltraOrderRequest;
+    expect(orderRequest.outputMint).toBe("GaREwVYcNnvi55vPXtQFQYgspmzv3wypZfLSWWgJpump");
+  });
+
+  test("fails early when SOL cannot cover a new destination token account", async () => {
+    let getOrderCalled = false;
+
+    const result = await ultraSwapAction.execute(
+      {
+        jupiterUltra: {
+          async getOrder() {
+            getOrderCalled = true;
+            return {
+              requestId: "req-3",
+              transaction: "unsigned-swap-tx",
+              raw: {
+                requestId: "req-3",
+              },
+            };
+          },
+          async executeOrder() {
+            return {
+              status: "Success",
+              raw: {
+                status: "Success",
+              },
+            };
+          },
+        },
+        tokenAccounts: {
+          async getSolBalance() {
+            return 0.001452387;
+          },
+          async getTokenBalance() {
+            return 0;
+          },
+          async hasTokenAccount() {
+            return false;
+          },
+          async getDecimals() {
+            return 9;
+          },
+        },
+        ultraSigner: {
+          address: "wallet-3",
+          async signBase64Transaction(base64Transaction: string) {
+            return `signed:${base64Transaction}`;
+          },
+        },
+        rpcUrl: "https://rpc.example",
+      } as never,
+      {
+        inputCoin: "SOL",
+        outputCoin: "GaREwVYcNnvi55vPXtQFQYgspmzv3wypZfLSWWgJpump",
+        amount: "20%",
+        mode: "ExactIn",
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(getOrderCalled).toBe(false);
+    expect(result.error).toContain("Insufficient SOL for a first-time buy");
+    expect(result.error).toContain("0.00204428 SOL");
   });
 });

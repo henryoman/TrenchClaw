@@ -159,10 +159,10 @@ const nextInstanceNumberFromFiles = (instanceIds: string[]): number => {
   const numbers = instanceIds
     .map((instanceId) => getInstanceNumber(instanceId))
     .filter((value): value is number => value !== null)
-    .filter((value) => Number.isInteger(value) && value > 0);
+    .filter((value) => Number.isInteger(value) && value >= 0);
 
   if (numbers.length === 0) {
-    return 1;
+    return 0;
   }
 
   return Math.max(...numbers) + 1;

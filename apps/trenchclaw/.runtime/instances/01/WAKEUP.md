@@ -1,11 +1,10 @@
 # WAKEUP
 
-This file is the TrenchClaw runtime wake-up contract.
+This file defines the TrenchClaw runtime wake-up contract for this instance.
 
-It is the runtime-side analogue to OpenClaw's `HEARTBEAT.md`:
+It covers runtime boot, restart, crash recovery, and post-downtime resume behavior.
 
-- `HEARTBEAT.md` is for periodic agent awareness.
-- `WAKEUP.md` is for runtime boot, restart, crash recovery, and post-downtime resume behavior.
+This contract is instance-scoped. Wake-up decisions, resume policy, generated recovery context, and operator-visible notices belong with the instance whose runtime state they govern.
 
 Keep this file small, stable, prompt-safe, and implementation-oriented.
 
@@ -13,7 +12,7 @@ Do not put secrets, machine-local paths, wallet material, or one-off debugging n
 
 ## Why this exists
 
-TrenchClaw is not just a chat loop. It owns durable runtime state, per-instance secrets, queue state, logs, SQLite storage, and eventually more autonomous routines. That makes wake-up behavior part of the product contract, not an implementation detail.
+TrenchClaw is not just a chat loop. It owns durable runtime state, per-instance secrets, queue state, logs, SQLite storage, generated context artifacts, and eventually more autonomous routines. That makes wake-up behavior part of the product contract, not an implementation detail.
 
 When the runtime wakes up, it must answer these questions deterministically:
 
@@ -30,7 +29,7 @@ The current boot path is spread across the runtime code and already does a meani
 1. Resolve the active instance and fail closed if none is selected.
 2. Ensure the instance layout exists under per-instance runtime state.
 3. Migrate legacy runtime-global state into the active instance when legacy roots are found.
-4. Refresh generated bootstrap context artifacts when missing or when boot-refresh env flags request it.
+4. Refresh generated bootstrap context artifacts under the active instance when missing or when boot-refresh env flags request it.
 5. Open runtime storage, logs, session state, and memory state.
 6. If SQLite is enabled, sync schema, recover interrupted `running` jobs back to `pending`, and prune retained runtime data.
 7. Build the action registry, policy engine, dispatcher, gateway, and scheduler.
@@ -165,4 +164,4 @@ These are the main gaps between today's implementation and the full wake-up cont
 
 ## Editing rule
 
-If runtime boot, scheduler recovery, queue durability, or autonomous resume behavior changes, update this file in the same change.
+If runtime boot, scheduler recovery, queue durability, generated startup context, or autonomous resume behavior changes, update this file in the same change.

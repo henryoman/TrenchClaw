@@ -97,7 +97,10 @@ const main = async (): Promise<void> => {
   });
 
   let runtimeUrl: string | null = null;
-  const watchOutput = async (stream: ReadableStream<Uint8Array> | null, sink: typeof process.stdout): Promise<void> => {
+  const watchOutput = async (
+    stream: ReadableStream<Uint8Array> | null,
+    sink: Pick<typeof process.stdout, "write">,
+  ): Promise<void> => {
     if (!stream) {
       return;
     }

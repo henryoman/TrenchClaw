@@ -1126,6 +1126,34 @@ describe("RuntimeChatService", () => {
         },
         {
           kind: "action",
+          name: "listKnowledgeDocs",
+          description: "list knowledge docs",
+          purpose: "list knowledge docs",
+          routingHint: "list knowledge docs",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { request: { query: "runtime" } },
+          toolDescription: "list knowledge docs",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+        {
+          kind: "action",
+          name: "readKnowledgeDoc",
+          description: "read knowledge doc",
+          purpose: "read knowledge doc",
+          routingHint: "read knowledge doc",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { doc: "runtime-reference" },
+          toolDescription: "read knowledge doc",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+        {
+          kind: "action",
           name: "customActionOutsideAllowlist",
           description: "custom action",
           purpose: "custom action",
@@ -1219,7 +1247,13 @@ describe("RuntimeChatService", () => {
       gateway,
     });
 
-    expect(service.listToolNames()).toEqual(["closeTokenAccount", "queryRuntimeStore", "transfer"]);
+    expect(service.listToolNames()).toEqual([
+      "closeTokenAccount",
+      "listKnowledgeDocs",
+      "queryRuntimeStore",
+      "readKnowledgeDoc",
+      "transfer",
+    ]);
   });
 
   test("lists exposed wallet mutation tools in the operator prompt summary", async () => {
@@ -1505,6 +1539,70 @@ describe("RuntimeChatService", () => {
     expect(execution.toolNames).not.toContain(WORKSPACE_READ_FILE_TOOL_NAME);
     expect(execution.systemPrompt).toContain("## Knowledge Index");
     expect(execution.systemPrompt).toContain("use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults");
+  });
+
+  test("grounds operator-chat with knowledge tools and skill aliases", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "listKnowledgeDocs",
+            description: "list knowledge docs",
+            purpose: "list knowledge docs",
+            routingHint: "list knowledge docs",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { request: { query: "skills", tier: "skills" } },
+            toolDescription: "list knowledge docs",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+          {
+            kind: "action",
+            name: "readKnowledgeDoc",
+            description: "read knowledge doc",
+            purpose: "read knowledge doc",
+            routingHint: "read knowledge doc",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { doc: "runtime-reference" },
+            toolDescription: "read knowledge doc",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-knowledge-1",
+          role: "user",
+          parts: [{ type: "text", text: "what knowledge docs do you have?" }],
+        },
+      ],
+      userMessage: "what knowledge docs do you have?",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.toolNames).toEqual(["listKnowledgeDocs", "readKnowledgeDoc"]);
+    expect(execution.systemPrompt).toContain("## Knowledge Index");
+    expect(execution.systemPrompt).toContain("core doc aliases:");
+    expect(execution.systemPrompt).toContain("skill pack aliases:");
+    expect(execution.systemPrompt).toContain("use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs");
+    expect(execution.systemPrompt).toContain("Use `tier = \"skills\"` when you specifically need a skill pack.");
   });
 
   test("includes Dexscreener discovery and market-data actions in the normal operator payload", async () => {
