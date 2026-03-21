@@ -119,7 +119,11 @@ const main = async (): Promise<void> => {
     await run(["bun", "run", "--cwd", "apps/runner", "typecheck"]);
   }
 
-  await run(["bun", "run", "scripts/build-app.ts", "--output-root", args.bundleRoot]);
+  const buildCommand = ["bun", "run", "scripts/build-app.ts", "--output-root", args.bundleRoot];
+  if (args.version.length > 0) {
+    buildCommand.push("--version", args.version);
+  }
+  await run(buildCommand);
   await run(["bun", "run", "scripts/verify-app-bundle.ts", "--bundle-root", args.bundleRoot]);
 
   if (args.skipPackage) {

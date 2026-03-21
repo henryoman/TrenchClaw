@@ -1,10 +1,12 @@
 #!/usr/bin/env bun
 
 import { createHash } from "node:crypto";
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_RELEASE_COMPILE_TARGETS } from "./lib/release-build-plan";
+import { hasBlockedBundleContent, hasBlockedBundlePath } from "./lib/release-bundle-filter";
 import { normalizeTarget, resolveHostPlatformTarget, shouldSmokeCompileTargetOnHost } from "./lib/release-platform";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
@@ -141,7 +143,126 @@ const sha256File = async (filePath: string): Promise<string> => {
   return createHash("sha256").update(file).digest("hex");
 };
 
-const compileStandaloneBinary = async (targetRoot: string, compileTarget: string): Promise<string> => {
+const walkFiles = async (root: string): Promise<string[]> => {
+  const pending = [root];
+  const files: string[] = [];
+
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current) {
+      continue;
+    }
+
+    const entries = await readdir(current, { withFileTypes: true });
+    for (const entry of entries) {
+      const absolutePath = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        pending.push(absolutePath);
+        continue;
+      }
+      if (entry.isFile()) {
+        files.push(absolutePath);
+      }
+    }
+  }
+
+  return files;
+};
+
+const resolveBlockedLeakNeedles = (): string[] =>
+  [...new Set([REPO_ROOT, process.cwd(), os.homedir()].map((value) => value.trim()).filter((value) => value.length > 1))];
+
+const resolveCompileWorkspaceParent = (): string =>
+  process.platform === "darwin" || process.platform === "linux"
+    ? "/tmp/trenchclaw-release-compile"
+    : path.join(os.tmpdir(), "trenchclaw-release-compile");
+
+const createCompileWorkspace = async (): Promise<string> => {
+  const workspaceParent = resolveCompileWorkspaceParent();
+  await mkdir(workspaceParent, { recursive: true });
+  const workspaceRoot = await mkdtemp(path.join(workspaceParent, "repo-"));
+  const trackedFiles = (await runCapture(["git", "ls-files", "-z"]))
+    .split("\u0000")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  for (const relativePath of trackedFiles) {
+    const source = path.join(REPO_ROOT, relativePath);
+    const sourceStat = await stat(source).catch(() => null);
+    if (!sourceStat?.isFile()) {
+      continue;
+    }
+
+    const target = path.join(workspaceRoot, relativePath);
+    await mkdir(path.dirname(target), { recursive: true });
+    await cp(source, target);
+  }
+
+  await run(["bun", "install", "--frozen-lockfile"], workspaceRoot);
+  return workspaceRoot;
+};
+
+const verifyBundleVersion = async (bundleRoot: string, version: string): Promise<void> => {
+  if (version.length === 0) {
+    return;
+  }
+
+  const manifestPath = path.join(bundleRoot, "build-manifest.json");
+  const manifestText = await Bun.file(manifestPath).text().catch(() => null);
+  if (!manifestText) {
+    throw new Error(`Release bundle manifest missing: ${manifestPath}`);
+  }
+
+  const manifest = JSON.parse(manifestText) as { version?: unknown };
+  if (manifest.version !== version) {
+    throw new Error(`Release bundle version mismatch: expected ${version}, found ${String(manifest.version ?? "unknown")}`);
+  }
+};
+
+const verifyPackagedTarget = async (targetRoot: string, binaryName: string): Promise<void> => {
+  const blockedNeedles = resolveBlockedLeakNeedles();
+  const files = await walkFiles(targetRoot);
+  const violations: string[] = [];
+
+  for (const absolutePath of files) {
+    const relativePath = path.relative(targetRoot, absolutePath).split(path.sep).join("/");
+    const pathViolation = hasBlockedBundlePath(relativePath);
+    if (pathViolation) {
+      violations.push(pathViolation);
+    }
+
+    if (relativePath === binaryName) {
+      continue;
+    }
+
+    try {
+      const content = await readFile(absolutePath, "utf8");
+      const contentViolation = hasBlockedBundleContent(relativePath, content, { blockedNeedles });
+      if (contentViolation) {
+        violations.push(contentViolation);
+      }
+    } catch {
+      // Ignore non-text files.
+    }
+  }
+
+  const binaryPath = path.join(targetRoot, binaryName);
+  const binaryStrings = await runCapture(["strings", binaryPath], targetRoot);
+  const binaryViolation = hasBlockedBundleContent(binaryName, binaryStrings, { blockedNeedles });
+  if (binaryViolation) {
+    violations.push(`compiled binary leaked host-specific content: ${binaryViolation}`);
+  }
+
+  if (violations.length > 0) {
+    throw new Error(`Packaged artifact verification failed:\n- ${violations.join("\n- ")}`);
+  }
+};
+
+const compileStandaloneBinary = async (
+  compileWorkspaceRoot: string,
+  targetRoot: string,
+  compileTarget: string,
+): Promise<string> => {
   const binaryName = "trenchclaw";
   const binaryPath = path.join(targetRoot, binaryName);
   await run([
@@ -151,7 +272,7 @@ const compileStandaloneBinary = async (targetRoot: string, compileTarget: string
     "--compile",
     `--target=${compileTarget}`,
     `--outfile=${binaryPath}`,
-  ]);
+  ], compileWorkspaceRoot);
   return binaryName;
 };
 
@@ -161,6 +282,7 @@ const packageTarget = async (input: {
   bundleRoot: string;
   outputRoot: string;
   compileTarget: string;
+  compileWorkspaceRoot: string;
 }): Promise<ReleaseArtifactMetadata & { artifactPath: string }> => {
   const platformTarget = normalizeTarget(input.compileTarget);
   const targetRoot = path.join(input.outputRoot, `.staging-${platformTarget}`);
@@ -172,7 +294,7 @@ const packageTarget = async (input: {
   await mkdir(targetRoot, { recursive: true });
   await cp(path.join(input.bundleRoot, "gui"), path.join(targetRoot, "gui"), { recursive: true });
   await cp(path.join(input.bundleRoot, "core"), path.join(targetRoot, "core"), { recursive: true });
-  const binaryName = await compileStandaloneBinary(targetRoot, input.compileTarget);
+  const binaryName = await compileStandaloneBinary(input.compileWorkspaceRoot, targetRoot, input.compileTarget);
 
   const metadata: ReleaseArtifactMetadata = {
     version: input.version,
@@ -184,6 +306,7 @@ const packageTarget = async (input: {
     artifactName,
   };
   await writeFile(path.join(targetRoot, "release-metadata.json"), `${JSON.stringify(metadata, null, 2)}\n`, "utf8");
+  await verifyPackagedTarget(targetRoot, binaryName);
 
   await run(["tar", "-czf", artifactPath, "-C", targetRoot, "trenchclaw", "gui", "core", "release-metadata.json"]);
   const checksum = await sha256File(artifactPath);
@@ -223,27 +346,35 @@ const main = async (): Promise<void> => {
     "--bundle-root",
     args.bundleRoot,
   ]);
+  await verifyBundleVersion(args.bundleRoot, version);
 
   await rm(args.outputRoot, { recursive: true, force: true });
   await mkdir(args.outputRoot, { recursive: true });
 
   const metadata: ReleaseArtifactMetadata[] = [];
   let smokedArtifact = false;
-  for (const compileTarget of args.targets) {
-    const packaged = await packageTarget({
-      version,
-      commit,
-      bundleRoot: args.bundleRoot,
-      outputRoot: args.outputRoot,
-      compileTarget,
-    });
-    const { artifactPath, ...artifactMetadata } = packaged;
-    metadata.push(artifactMetadata);
-    if (!skipSmokeTest && shouldSmokeCompileTargetOnHost(compileTarget) && !smokedArtifact) {
-      console.log(`[package-app-release] smoke testing ${path.basename(artifactPath)} on ${hostTarget}`);
-      await smokeTestArtifact(artifactPath);
-      smokedArtifact = true;
+  const compileWorkspaceRoot = await createCompileWorkspace();
+
+  try {
+    for (const compileTarget of args.targets) {
+      const packaged = await packageTarget({
+        version,
+        commit,
+        bundleRoot: args.bundleRoot,
+        outputRoot: args.outputRoot,
+        compileTarget,
+        compileWorkspaceRoot,
+      });
+      const { artifactPath, ...artifactMetadata } = packaged;
+      metadata.push(artifactMetadata);
+      if (!skipSmokeTest && shouldSmokeCompileTargetOnHost(compileTarget) && !smokedArtifact) {
+        console.log(`[package-app-release] smoke testing ${path.basename(artifactPath)} on ${hostTarget}`);
+        await smokeTestArtifact(artifactPath);
+        smokedArtifact = true;
+      }
     }
+  } finally {
+    await rm(compileWorkspaceRoot, { recursive: true, force: true });
   }
   if (!smokedArtifact) {
     if (skipSmokeTest) {
