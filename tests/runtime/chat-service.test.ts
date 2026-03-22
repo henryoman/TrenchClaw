@@ -3047,6 +3047,140 @@ describe("RuntimeChatService", () => {
     expect(assistantMessages.at(-1)?.content).toContain("CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS");
   });
 
+  test("resolves tool-only managed trigger-order success from streamed tool output without a second model pass", async () => {
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "managedTriggerOrder",
+      category: "wallet-based",
+      inputSchema: z.object({
+        wallet: z.string(),
+        inputCoin: z.string(),
+        outputCoin: z.string(),
+        amount: z.string(),
+      }),
+      execute: async () => makeActionResult({ ok: true }),
+    });
+    const stateStore = new InMemoryStateStore();
+    let generateInvocationCount = 0;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStream: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage?: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) =>
+            createUIMessageStream({
+              originalMessages: options?.originalMessages,
+              onFinish: (event) => {
+                options?.onFinish?.({
+                  ...event,
+                  responseMessage: undefined,
+                });
+              },
+              execute: ({ writer }) => {
+                writer.write({ type: "start", messageId: "assistant-trigger-tool-pass-1" });
+                writer.write({ type: "start-step" });
+                writer.write({
+                  type: "tool-input-start",
+                  toolCallId: "trigger-tool-call-1",
+                  toolName: "managedTriggerOrder",
+                });
+                writer.write({
+                  type: "tool-input-available",
+                  toolCallId: "trigger-tool-call-1",
+                  toolName: "managedTriggerOrder",
+                  input: {
+                    wallet: "maker-1",
+                    inputCoin: "JUP",
+                    outputCoin: "SOL",
+                    amount: "100",
+                    direction: "sellAbove",
+                    trigger: { kind: "exactPrice", price: "0.005" },
+                  },
+                });
+                writer.write({
+                  type: "tool-output-available",
+                  toolCallId: "trigger-tool-call-1",
+                  output: {
+                    ok: true,
+                    data: {
+                      order: "trigger-order-1",
+                      maker: "wallet-maker-1",
+                      inputMint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+                      outputMint: "So11111111111111111111111111111111111111112",
+                      makingAmount: "100000000",
+                      takingAmount: "500000000",
+                      derivedTriggerPrice: "0.005",
+                      status: "Success",
+                      signature: "trigger-sig-1",
+                      tracking: {
+                        action: "getTriggerOrders",
+                        user: "wallet-maker-1",
+                        orderStatus: "active",
+                        order: "trigger-order-1",
+                      },
+                    },
+                  },
+                });
+                writer.write({ type: "finish-step" });
+                writer.write({ type: "finish", finishReason: "stop" });
+              },
+            }),
+          consumeStream: async () => {},
+        })) as never,
+        generateText: (async () => {
+          generateInvocationCount += 1;
+          return {
+            text: "should not be called",
+            finishReason: "stop",
+            usage: undefined,
+          };
+        }) as never,
+      },
+    );
+
+    const response = await service.stream(
+      [
+        {
+          id: "user-trigger-tool-only-1",
+          role: "user",
+          parts: [{ type: "text", text: "place the trigger order" }],
+        },
+      ],
+      { chatId: "chat-trigger-tool-only-1" },
+    );
+
+    await response.text();
+
+    expect(generateInvocationCount).toBe(0);
+    const assistantMessages = stateStore
+      .listChatMessages("chat-trigger-tool-only-1", 10)
+      .filter((message) => message.role === "assistant");
+    expect(assistantMessages.at(-1)?.content).toContain("Trigger order submitted successfully.");
+    expect(assistantMessages.at(-1)?.content).toContain("trigger-order-1");
+    expect(assistantMessages.at(-1)?.content).toContain("trigger-sig-1");
+    expect(assistantMessages.at(-1)?.content).toContain("getTriggerOrders");
+  });
+
   test("resolves tool-only wallet-content failures without a second model pass", async () => {
     const registry = new ActionRegistry();
     registry.register({

@@ -48,17 +48,17 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 - [x] Helius RPC-based data fetching
 - [x] Dexscreener market and token research
 - [x] Jupiter Ultra swaps
+- [x] Jupiter Trigger API flows
 - [x] Queue jobs, scheduled Ultra swaps, and action sequences
 - [x] Direct transfers and token account cleanup
 - [x] Runtime memory, queue, and conversation history
+- [x] Operator chat now prefers token metadata and tickers over mint-only coin answers
 - [x] Desktop GUI for chat, wallets, keys, settings, activity, and runtime status
-- [x] CI pipeline, release automation, and build/release tooling
 - [ ] Full runtime settings editor in the GUI
 - [ ] Agent-managed scheduler
 - [ ] Standard swap paths beyond Jupiter Ultra
 - [ ] Telegram chat connector
 - [ ] Gatekeeper option for the Helius RPC link
-- [ ] Jupiter Trigger API flows
 
 Quick links:
 
@@ -123,39 +123,6 @@ Useful overrides:
 - `TRENCHCLAW_RUNTIME_STATE_ROOT=/path/to/runtime`
 
 The external dev runtime writes a managed `.gitignore` so secrets, keypairs, databases, logs, caches, and other personal testing state stay out of git by default.
-
-## Build + Release (Current Path)
-
-Public releases ship as standalone compiled `trenchclaw` binaries. Bun is required for local development and release engineering, not for end-user installs.
-
-```bash
-# local verification
-bun run release:build -- --version v0.0.0 --run-checks
-
-# preview the same commit log the Release workflow will publish
-bun run release:notes -- --version v0.0.0 --output dist/release/preview.md
-
-# optional: manual release with a long drafted intro (releases/<version>.md)
-# the workflow still appends the full per-commit appendix after your markdown
-```
-
-Release publishing runs through the GitHub Actions `Release` workflow (`workflow_dispatch`).
-
-- `release_mode=manual` publishes the current committed version
-- `release_mode=patch` auto-bumps the next patch version
-- `release_mode=minor` auto-bumps the next minor version
-- `release_notes_mode=auto` (manual only) publishes **only** the repo-generated notes: grouped summary plus **every commit** with full message bodies (`scripts/generate-release-notes.ts`)
-- `release_notes_mode=draft` (manual only) publishes your `releases/<version>.md` first, then a horizontal rule, then the same auto-generated commit log
-
-```mermaid
-flowchart LR
-  A["Push / PR"] --> B["CI: test + app build + bundle verify"]
-  B --> C["Release Trigger"]
-  C --> D["Build app bundle"]
-  D --> E["Package tar.gz + sha256"]
-  E --> F["Generate notes from commits since last tag"]
-  F --> G["Publish GitHub release artifacts"]
-```
 
 ## Dashboard UI
 
