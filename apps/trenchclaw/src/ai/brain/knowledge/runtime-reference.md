@@ -30,6 +30,42 @@ This file explains the current runtime shape in the smallest possible form.
   - filesystem policy
   - write scope checks
 
+## Shell Execution Model
+
+TrenchClaw currently has three different execution classes and they must not be
+confused:
+
+- trusted internal repo scripts
+  - examples: `bun run scripts/*.ts`, build scripts, release scripts, local dev
+    bootstrap
+  - these are allowed to use normal host execution such as `Bun.spawn` and
+    `bun run`
+  - these are trusted developer workflows, not an isolation boundary
+
+- current runtime workspace shell
+  - exposed through `workspaceBash`
+  - this is a policy-constrained host shell rooted at the active instance
+    workspace
+  - it restricts cwd, sanitizes commands, shapes `PATH`, blocks some dangerous
+    patterns, and blocks mutating commands by default
+  - it is useful for inspection and trusted CLI utility work
+  - it is not a proper VM or container boundary and should not be described as
+    true secure execution for untrusted bash or TypeScript
+
+- recommended future isolated exec backend
+  - this is the correct target shape for model-driven bash and TypeScript that
+    should not touch the host shell directly
+  - required properties:
+    - isolated filesystem view
+    - explicit execution limits and timeout
+    - network policy or egress allowlist
+    - TypeScript/JavaScript execution without direct host `bun run`
+  - for TrenchClaw this does not need to mean a full VM
+  - the preferred default is a lightweight in-process sandbox such as
+    `just-bash` or another custom `bash-tool` sandbox implementation
+  - a full VM should be optional, only for cases that truly require arbitrary
+    native binaries or a stronger boundary
+
 ## Runtime State Roots
 
 The repo tracks the intended layout under `.runtime/`.
@@ -112,3 +148,10 @@ If you need runtime truth:
 9. do not treat `.runtime/` as mutable state
 10. never imply that developer-local vaults, wallets, logs, or databases ship to end users
 11. if a feature is not listed as shipped or limited beta, describe it as coming soon instead of guessing
+12. do not describe `workspaceBash` as a true sandbox or secure exec boundary; today it is a policy-constrained host shell
+13. prefer typed runtime actions over shell commands whenever an action already exists
+14. for model-driven bash or TypeScript execution, prefer a lightweight
+    in-process sandbox with isolated filesystem, network allowlists, and
+    execution limits rather than direct host bash
+15. reserve host-shell execution for trusted internal scripts and explicitly
+    curated native CLI passthroughs

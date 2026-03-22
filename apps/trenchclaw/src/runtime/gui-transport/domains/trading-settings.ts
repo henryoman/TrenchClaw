@@ -1,7 +1,7 @@
 import type {
-  GuiTradingSettingsResponse,
-  GuiUpdateTradingSettingsRequest,
-  GuiUpdateTradingSettingsResponse,
+  RuntimeApiTradingSettingsResponse,
+  RuntimeApiUpdateTradingSettingsRequest,
+  RuntimeApiUpdateTradingSettingsResponse,
 } from "@trenchclaw/types";
 import {
   DEFAULT_TRADING_PREFERENCES,
@@ -11,7 +11,7 @@ import {
   writeInstanceTradingSettings,
 } from "../../load/trading-settings";
 import { resolveCurrentActiveInstanceIdSync } from "../../instance-state";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
 const cloneTradingPreferences = (settings: TradingPreferences): TradingPreferences => ({
   ...settings,
@@ -19,7 +19,7 @@ const cloneTradingPreferences = (settings: TradingPreferences): TradingPreferenc
   customPresets: [...settings.customPresets],
 });
 
-export const getTradingSettings = async (context: RuntimeGuiDomainContext): Promise<GuiTradingSettingsResponse> => {
+export const getTradingSettings = async (context: RuntimeSurfaceContext): Promise<RuntimeApiTradingSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   const payload = await loadInstanceTradingSettings({ instanceId: activeInstanceId });
   const parsed = instanceTradingSettingsSchema.safeParse(payload.resolvedSettings);
@@ -34,9 +34,9 @@ export const getTradingSettings = async (context: RuntimeGuiDomainContext): Prom
 };
 
 export const updateTradingSettings = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiUpdateTradingSettingsRequest,
-): Promise<GuiUpdateTradingSettingsResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiUpdateTradingSettingsRequest,
+): Promise<RuntimeApiUpdateTradingSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   if (!activeInstanceId) {
     throw new Error("No active instance selected. Trading settings are instance-scoped.");

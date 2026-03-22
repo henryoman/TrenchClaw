@@ -1,12 +1,12 @@
 import type {
-  GuiUpdateAiSettingsRequest,
-  GuiCreateInstanceRequest,
-  GuiDeleteSecretRequest,
-  GuiSignInInstanceRequest,
-  GuiUpdateTradingSettingsRequest,
-  GuiUpdateWakeupSettingsRequest,
-  GuiUpdateVaultRequest,
-  GuiUpsertSecretRequest,
+  RuntimeApiUpdateAiSettingsRequest,
+  RuntimeApiCreateInstanceRequest,
+  RuntimeApiDeleteSecretRequest,
+  RuntimeApiSignInInstanceRequest,
+  RuntimeApiUpdateTradingSettingsRequest,
+  RuntimeApiUpdateWakeupSettingsRequest,
+  RuntimeApiUpdateVaultRequest,
+  RuntimeApiUpsertSecretRequest,
 } from "@trenchclaw/types";
 import { safeValidateUIMessages, type UIMessage } from "ai";
 import type { GatewayLane } from "../../ai/gateway";
@@ -178,7 +178,7 @@ export const parseUiChatRequest = async (
   }
 };
 
-export const parseCreateInstanceRequest = async (request: Request): Promise<GuiCreateInstanceRequest | null> => {
+export const parseCreateInstanceRequest = async (request: Request): Promise<RuntimeApiCreateInstanceRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || typeof payload.name !== "string") {
@@ -204,7 +204,7 @@ export const parseCreateInstanceRequest = async (request: Request): Promise<GuiC
   }
 };
 
-export const parseSignInRequest = async (request: Request): Promise<GuiSignInInstanceRequest | null> => {
+export const parseSignInRequest = async (request: Request): Promise<RuntimeApiSignInInstanceRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || typeof payload.localInstanceId !== "string") {
@@ -221,7 +221,7 @@ export const parseSignInRequest = async (request: Request): Promise<GuiSignInIns
   }
 };
 
-export const parseUpdateVaultRequest = async (request: Request): Promise<GuiUpdateVaultRequest | null> => {
+export const parseUpdateVaultRequest = async (request: Request): Promise<RuntimeApiUpdateVaultRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || typeof payload.content !== "string") {
@@ -235,7 +235,7 @@ export const parseUpdateVaultRequest = async (request: Request): Promise<GuiUpda
   }
 };
 
-export const parseUpdateAiSettingsRequest = async (request: Request): Promise<GuiUpdateAiSettingsRequest | null> => {
+export const parseUpdateAiSettingsRequest = async (request: Request): Promise<RuntimeApiUpdateAiSettingsRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || !isRecord(payload.settings)) {
@@ -278,7 +278,7 @@ export const parseUpdateAiSettingsRequest = async (request: Request): Promise<Gu
   }
 };
 
-export const parseUpdateTradingSettingsRequest = async (request: Request): Promise<GuiUpdateTradingSettingsRequest | null> => {
+export const parseUpdateTradingSettingsRequest = async (request: Request): Promise<RuntimeApiUpdateTradingSettingsRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || !isRecord(payload.settings)) {
@@ -298,7 +298,7 @@ export const parseUpdateTradingSettingsRequest = async (request: Request): Promi
   }
 };
 
-export const parseUpdateWakeupSettingsRequest = async (request: Request): Promise<GuiUpdateWakeupSettingsRequest | null> => {
+export const parseUpdateWakeupSettingsRequest = async (request: Request): Promise<RuntimeApiUpdateWakeupSettingsRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || !isRecord(payload.settings)) {
@@ -318,7 +318,7 @@ export const parseUpdateWakeupSettingsRequest = async (request: Request): Promis
   }
 };
 
-export const parseUpsertSecretRequest = async (request: Request): Promise<GuiUpsertSecretRequest | null> => {
+export const parseUpsertSecretRequest = async (request: Request): Promise<RuntimeApiUpsertSecretRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || typeof payload.optionId !== "string" || typeof payload.value !== "string") {
@@ -345,7 +345,7 @@ export const parseUpsertSecretRequest = async (request: Request): Promise<GuiUps
   }
 };
 
-export const parseDeleteSecretRequest = async (request: Request): Promise<GuiDeleteSecretRequest | null> => {
+export const parseDeleteSecretRequest = async (request: Request): Promise<RuntimeApiDeleteSecretRequest | null> => {
   try {
     const payload = await request.json();
     if (!isRecord(payload) || typeof payload.optionId !== "string") {

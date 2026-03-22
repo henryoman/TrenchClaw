@@ -26,13 +26,13 @@ export const docsPrerequisites = [
   {
     label: 'Solana CLI',
     kind: 'Optional workflow tool',
-    description: 'Useful for shell commands, chain-side debugging, and CLI-backed helper workflows.',
+    description: 'Useful for trusted local shell work, chain-side debugging, and isolated CLI-backed helper workflows.',
     command: 'sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"',
   },
   {
     label: 'Helius CLI',
     kind: 'Optional workflow tool',
-    description: 'Useful for Helius project setup, API key management, RPC endpoint lookup, and shell automation.',
+    description: 'Useful for Helius project setup, API key management, RPC endpoint lookup, and isolated shell automation.',
     command: 'bun add -g helius-cli@latest',
   },
   {

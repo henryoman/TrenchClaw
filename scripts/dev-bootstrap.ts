@@ -7,7 +7,8 @@ import { initializeDeveloperRuntime, resolveDeveloperBootstrapRoots } from "./li
 const REPO_ROOT = process.cwd();
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
 const DEFAULT_RUNTIME_PORT = Number.parseInt(process.env.RUNTIME_PORT || "4020", 10);
-const DEFAULT_GUI_PORT = Number.parseInt(process.env.GUI_PORT || "4173", 10);
+const DEFAULT_FRONTEND_PORT = Number.parseInt(process.env.FRONTEND_PORT || process.env.GUI_PORT || "4173", 10);
+const DEFAULT_FRONTEND_SURFACE = process.env.TRENCHCLAW_FRONTEND_SURFACE?.trim() || "gui";
 
 const isValidPort = (value: number): boolean => Number.isInteger(value) && value > 0 && value <= 65535;
 
@@ -26,6 +27,7 @@ interface PortProbeResult {
 interface CliArgs {
   runtimeRoot?: string;
   generatedRoot?: string;
+  frontendSurface?: string;
 }
 
 const parseArgs = (argv: string[]): CliArgs => {
@@ -42,6 +44,10 @@ const parseArgs = (argv: string[]): CliArgs => {
         args.generatedRoot = argv[index + 1];
         index += 1;
         break;
+      case "--frontend-surface":
+        args.frontendSurface = argv[index + 1];
+        index += 1;
+        break;
       case "--help":
       case "-h":
         console.log(
@@ -51,6 +57,7 @@ const parseArgs = (argv: string[]): CliArgs => {
             "Options:",
             "  --runtime-root <path>     External runtime root for local dev",
             "  --generated-root <path>   External generated root for local dev",
+            "  --frontend-surface <id>   Frontend surface under apps/frontends/",
           ].join("\n"),
         );
         process.exit(0);
@@ -193,14 +200,33 @@ const forceStop = (proc: Bun.Subprocess): void => {
   proc.kill("SIGKILL");
 };
 
+const resolveFrontendSurface = async (requestedSurface: string | undefined): Promise<{
+  id: string;
+  root: string;
+}> => {
+  const id = (requestedSurface?.trim() || DEFAULT_FRONTEND_SURFACE).trim();
+  if (!id) {
+    throw new Error("Frontend surface id must not be empty.");
+  }
+
+  const root = path.join(REPO_ROOT, "apps/frontends", id);
+  const packageJsonPath = path.join(root, "package.json");
+  if (!(await Bun.file(packageJsonPath).exists())) {
+    throw new Error(`Frontend surface "${id}" not found at ${root}`);
+  }
+
+  return { id, root };
+};
+
 const run = async (): Promise<void> => {
   const cliArgs = parseArgs(process.argv.slice(2));
   const runtimeStrictPort = process.env.RUNTIME_STRICT_PORT === "1";
-  const guiStrictPort = process.env.GUI_STRICT_PORT === "1";
+  const frontendStrictPort = process.env.FRONTEND_STRICT_PORT === "1" || process.env.GUI_STRICT_PORT === "1";
   const runtimePort = ensureValidPort(DEFAULT_RUNTIME_PORT, "runtime");
-  const guiPort = ensureValidPort(DEFAULT_GUI_PORT, "gui");
+  const frontendPort = ensureValidPort(DEFAULT_FRONTEND_PORT, "frontend");
+  const frontendSurface = await resolveFrontendSurface(cliArgs.frontendSurface);
   const runtimeUrl = `http://${RUNTIME_HOST}:${runtimePort}`;
-  const guiUrl = `http://${RUNTIME_HOST}:${guiPort}`;
+  const frontendUrl = `http://${RUNTIME_HOST}:${frontendPort}`;
 
   if (runtimeStrictPort) {
     const runtimeProbe = await canBindPort(RUNTIME_HOST, runtimePort);
@@ -211,17 +237,18 @@ const run = async (): Promise<void> => {
     await reclaimPort(RUNTIME_HOST, runtimePort, "runtime");
   }
 
-  if (guiStrictPort) {
-    const guiProbe = await canBindPort(RUNTIME_HOST, guiPort);
-    if (!guiProbe.available) {
-      throw new Error(`GUI port ${guiPort} is unavailable and strict mode is enabled.`);
+  if (frontendStrictPort) {
+    const frontendProbe = await canBindPort(RUNTIME_HOST, frontendPort);
+    if (!frontendProbe.available) {
+      throw new Error(`Frontend port ${frontendPort} is unavailable and strict mode is enabled.`);
     }
   } else {
-    await reclaimPort(RUNTIME_HOST, guiPort, "gui");
+    await reclaimPort(RUNTIME_HOST, frontendPort, "frontend");
   }
 
   console.log(`[bootstrap] runtime target: ${runtimeUrl}`);
-  console.log(`[bootstrap] gui target: ${guiUrl}`);
+  console.log(`[bootstrap] frontend surface: ${frontendSurface.id}`);
+  console.log(`[bootstrap] frontend target: ${frontendUrl}`);
 
   const baseEnv = { ...process.env };
   const { runtimeRoot: runtimeStateRoot, generatedRoot } = resolveDeveloperBootstrapRoots({
@@ -247,7 +274,9 @@ const run = async (): Promise<void> => {
       RUNTIME_HOST,
       RUNTIME_PORT: String(runtimePort),
       RUNTIME_REQUIRE_SERVER: "1",
-      TRENCHCLAW_GUI_URL: guiUrl,
+      TRENCHCLAW_APP_SURFACE: frontendSurface.id,
+      TRENCHCLAW_APP_SURFACE_URL: frontendUrl,
+      TRENCHCLAW_GUI_URL: frontendUrl,
       TRENCHCLAW_RUNTIME_STATE_ROOT: path.resolve(runtimeStateRoot),
     },
   });
@@ -269,7 +298,7 @@ const run = async (): Promise<void> => {
     shutdownPromise = (async () => {
       const procs: Array<{ label: string; proc: Bun.Subprocess | null }> = [
         { label: "runtime", proc: runtimeProc },
-        { label: "gui", proc: guiProc },
+        { label: "frontend", proc: guiProc },
       ];
 
       for (const item of procs) {
@@ -326,15 +355,17 @@ const run = async (): Promise<void> => {
     handleFatal("unhandled rejection", reason);
   });
 
-  console.log("[bootstrap] runtime spawned; starting GUI");
+  console.log("[bootstrap] runtime spawned; starting frontend surface");
 
-  guiProc = Bun.spawn(["bun", "--bun", "vite", "--host", RUNTIME_HOST, "--port", String(guiPort), "--strictPort"], {
-    cwd: path.join(REPO_ROOT, "apps/frontends/gui"),
+  guiProc = Bun.spawn(["bun", "--bun", "vite", "--host", RUNTIME_HOST, "--port", String(frontendPort), "--strictPort"], {
+    cwd: frontendSurface.root,
     stdout: "inherit",
     stderr: "inherit",
     stdin: "inherit",
     env: {
       ...baseEnv,
+      FRONTEND_PORT: String(frontendPort),
+      TRENCHCLAW_FRONTEND_SURFACE: frontendSurface.id,
       VITE_TRENCHCLAW_RUNTIME_URL: runtimeUrl,
     },
   });
@@ -344,7 +375,7 @@ const run = async (): Promise<void> => {
 
   const result = await Promise.race([
     runtimeExit.then((code) => ({ source: "runtime" as const, code })),
-    guiExit.then((code) => ({ source: "gui" as const, code })),
+    guiExit.then((code) => ({ source: "frontend" as const, code })),
   ]);
 
   if (result.code !== 0 && !(shutdownRequested && isSignalExitCode(result.code))) {

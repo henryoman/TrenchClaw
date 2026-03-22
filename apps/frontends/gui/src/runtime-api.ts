@@ -1,35 +1,35 @@
 import type {
-  GuiAiSettingsResponse,
-  GuiUpdateAiSettingsRequest,
-  GuiUpdateAiSettingsResponse,
-  GuiActivityResponse,
-  GuiBootstrapResponse,
-  GuiSolPriceResponse,
-  GuiTradingSettingsResponse,
-  GuiUpdateTradingSettingsRequest,
-  GuiUpdateTradingSettingsResponse,
-  GuiWakeupSettingsResponse,
-  GuiUpdateWakeupSettingsRequest,
-  GuiUpdateWakeupSettingsResponse,
-  GuiScheduleResponse,
-  GuiConversationMessagesResponse,
-  GuiConversationsResponse,
-  GuiCreateInstanceRequest,
-  GuiCreateInstanceResponse,
-  GuiDeleteConversationResponse,
-  GuiDeleteSecretRequest,
-  GuiDeleteSecretResponse,
-  GuiInstancesResponse,
-  GuiLlmCheckResponse,
-  GuiQueueResponse,
-  GuiSecretsResponse,
-  GuiSignInInstanceRequest,
-  GuiSignInInstanceResponse,
-  GuiWalletsResponse,
-  GuiUpsertSecretRequest,
-  GuiUpsertSecretResponse,
+  RuntimeApiAiSettingsResponse,
+  RuntimeApiUpdateAiSettingsRequest,
+  RuntimeApiUpdateAiSettingsResponse,
+  RuntimeApiActivityResponse,
+  RuntimeApiBootstrapResponse,
+  RuntimeApiSolPriceResponse,
+  RuntimeApiTradingSettingsResponse,
+  RuntimeApiUpdateTradingSettingsRequest,
+  RuntimeApiUpdateTradingSettingsResponse,
+  RuntimeApiWakeupSettingsResponse,
+  RuntimeApiUpdateWakeupSettingsRequest,
+  RuntimeApiUpdateWakeupSettingsResponse,
+  RuntimeApiScheduleResponse,
+  RuntimeApiConversationMessagesResponse,
+  RuntimeApiConversationsResponse,
+  RuntimeApiCreateInstanceRequest,
+  RuntimeApiCreateInstanceResponse,
+  RuntimeApiDeleteConversationResponse,
+  RuntimeApiDeleteSecretRequest,
+  RuntimeApiDeleteSecretResponse,
+  RuntimeApiInstancesResponse,
+  RuntimeApiLlmCheckResponse,
+  RuntimeApiQueueResponse,
+  RuntimeApiSecretsResponse,
+  RuntimeApiSignInInstanceRequest,
+  RuntimeApiSignInInstanceResponse,
+  RuntimeApiWalletsResponse,
+  RuntimeApiUpsertSecretRequest,
+  RuntimeApiUpsertSecretResponse,
 } from "@trenchclaw/types";
-import { GUI_API_BASE_PATH, REQUEST_TIMEOUT_MS } from "./config";
+import { APP_API_BASE_PATH, REQUEST_TIMEOUT_MS } from "./config";
 
 export const runtimeBaseUrl = (import.meta.env.VITE_TRENCHCLAW_RUNTIME_URL ?? "").trim().replace(/\/+$/u, "");
 
@@ -75,85 +75,85 @@ const fetchJson = async <T>(input: RequestInfo | URL, init?: RequestInit): Promi
 };
 
 export const runtimeApi = {
-  bootstrap: (): Promise<GuiBootstrapResponse> => fetchJson<GuiBootstrapResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/bootstrap`)),
-  solPrice: (): Promise<GuiSolPriceResponse> => fetchJson<GuiSolPriceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/sol-price`)),
-  queue: (): Promise<GuiQueueResponse> => fetchJson<GuiQueueResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/queue`)),
-  schedule: (): Promise<GuiScheduleResponse> => fetchJson<GuiScheduleResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/schedule`)),
-  activity: (limit = 100): Promise<GuiActivityResponse> =>
-    fetchJson<GuiActivityResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/activity?limit=${Math.max(1, Math.trunc(limit))}`)),
-  conversations: (limit = 100): Promise<GuiConversationsResponse> =>
-    fetchJson<GuiConversationsResponse>(
-      toRuntimeUrl(`${GUI_API_BASE_PATH}/conversations?limit=${Math.max(1, Math.trunc(limit))}`),
+  bootstrap: (): Promise<RuntimeApiBootstrapResponse> => fetchJson<RuntimeApiBootstrapResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/bootstrap`)),
+  solPrice: (): Promise<RuntimeApiSolPriceResponse> => fetchJson<RuntimeApiSolPriceResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/sol-price`)),
+  queue: (): Promise<RuntimeApiQueueResponse> => fetchJson<RuntimeApiQueueResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/queue`)),
+  schedule: (): Promise<RuntimeApiScheduleResponse> => fetchJson<RuntimeApiScheduleResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/schedule`)),
+  activity: (limit = 100): Promise<RuntimeApiActivityResponse> =>
+    fetchJson<RuntimeApiActivityResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/activity?limit=${Math.max(1, Math.trunc(limit))}`)),
+  conversations: (limit = 100): Promise<RuntimeApiConversationsResponse> =>
+    fetchJson<RuntimeApiConversationsResponse>(
+      toRuntimeUrl(`${APP_API_BASE_PATH}/conversations?limit=${Math.max(1, Math.trunc(limit))}`),
     ),
-  conversationMessages: (conversationId: string, limit = 500): Promise<GuiConversationMessagesResponse> =>
-    fetchJson<GuiConversationMessagesResponse>(
+  conversationMessages: (conversationId: string, limit = 500): Promise<RuntimeApiConversationMessagesResponse> =>
+    fetchJson<RuntimeApiConversationMessagesResponse>(
       toRuntimeUrl(
-        `${GUI_API_BASE_PATH}/conversations/${encodeURIComponent(conversationId)}/messages?limit=${Math.max(1, Math.trunc(limit))}`,
+        `${APP_API_BASE_PATH}/conversations/${encodeURIComponent(conversationId)}/messages?limit=${Math.max(1, Math.trunc(limit))}`,
       ),
     ),
-  deleteConversation: (conversationId: string): Promise<GuiDeleteConversationResponse> =>
-    fetchJson<GuiDeleteConversationResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/conversations/${encodeURIComponent(conversationId)}`), {
+  deleteConversation: (conversationId: string): Promise<RuntimeApiDeleteConversationResponse> =>
+    fetchJson<RuntimeApiDeleteConversationResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/conversations/${encodeURIComponent(conversationId)}`), {
       method: "DELETE",
     }),
-  instances: (): Promise<GuiInstancesResponse> => fetchJson<GuiInstancesResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`)),
-  createInstance: (input: GuiCreateInstanceRequest): Promise<GuiCreateInstanceResponse> =>
-    fetchJson<GuiCreateInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances`), {
+  instances: (): Promise<RuntimeApiInstancesResponse> => fetchJson<RuntimeApiInstancesResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/instances`)),
+  createInstance: (input: RuntimeApiCreateInstanceRequest): Promise<RuntimeApiCreateInstanceResponse> =>
+    fetchJson<RuntimeApiCreateInstanceResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/instances`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-  signInInstance: (input: GuiSignInInstanceRequest): Promise<GuiSignInInstanceResponse> =>
-    fetchJson<GuiSignInInstanceResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/instances/sign-in`), {
+  signInInstance: (input: RuntimeApiSignInInstanceRequest): Promise<RuntimeApiSignInInstanceResponse> =>
+    fetchJson<RuntimeApiSignInInstanceResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/instances/sign-in`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-  aiSettings: (): Promise<GuiAiSettingsResponse> => fetchJson<GuiAiSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/ai-settings`)),
-  updateAiSettings: (input: GuiUpdateAiSettingsRequest): Promise<GuiUpdateAiSettingsResponse> =>
-    fetchJson<GuiUpdateAiSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/ai-settings`), {
+  aiSettings: (): Promise<RuntimeApiAiSettingsResponse> => fetchJson<RuntimeApiAiSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/ai-settings`)),
+  updateAiSettings: (input: RuntimeApiUpdateAiSettingsRequest): Promise<RuntimeApiUpdateAiSettingsResponse> =>
+    fetchJson<RuntimeApiUpdateAiSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/ai-settings`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-  tradingSettings: (): Promise<GuiTradingSettingsResponse> =>
-    fetchJson<GuiTradingSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/trading-settings`)),
-  updateTradingSettings: (input: GuiUpdateTradingSettingsRequest): Promise<GuiUpdateTradingSettingsResponse> =>
-    fetchJson<GuiUpdateTradingSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/trading-settings`), {
+  tradingSettings: (): Promise<RuntimeApiTradingSettingsResponse> =>
+    fetchJson<RuntimeApiTradingSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/trading-settings`)),
+  updateTradingSettings: (input: RuntimeApiUpdateTradingSettingsRequest): Promise<RuntimeApiUpdateTradingSettingsResponse> =>
+    fetchJson<RuntimeApiUpdateTradingSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/trading-settings`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-  wakeupSettings: (): Promise<GuiWakeupSettingsResponse> =>
-    fetchJson<GuiWakeupSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/wakeup-settings`)),
-  updateWakeupSettings: (input: GuiUpdateWakeupSettingsRequest): Promise<GuiUpdateWakeupSettingsResponse> =>
-    fetchJson<GuiUpdateWakeupSettingsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/wakeup-settings`), {
+  wakeupSettings: (): Promise<RuntimeApiWakeupSettingsResponse> =>
+    fetchJson<RuntimeApiWakeupSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/wakeup-settings`)),
+  updateWakeupSettings: (input: RuntimeApiUpdateWakeupSettingsRequest): Promise<RuntimeApiUpdateWakeupSettingsResponse> =>
+    fetchJson<RuntimeApiUpdateWakeupSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/wakeup-settings`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-  secrets: (): Promise<GuiSecretsResponse> => fetchJson<GuiSecretsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/secrets`)),
-  upsertSecret: (input: GuiUpsertSecretRequest): Promise<GuiUpsertSecretResponse> =>
-    fetchJson<GuiUpsertSecretResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/secrets`), {
+  secrets: (): Promise<RuntimeApiSecretsResponse> => fetchJson<RuntimeApiSecretsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/secrets`)),
+  upsertSecret: (input: RuntimeApiUpsertSecretRequest): Promise<RuntimeApiUpsertSecretResponse> =>
+    fetchJson<RuntimeApiUpsertSecretResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/secrets`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-  deleteSecret: (input: GuiDeleteSecretRequest): Promise<GuiDeleteSecretResponse> =>
-    fetchJson<GuiDeleteSecretResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/secrets`), {
+  deleteSecret: (input: RuntimeApiDeleteSecretRequest): Promise<RuntimeApiDeleteSecretResponse> =>
+    fetchJson<RuntimeApiDeleteSecretResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/secrets`), {
       method: "DELETE",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
     }),
-  llmCheck: (): Promise<GuiLlmCheckResponse> => fetchJson<GuiLlmCheckResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/llm/check`)),
-  wallets: (): Promise<GuiWalletsResponse> => fetchJson<GuiWalletsResponse>(toRuntimeUrl(`${GUI_API_BASE_PATH}/wallets`)),
+  llmCheck: (): Promise<RuntimeApiLlmCheckResponse> => fetchJson<RuntimeApiLlmCheckResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/llm/check`)),
+  wallets: (): Promise<RuntimeApiWalletsResponse> => fetchJson<RuntimeApiWalletsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/wallets`)),
   walletBackupDownloadUrl: (relativePath: string): string =>
-    toRuntimeUrl(`${GUI_API_BASE_PATH}/wallets/download?path=${encodeURIComponent(relativePath)}`),
+    toRuntimeUrl(`${APP_API_BASE_PATH}/wallets/download?path=${encodeURIComponent(relativePath)}`),
   reportClientError: (input: {
     source: string;
     message: string;
     metadata?: Record<string, unknown>;
   }): Promise<{ ok: true }> =>
-    fetchJson<{ ok: true }>(toRuntimeUrl(`${GUI_API_BASE_PATH}/client-error`), {
+    fetchJson<{ ok: true }>(toRuntimeUrl(`${APP_API_BASE_PATH}/client-error`), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),

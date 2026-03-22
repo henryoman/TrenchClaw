@@ -11,4 +11,6 @@ export * from "./sleep";
 export * from "./enqueueRuntimeJob";
 export * from "./manageRuntimeJob";
 export * from "./downloadGeckoTerminalOhlcv";
+export * from "./getTokenPricePerformance";
 export * from "./submitTradingRoutine";
+export * from "./tokenHolderAnalytics";

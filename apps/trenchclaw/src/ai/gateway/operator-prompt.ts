@@ -3,6 +3,7 @@ import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
 import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
+import { renderAsyncToolBehaviorSection, renderCommandMenuSection } from "../../runtime/prompt/tool-menu";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
 
 const OPERATOR_KERNEL_PROMPT = [
@@ -29,6 +30,7 @@ const MUTATING_OPERATOR_TOOLS = new Set([
   "managedTriggerCancelOrders",
   "managedSwap",
   "managedUltraSwap",
+  "scheduleManagedSwap",
   "scheduleManagedUltraSwap",
   "submitTradingRoutine",
 ]);
@@ -129,6 +131,21 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     avoidWhen: "you still need discovery or only care about one exact pair",
     inputAdvice: "Pass up to 30 `tokenAddresses`. When the response includes token metadata such as `baseToken.name` or `baseToken.symbol`, use that in the answer and keep raw addresses secondary.",
   },
+  getTokenPricePerformance: {
+    useWhen: "the user gives one exact coin address and asks how that coin performed over a concrete lookback such as 15m, 1h, 4h, 24h, or 7d",
+    avoidWhen: "you still need token discovery by symbol or name, or the user is asking for broad market ranking rather than one known coin's historical move",
+    inputAdvice: "Pass only `coinAddress` and `lookback`. Keep `lookback` short and explicit, like `15m`, `1h`, `4h`, `24h`, or `7d`. Let the runtime resolve the pool, historical candle window, and signed USD plus percent change.",
+  },
+  getTokenHolderDistribution: {
+    useWhen: "the user asks for whales, top holders, largest accounts, or holder concentration for one exact token mint",
+    avoidWhen: "the user asked for a broad hot-token comparison across many promoted coins and the ranking tool can answer in one step",
+    inputAdvice: "Pass the exact `mintAddress`. Unless the user asked for a custom whale definition, default `whaleThresholdPercent` to `1` and use the returned owner aggregation instead of raw token-account rows.",
+  },
+  rankDexscreenerTopTokenBoostsByWhales: {
+    useWhen: "the user wants a current Dexscreener hot-token set and also wants to know which candidate has the most whales, strongest holder concentration, or heaviest top-holder footprint",
+    avoidWhen: "the user already gave one exact token mint and only needs that token's holder distribution",
+    inputAdvice: "Use this as the default end-to-end tool for requests like 'find the top coins right now and tell me which has the most whales'. Unless the user asked for a custom threshold, keep `whaleThresholdPercent = 1`.",
+  },
   createWallets: {
     useWhen: "the user explicitly asks to create managed wallets",
     avoidWhen: "the user only wants to inspect existing wallets or balances",
@@ -168,14 +185,19 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
   },
   scheduleManagedUltraSwap: {
-    useWhen: "the user explicitly wants to schedule a managed Ultra swap for later or create a managed Ultra DCA plan",
-    avoidWhen: "the user only wants one immediate swap or the request is better expressed as a richer JSON trading routine",
-    inputAdvice: "Use this to schedule a managed Ultra swap or DCA with `schedule.kind = \"once\"` or `schedule.kind = \"dca\"`. For trading routines, relative times like `executeIn = \"60s\"`, `startIn = \"60s\"`, and `interval = \"5s\"` are valid; keep wakeup settings on minute increments only.",
+    useWhen: "the user explicitly wants the Ultra-only scheduling surface for a later swap or managed Ultra DCA plan",
+    avoidWhen: "the user only wants a normal swap for later, wants the configured default provider, only wants one immediate swap, or the request is better expressed as a richer JSON trading routine",
+    inputAdvice: "Use this only for the Ultra-only scheduling surface. If the user just wants to put a swap in the schedule, prefer `scheduleManagedSwap` so the configured main swap type is used by default. When you do use this tool, `schedule.kind = \"once\"` or `schedule.kind = \"dca\"`, and relative times like `executeIn = \"60s\"`, `startIn = \"60s\"`, and `interval = \"5s\"` are valid.",
   },
   managedSwap: {
     useWhen: "the user explicitly wants a managed-wallet swap and you want the runtime to use the configured swap provider instead of hard-coding one provider in the tool call",
     avoidWhen: "the user specifically asked for an Ultra-only surface or the managed wallet selector is still unknown",
     inputAdvice: "Use `wallet` for the managed wallet selector when possible, plus `inputCoin`, `outputCoin`, `amount`, and optional `provider`. Omit `provider` to use the configured default swap provider.",
+  },
+  scheduleManagedSwap: {
+    useWhen: "the user explicitly wants to schedule a swap for later or create a simple DCA plan and you want the easiest flat JSON input instead of the harder internal routine schema",
+    avoidWhen: "the user only wants one immediate swap, explicitly wants the Ultra-only scheduling surface, or needs a richer curated multi-step routine",
+    inputAdvice: "Use one flat object: `kind`, wallet selector, `inputCoin`, `outputCoin`, `amount`, and simple timing fields like `whenIn` or `whenAtUnixMs`. For DCA add `installments` plus `every` or `everyMs`. Omit `provider` unless the user explicitly wants a specific route so the configured main swap type is used by default. If needed, `provider` may be `configured`, `ultra`, or `standard`.",
   },
   submitTradingRoutine: {
     useWhen: "the user explicitly wants a JSON trading routine, scheduled swap, DCA plan, or curated multi-step trading sequence",
@@ -190,6 +212,10 @@ const renderOperatorDecisionRules = (): string => [
   "- For wallet state, use wallet tools first; do not use Dexscreener, memory, or runtime store as substitutes for live balances.",
   "- For market data, use Dexscreener tools; do not use wallet-balance tools to answer price, liquidity, volume, or price-change questions.",
   "- For broad market asks like 'what is hot today', 'what meme coins are trending', or 'what is moving right now', start with `getDexscreenerTopTokenBoosts` or `getDexscreenerLatestTokenProfiles`, then use `getDexscreenerTokensByChain` if you need a concrete batch comparison.",
+  "- For 'how did this known coin perform over X time' requests with one exact address, prefer `getTokenPricePerformance` instead of manually stitching discovery, current price, and candle reads together.",
+  "- For whales, top holders, largest accounts, or holder concentration on one known token, use `getTokenHolderDistribution` instead of stopping at Dexscreener discovery.",
+  "- For end-to-end asks that combine hot or boosted token discovery with whale comparison, prefer `rankDexscreenerTopTokenBoostsByWhales` when it is available instead of spending multiple steps on manual glue code.",
+  "- If the user asks for the token with 'the most whales' and does not provide a custom definition, default whales to distinct owner wallets holding at least 1% of supply among the largest-holder set, and tie-break by top-10 owner concentration.",
   "- Do not default to `getDexscreenerLatestTokenBoosts` for broad trending questions. Use it only for recency questions about what was just boosted or newly promoted.",
   "- If the user gives only a symbol, ticker, or token name, use `searchDexscreenerPairs` first.",
   "- Treat meme-coin market questions as current-trending questions unless the user explicitly asks what was just newly boosted.",
@@ -198,13 +224,16 @@ const renderOperatorDecisionRules = (): string => [
   "- Do not stop at a bare mint address when the tool output already includes token metadata such as profile headers, names, or symbols.",
   "- If your first market-discovery result leaves you with only token addresses, make the follow-up Dexscreener read needed to recover token metadata before answering unless the user explicitly asked for addresses only.",
   "- Use discovery tools only when the user gave a fuzzy symbol, nickname, or broad market question.",
+  "- Do not stop after a partial market-discovery answer when the user also asked for whales, top holders, or another downstream comparison that an enabled follow-up tool can finish.",
   "- Read before write: inspect wallet state first, then execute transfers or cleanup only after the user explicitly asked and the inputs are concrete.",
   "- For managed-wallet reads across every wallet, omit wallet selectors entirely rather than inventing an `all` wallet selector.",
   "- For managed-wallet reads across one group, pass `walletGroup` only. Do not put a group name into the single-wallet `wallet` field.",
   "- For direct trigger-order asks with a concrete target price, prefer `managedTriggerOrder` with `trigger.kind = \"exactPrice\"`.",
   "- Use `percentFromBuyPrice` only when the user explicitly frames the trigger relative to entry price, buy price, stop loss, or take profit percentage.",
   "- Prefer `managedSwap` for direct managed-wallet swaps when you want the runtime to choose the configured provider. Use `managedUltraSwap` only when the user explicitly wants the Ultra-specific surface.",
-  "- Prefer `submitTradingRoutine` for JSON-submitted, scheduled, DCA, or multi-step trading flows instead of manually assembling raw queue payloads.",
+  "- Prefer `scheduleManagedSwap` for normal 'swap for later' asks and simple DCA plans. Omit `provider` unless the user explicitly asks for one so the configured main swap type is used by default.",
+  "- Use `scheduleManagedUltraSwap` only when the user explicitly wants the Ultra-only scheduling surface.",
+  "- Use `submitTradingRoutine` only when a richer curated multi-step JSON routine is truly necessary instead of the flatter scheduling surface.",
   "- Never use a write tool just because it is available. Use it only when the user clearly requested the mutation.",
   "- If confirmation is required, pass `userConfirmationToken` only when the user explicitly confirmed the action in this conversation.",
   "- After a successful tool call, answer in normal English from the tool result and stop unless another tool is still necessary.",
@@ -244,6 +273,14 @@ const renderOperatorToolNotes = (
   return lines.join("\n");
 };
 
+const resolveOperatorToolEntries = (
+  snapshot: RuntimeCapabilitySnapshot | undefined,
+  toolNames: string[],
+): ToolEntry[] =>
+  toolNames
+    .map((toolName) => snapshot?.modelTools.find((toolEntry) => toolEntry.name === toolName))
+    .filter((toolEntry): toolEntry is ToolEntry => toolEntry !== undefined);
+
 export const buildOperatorChatPrompt = async (input: {
   settings: RuntimeSettings;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
@@ -256,6 +293,7 @@ export const buildOperatorChatPrompt = async (input: {
       stateStore: input.stateStore,
     }),
   ]);
+  const toolEntries = resolveOperatorToolEntries(input.capabilitySnapshot, input.toolNames);
 
   return [
     OPERATOR_KERNEL_PROMPT,
@@ -264,6 +302,8 @@ export const buildOperatorChatPrompt = async (input: {
       snapshot: input.capabilitySnapshot,
       toolNames: input.toolNames,
     }),
+    renderCommandMenuSection(toolEntries, "## Command Groups"),
+    renderAsyncToolBehaviorSection(toolEntries),
     liveRuntimeContext,
     renderOperatorDecisionRules(),
     renderOperatorToolNotes(input.capabilitySnapshot, input.toolNames),
@@ -275,10 +315,13 @@ export const buildOperatorChatPrompt = async (input: {
       "- for direct runtime questions, answer from a single runtime action when possible",
       "- if the user asks what trades are queued, scheduled, or upcoming, prefer `queryRuntimeStore` with `request.type = \"listUpcomingTradingJobs\"`.",
       "- for direct market questions, use Dexscreener runtime actions first and ask a short clarification only if the token set or market scope is genuinely ambiguous",
+      "- for one exact coin-address performance request over a concrete lookback window, prefer `getTokenPricePerformance`",
+      "- for whale, holder-concentration, or top-holder asks, continue from market discovery into the enabled holder-analysis tool instead of stopping at boosts or prices",
+      "- when both a broad market ranking and a whale comparison are requested together, prefer the one-step ranking tool when it exists",
       "- for coin or token questions, answer with token metadata such as name or ticker whenever available; do not reply with only a raw token address unless metadata is genuinely unavailable",
-      "- do not keep exploring once the returned market data is enough to answer the user",
+      "- do not keep exploring once the returned market or holder data is enough to answer the user",
       "- skip greetings and capability preambles for direct asks",
-      "- if one tool call answered the question, summarize the result and stop",
+      "- if one tool call answered the full question, summarize the result and stop",
       "- if a runtime action fails, report the exact failure and the next corrective action",
     ].join("\n"),
   ]

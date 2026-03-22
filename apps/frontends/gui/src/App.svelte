@@ -102,6 +102,9 @@
     {activeTab}
     onTabChange={(tab) => {
       activeTab = tab;
+      if (tab === "wakeup") {
+        void runtime.loadWakeupSettings();
+      }
     }}
   >
     {#if activeTab === "chat"}
@@ -195,6 +198,7 @@
     {:else if activeTab === "wakeup"}
       <WakeupPanel
         wakeupSettings={runtime.state.wakeupSettings}
+        scheduleJobs={runtime.state.scheduleJobs}
         defaultPrompt={runtime.state.wakeupSettingsDefaultPrompt}
         busy={runtime.state.wakeupSettingsBusy}
         error={runtime.state.wakeupSettingsError}
@@ -220,7 +224,7 @@
         }}
       />
     {:else}
-      <SchedulePanel jobs={runtime.state.scheduleJobs} />
+      <SchedulePanel jobs={runtime.state.scheduleJobs} wakeupSettings={runtime.state.wakeupSettings} />
     {/if}
     <section class={`right-column ${GUI_QUEUE_PANEL_ENABLED ? "queue-enabled" : "summary-expanded"}`}>
       {#key runtime.state.runtimeSessionId}

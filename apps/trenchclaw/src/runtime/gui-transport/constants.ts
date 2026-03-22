@@ -1,4 +1,4 @@
-import type { GuiPublicRpcOptionView, GuiRpcProviderOptionView, GuiSecretOptionView } from "@trenchclaw/types";
+import type { RuntimeApiPublicRpcOptionView, RuntimeApiRpcProviderOptionView, RuntimeApiSecretOptionView } from "@trenchclaw/types";
 import {
   RUNTIME_INSTANCE_ROOT,
 } from "../runtime-paths";
@@ -13,12 +13,12 @@ export const CORS_HEADERS = {
 };
 export const INSTANCE_DIRECTORY = RUNTIME_INSTANCE_ROOT;
 
-export const PUBLIC_RPC_OPTIONS: GuiPublicRpcOptionView[] = [
+export const PUBLIC_RPC_OPTIONS: RuntimeApiPublicRpcOptionView[] = [
   { id: "solana-mainnet-beta", label: "Solana Mainnet (public)", url: "https://api.mainnet-beta.solana.com" },
   { id: "solana-devnet", label: "Solana Devnet (public)", url: "https://api.devnet.solana.com" },
 ];
 
-export const RPC_PROVIDER_OPTIONS: GuiRpcProviderOptionView[] = [
+export const RPC_PROVIDER_OPTIONS: RuntimeApiRpcProviderOptionView[] = [
   {
     id: "helius",
     label: "Helius",
@@ -49,7 +49,7 @@ export const RPC_PROVIDER_OPTIONS: GuiRpcProviderOptionView[] = [
   },
 ];
 
-export const SECRET_OPTIONS: GuiSecretOptionView[] = [
+export const SECRET_OPTIONS: RuntimeApiSecretOptionView[] = [
   {
     id: "solana-rpc-url",
     category: "blockchain",

@@ -147,6 +147,9 @@ The important guard rails are:
   - runtime writes are constrained to allowed runtime roots instead of arbitrary filesystem paths
 - instance-scoped workspace tools
   - workspace reads and writes are tied to the active instance rather than the whole repo or machine
+- policy-constrained workspace shell
+  - `workspaceBash` is limited to the active instance workspace and is useful for inspection or trusted CLI utility work
+  - it is not the same thing as the preferred lightweight isolated model shell runtime
 
 This is a major difference between TrenchClaw and simpler OpenClaw-style wrappers that mostly expose broad filesystem or shell access with thinner runtime boundaries.
 
@@ -158,6 +161,11 @@ The main surfaces are:
 
 - runtime actions that are registered and exposed through the capability snapshot
 - workspace tools such as `workspaceBash`, `workspaceReadFile`, and `workspaceWriteFile` when enabled by policy
+
+The current workspace shell is intentionally narrower than general host shell
+access, but the preferred target for model-driven bash and TypeScript execution
+is a lightweight isolated shell runtime with filesystem isolation, execution
+limits, and network policy. A full VM is optional, not the default.
 
 If a tool is not in the injected runtime tool catalog for the current run, it is not callable.
 

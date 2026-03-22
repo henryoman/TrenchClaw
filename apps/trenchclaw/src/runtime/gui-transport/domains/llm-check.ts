@@ -1,5 +1,5 @@
 import { createGateway } from "ai";
-import type { GuiLlmCheckResponse } from "@trenchclaw/types";
+import type { RuntimeApiLlmCheckResponse } from "@trenchclaw/types";
 import { resolveLlmProviderConfigFromVault } from "../../../ai/llm/config";
 import { loadVaultData } from "../../../ai/llm/vault-file";
 
@@ -92,7 +92,7 @@ const probeProviderAuth = async (input: {
   }
 };
 
-export const runLlmCheck = async (): Promise<GuiLlmCheckResponse> => {
+export const runLlmCheck = async (): Promise<RuntimeApiLlmCheckResponse> => {
   const vaultPayload = await loadVaultData();
   const active = await resolveLlmProviderConfigFromVault();
   const vaultKey = active?.apiKey ?? "";

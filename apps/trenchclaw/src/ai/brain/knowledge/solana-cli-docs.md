@@ -11,6 +11,10 @@ Solana CLI operations. Treat the Solana CLI as the default local toolchain
 for local wallet inspection, config management, balance checks, airdrops, and
 transaction submission.
 
+Inside TrenchClaw, separate trusted local operator shell usage from model-driven
+execution. Prefer a lightweight isolated shell runtime for model shell work,
+and reserve direct host CLI passthrough for explicitly curated trusted flows.
+
 ## Install and Verify
 
 Install the stable Solana CLI with the Anza installer:

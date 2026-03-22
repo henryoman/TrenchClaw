@@ -501,8 +501,8 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
     }),
     [WORKSPACE_BASH_TOOL_NAME]: wrapTool({
       description:
-        `Run safe shell commands from the runtime workspace root ${bashRootDirectory}. This session is ${writableSession}. ` +
-        "Prefer this for shell-native tasks like `pwd`, `rg`, `command -v`, or CLI investigation after you already know what path or command you need.",
+        `Run policy-constrained shell commands from the runtime workspace root ${bashRootDirectory}. This session is ${writableSession}. ` +
+        "Prefer this for shell-native tasks like `pwd`, `rg`, `command -v`, or trusted CLI investigation after you already know what path or command you need. This is not a true isolated VM sandbox.",
       rawTool: rawBashTool,
     }),
     [WORKSPACE_READ_FILE_TOOL_NAME]: wrapTool({

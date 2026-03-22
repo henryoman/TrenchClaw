@@ -1,27 +1,27 @@
 import type {
-  GuiAiModelOptionView,
-  GuiAiProviderOptionView,
-  GuiAiSettingsResponse,
-  GuiUpdateAiSettingsRequest,
-  GuiUpdateAiSettingsResponse,
+  RuntimeApiAiModelOptionView,
+  RuntimeApiAiProviderOptionView,
+  RuntimeApiAiSettingsResponse,
+  RuntimeApiUpdateAiSettingsRequest,
+  RuntimeApiUpdateAiSettingsResponse,
 } from "@trenchclaw/types";
 import { listAiModelCatalog, listAiProviderOptions } from "../../../ai/llm/model-catalog";
 import { ensureAiSettingsFileExists, loadAiSettings, normalizeAiSettingsInput, writeAiSettings } from "../../../ai/llm/ai-settings-file";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
-const AI_MODEL_OPTIONS: GuiAiModelOptionView[] = listAiModelCatalog().map((entry) => ({
+const AI_MODEL_OPTIONS: RuntimeApiAiModelOptionView[] = listAiModelCatalog().map((entry) => ({
   id: entry.id,
   label: entry.label,
   providers: [...entry.providers],
 }));
 
-const AI_PROVIDER_OPTIONS: GuiAiProviderOptionView[] = listAiProviderOptions().map((entry) => ({
+const AI_PROVIDER_OPTIONS: RuntimeApiAiProviderOptionView[] = listAiProviderOptions().map((entry) => ({
   id: entry.id,
   label: entry.label,
   description: entry.description,
 }));
 
-export const getAiSettings = async (): Promise<GuiAiSettingsResponse> => {
+export const getAiSettings = async (): Promise<RuntimeApiAiSettingsResponse> => {
   const payload = await loadAiSettings();
   return {
     filePath: payload.filePath,
@@ -34,9 +34,9 @@ export const getAiSettings = async (): Promise<GuiAiSettingsResponse> => {
 };
 
 export const updateAiSettings = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiUpdateAiSettingsRequest,
-): Promise<GuiUpdateAiSettingsResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiUpdateAiSettingsRequest,
+): Promise<RuntimeApiUpdateAiSettingsResponse> => {
   await ensureAiSettingsFileExists();
   const result = await writeAiSettings(normalizeAiSettingsInput(payload.settings));
   context.addActivity(

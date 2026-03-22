@@ -1,17 +1,17 @@
-import type { GuiWalletsResponse } from "@trenchclaw/types";
+import type { RuntimeApiWalletsResponse } from "@trenchclaw/types";
 import {
   listManagedWalletTree,
   readManagedWalletBackupFile,
 } from "../../../solana/lib/wallet/wallet-manager";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
-export const listWalletTree = async (_context: RuntimeGuiDomainContext): Promise<GuiWalletsResponse> => {
+export const listWalletTree = async (_context: RuntimeSurfaceContext): Promise<RuntimeApiWalletsResponse> => {
   const snapshot = await listManagedWalletTree();
-  return snapshot satisfies GuiWalletsResponse;
+  return snapshot satisfies RuntimeApiWalletsResponse;
 };
 
 export const readWalletBackupFile = async (
-  _context: RuntimeGuiDomainContext,
+  _context: RuntimeSurfaceContext,
   relativePathInput: string,
 ): Promise<{ fileName: string; content: string }> => {
   return readManagedWalletBackupFile(relativePathInput);

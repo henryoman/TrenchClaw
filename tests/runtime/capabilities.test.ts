@@ -20,8 +20,14 @@ const DEXSCREENER_MODEL_TOOL_NAMES = [
   "searchDexscreenerPairs",
 ] as const;
 
+const HOLDER_MODEL_TOOL_NAMES = [
+  "getTokenHolderDistribution",
+  "rankDexscreenerTopTokenBoostsByWhales",
+] as const;
+
 const GECKOTERMINAL_MODEL_TOOL_NAMES = [
   "downloadGeckoTerminalOhlcv",
+  "getTokenPricePerformance",
 ] as const;
 
 const TEST_ENV_KEYS = [
@@ -235,7 +241,7 @@ describe("runtime capability snapshot", () => {
     const snapshot = await getRuntimeCapabilitySnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
-    expect(modelToolNames).toEqual(expect.arrayContaining(DEXSCREENER_MODEL_TOOL_NAMES));
+    expect(modelToolNames).toEqual(expect.arrayContaining([...DEXSCREENER_MODEL_TOOL_NAMES, ...HOLDER_MODEL_TOOL_NAMES]));
   });
 
   test("describes Dexscreener tools clearly enough for ranking versus recency selection", async () => {
@@ -249,11 +255,15 @@ describe("runtime capability snapshot", () => {
     const latestBoosts = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerLatestTokenBoosts");
     const topBoosts = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerTopTokenBoosts");
     const tokenBatch = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerTokensByChain");
+    const holderDistribution = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getTokenHolderDistribution");
+    const whaleRanking = snapshot.modelTools.find((toolEntry) => toolEntry.name === "rankDexscreenerTopTokenBoostsByWhales");
 
     expect(latestBoosts?.toolDescription).toContain("what was just boosted");
     expect(latestBoosts?.toolDescription).toContain("not as the default tool for broad 'hot today' or trending questions");
     expect(topBoosts?.toolDescription).toContain("what is hot, trending, or most promoted right now");
     expect(tokenBatch?.toolDescription).toContain("concrete batch comparison or ranking answer");
+    expect(holderDistribution?.toolDescription).toContain("whales, top holders, holder concentration, or largest accounts");
+    expect(whaleRanking?.toolDescription).toContain("which hot, trending, or boosted token currently has the most whales");
   });
 
   test("exposes GeckoTerminal OHLC download with workspace-oriented reasoning when trading is enabled", async () => {
@@ -271,6 +281,22 @@ describe("runtime capability snapshot", () => {
     expect(ohlcDownloadTool?.toolDescription).toContain("raw Solana candle data saved to the runtime workspace");
     expect(ohlcDownloadTool?.toolDescription).toContain("later research");
     expect(ohlcDownloadTool?.releaseReadinessStatus).toBe("shipped-now");
+  });
+
+  test("exposes managed token price performance with minimal-input guidance when trading is enabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML.replace("trading:\n  enabled: false", "trading:\n  enabled: true"),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const toolEntry = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getTokenPricePerformance");
+
+    expect(toolEntry).toBeDefined();
+    expect(toolEntry?.releaseReadinessStatus).toBe("shipped-now");
+    expect(toolEntry?.toolDescription).toContain("one tiny JSON surface");
+    expect(toolEntry?.toolDescription).toContain("current price, historical candle, and signed percentage change");
   });
 
   test("hides Dexscreener model tools when the integration is disabled", async () => {
@@ -346,7 +372,7 @@ describe("runtime capability snapshot", () => {
     }
   });
 
-  test("hides submitTradingRoutine from model tool exposure until its schema is provider-compatible", async () => {
+  test("exposes flat JSON managed-swap scheduling while keeping the internal routine schema hidden", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
       "yaml",
       TEST_SAFE_SETTINGS_YAML
@@ -361,6 +387,7 @@ describe("runtime capability snapshot", () => {
     const snapshot = await getRuntimeCapabilitySnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
+    expect(modelToolNames).toContain("scheduleManagedSwap");
     expect(modelToolNames).not.toContain("submitTradingRoutine");
   });
 

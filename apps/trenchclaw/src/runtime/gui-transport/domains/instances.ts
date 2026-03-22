@@ -1,12 +1,12 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
-  GuiCreateInstanceRequest,
-  GuiCreateInstanceResponse,
-  GuiInstanceProfileView,
-  GuiInstancesResponse,
-  GuiSignInInstanceRequest,
-  GuiSignInInstanceResponse,
+  RuntimeApiCreateInstanceRequest,
+  RuntimeApiCreateInstanceResponse,
+  RuntimeApiInstanceProfileView,
+  RuntimeApiInstancesResponse,
+  RuntimeApiSignInInstanceRequest,
+  RuntimeApiSignInInstanceResponse,
 } from "@trenchclaw/types";
 import {
   assertInstanceSystemWritePath,
@@ -15,7 +15,7 @@ import { ensureInstanceLayout } from "../../instance-layout";
 import { isRecord } from "../../object-utils";
 import { persistActiveInstance } from "../../instance-state";
 import { INSTANCE_DIRECTORY } from "../constants";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
 
@@ -65,7 +65,7 @@ const normalizeInstanceId = (value: string): string => {
 const getInstanceProfilePath = (localInstanceId: string): string =>
   path.join(INSTANCE_DIRECTORY, localInstanceId, INSTANCE_PROFILE_FILE_NAME);
 
-const toInstanceView = (fileName: string, document: InstanceDocument): GuiInstanceProfileView => ({
+const toInstanceView = (fileName: string, document: InstanceDocument): RuntimeApiInstanceProfileView => ({
   fileName,
   localInstanceId: document.instance.localInstanceId,
   name: document.instance.name,
@@ -168,15 +168,15 @@ const nextInstanceNumberFromFiles = (instanceIds: string[]): number => {
   return Math.max(...numbers) + 1;
 };
 
-export const listInstances = async (): Promise<GuiInstancesResponse> => {
+export const listInstances = async (): Promise<RuntimeApiInstancesResponse> => {
   const instances = (await readInstanceFiles()).map((entry) => toInstanceView(entry.fileName, entry.document));
   return { instances };
 };
 
 export const createInstance = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiCreateInstanceRequest,
-): Promise<GuiCreateInstanceResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiCreateInstanceRequest,
+): Promise<RuntimeApiCreateInstanceResponse> => {
   assertInstanceSystemWritePath(INSTANCE_DIRECTORY, "initialize instance profile directory");
   await mkdir(INSTANCE_DIRECTORY, { recursive: true });
   const existing = await readInstanceFiles();
@@ -216,9 +216,9 @@ export const createInstance = async (
 };
 
 export const signInInstance = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiSignInInstanceRequest,
-): Promise<GuiSignInInstanceResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiSignInInstanceRequest,
+): Promise<RuntimeApiSignInInstanceResponse> => {
   const instances = await readInstanceFiles();
   const target = instances.find((entry) => entry.document.instance.localInstanceId === payload.localInstanceId);
 

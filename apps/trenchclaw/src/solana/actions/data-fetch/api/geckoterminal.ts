@@ -1,3 +1,5 @@
+import { parseRetryAfterMs } from "../../../lib/rpc/client";
+
 const GECKOTERMINAL_API_BASE_URL = "https://api.geckoterminal.com/api/v2";
 const GECKOTERMINAL_SOLANA_NETWORK = "solana";
 const GECKOTERMINAL_ACCEPT_HEADER = "application/json;version=20230203";
@@ -5,6 +7,12 @@ const GECKOTERMINAL_REQUEST_TIMEOUT_MS = 15_000;
 const GECKOTERMINAL_MAX_RETRIES = 2;
 const GECKOTERMINAL_RETRY_BACKOFF_MS = 1_000;
 const GECKOTERMINAL_RETRYABLE_STATUS_CODES = new Set([408, 429, 500, 502, 503, 504]);
+const GECKOTERMINAL_DEFAULT_MIN_INTERVAL_MS = 6_500;
+const GECKOTERMINAL_DEFAULT_CACHE_TTL_MS = 60_000;
+const GECKOTERMINAL_DEFAULT_RATE_LIMIT_COOLDOWN_MS = 60_000;
+const GECKOTERMINAL_MIN_INTERVAL_ENV = "TRENCHCLAW_GECKOTERMINAL_MIN_INTERVAL_MS";
+const GECKOTERMINAL_CACHE_TTL_ENV = "TRENCHCLAW_GECKOTERMINAL_CACHE_TTL_MS";
+const GECKOTERMINAL_RATE_LIMIT_COOLDOWN_ENV = "TRENCHCLAW_GECKOTERMINAL_RATE_LIMIT_COOLDOWN_MS";
 
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
@@ -39,6 +47,38 @@ export interface GeckoTerminalPoolOhlcvResponse {
   payload: JsonObject;
 }
 
+export interface GeckoTerminalTokenPoolsRequest {
+  tokenAddress: string;
+  include?: Array<"base_token" | "quote_token" | "dex">;
+  includeInactiveSource?: boolean;
+  page?: number;
+  sort?: "h24_volume_usd_desc" | "h24_tx_count_desc" | "h24_volume_usd_liquidity_desc";
+  options?: GeckoTerminalRequestOptions;
+}
+
+export interface GeckoTerminalTokenPoolsResponse {
+  requestUrl: string;
+  payload: JsonObject;
+}
+
+interface GeckoTerminalRateLimitState {
+  nextStartAtMs: number;
+  tail: Promise<void>;
+}
+
+interface CachedGeckoTerminalResponse {
+  payload: JsonObject;
+  expiresAtMs: number;
+}
+
+const geckoTerminalRateLimitState: GeckoTerminalRateLimitState = {
+  nextStartAtMs: 0,
+  tail: Promise.resolve(),
+};
+
+const geckoTerminalResponseCache = new Map<string, CachedGeckoTerminalResponse>();
+const geckoTerminalInFlightRequests = new Map<string, Promise<JsonObject>>();
+
 class GeckoTerminalRequestError extends Error {
   readonly retryable: boolean;
   readonly status: number | null;
@@ -59,6 +99,25 @@ const assertNonEmptyParam = (name: string, value: string): string => {
   return normalized;
 };
 
+const resolveEnvBackedMs = (envKey: string, fallback: number): number => {
+  const configured = process.env[envKey]?.trim();
+  if (!configured) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(configured, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+const resolveGeckoTerminalMinIntervalMs = (): number =>
+  resolveEnvBackedMs(GECKOTERMINAL_MIN_INTERVAL_ENV, GECKOTERMINAL_DEFAULT_MIN_INTERVAL_MS);
+
+const resolveGeckoTerminalCacheTtlMs = (): number =>
+  resolveEnvBackedMs(GECKOTERMINAL_CACHE_TTL_ENV, GECKOTERMINAL_DEFAULT_CACHE_TTL_MS);
+
+const resolveGeckoTerminalRateLimitCooldownMs = (): number =>
+  resolveEnvBackedMs(GECKOTERMINAL_RATE_LIMIT_COOLDOWN_ENV, GECKOTERMINAL_DEFAULT_RATE_LIMIT_COOLDOWN_MS);
+
 const isJsonObject = (value: unknown): value is JsonObject =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
@@ -69,6 +128,79 @@ const getRequestSignal = (requestOptions: GeckoTerminalRequestOptions): AbortSig
 
 const isCallerAbort = (requestOptions: GeckoTerminalRequestOptions): boolean =>
   requestOptions.signal?.aborted === true;
+
+const sleep = async (delayMs: number): Promise<void> => {
+  if (delayMs <= 0) {
+    return;
+  }
+
+  await Bun.sleep(delayMs);
+};
+
+const normalizeGeckoTerminalCacheKey = (url: string): string => {
+  try {
+    const normalized = new URL(url.trim());
+    normalized.hash = "";
+    return normalized.toString();
+  } catch {
+    return url.trim();
+  }
+};
+
+const readCachedGeckoTerminalResponse = (url: string): JsonObject | null => {
+  const key = normalizeGeckoTerminalCacheKey(url);
+  const cached = geckoTerminalResponseCache.get(key);
+  if (!cached) {
+    return null;
+  }
+  if (cached.expiresAtMs <= Date.now()) {
+    geckoTerminalResponseCache.delete(key);
+    return null;
+  }
+  return cached.payload;
+};
+
+const writeCachedGeckoTerminalResponse = (url: string, payload: JsonObject): void => {
+  const ttlMs = resolveGeckoTerminalCacheTtlMs();
+  if (ttlMs <= 0) {
+    return;
+  }
+  geckoTerminalResponseCache.set(normalizeGeckoTerminalCacheKey(url), {
+    payload,
+    expiresAtMs: Date.now() + ttlMs,
+  });
+};
+
+const applyGeckoTerminalCooldown = (cooldownMs: number): void => {
+  const minIntervalMs = resolveGeckoTerminalMinIntervalMs();
+  geckoTerminalRateLimitState.nextStartAtMs = Math.max(
+    geckoTerminalRateLimitState.nextStartAtMs,
+    Date.now() + Math.max(cooldownMs, minIntervalMs),
+  );
+};
+
+const scheduleRateLimitedGeckoTerminalRequest = async <T>(operation: () => Promise<T>): Promise<T> => {
+  const previousTail = geckoTerminalRateLimitState.tail;
+  let release!: () => void;
+  geckoTerminalRateLimitState.tail = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await previousTail;
+
+  try {
+    const now = Date.now();
+    const minIntervalMs = resolveGeckoTerminalMinIntervalMs();
+    const scheduledStartAtMs = Math.max(now, geckoTerminalRateLimitState.nextStartAtMs);
+    geckoTerminalRateLimitState.nextStartAtMs = Math.max(
+      geckoTerminalRateLimitState.nextStartAtMs,
+      scheduledStartAtMs + minIntervalMs,
+    );
+    await sleep(scheduledStartAtMs - now);
+    return await operation();
+  } finally {
+    release();
+  }
+};
 
 const toGeckoTerminalRequestError = (input: {
   error: unknown;
@@ -109,20 +241,10 @@ const shouldRetryError = (
   error.retryable && attempt < GECKOTERMINAL_MAX_RETRIES && !requestOptions.signal?.aborted;
 
 const getRetryDelayMs = (response: Response, attempt: number): number => {
-  const retryAfter = response.headers.get("retry-after");
-  if (retryAfter) {
-    const retryAfterSeconds = Number(retryAfter);
-    if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds >= 0) {
-      return Math.round(retryAfterSeconds * 1000);
-    }
-
-    const retryAfterDate = Date.parse(retryAfter);
-    if (Number.isFinite(retryAfterDate)) {
-      return Math.max(0, retryAfterDate - Date.now());
-    }
-  }
-
-  return GECKOTERMINAL_RETRY_BACKOFF_MS * (attempt + 1);
+  return Math.max(
+    parseRetryAfterMs(response.headers.get("retry-after")) ?? 0,
+    GECKOTERMINAL_RETRY_BACKOFF_MS * (attempt + 1),
+  );
 };
 
 const assertJsonObjectResponse = (payload: unknown, url: string): JsonObject => {
@@ -135,55 +257,92 @@ const assertJsonObjectResponse = (payload: unknown, url: string): JsonObject => 
   return payload;
 };
 
-async function fetchGeckoTerminalJson(
+async function fetchGeckoTerminalJsonUncached(
   url: string,
   requestOptions: GeckoTerminalRequestOptions = {},
   attempt = 0,
 ): Promise<JsonObject> {
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: GECKOTERMINAL_ACCEPT_HEADER,
-      },
-      signal: getRequestSignal(requestOptions),
-    });
-
-    if (!response.ok) {
-      const error = new GeckoTerminalRequestError(
-        `GeckoTerminal request failed (${response.status} ${response.statusText}) for ${url}`,
-        {
-          retryable: GECKOTERMINAL_RETRYABLE_STATUS_CODES.has(response.status),
-          status: response.status,
+    return await scheduleRateLimitedGeckoTerminalRequest(async () => {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: GECKOTERMINAL_ACCEPT_HEADER,
         },
-      );
-      if (shouldRetryError(error, requestOptions, attempt)) {
-        await Bun.sleep(getRetryDelayMs(response, attempt));
-        return fetchGeckoTerminalJson(url, requestOptions, attempt + 1);
-      }
-      throw error;
-    }
-
-    try {
-      return assertJsonObjectResponse(await response.json(), url);
-    } catch (error) {
-      throw new GeckoTerminalRequestError(`GeckoTerminal returned invalid JSON for ${url}`, {
-        retryable: false,
-        cause: error,
+        signal: getRequestSignal(requestOptions),
       });
-    }
+
+      if (!response.ok) {
+        const error = new GeckoTerminalRequestError(
+          `GeckoTerminal request failed (${response.status} ${response.statusText}) for ${url}`,
+          {
+            retryable: GECKOTERMINAL_RETRYABLE_STATUS_CODES.has(response.status),
+            status: response.status,
+          },
+        );
+        if (response.status === 429) {
+          applyGeckoTerminalCooldown(
+            Math.max(getRetryDelayMs(response, attempt), resolveGeckoTerminalRateLimitCooldownMs()),
+          );
+        }
+        if (shouldRetryError(error, requestOptions, attempt)) {
+          if (response.status !== 429) {
+            applyGeckoTerminalCooldown(getRetryDelayMs(response, attempt));
+          }
+          throw error;
+        }
+        throw error;
+      }
+
+      try {
+        const payload = assertJsonObjectResponse(await response.json(), url);
+        writeCachedGeckoTerminalResponse(url, payload);
+        return payload;
+      } catch (error) {
+        throw new GeckoTerminalRequestError(`GeckoTerminal returned invalid JSON for ${url}`, {
+          retryable: false,
+          cause: error,
+        });
+      }
+    });
   } catch (error) {
+    if (error instanceof GeckoTerminalRequestError && shouldRetryError(error, requestOptions, attempt)) {
+      return fetchGeckoTerminalJsonUncached(url, requestOptions, attempt + 1);
+    }
     const requestError = toGeckoTerminalRequestError({
       error,
       url,
       requestOptions,
     });
     if (shouldRetryError(requestError, requestOptions, attempt)) {
-      await Bun.sleep(GECKOTERMINAL_RETRY_BACKOFF_MS * (attempt + 1));
-      return fetchGeckoTerminalJson(url, requestOptions, attempt + 1);
+      applyGeckoTerminalCooldown(GECKOTERMINAL_RETRY_BACKOFF_MS * (attempt + 1));
+      return fetchGeckoTerminalJsonUncached(url, requestOptions, attempt + 1);
     }
     throw requestError;
   }
+}
+
+async function fetchGeckoTerminalJson(
+  url: string,
+  requestOptions: GeckoTerminalRequestOptions = {},
+): Promise<JsonObject> {
+  const cached = readCachedGeckoTerminalResponse(url);
+  if (cached) {
+    return cached;
+  }
+
+  const cacheKey = normalizeGeckoTerminalCacheKey(url);
+  const inFlight = geckoTerminalInFlightRequests.get(cacheKey);
+  if (inFlight) {
+    return await inFlight;
+  }
+
+  const requestPromise = fetchGeckoTerminalJsonUncached(url, requestOptions)
+    .finally(() => {
+      geckoTerminalInFlightRequests.delete(cacheKey);
+    });
+  geckoTerminalInFlightRequests.set(cacheKey, requestPromise);
+  return await requestPromise;
 }
 
 const buildOhlcvUrl = (input: GeckoTerminalPoolOhlcvRequest): string => {
@@ -214,6 +373,28 @@ const buildOhlcvUrl = (input: GeckoTerminalPoolOhlcvRequest): string => {
   return `${GECKOTERMINAL_API_BASE_URL}${path}${query ? `?${query}` : ""}`;
 };
 
+const buildTokenPoolsUrl = (input: GeckoTerminalTokenPoolsRequest): string => {
+  const tokenAddress = assertNonEmptyParam("tokenAddress", input.tokenAddress);
+  const searchParams = new URLSearchParams();
+  const include = input.include?.filter(Boolean) ?? [];
+  if (include.length > 0) {
+    searchParams.set("include", include.join(","));
+  }
+  if (typeof input.includeInactiveSource === "boolean") {
+    searchParams.set("include_inactive_source", String(input.includeInactiveSource));
+  }
+  if (typeof input.page === "number" && Number.isFinite(input.page) && input.page > 0) {
+    searchParams.set("page", String(Math.trunc(input.page)));
+  }
+  if (input.sort) {
+    searchParams.set("sort", input.sort);
+  }
+
+  const query = searchParams.toString();
+  const path = `/networks/${GECKOTERMINAL_SOLANA_NETWORK}/tokens/${encodeURIComponent(tokenAddress)}/pools`;
+  return `${GECKOTERMINAL_API_BASE_URL}${path}${query ? `?${query}` : ""}`;
+};
+
 export async function getGeckoTerminalPoolOhlcv(
   input: GeckoTerminalPoolOhlcvRequest,
 ): Promise<GeckoTerminalPoolOhlcvResponse> {
@@ -225,6 +406,24 @@ export async function getGeckoTerminalPoolOhlcv(
   };
 }
 
+export async function getGeckoTerminalTokenPools(
+  input: GeckoTerminalTokenPoolsRequest,
+): Promise<GeckoTerminalTokenPoolsResponse> {
+  const requestUrl = buildTokenPoolsUrl(input);
+  const payload = await fetchGeckoTerminalJson(requestUrl, input.options);
+  return {
+    requestUrl,
+    payload,
+  };
+}
+
 export function isGeckoTerminalRetryableError(error: unknown): boolean {
   return error instanceof GeckoTerminalRequestError && error.retryable;
 }
+
+export const resetGeckoTerminalRateLimitStateForTests = (): void => {
+  geckoTerminalRateLimitState.nextStartAtMs = 0;
+  geckoTerminalRateLimitState.tail = Promise.resolve();
+  geckoTerminalResponseCache.clear();
+  geckoTerminalInFlightRequests.clear();
+};

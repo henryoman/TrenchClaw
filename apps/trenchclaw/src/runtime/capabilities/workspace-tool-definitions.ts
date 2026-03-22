@@ -30,9 +30,9 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
-    description: "List files and folders from the runtime workspace and return exact workspace-relative paths.",
-    purpose: "Browse the available runtime workspace surface before reading exact files.",
-    routingHint: "you need to see what files or folders are available in the runtime workspace before choosing an exact file path",
+    description: "Open a workspace directory and return exact workspace-relative child paths.",
+    purpose: "Give the model a safe directory browser before it commits to an exact file path.",
+    routingHint: "you need to open folders, inspect the workspace tree, or discover the exact file path before reading a file",
     sideEffectLevel: "read",
     tags: ["workspace", "filesystem", "read", "browse"],
     exampleInput: {
@@ -46,9 +46,9 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_READ_FILE_TOOL_NAME,
-    description: "Read an exact markdown, JSON, config, or generated artifact file from the runtime workspace only.",
-    purpose: "Open a known runtime workspace file path directly when you need file contents instead of structured runtime data.",
-    routingHint: "you already know the runtime workspace file path and need its file contents, especially for notes, configs, scratch files, or generated artifacts",
+    description: "Read one exact markdown, JSON, config, notes, or generated artifact file from the runtime workspace.",
+    purpose: "Open a known workspace file directly once directory browsing or another tool already gave you the path.",
+    routingHint: "you already know the exact runtime workspace path and need file contents instead of a directory listing or structured runtime data",
     sideEffectLevel: "read",
     tags: ["workspace", "filesystem", "read", "docs"],
     exampleInput: {
@@ -77,8 +77,8 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_BASH_TOOL_NAME,
-    description: "Run safe shell commands from the runtime workspace for local inspection and utility tasks.",
-    purpose: "Use shell-native commands such as `pwd`, `rg`, `command -v`, and CLI invocations after you know the path or command you need.",
+    description: "Run policy-constrained shell commands from the runtime workspace for directory inspection, ripgrep search, and trusted CLI work.",
+    purpose: "Use shell-native commands such as `pwd`, `ls`, `rg`, `command -v`, and trusted CLI help after simple directory or file tools are no longer enough.",
     routingHint: "you need a real shell command or CLI in the runtime workspace rather than simple folder browsing or exact file contents",
     sideEffectLevel: "read",
     tags: ["workspace", "shell", "search", "cli"],

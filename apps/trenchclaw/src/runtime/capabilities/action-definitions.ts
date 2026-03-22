@@ -17,14 +17,20 @@ import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runt
 import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
 import { getManagedWalletContentsAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletContents";
 import { getManagedWalletSolBalancesAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
+import { getTokenPricePerformanceAction } from "../../solana/actions/data-fetch/runtime/getTokenPricePerformance";
 import { listKnowledgeDocsAction } from "../../solana/actions/data-fetch/runtime/listKnowledgeDocs";
 import { manageRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/manageRuntimeJob";
 import { downloadGeckoTerminalOhlcvAction } from "../../solana/actions/data-fetch/runtime/downloadGeckoTerminalOhlcv";
+import {
+  getTokenHolderDistributionAction,
+  rankDexscreenerTopTokenBoostsByWhalesAction,
+} from "../../solana/actions/data-fetch/runtime/tokenHolderAnalytics";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
 import { queryRuntimeStoreAction } from "../../solana/actions/data-fetch/runtime/queryRuntimeStore";
 import { readKnowledgeDocAction } from "../../solana/actions/data-fetch/runtime/readKnowledgeDoc";
 import { runWakeupCheckAction } from "../../solana/actions/data-fetch/runtime/runWakeupCheck";
+import { scheduleManagedSwapAction } from "../../solana/actions/data-fetch/runtime/scheduleManagedSwap";
 import { sleepAction } from "../../solana/actions/data-fetch/runtime/sleep";
 import { submitTradingRoutineAction } from "../../solana/actions/data-fetch/runtime/submitTradingRoutine";
 import {
@@ -109,12 +115,16 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   getDexscreenerTokenPairsByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   getDexscreenerTokensByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   getDexscreenerTopTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getTokenHolderDistribution: SHIPPED_NOW("On-chain token holder concentration reads ship in the current release."),
+  rankDexscreenerTopTokenBoostsByWhales: SHIPPED_NOW("Combined Dexscreener discovery plus on-chain holder concentration ranking ships in the current release."),
+  getTokenPricePerformance: SHIPPED_NOW("Managed historical price-performance reads now resolve the pool and candle window from one minimal JSON input."),
   searchDexscreenerPairs: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   getLatestSolanaNews: SHIPPED_NOW("Live Solana news reads through normalized RSS/Atom feeds ship in the current release."),
   downloadGeckoTerminalOhlcv: SHIPPED_NOW("GeckoTerminal OHLC downloads now write raw Solana market-data snapshots into the instance workspace."),
   devnetAirdrop: LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
   enqueueRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
   manageRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
+  scheduleManagedSwap: LIMITED("Flat JSON scheduling for provider-agnostic managed swaps is available now on the supported automation surface."),
   submitTradingRoutine: LIMITED("JSON trading-routine submission is available now as the supported automation surface."),
   getSwapHistory: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   transfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
@@ -251,6 +261,29 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
   },
   {
     kind: "action",
+    action: scheduleManagedSwapAction,
+    description: "Schedule a managed-wallet swap for later or a DCA plan with one flat JSON payload.",
+    purpose: "Give chat one easy JSON surface for 'swap for later' requests while using the configured main swap type unless the user explicitly overrides it.",
+    tags: ["runtime", "queue", "trading", "swaps", "scheduling", "json", "write"],
+    exampleInput: {
+      kind: "dca",
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "SOL",
+      outputCoin: "JUP",
+      amount: "0.3",
+      amountUnit: "ui",
+      whenIn: "60s",
+      installments: 3,
+      every: "5s",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: canUseManagedSwap,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
     action: submitTradingRoutineAction,
     description: "Submit a validated JSON trading routine for one-off swaps, DCA plans, or curated multi-step trading sequences.",
     purpose: "Give the model one hardened, provider-agnostic JSON surface for durable trading automation.",
@@ -342,6 +375,21 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     },
     includeInCatalog: () => true,
     enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTokenPricePerformanceAction,
+    description: "Compute historical token price performance from one coin address plus one lookback string.",
+    purpose: "Give the model one tiny JSON surface for requests like 'get 1 hour price performance' while the runtime resolves the best pool, current price, historical candle, and signed percentage change.",
+    routingHint: "the user asks how much a known coin moved over a concrete lookback window such as 15m, 1h, 4h, 24h, or 7d",
+    tags: ["geckoterminal", "market-data", "historical", "performance", "comparison"],
+    exampleInput: {
+      coinAddress: "So11111111111111111111111111111111111111112",
+      lookback: "1h",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
     chatExposed: true,
   },
   {
@@ -478,6 +526,38 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
         "So11111111111111111111111111111111111111112",
         "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
       ],
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTokenHolderDistributionAction,
+    description: "Fetch largest-holder concentration for one SPL token mint on Solana.",
+    purpose: "Aggregate the largest token accounts by owner wallet so the model can answer whale-count, top-holder, and concentration questions from live RPC data instead of stopping at market discovery.",
+    routingHint: "the user asks for whales, top holders, holder concentration, or largest accounts for one exact token mint",
+    tags: ["rpc", "holders", "whales", "market-data", "read"],
+    exampleInput: {
+      mintAddress: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6f4t5D7N9m3bjsz",
+      whaleThresholdPercent: 1,
+      topOwnersLimit: 5,
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: rankDexscreenerTopTokenBoostsByWhalesAction,
+    description: "Rank Dexscreener top-boosted Solana tokens by whale concentration using live RPC holder data.",
+    purpose: "Complete the common multi-step workflow of finding hot tokens and then identifying which one is most whale-heavy without forcing the model to spend several tool steps on repeated manual comparisons.",
+    routingHint: "the user asks which hot, trending, or boosted token currently has the most whales or the heaviest top-holder concentration",
+    tags: ["dexscreener", "rpc", "holders", "whales", "market-data", "ranking"],
+    exampleInput: {
+      limit: 10,
+      whaleThresholdPercent: 1,
+      topOwnersLimit: 5,
     },
     includeInCatalog: ({ settings }) => settings.trading.enabled,
     enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,

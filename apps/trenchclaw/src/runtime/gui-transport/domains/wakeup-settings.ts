@@ -1,7 +1,7 @@
 import type {
-  GuiUpdateWakeupSettingsRequest,
-  GuiUpdateWakeupSettingsResponse,
-  GuiWakeupSettingsResponse,
+  RuntimeApiUpdateWakeupSettingsRequest,
+  RuntimeApiUpdateWakeupSettingsResponse,
+  RuntimeApiWakeupSettingsResponse,
 } from "@trenchclaw/types";
 import {
   DEFAULT_WAKEUP_PROMPT,
@@ -13,13 +13,13 @@ import {
 } from "../../load/wakeup-settings";
 import { resolveCurrentActiveInstanceIdSync } from "../../instance-state";
 import { syncManagedWakeupJob } from "../../wakeup/managed-wakeup";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
 const cloneWakeupSettings = (settings: WakeupSettings): WakeupSettings => ({
   ...settings,
 });
 
-export const getWakeupSettings = async (context: RuntimeGuiDomainContext): Promise<GuiWakeupSettingsResponse> => {
+export const getWakeupSettings = async (context: RuntimeSurfaceContext): Promise<RuntimeApiWakeupSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   const payload = await loadInstanceWakeupSettings({ instanceId: activeInstanceId });
   const parsed = instanceWakeupSettingsSchema.safeParse(payload.resolvedSettings);
@@ -35,9 +35,9 @@ export const getWakeupSettings = async (context: RuntimeGuiDomainContext): Promi
 };
 
 export const updateWakeupSettings = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiUpdateWakeupSettingsRequest,
-): Promise<GuiUpdateWakeupSettingsResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiUpdateWakeupSettingsRequest,
+): Promise<RuntimeApiUpdateWakeupSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   if (!activeInstanceId) {
     throw new Error("No active instance selected. Wakeup settings are instance-scoped.");

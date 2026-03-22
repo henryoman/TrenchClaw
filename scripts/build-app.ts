@@ -15,10 +15,12 @@ import { shouldBundleBrainFile } from "./lib/release-bundle-filter";
 
 const REPO_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const DEFAULT_OUTPUT_ROOT = path.join(REPO_ROOT, "dist", "app");
+const DEFAULT_FRONTEND_SURFACE = process.env.TRENCHCLAW_FRONTEND_SURFACE?.trim() || "gui";
 
 interface CliArgs {
   outputRoot: string;
   version: string | null;
+  frontendSurface: string;
 }
 
 const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
@@ -42,6 +44,7 @@ const run = async (command: string[], cwd = REPO_ROOT): Promise<void> => {
 const parseArgs = (argv: string[]): CliArgs => {
   let outputRoot = DEFAULT_OUTPUT_ROOT;
   let version: string | null = null;
+  let frontendSurface = DEFAULT_FRONTEND_SURFACE;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -61,10 +64,19 @@ const parseArgs = (argv: string[]): CliArgs => {
       }
       version = value.trim();
       i += 1;
+      continue;
+    }
+    if (arg === "--frontend-surface") {
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Missing value for --frontend-surface");
+      }
+      frontendSurface = value.trim();
+      i += 1;
     }
   }
 
-  return { outputRoot, version };
+  return { outputRoot, version, frontendSurface };
 };
 
 const runCapture = async (command: string[], cwd = REPO_ROOT): Promise<string> => {
@@ -101,6 +113,29 @@ const readRootPackageVersion = async (): Promise<string> => {
 };
 
 const toShortCommit = (value: string): string => value.trim().slice(0, 7);
+
+const resolveFrontendSurfacePaths = async (frontendSurface: string): Promise<{
+  id: string;
+  root: string;
+  distRoot: string;
+}> => {
+  const id = frontendSurface.trim();
+  if (!id) {
+    throw new Error("Frontend surface id must not be empty.");
+  }
+
+  const root = path.join(REPO_ROOT, "apps", "frontends", id);
+  const packageJsonPath = path.join(root, "package.json");
+  if (!(await Bun.file(packageJsonPath).exists())) {
+    throw new Error(`Frontend surface "${id}" not found at ${root}`);
+  }
+
+  return {
+    id,
+    root,
+    distRoot: path.join(root, "dist"),
+  };
+};
 
 const resolveCommitFromEnv = (): string | null => {
   const envCommit =
@@ -261,6 +296,7 @@ const main = async (): Promise<void> => {
   const outputRoot = args.outputRoot;
   const guiOutputRoot = path.join(outputRoot, "gui");
   const coreOutputRoot = path.join(outputRoot, "core");
+  const frontendSurface = await resolveFrontendSurfacePaths(args.frontendSurface);
 
   console.log("[build-app] cleaning old output");
   await rm(outputRoot, { recursive: true, force: true });
@@ -276,12 +312,12 @@ const main = async (): Promise<void> => {
   console.log(`[build-app] command verify=${RELEASE_BUILD_COMMANDS.verify}`);
   console.log(`[build-app] command package=${RELEASE_BUILD_COMMANDS.package}`);
 
-  console.log("[build-app] building GUI assets");
-  await run(["bun", "run", "--cwd", "apps/frontends/gui", "build"]);
+  console.log(`[build-app] building frontend surface ${frontendSurface.id}`);
+  await run(["bun", "run", "--cwd", path.relative(REPO_ROOT, frontendSurface.root), "build"]);
 
   console.log("[build-app] assembling release assets");
   await mkdir(outputRoot, { recursive: true });
-  await cp(path.join(REPO_ROOT, "apps/frontends/gui/dist"), guiOutputRoot, { recursive: true });
+  await cp(frontendSurface.distRoot, guiOutputRoot, { recursive: true });
   await copyReleaseBrainAssets(coreOutputRoot);
   await copyReleaseConfigAssets(coreOutputRoot);
   await copyReleaseRuntimeAssets(coreOutputRoot);
@@ -294,6 +330,7 @@ const main = async (): Promise<void> => {
     commit: buildMetadata.commit,
     createdAt: new Date().toISOString(),
     layout: {
+      frontendSurface: frontendSurface.id,
       gui: "gui",
       core: "core",
     },
@@ -306,7 +343,7 @@ const main = async (): Promise<void> => {
 This staging directory contains the readonly assets required for standalone desktop releases.
 
 Included:
-- GUI build output in \`gui/\`
+- Selected frontend surface build output in \`gui/\`
 - readonly TrenchClaw brain/config assets in \`core/\`
 - release-only runtime source needed for generated context artifacts in \`core/src/runtime/\`
 

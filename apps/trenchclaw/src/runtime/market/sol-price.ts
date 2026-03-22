@@ -1,17 +1,17 @@
-import type { GuiSolPriceResponse } from "@trenchclaw/types";
+import type { RuntimeApiSolPriceResponse } from "@trenchclaw/types";
 import { getDexscreenerTokenPairsByChain, type DexscreenerPairInfo } from "../../solana/actions/data-fetch/api/dexscreener";
 
 const WRAPPED_SOL_MINT = "So11111111111111111111111111111111111111112";
 const SOL_PRICE_REFRESH_COOLDOWN_MS = 3_000;
 const STABLE_QUOTE_SYMBOLS = new Set(["USD", "USDC", "USDT"]);
-const EMPTY_SOL_PRICE_RESPONSE: GuiSolPriceResponse = {
+const EMPTY_SOL_PRICE_RESPONSE: RuntimeApiSolPriceResponse = {
   priceUsd: null,
   updatedAt: null,
 };
 
-let lastKnownSolPrice: GuiSolPriceResponse = EMPTY_SOL_PRICE_RESPONSE;
+let lastKnownSolPrice: RuntimeApiSolPriceResponse = EMPTY_SOL_PRICE_RESPONSE;
 let lastExternalFetchStartedAt = 0;
-let inFlightSolPriceRefresh: Promise<GuiSolPriceResponse> | null = null;
+let inFlightSolPriceRefresh: Promise<RuntimeApiSolPriceResponse> | null = null;
 
 const toFiniteNumber = (value: unknown): number | null => {
   if (typeof value === "number") {
@@ -57,7 +57,7 @@ const pickBestSolPricePair = (pairs: DexscreenerPairInfo[]): DexscreenerPairInfo
   return bestPair;
 };
 
-const refreshSolPrice = async (): Promise<GuiSolPriceResponse> => {
+const refreshSolPrice = async (): Promise<RuntimeApiSolPriceResponse> => {
   const pairs = await getDexscreenerTokenPairsByChain({
     tokenAddress: WRAPPED_SOL_MINT,
   });
@@ -68,7 +68,7 @@ const refreshSolPrice = async (): Promise<GuiSolPriceResponse> => {
     throw new Error("SOL price unavailable");
   }
 
-  const response: GuiSolPriceResponse = {
+  const response: RuntimeApiSolPriceResponse = {
     priceUsd,
     updatedAt: Date.now(),
   };
@@ -76,7 +76,7 @@ const refreshSolPrice = async (): Promise<GuiSolPriceResponse> => {
   return response;
 };
 
-export const getSolPrice = async (): Promise<GuiSolPriceResponse> => {
+export const getSolPrice = async (): Promise<RuntimeApiSolPriceResponse> => {
   const now = Date.now();
 
   if (inFlightSolPriceRefresh) {

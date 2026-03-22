@@ -32,6 +32,10 @@ bun run "src/solana/actions/execute.ts" downloadGeckoTerminalOhlcv \
   --input-json '{"poolAddress":"Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE","timeframe":"minute","aggregate":5,"limit":5}'
 ```
 
+Treat that CLI form as a trusted local or internal automation path. For
+model-triggered command execution, prefer a lightweight isolated shell runtime
+over direct host-shell execution.
+
 Required input fields:
 
 - `poolAddress` GeckoTerminal Solana pool address
