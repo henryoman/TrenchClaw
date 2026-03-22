@@ -239,13 +239,12 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.mode).toBe("primary");
     expect(payload.title).toBe("Primary Runtime Rules");
     expect(payload.sections.length).toBe(3);
-    expect(payload.systemPrompt).toContain("TrenchClaw System Kernel");
+    expect(payload.systemPrompt).toContain("# TrenchClaw");
     expect(payload.systemPrompt).toContain("# Primary Mode");
     expect(payload.systemPrompt).toContain("## Live Runtime Rules");
-    expect(payload.systemPrompt).toContain("## Knowledge Menu");
+    expect(payload.systemPrompt).toContain("## Knowledge Index");
+    expect(payload.systemPrompt).toContain("## Knowledge Routing");
     expect(payload.systemPrompt).toContain("### Shell Tooling");
-    expect(payload.systemPrompt).toContain("## Enabled Model Tools");
-    expect(payload.systemPrompt).toContain("## Release Readiness");
     expect(payload.systemPrompt).toContain("## Live Runtime Context");
     expect(payload.systemPrompt).toContain("workspaceBash");
     expect(payload.systemPrompt).toContain("queryRuntimeStore");
@@ -253,18 +252,15 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("listKnowledgeDocs");
     expect(payload.systemPrompt).toContain("readKnowledgeDoc");
     expect(payload.systemPrompt).toContain("`runtime-reference`");
-    expect(payload.systemPrompt).toContain("Release readiness overrides bundled docs");
-    expect(payload.systemPrompt).toContain("Helius Sender integration");
-    expect(payload.systemPrompt).toContain("coming-soon");
+    expect(payload.systemPrompt).toContain("Registered tools for this request are attached separately. Treat those tool definitions as the exact contract.");
+    expect(payload.systemPrompt).toContain("Treat live runtime state, enabled tools, filesystem policy, and resolved settings as higher authority than docs.");
     expect(payload.systemPrompt).toContain("current time (UTC, exact minute):");
     expect(payload.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
     expect(payload.systemPrompt).toContain("same backend cache the GUI uses");
     expect(payload.systemPrompt).toContain("- active instance: 01");
     expect(payload.systemPrompt).toContain(process.env.TRENCHCLAW_VAULT_FILE ?? "");
     expect(payload.systemPrompt).toContain("workspaceReadFile");
-    expect(payload.systemPrompt).toContain("command -v <tool>");
-    expect(payload.systemPrompt).toContain(".runtime-state/instances/<id>/cache/generated/knowledge-index.md");
-    expect(payload.systemPrompt).toContain(".runtime-state/instances/<id>/cache/generated/workspace-context.md");
+    expect(payload.systemPrompt).toContain("scheduled trading jobs: unavailable");
     expect(payload.systemPrompt).not.toContain("## Prompt Assembly Order");
     expect(payload.systemPrompt).not.toContain("Source:");
     expect(payload.systemPrompt).not.toContain("SQLite SQL Schema Snapshot");
@@ -278,7 +274,7 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.mode).toBe("primary");
     expect(payload.title).toBe("Primary Runtime Rules");
     expect(payload.systemPrompt).toContain("## Live Runtime Rules");
-    expect(payload.systemPrompt).not.toContain("## Knowledge Routing");
+    expect(payload.systemPrompt).toContain("## Knowledge Routing");
   });
 
   test("throws on unknown modes", async () => {
