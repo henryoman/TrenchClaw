@@ -65,7 +65,6 @@ interface RuntimeUiState {
   tradingSettings: GuiTradingSettingsView | null;
   tradingSettingsBusy: boolean;
   tradingSettingsError: string;
-  wakeupSettingsFilePath: string;
   wakeupSettingsDefaultPrompt: string;
   wakeupSettings: GuiWakeupSettingsView | null;
   wakeupSettingsBusy: boolean;
@@ -149,7 +148,6 @@ export const createRuntimeController = () => {
     tradingSettings: null,
     tradingSettingsBusy: false,
     tradingSettingsError: "",
-    wakeupSettingsFilePath: "",
     wakeupSettingsDefaultPrompt: "",
     wakeupSettings: null,
     wakeupSettingsBusy: false,
@@ -540,7 +538,6 @@ export const createRuntimeController = () => {
     state.wakeupSettingsError = "";
     try {
       const payload = await runtimeApi.wakeupSettings();
-      state.wakeupSettingsFilePath = payload.filePath ?? "";
       state.wakeupSettingsDefaultPrompt = payload.defaultPrompt;
       state.wakeupSettings = payload.settings;
     } catch (error) {
@@ -556,9 +553,9 @@ export const createRuntimeController = () => {
     state.wakeupSettingsError = "";
     try {
       const result = await runtimeApi.updateWakeupSettings({ settings });
-      state.wakeupSettingsFilePath = result.filePath;
       state.wakeupSettingsDefaultPrompt = result.defaultPrompt;
       state.wakeupSettings = result.settings;
+      await refreshRuntimePanels();
     } catch (error) {
       state.wakeupSettingsError = error instanceof Error ? error.message : "Failed to save wakeup settings.";
     } finally {

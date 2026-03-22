@@ -1,12 +1,8 @@
-import { fileURLToPath } from "node:url";
-
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
-import { buildKnowledgeLookup } from "../../lib/knowledge/knowledge-index";
+import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
-
-const KNOWLEDGE_ROOT = fileURLToPath(new URL("../brain/knowledge/", import.meta.url));
 
 const OPERATOR_KERNEL_PROMPT = [
   "You are TrenchClaw's operator chat assistant.",
@@ -28,8 +24,10 @@ const MUTATING_OPERATOR_TOOLS = new Set([
   "renameWallets",
   "managedTriggerOrder",
   "managedTriggerCancelOrders",
+  "managedSwap",
   "managedUltraSwap",
   "scheduleManagedUltraSwap",
+  "submitTradingRoutine",
 ]);
 
 const renderOperatorProfileSummary = (input: {
@@ -165,21 +163,21 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     avoidWhen: "the user did not explicitly request a swap, the managed wallet is unknown, or the confirmation token is missing when policy requires it",
     inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
   },
-};
-
-const formatExampleInput = (value: unknown): string | null => {
-  if (value === undefined) {
-    return null;
-  }
-  try {
-    const serialized = JSON.stringify(value);
-    if (!serialized) {
-      return null;
-    }
-    return serialized.length > 220 ? `${serialized.slice(0, 217)}...` : serialized;
-  } catch {
-    return null;
-  }
+  scheduleManagedUltraSwap: {
+    useWhen: "the user explicitly wants to schedule a managed Ultra swap for later or create a managed Ultra DCA plan",
+    avoidWhen: "the user only wants one immediate swap or the request is better expressed as a richer JSON trading routine",
+    inputAdvice: "Use this to schedule a managed Ultra swap or DCA with `schedule.kind = \"once\"` or `schedule.kind = \"dca\"`.",
+  },
+  managedSwap: {
+    useWhen: "the user explicitly wants a managed-wallet swap and you want the runtime to use the configured swap provider instead of hard-coding one provider in the tool call",
+    avoidWhen: "the user specifically asked for an Ultra-only surface or the managed wallet selector is still unknown",
+    inputAdvice: "Use `wallet` for the managed wallet selector when possible, plus `inputCoin`, `outputCoin`, `amount`, and optional `provider`. Omit `provider` to use the configured default swap provider.",
+  },
+  submitTradingRoutine: {
+    useWhen: "the user explicitly wants a JSON trading routine, scheduled swap, DCA plan, or curated multi-step trading sequence",
+    avoidWhen: "the user only wants one immediate swap and does not need a durable queued routine",
+    inputAdvice: "Pass the versioned trading-routine JSON object directly. Prefer `kind = \"swap_once\"` for one queued swap, `kind = \"dca\"` for installment plans, and `kind = \"action_sequence\"` only for curated step types such as `swap`, `sleep`, or approved helper actions.",
+  },
 };
 
 const renderOperatorDecisionRules = (): string => [
@@ -187,8 +185,10 @@ const renderOperatorDecisionRules = (): string => [
   "- Prefer one grounded tool call over a longer tool chain whenever one tool can answer the question.",
   "- For wallet state, use wallet tools first; do not use Dexscreener, memory, or runtime store as substitutes for live balances.",
   "- For market data, use Dexscreener tools; do not use wallet-balance tools to answer price, liquidity, volume, or price-change questions.",
-  "- For broad market asks like 'what is hot today', 'what meme coins are trending', or 'what is moving right now', prefer `getDexscreenerTopTokenBoosts` or `getDexscreenerLatestTokenProfiles`, then `getDexscreenerTokensByChain` if you need a concrete batch comparison.",
+  "- For broad market asks like 'what is hot today', 'what meme coins are trending', or 'what is moving right now', start with `getDexscreenerTopTokenBoosts` or `getDexscreenerLatestTokenProfiles`, then use `getDexscreenerTokensByChain` if you need a concrete batch comparison.",
   "- Do not default to `getDexscreenerLatestTokenBoosts` for broad trending questions. Use it only for recency questions about what was just boosted or newly promoted.",
+  "- If the user gives only a symbol, ticker, or token name, use `searchDexscreenerPairs` first.",
+  "- Treat meme-coin market questions as current-trending questions unless the user explicitly asks what was just newly boosted.",
   "- If the user already gave an exact address, pair, wallet, or mint, skip discovery and go straight to the most specific tool.",
   "- Use discovery tools only when the user gave a fuzzy symbol, nickname, or broad market question.",
   "- Read before write: inspect wallet state first, then execute transfers or cleanup only after the user explicitly asked and the inputs are concrete.",
@@ -196,33 +196,22 @@ const renderOperatorDecisionRules = (): string => [
   "- For managed-wallet reads across one group, pass `walletGroup` only. Do not put a group name into the single-wallet `wallet` field.",
   "- For direct trigger-order asks with a concrete target price, prefer `managedTriggerOrder` with `trigger.kind = \"exactPrice\"`.",
   "- Use `percentFromBuyPrice` only when the user explicitly frames the trigger relative to entry price, buy price, stop loss, or take profit percentage.",
+  "- Prefer `managedSwap` for direct managed-wallet swaps when you want the runtime to choose the configured provider. Use `managedUltraSwap` only when the user explicitly wants the Ultra-specific surface.",
+  "- Prefer `submitTradingRoutine` for JSON-submitted, scheduled, DCA, or multi-step trading flows instead of manually assembling raw queue payloads.",
   "- Never use a write tool just because it is available. Use it only when the user clearly requested the mutation.",
   "- If confirmation is required, pass `userConfirmationToken` only when the user explicitly confirmed the action in this conversation.",
   "- After a successful tool call, answer in normal English from the tool result and stop unless another tool is still necessary.",
   "- After a successful `managedTriggerOrder`, treat the order as submitted and tell the user it can be tracked with `getTriggerOrders` using `orderStatus = \"active\"`.",
   "- If a tool fails, report the exact failure and the next corrective action; do not jump to unrelated tools.",
-].join("\n");
-
-const renderDexscreenerRoutingPlaybook = (): string => [
-  "## Dexscreener Quick Picks",
-  "- if the user asks what is hot, trending, or most promoted right now: start with `getDexscreenerTopTokenBoosts`",
-  "- if the user asks what is new or newly listed: start with `getDexscreenerLatestTokenProfiles`",
-  "- if the user asks what was just boosted or newly promoted: use `getDexscreenerLatestTokenBoosts`",
-  "- if the user gives only a symbol, ticker, or token name: use `searchDexscreenerPairs` first",
-  "- if you already know a small token set and need concrete ranking data: use `getDexscreenerTokensByChain`",
-  "- if the user gives one exact token address: use `getDexscreenerTokenPairsByChain`",
-  "- if the user gives one exact pair address: use `getDexscreenerPairByChainAndPairId`",
-  "- broad trending asks are not the same as newly boosted asks; do not treat `getDexscreenerLatestTokenBoosts` as the default trending tool",
-].join("\n");
-
-const renderMemeCoinRoutine = (): string => [
   "## Meme Coin Routine",
-  "- if the user asks about meme coins, current meme coins, hot meme coins, or trending meme coins: run `getDexscreenerTopTokenBoosts` first",
-  "- treat meme-coin market questions as current-trending questions unless the user explicitly asks what was just newly boosted",
-  "- do not use `getDexscreenerLatestTokenBoosts` as the first action for meme-coin questions unless the user explicitly asks for newly boosted or most recently promoted tokens",
+  "- if the user asks about meme coins, current meme coins, hot meme coins, or trending meme coins: run `getDexscreenerTopTokenBoosts` first, then use `getDexscreenerTokensByChain` for concrete comparison when you already have token addresses",
+  "## Dexscreener Quick Picks",
+  "- `getDexscreenerTopTokenBoosts`: broad hottest/trending/promoted starting set",
+  "- `getDexscreenerLatestTokenProfiles`: discovery for what is new or freshly listed",
+  "- `getDexscreenerTokensByChain`: batch compare known token addresses after discovery",
 ].join("\n");
 
-const renderOperatorToolReference = (
+const renderOperatorToolNotes = (
   snapshot: RuntimeCapabilitySnapshot | undefined,
   toolNames: string[],
 ): string => {
@@ -230,55 +219,22 @@ const renderOperatorToolReference = (
     .map((toolName) => snapshot?.modelTools.find((toolEntry) => toolEntry.name === toolName))
     .filter((toolEntry): toolEntry is ToolEntry => toolEntry !== undefined);
 
-  const lines = [
-    "## Tool Reference",
-    `- exact allowlist: ${toolNames.map((toolName) => `\`${toolName}\``).join(", ") || "none"}`,
-  ];
+  const lines = ["## Tool Notes", "- Use the registered tool schema as the primary calling contract."];
 
   for (const toolEntry of toolEntries) {
     const guidance = OPERATOR_TOOL_GUIDANCE[toolEntry.name];
+    if (!guidance) {
+      continue;
+    }
     lines.push(`### \`${toolEntry.name}\``);
-    lines.push(`- what it does: ${toolEntry.description}`);
-    lines.push(`- choose this when: ${guidance?.useWhen ?? toolEntry.purpose}`);
-    lines.push(`- do not use this when: ${guidance?.avoidWhen ?? "another more specific tool already matches the request better"}`);
-    if (guidance?.inputAdvice) {
+    lines.push(`- choose this when: ${guidance.useWhen}`);
+    lines.push(`- do not use this when: ${guidance.avoidWhen}`);
+    if (guidance.inputAdvice) {
       lines.push(`- how to call it: ${guidance.inputAdvice}`);
     }
-    const exampleInput = formatExampleInput(toolEntry.exampleInput);
-    if (exampleInput) {
-      lines.push(`- example input: \`${exampleInput}\``);
-    }
-    lines.push(
-      `- side effects: ${toolEntry.sideEffectLevel}${toolEntry.requiresConfirmation ? " and explicit confirmation may be required" : ""}`,
-    );
   }
 
   return lines.join("\n");
-};
-
-const renderOperatorKnowledgeIndex = async (): Promise<string> => {
-  const entries = await buildKnowledgeLookup(KNOWLEDGE_ROOT);
-  const coreAliases = entries
-    .filter((entry) => entry.kind === "core-doc")
-    .map((entry) => `\`${entry.alias}\``)
-    .join(", ");
-  const skillAliases = entries
-    .filter((entry) => entry.kind === "skill-pack")
-    .map((entry) => `\`${entry.alias}\``)
-    .join(", ");
-
-  return [
-    "## Knowledge Index",
-    "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
-    "- use `readKnowledgeDoc` with an alias like `runtime-reference` or `helius-cli-readme` to open one directly",
-    coreAliases ? `- core doc aliases: ${coreAliases}` : "",
-    skillAliases ? `- skill pack aliases: ${skillAliases}` : "",
-    "- use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults",
-    "- use `settings-reference` for settings ownership, load order, and active-instance overrides",
-    "- knowledge files are reference material; live tools, release readiness, and runtime state are higher authority",
-  ]
-    .filter((line) => line.trim().length > 0)
-    .join("\n");
 };
 
 export const buildOperatorChatPrompt = async (input: {
@@ -286,10 +242,9 @@ export const buildOperatorChatPrompt = async (input: {
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
   toolNames: string[];
 }): Promise<string> => {
-  const [walletSummary, liveRuntimeContext, knowledgeIndex] = await Promise.all([
+  const [walletSummary, liveRuntimeContext] = await Promise.all([
     renderRuntimeWalletPromptSummary(),
     renderLiveRuntimeContextSection(),
-    renderOperatorKnowledgeIndex(),
   ]);
 
   return [
@@ -301,10 +256,8 @@ export const buildOperatorChatPrompt = async (input: {
     }),
     liveRuntimeContext,
     renderOperatorDecisionRules(),
-    renderMemeCoinRoutine(),
-    renderDexscreenerRoutingPlaybook(),
-    renderOperatorToolReference(input.capabilitySnapshot, input.toolNames),
-    knowledgeIndex,
+    renderOperatorToolNotes(input.capabilitySnapshot, input.toolNames),
+    renderKnowledgePromptSummary(),
     "## Wallet Summary",
     walletSummary,
     [

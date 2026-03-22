@@ -13,6 +13,13 @@ export interface JupiterUltraAdapterConfig {
   apiKey: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+  rateLimitRetry?: {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+    maxDelayMs?: number;
+    jitterMs?: number;
+    sleepImpl?: (ms: number) => Promise<void>;
+  };
 }
 
 export interface JupiterUltraOrderRequest {
@@ -80,9 +87,43 @@ const toQueryParams = (request: JupiterUltraOrderRequest): URLSearchParams => {
 const readErrorMessage = (status: number, payload: unknown): string =>
   formatUltraError("Jupiter Ultra request failed", status, payload);
 
+const parseRetryAfterMs = (value: string | null): number | null => {
+  if (!value) {
+    return null;
+  }
+
+  const seconds = Number(value);
+  if (Number.isFinite(seconds) && seconds >= 0) {
+    return Math.ceil(seconds * 1_000);
+  }
+
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return null;
+  }
+
+  return Math.max(0, timestamp - Date.now());
+};
+
+const computeBackoffMs = (input: {
+  attempt: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+  jitterMs: number;
+}): number => {
+  const exponentialDelay = input.baseDelayMs * 2 ** Math.max(0, input.attempt - 1);
+  const jitter = input.jitterMs > 0 ? Math.floor(Math.random() * input.jitterMs) : 0;
+  return Math.min(input.maxDelayMs, exponentialDelay + jitter);
+};
+
 export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => {
   const baseUrl = config.baseUrl ?? DEFAULT_JUPITER_ULTRA_BASE_URL;
   const fetchImpl = config.fetchImpl ?? fetch;
+  const maxAttempts = Math.max(1, Math.trunc(config.rateLimitRetry?.maxAttempts ?? 4));
+  const baseDelayMs = Math.max(0, Math.trunc(config.rateLimitRetry?.baseDelayMs ?? 500));
+  const maxDelayMs = Math.max(baseDelayMs || 1, Math.trunc(config.rateLimitRetry?.maxDelayMs ?? 10_000));
+  const jitterMs = Math.max(0, Math.trunc(config.rateLimitRetry?.jitterMs ?? 250));
+  const sleepImpl = config.rateLimitRetry?.sleepImpl ?? (async (ms: number) => await Bun.sleep(ms));
 
   const request = async (path: string, init?: RequestInit): Promise<unknown> => {
     const headers = new Headers(init?.headers);
@@ -90,17 +131,33 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
     headers.set("x-api-key", config.apiKey);
     headers.set("x-ultra-api-key", config.apiKey);
 
-    const response = await fetchImpl(`${baseUrl}${path}`, {
-      ...init,
-      headers,
-    });
-    const payload = await parseUltraJson(response);
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const response = await fetchImpl(`${baseUrl}${path}`, {
+        ...init,
+        headers,
+      });
+      const payload = await parseUltraJson(response);
 
-    if (!response.ok) {
-      throw new Error(readErrorMessage(response.status, payload));
+      if (response.ok) {
+        return payload;
+      }
+
+      const canRetry = response.status === 429 && attempt < maxAttempts;
+      if (!canRetry) {
+        throw new Error(readErrorMessage(response.status, payload));
+      }
+
+      const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
+      const backoffMs = computeBackoffMs({
+        attempt,
+        baseDelayMs,
+        maxDelayMs,
+        jitterMs,
+      });
+      await sleepImpl(Math.max(retryAfterMs ?? 0, backoffMs));
     }
 
-    return payload;
+    throw new Error("Jupiter Ultra request failed after exhausting rate-limit retries");
   };
 
   return {

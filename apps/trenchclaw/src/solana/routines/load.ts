@@ -83,9 +83,25 @@ export const walletInventoryScanRoutine: RoutinePlanner = async (_ctx, job) => {
   ];
 };
 
+export const runtimeWakeupRoutine: RoutinePlanner = async (_ctx, job) => {
+  const instanceId = typeof job.config.instanceId === "string" ? job.config.instanceId.trim() : undefined;
+  return [
+    {
+      key: "runtime-wakeup-check",
+      actionName: "runWakeupCheck",
+      input: {
+        trigger: "scheduled",
+        ...(instanceId ? { instanceId } : {}),
+      },
+      idempotencyKey: `${job.id}:runtime-wakeup-check`,
+    },
+  ];
+};
+
 const BUILTIN_ROUTINES: Record<string, RoutinePlanner> = {
   actionSequence: actionSequenceRoutine,
   createWallets: createWalletsRoutine,
+  runtimeWakeup: runtimeWakeupRoutine,
   walletInventoryScan: walletInventoryScanRoutine,
 };
 

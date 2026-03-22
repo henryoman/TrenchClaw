@@ -1,6 +1,8 @@
 import path from "node:path";
 import { readdir, stat } from "node:fs/promises";
 
+import { CORE_APP_ROOT } from "../../runtime/runtime-paths";
+
 const OMITTED_DIRECTORY_NAMES = new Set([
   "node_modules",
   ".git",
@@ -70,9 +72,17 @@ export interface KnowledgeLookupEntry {
 
 type KnowledgeDocMetadata = Omit<KnowledgeDocEntry, "path">;
 
-const KNOWLEDGE_WORKSPACE_ROOT = "src/ai/brain/knowledge";
+const KNOWLEDGE_ROOT_ENV = "TRENCHCLAW_KNOWLEDGE_DIR";
+export const KNOWLEDGE_WORKSPACE_ROOT = "src/ai/brain/knowledge";
 const INDEX_AND_SUPPORT_FILES = new Set(["KNOWLEDGE_MANIFEST.md"]);
 const DOC_FILE_EXTENSIONS = new Set([".md", ".txt"]);
+const KNOWLEDGE_ROUTING_RULES = [
+  "Treat live runtime state, enabled tools, filesystem policy, and resolved settings as higher authority than docs.",
+  "Use `listKnowledgeDocs` to browse or search the knowledge registry only when a live runtime tool is not enough.",
+  "Use `readKnowledgeDoc` only after you know the alias or exact doc name.",
+  "Start with repo-authored reference docs before deep vendor references.",
+  "Open a skill pack only when the task clearly matches that skill's domain or workflow.",
+] as const;
 
 const CORE_DOC_METADATA = new Map<string, KnowledgeDocMetadata>([
   [
@@ -574,6 +584,29 @@ const renderDocTable = (
   ...rows.map((row) => `| ${row.join(" | ")} |`),
 ].join("\n");
 
+export const resolveKnowledgeRoot = (): string => {
+  const configuredRoot = process.env[KNOWLEDGE_ROOT_ENV]?.trim();
+  if (!configuredRoot) {
+    return path.join(CORE_APP_ROOT, KNOWLEDGE_WORKSPACE_ROOT);
+  }
+  return path.isAbsolute(configuredRoot) ? path.resolve(configuredRoot) : path.resolve(CORE_APP_ROOT, configuredRoot);
+};
+
+export const renderKnowledgeRoutingRules = (): string =>
+  KNOWLEDGE_ROUTING_RULES.map((rule) => `- ${rule}`).join("\n");
+
+export const renderKnowledgePromptSummary = (): string => [
+  "## Knowledge Index",
+  "- core doc aliases: `runtime-reference`, `settings-reference`, `wallet-reference`, `bash-tool`, `helius-agents`, `solana-cli`, `solanacli-file-system-wallet`",
+  "- skill pack aliases: use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
+  "- use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults",
+  "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
+  '- Use `tier = "skills"` when you specifically need a skill pack.',
+  "## Knowledge Routing",
+  renderKnowledgeRoutingRules(),
+  "- Start with `runtime-reference` for runtime behavior and `settings-reference` for settings ownership.",
+].join("\n");
+
 export const buildKnowledgeInventory = async (targetDir: string): Promise<KnowledgeInventory> => {
   const resolved = path.resolve(targetDir);
   const fileStat = await stat(resolved);
@@ -663,64 +696,6 @@ export const resolveKnowledgeLookupEntry = async (
   );
 };
 
-export const renderKnowledgeAliasMenu = async (targetDir: string): Promise<string> => {
-  const entries = await buildKnowledgeLookup(targetDir);
-  const rows = entries.map((entry) => [
-    `\`${entry.alias}\``,
-    entry.kind,
-    entry.title,
-    entry.readWhen,
-  ]);
-  return [
-    "## Knowledge Menu",
-    "- Use `listKnowledgeDocs` to see the full menu again or narrow it by topic.",
-    "- Use `readKnowledgeDoc` with the alias when you want a specific doc.",
-    renderDocTable(["alias", "kind", "title", "read when"], rows),
-  ].join("\n");
-};
-
-export const renderKnowledgeRoutingSummary = async (targetDir: string): Promise<string> => {
-  const inventory = await buildKnowledgeInventory(targetDir);
-
-  const coreDocRows = inventory.coreDocs.map((entry) => [
-    `\`${entry.path}\``,
-    entry.kind,
-    entry.priority,
-    entry.readWhen,
-  ]);
-
-  const deepDocRows = inventory.deepDocs.map((entry) => [
-    `\`${entry.path}\``,
-    entry.topics.join(", "),
-    entry.readWhen,
-  ]);
-
-  const skillPackRows = inventory.skillPacks.map((entry) => [
-    `\`${entry.path}\``,
-    String(entry.referenceCount),
-    entry.topics.join(", "),
-    entry.readWhen,
-  ]);
-
-  return [
-    "## Knowledge Routing",
-    "- Treat runtime contract and exact enabled tools as higher authority than any doc file.",
-    "- Read repo-authored reference docs first for runtime, settings, wallet, and workspace behavior.",
-    "- Read repo-authored guides second for concrete workflows and local conventions.",
-    "- Escalate to `deep-knowledge/` only when short refs are insufficient or exact provider/API detail is required.",
-    "- Open a skill pack only when the request clearly matches that skill's domain or workflow.",
-    "",
-    "### Core Docs",
-    renderDocTable(["path", "kind", "priority", "read when"], coreDocRows),
-    "",
-    "### Deep References",
-    renderDocTable(["path", "topics", "read when"], deepDocRows),
-    "",
-    "### Skill Packs",
-    renderDocTable(["path", "refs", "topics", "read when"], skillPackRows),
-  ].join("\n");
-};
-
 export const renderKnowledgeIndexMarkdown = async (
   targetDir: string,
   generatedAt: string,
@@ -762,11 +737,7 @@ Use this index to see what knowledge exists before opening any specific file.
 
 ## Routing Rules
 
-- Treat the live runtime contract, enabled tool allowlist, release readiness, and resolved settings as higher authority than docs.
-- Start with repo-authored reference docs for runtime, settings, wallet, and workspace behavior.
-- Use repo-authored guides for local workflows, command patterns, and integration shortcuts.
-- Escalate to deep vendor references only when exact API/provider detail is required.
-- Use skill packs when the task clearly matches a skill workflow; the \`SKILL.md\` file is the entry point.
+${renderKnowledgeRoutingRules()}
 
 ## Core Docs
 

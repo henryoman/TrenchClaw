@@ -2,6 +2,7 @@ import type { RuntimeEventBus } from "./events";
 import type { BotId, JobId } from "./ids";
 import type { Policy } from "./policy";
 import type { JobState, StateStore } from "./state";
+import type { LlmClient } from "../../llm/types";
 
 export type RuntimeActor = "user" | "agent" | "system";
 
@@ -45,6 +46,7 @@ export interface ActionContext {
   jobMeta?: JobMeta;
   eventBus?: RuntimeEventBus;
   stateStore?: StateStore;
+  llm?: LlmClient | null;
   enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<JobState>;
   manageJob?: (input: RuntimeJobControlRequest) => Promise<JobState>;
 }

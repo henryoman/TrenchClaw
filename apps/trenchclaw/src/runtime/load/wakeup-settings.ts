@@ -27,6 +27,7 @@ export const wakeupSettingsSchema = z.object({
 
 export const instanceWakeupSettingsSchema = z.object({
   configVersion: z.literal(1).default(1),
+  savedAtUnixMs: z.number().int().min(0).optional(),
   wakeup: wakeupSettingsSchema,
 }).default(createDefaultInstanceWakeupSettings);
 

@@ -11,6 +11,7 @@ import type {
   RuntimeEventBus,
   StateStore,
 } from "../runtime/types";
+import type { RuntimeActionThrottleContract } from "../../runtime/trading/throttle";
 import { createIdempotencyKey } from "../runtime/types";
 
 const DEFAULT_RETRY_POLICY: RetryPolicy = {
@@ -24,6 +25,7 @@ export interface ActionDispatcherDeps {
   policyEngine: PolicyEngineContract;
   stateStore: StateStore;
   eventBus: RuntimeEventBus;
+  actionThrottle?: RuntimeActionThrottleContract;
 }
 
 export class ActionDispatcher {
@@ -150,6 +152,7 @@ export class ActionDispatcher {
       const start = Date.now();
 
       try {
+        await this.deps.actionThrottle?.acquire(action.name);
         const input = validateInput(action, step.input);
         await action.precheck?.(ctx, input);
         const output = await action.execute(ctx, input);

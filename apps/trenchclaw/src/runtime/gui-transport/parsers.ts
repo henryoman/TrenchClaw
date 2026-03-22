@@ -21,6 +21,9 @@ const toUserMessage = (text: string): UIMessage => ({
   parts: [{ type: "text", text }],
 });
 
+const toGatewayLane = (value: unknown): GatewayLane | undefined =>
+  value === "operator-chat" || value === "workspace-agent" || value === "background-summary" ? value : undefined;
+
 export const parseUiChatRequest = async (
   request: Request,
 ): Promise<{
@@ -30,9 +33,6 @@ export const parseUiChatRequest = async (
   lane?: GatewayLane;
   metadata?: Record<string, unknown>;
 } | null> => {
-  const toGatewayLane = (value: unknown): GatewayLane | undefined =>
-    value === "operator-chat" || value === "workspace-agent" || value === "background-summary" ? value : undefined;
-
   const toSafeTextParts = (value: unknown): UIMessage["parts"] => {
     if (!Array.isArray(value)) {
       return [];

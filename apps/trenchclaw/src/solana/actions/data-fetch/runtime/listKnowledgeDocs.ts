@@ -1,10 +1,7 @@
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import { buildKnowledgeLookup } from "../../../../lib/knowledge/knowledge-index";
-
-const KNOWLEDGE_ROOT = fileURLToPath(new URL("../../../../ai/brain/knowledge/", import.meta.url));
+import { buildKnowledgeLookup, resolveKnowledgeRoot } from "../../../../lib/knowledge/knowledge-index";
 const maxLimit = 200;
 
 const parseJsonObject = (value: unknown): unknown => {
@@ -65,9 +62,10 @@ export const listKnowledgeDocsAction: Action<ListKnowledgeDocsInput, unknown> = 
     const startedAt = Date.now();
     const idempotencyKey = crypto.randomUUID();
     try {
+      const knowledgeRoot = resolveKnowledgeRoot();
       const { tier, query, limit } = input.request;
       const normalizedQuery = query?.trim().toLowerCase() ?? "";
-      const docs = (await buildKnowledgeLookup(KNOWLEDGE_ROOT))
+      const docs = (await buildKnowledgeLookup(knowledgeRoot))
         .filter((entry) => matchesTier(tier, entry.kind))
         .filter((entry) => {
           if (!normalizedQuery) {

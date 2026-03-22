@@ -9,9 +9,12 @@ const DEFAULT_OUTPUT_PATH = path.join(REPO_ROOT, "dist", "release", "release-not
 const RECORD_SEPARATOR = "\u001e";
 const FIELD_SEPARATOR = "\u001f";
 
+type NotesTemplate = "full" | "changelog-only";
+
 interface CliArgs {
   version: string;
   outputPath: string;
+  template: NotesTemplate;
 }
 
 interface CommitEntry {
@@ -26,6 +29,7 @@ interface CommitEntry {
 const parseArgs = (argv: string[]): CliArgs => {
   let version = "unversioned";
   let outputPath = DEFAULT_OUTPUT_PATH;
+  let template: NotesTemplate = "full";
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -45,10 +49,22 @@ const parseArgs = (argv: string[]): CliArgs => {
       }
       outputPath = path.resolve(value);
       i += 1;
+      continue;
+    }
+    if (arg === "--template") {
+      const value = argv[i + 1];
+      if (!value) {
+        throw new Error("Missing value for --template");
+      }
+      if (value !== "full" && value !== "changelog-only") {
+        throw new Error('Invalid --template. Use "full" or "changelog-only".');
+      }
+      template = value;
+      i += 1;
     }
   }
 
-  return { version, outputPath };
+  return { version, outputPath, template };
 };
 
 const runCapture = async (command: string[]): Promise<string> => {
@@ -195,20 +211,24 @@ const renderReleaseNotes = (input: {
   currentTag: string | null;
   previousTag: string | null;
   commits: CommitEntry[];
+  template: NotesTemplate;
 }): string => {
   const groups = groupByCategory(input.commits);
   const lines: string[] = [];
+  const includeHeader = input.template === "full";
 
-  lines.push(`# Release ${input.version}`);
-  lines.push("");
-  lines.push(`Generated: ${input.generatedAtIso}`);
-  lines.push(`Current release ref: ${input.currentTag ?? input.currentRef}`);
-  lines.push(`Previous release tag: ${input.previousTag ?? "none"}`);
-  lines.push(
-    `Commit window: ${input.previousTag ? `${input.previousTag}..${input.currentTag ?? "HEAD"}` : `repository start..${input.currentTag ?? "HEAD"}`}`,
-  );
-  lines.push(`Total commits: ${input.commits.length}`);
-  lines.push("");
+  if (includeHeader) {
+    lines.push(`# Release ${input.version}`);
+    lines.push("");
+    lines.push(`Generated: ${input.generatedAtIso}`);
+    lines.push(`Current release ref: ${input.currentTag ?? input.currentRef}`);
+    lines.push(`Previous release tag: ${input.previousTag ?? "none"}`);
+    lines.push(
+      `Commit window: ${input.previousTag ? `${input.previousTag}..${input.currentTag ?? "HEAD"}` : `repository start..${input.currentTag ?? "HEAD"}`}`,
+    );
+    lines.push(`Total commits: ${input.commits.length}`);
+    lines.push("");
+  }
 
   if (input.commits.length === 0) {
     lines.push("No commits found for this release window.");
@@ -269,6 +289,7 @@ const run = async (): Promise<void> => {
     currentTag: releaseWindow.currentTag,
     previousTag: releaseWindow.previousTag,
     commits,
+    template: args.template,
   });
 
   await mkdir(path.dirname(args.outputPath), { recursive: true });

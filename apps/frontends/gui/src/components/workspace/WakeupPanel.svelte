@@ -7,7 +7,6 @@
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
 
   type WakeupPanelProps = {
-    wakeupSettingsFilePath?: string;
     wakeupSettings?: GuiWakeupSettingsView | null;
     defaultPrompt?: string;
     busy?: boolean;
@@ -17,7 +16,6 @@
   };
 
   let {
-    wakeupSettingsFilePath = "",
     wakeupSettings = null,
     defaultPrompt = "",
     busy = false,
@@ -41,7 +39,6 @@
   const createHydrationSignature = (): string =>
     JSON.stringify({
       wakeupSettings,
-      wakeupSettingsFilePath,
       defaultPrompt,
     });
 
@@ -119,18 +116,6 @@
 
 <RetroPanel title="Wakeup">
   <div class="wakeup-panel">
-    <div class="wakeup-toolbar">
-      <div class="meta">
-        <p class="meta-label">File</p>
-        <p class="meta-value">{wakeupSettingsFilePath || "No active wakeup file"}</p>
-      </div>
-      <div class="actions">
-        <RetroButton variant="secondary" disabled={busy} on:click={reload}>Reload</RetroButton>
-        <RetroButton variant="secondary" disabled={busy} on:click={useDefaultPrompt}>Use Default</RetroButton>
-        <RetroButton disabled={busy || !dirty} on:click={save}>{busy ? "Saving..." : "Save"}</RetroButton>
-      </div>
-    </div>
-
     <RetroStatusMessage tone="error" text={error} />
 
     <RetroSectionHeader title="Interval" />
@@ -185,10 +170,7 @@
         <span class="interval-suffix">min</span>
       </div>
     </RetroField>
-    <p class="hint">
-      Leave wakeups off to disable them. When you turn them on, the interval starts at 60 minutes unless you change it.
-    </p>
-
+    <p class="hint">The next wakeup is scheduled from the moment you save these settings.</p>
     <RetroSectionHeader title="Prompt" />
     <RetroField label="Wakeup message">
       <textarea
@@ -207,9 +189,14 @@
       ></textarea>
     </RetroField>
     <p class="hint">
-      Write the prompt like conditional operator logic. Example: “IF a pending job is safe to resume, explain it. IF a job looks
-      risky, say why it should stay paused. IF nothing matters right now, do nothing.”
+      Write the prompt like conditional operator logic. Example: “IF a pending job is safe to resume, explain it.”
     </p>
+
+    <div class="actions">
+      <RetroButton variant="secondary" disabled={busy} on:click={reload}>Reload</RetroButton>
+      <RetroButton variant="secondary" disabled={busy} on:click={useDefaultPrompt}>Use Default</RetroButton>
+      <RetroButton disabled={busy || !dirty} on:click={save}>{busy ? "Saving..." : "Save"}</RetroButton>
+    </div>
   </div>
 </RetroPanel>
 
@@ -219,40 +206,16 @@
     gap: var(--tc-space-3);
   }
 
-  .wakeup-toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--tc-space-3);
-    align-items: start;
-  }
-
   .actions {
     display: flex;
     gap: var(--tc-space-2);
     flex-wrap: wrap;
     justify-content: flex-end;
+    padding-top: var(--tc-space-1);
   }
 
-  .meta {
-    min-width: 0;
-  }
-
-  .meta-label,
-  .meta-value,
   .hint {
     margin: 0;
-  }
-
-  .meta-label {
-    color: var(--tc-color-gray-2);
-    font-size: var(--tc-status-font-size);
-    text-transform: uppercase;
-    letter-spacing: var(--tc-status-letter-spacing);
-  }
-
-  .meta-value {
-    color: var(--tc-color-gray-3);
-    overflow-wrap: anywhere;
   }
 
   .hint {
@@ -325,10 +288,6 @@
   }
 
   @media (max-width: 900px) {
-    .wakeup-toolbar {
-      grid-template-columns: 1fr;
-    }
-
     .actions {
       justify-content: flex-start;
     }

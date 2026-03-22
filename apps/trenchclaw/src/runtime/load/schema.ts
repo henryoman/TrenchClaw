@@ -119,6 +119,25 @@ const runtimeSchema = z.object({
     enabled: z.boolean(),
     ttlHours: z.number().int().positive(),
   }),
+  tradingThrottle: z.object({
+    enabled: z.boolean(),
+    lanes: z.object({
+      swapExecution: z.object({
+        enabled: z.boolean(),
+        requestsPerWindow: z.number().int().positive(),
+        windowMs: z.number().int().positive(),
+        maxBurst: z.number().int().positive(),
+        minSpacingMs: z.number().int().nonnegative(),
+      }),
+      solanaRpc: z.object({
+        enabled: z.boolean(),
+        requestsPerWindow: z.number().int().positive(),
+        windowMs: z.number().int().positive(),
+        maxBurst: z.number().int().positive(),
+        minSpacingMs: z.number().int().nonnegative(),
+      }),
+    }),
+  }),
 });
 
 const storageSchema = z.object({

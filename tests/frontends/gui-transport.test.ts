@@ -946,4 +946,100 @@ describe("Runtime v1 API", () => {
       await rm(instanceDirectory, { recursive: true, force: true });
     }
   });
+
+  test("GET and PUT /api/gui/wakeup-settings anchor the next wakeup from save time", async () => {
+    const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+    const instanceId = "99";
+    const instanceDirectory = runtimeStatePath("instances", instanceId);
+    const wakeupSettingsPath = path.join(instanceDirectory, "settings", "wakeup.json");
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    try {
+      await rm(instanceDirectory, { recursive: true, force: true });
+
+      const runtime = buildRuntime();
+      const transport = new RuntimeGuiTransport(runtime);
+      transport.setActiveInstance({
+        fileName: "instance.json",
+        localInstanceId: instanceId,
+        name: "test-instance",
+        safetyProfile: "dangerous",
+        userPinRequired: false,
+        createdAt: "2026-03-12T00:00:00.000Z",
+        updatedAt: "2026-03-12T00:00:00.000Z",
+      });
+      const handler = transport.createApiHandler();
+
+      const initialResponse = await handler(new Request("http://localhost/api/gui/wakeup-settings", { method: "GET" }));
+      expect(initialResponse.status).toBe(200);
+      const initialPayload = (await initialResponse.json()) as {
+        instanceId: string | null;
+        filePath: string | null;
+        settings: { intervalMinutes: number; prompt: string };
+      };
+      expect(initialPayload.instanceId).toBe(instanceId);
+      expect(initialPayload.filePath).toContain(`/instances/${instanceId}/settings/wakeup.json`);
+      expect(initialPayload.settings.intervalMinutes).toBe(0);
+
+      const updateResponse = await handler(new Request("http://localhost/api/gui/wakeup-settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            intervalMinutes: 15,
+            prompt: "IF anything matters, say it. IF not, do nothing.",
+          },
+        }),
+      }));
+      expect(updateResponse.status).toBe(200);
+      const updatePayload = (await updateResponse.json()) as {
+        instanceId: string;
+        filePath: string;
+        savedAt: string;
+        settings: { intervalMinutes: number; prompt: string };
+      };
+      expect(updatePayload.instanceId).toBe(instanceId);
+      expect(updatePayload.filePath).toContain(`/instances/${instanceId}/settings/wakeup.json`);
+      expect(updatePayload.settings.intervalMinutes).toBe(15);
+
+      const savedAtUnixMs = Date.parse(updatePayload.savedAt);
+      const wakeupJobs = runtime.stateStore
+        .listJobs()
+        .filter((job) => job.routineName === "runtimeWakeup" && job.status === "pending");
+      expect(wakeupJobs).toHaveLength(1);
+      expect(wakeupJobs[0]?.nextRunAt).toBe(savedAtUnixMs + 15 * 60_000);
+      expect(wakeupJobs[0]?.config.intervalMs).toBe(15 * 60_000);
+
+      const storedSettings = JSON.parse(await readFile(wakeupSettingsPath, "utf8")) as {
+        savedAtUnixMs?: number;
+        wakeup?: { intervalMinutes?: number };
+      };
+      expect(storedSettings.savedAtUnixMs).toBe(savedAtUnixMs);
+      expect(storedSettings.wakeup?.intervalMinutes).toBe(15);
+
+      const disableResponse = await handler(new Request("http://localhost/api/gui/wakeup-settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          settings: {
+            intervalMinutes: 0,
+            prompt: "IF anything matters, say it. IF not, do nothing.",
+          },
+        }),
+      }));
+      expect(disableResponse.status).toBe(200);
+      expect(
+        runtime.stateStore
+          .listJobs()
+          .filter((job) => job.routineName === "runtimeWakeup" && job.status === "pending"),
+      ).toHaveLength(0);
+    } finally {
+      if (previousActiveInstanceId === undefined) {
+        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+      } else {
+        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+      }
+      await rm(instanceDirectory, { recursive: true, force: true });
+    }
+  });
 });

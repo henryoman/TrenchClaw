@@ -6,6 +6,8 @@ export * from "./listKnowledgeDocs";
 export * from "./queryRuntimeStore";
 export * from "./readKnowledgeDoc";
 export * from "./pingRuntime";
+export * from "./runWakeupCheck";
 export * from "./sleep";
 export * from "./enqueueRuntimeJob";
 export * from "./manageRuntimeJob";
+export * from "./submitTradingRoutine";

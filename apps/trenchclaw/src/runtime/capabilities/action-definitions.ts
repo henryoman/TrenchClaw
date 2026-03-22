@@ -22,12 +22,15 @@ import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingR
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
 import { queryRuntimeStoreAction } from "../../solana/actions/data-fetch/runtime/queryRuntimeStore";
 import { readKnowledgeDocAction } from "../../solana/actions/data-fetch/runtime/readKnowledgeDoc";
+import { runWakeupCheckAction } from "../../solana/actions/data-fetch/runtime/runWakeupCheck";
 import { sleepAction } from "../../solana/actions/data-fetch/runtime/sleep";
+import { submitTradingRoutineAction } from "../../solana/actions/data-fetch/runtime/submitTradingRoutine";
 import {
   createWalletGroupDirectoryAction,
   createWalletsAction,
   devnetAirdropAction,
   getTriggerOrdersAction,
+  managedSwapAction,
   managedTriggerCancelOrdersAction,
   managedTriggerOrderAction,
   managedUltraSwapAction,
@@ -82,6 +85,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   readKnowledgeDoc: SHIPPED_NOW("Knowledge routing and doc lookup ship in the current release."),
   mutateInstanceMemory: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
   pingRuntime: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  runWakeupCheck: SHIPPED_NOW("Wakeup checks now run through one managed runtime routine and action surface."),
   sleep: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
   getManagedWalletContents: SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
   getManagedWalletSolBalances: SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
@@ -98,6 +102,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   devnetAirdrop: LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
   enqueueRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
   manageRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
+  submitTradingRoutine: LIMITED("JSON trading-routine submission is available now as the supported automation surface."),
   getSwapHistory: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   transfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   closeTokenAccount: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
@@ -107,6 +112,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   privacyTransfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   privacyAirdrop: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   privacySwap: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  managedSwap: LIMITED("Provider-agnostic managed swap routing is available now, with Jupiter Ultra as the current execution provider."),
   ultraQuoteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   ultraExecuteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   managedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
@@ -228,6 +234,35 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: submitTradingRoutineAction,
+    description: "Submit a validated JSON trading routine for one-off swaps, DCA plans, or curated multi-step trading sequences.",
+    purpose: "Give the model one hardened, provider-agnostic JSON surface for durable trading automation.",
+    tags: ["runtime", "queue", "trading", "json", "write"],
+    exampleInput: {
+      version: 1,
+      kind: "dca",
+      executionMode: "staggered_jobs",
+      swap: {
+        walletGroup: "core-wallets",
+        walletName: "maker-1",
+        inputCoin: "SOL",
+        outputCoin: "JUP",
+        amount: "0.3",
+        amountUnit: "ui",
+      },
+      schedule: {
+        installments: 3,
+        startAtUnixMs: 1_767_000_000_000,
+        intervalMs: 3_600_000,
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: canUseUltraSwap,
+    requiresUserConfirmation: true,
     chatExposed: true,
   },
   {
@@ -497,6 +532,19 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
   },
   {
     kind: "action",
+    action: runWakeupCheckAction,
+    description: "Run the managed wakeup evaluation for the active instance and refresh the next anchored wakeup run.",
+    purpose: "Keep wakeup checks on one internal runtime surface so the GUI, scheduler, and boot path all use the same behavior.",
+    tags: ["runtime", "wakeup", "scheduler", "internal"],
+    exampleInput: {
+      trigger: "scheduled",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: false,
+  },
+  {
+    kind: "action",
     action: sleepAction,
     description: "Pause a sequential routine for a fixed number of milliseconds.",
     purpose: "Insert deterministic waits between action-sequence steps.",
@@ -684,6 +732,25 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
       settings.trading.enabled &&
       settings.trading.jupiter.ultra.enabled &&
       settings.trading.jupiter.ultra.allowExecutions,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedSwapAction,
+    description: "Run a managed-wallet swap through the configured swap provider.",
+    purpose: "Expose one stable managed swap surface while keeping the underlying provider swappable.",
+    tags: ["swaps", "execution", "wallets"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "SOL",
+      outputCoin: "JUP",
+      amount: "0.1",
+      amountUnit: "ui",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: canUseUltraSwap,
     requiresUserConfirmation: true,
     chatExposed: true,
   },

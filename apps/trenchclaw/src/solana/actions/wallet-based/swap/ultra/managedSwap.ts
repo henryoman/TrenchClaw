@@ -9,7 +9,7 @@ import { ultraSwapAction, type UltraSwapOutput } from "./swap";
 
 const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);
 
-const managedUltraSwapInputSchema = ultraQuoteInputSchema.extend({
+export const managedUltraSwapInputSchema = ultraQuoteInputSchema.extend({
   wallet: managedWalletSelectorSchema.optional(),
   walletGroup: walletGroupNameSchema.optional(),
   walletName: walletNameSchema.optional(),
@@ -34,7 +34,7 @@ const managedUltraSwapInputSchema = ultraQuoteInputSchema.extend({
   }
 });
 
-type ManagedUltraSwapInput = z.infer<typeof managedUltraSwapInputSchema>;
+export type ManagedUltraSwapInput = z.infer<typeof managedUltraSwapInputSchema>;
 
 export const managedUltraSwapAction: Action<ManagedUltraSwapInput, UltraSwapOutput> = {
   name: "managedUltraSwap",
