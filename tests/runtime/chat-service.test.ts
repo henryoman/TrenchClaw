@@ -1914,6 +1914,8 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("### `getDexscreenerTokensByChain`");
     expect(execution.systemPrompt).toContain("Pass up to 30 `tokenAddresses`.");
     expect(execution.systemPrompt).toContain("Do not default to `getDexscreenerLatestTokenBoosts` for broad trending questions.");
+    expect(execution.systemPrompt).toContain("Never answer a token question with only a raw token address unless the available tool results truly contain no better identifier");
+    expect(execution.systemPrompt).toContain("for coin or token questions, answer with token metadata such as name or ticker whenever available");
   });
 
   test("includes a compact wallet summary in the system prompt", async () => {

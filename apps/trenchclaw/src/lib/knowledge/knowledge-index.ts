@@ -162,6 +162,17 @@ const CORE_DOC_METADATA = new Map<string, KnowledgeDocMetadata>([
       readWhen: "filesystem wallet creation, keypair verification, or Solana CLI wallet-file questions",
     },
   ],
+  [
+    "jupiter-ai-docs.md",
+    {
+      title: "Jupiter AI Docs + API Quick Ops",
+      kind: "guide",
+      authority: "repo-authored",
+      priority: "read-second",
+      topics: ["jupiter", "ai", "mcp", "llms", "swap"],
+      readWhen: "Jupiter AI docs discovery, MCP setup, markdown export, or shell-first Jupiter API workflows",
+    },
+  ],
 ]);
 
 const DEEP_DOC_METADATA_RULES: KnowledgeDocMetadataRule[] = [
@@ -597,7 +608,7 @@ export const renderKnowledgeRoutingRules = (): string =>
 
 export const renderKnowledgePromptSummary = (): string => [
   "## Knowledge Index",
-  "- core doc aliases: `runtime-reference`, `settings-reference`, `wallet-reference`, `bash-tool`, `helius-agents`, `solana-cli`, `solanacli-file-system-wallet`",
+  "- core doc aliases: `runtime-reference`, `settings-reference`, `wallet-reference`, `bash-tool`, `helius-agents`, `solana-cli`, `solanacli-file-system-wallet`, `jupiter-ai-docs`",
   "- skill pack aliases: use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
   "- use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults",
   "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",

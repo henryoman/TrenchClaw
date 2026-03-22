@@ -10,6 +10,8 @@ const OPERATOR_KERNEL_PROMPT = [
   "Answer direct runtime and market questions with the clearest truthful tool sequence.",
   "Never invent balances, prices, volume, transactions, or file contents.",
   "Use only enabled operator tools.",
+  "When answering about a coin or token, identify it with metadata first: prefer token name and ticker/symbol when available, and treat the address as supporting detail.",
+  "Never answer a token question with only a raw token address unless the available tool results truly contain no better identifier; if metadata is missing, say that plainly.",
   "For greetings or acknowledgements, reply in one short natural sentence.",
   "Do not list capabilities, examples, or menus in the user-facing answer unless the user explicitly asks what you can do.",
   "Do not mention hidden capabilities or unavailable tools.",
@@ -110,7 +112,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   searchDexscreenerPairs: {
     useWhen: "the user gave a symbol, token name, ticker, or fuzzy token reference and you need to identify candidate pairs before deeper market reads",
     avoidWhen: "the user already gave an exact pair address or exact token-address batch",
-    inputAdvice: "Use a symbol, name, or address-like query string.",
+    inputAdvice: "Use a symbol, name, or address-like query string. Prefer candidates whose returned token metadata gives you a concrete name/symbol to answer with instead of surfacing only an address.",
   },
   getDexscreenerPairByChainAndPairId: {
     useWhen: "the user already knows an exact Solana pair address and wants one pair's concrete market data",
@@ -120,12 +122,12 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   getDexscreenerTokenPairsByChain: {
     useWhen: "the user gave one exact token address and you need all pools for that token so you can identify the right market",
     avoidWhen: "the user gave many token addresses and wants a ranked batch comparison",
-    inputAdvice: "Pass one `tokenAddress`.",
+    inputAdvice: "Pass one `tokenAddress`. Use the returned pool metadata to answer with the token's name/symbol plus the address, not the address alone.",
   },
   getDexscreenerTokensByChain: {
     useWhen: "you already know a small set of token addresses and want batch market data for ranking, comparison, or a concrete 'what is hottest' answer",
     avoidWhen: "you still need discovery or only care about one exact pair",
-    inputAdvice: "Pass up to 30 `tokenAddresses`.",
+    inputAdvice: "Pass up to 30 `tokenAddresses`. When the response includes token metadata such as `baseToken.name` or `baseToken.symbol`, use that in the answer and keep raw addresses secondary.",
   },
   createWallets: {
     useWhen: "the user explicitly asks to create managed wallets",
@@ -192,6 +194,9 @@ const renderOperatorDecisionRules = (): string => [
   "- If the user gives only a symbol, ticker, or token name, use `searchDexscreenerPairs` first.",
   "- Treat meme-coin market questions as current-trending questions unless the user explicitly asks what was just newly boosted.",
   "- If the user already gave an exact address, pair, wallet, or mint, skip discovery and go straight to the most specific tool.",
+  "- For coin or token answers, prefer `name (symbol)` or equivalent metadata first and use the address only as secondary context.",
+  "- Do not stop at a bare mint address when the tool output already includes token metadata such as profile headers, names, or symbols.",
+  "- If your first market-discovery result leaves you with only token addresses, make the follow-up Dexscreener read needed to recover token metadata before answering unless the user explicitly asked for addresses only.",
   "- Use discovery tools only when the user gave a fuzzy symbol, nickname, or broad market question.",
   "- Read before write: inspect wallet state first, then execute transfers or cleanup only after the user explicitly asked and the inputs are concrete.",
   "- For managed-wallet reads across every wallet, omit wallet selectors entirely rather than inventing an `all` wallet selector.",
@@ -270,6 +275,7 @@ export const buildOperatorChatPrompt = async (input: {
       "- for direct runtime questions, answer from a single runtime action when possible",
       "- if the user asks what trades are queued, scheduled, or upcoming, prefer `queryRuntimeStore` with `request.type = \"listUpcomingTradingJobs\"`.",
       "- for direct market questions, use Dexscreener runtime actions first and ask a short clarification only if the token set or market scope is genuinely ambiguous",
+      "- for coin or token questions, answer with token metadata such as name or ticker whenever available; do not reply with only a raw token address unless metadata is genuinely unavailable",
       "- do not keep exploring once the returned market data is enough to answer the user",
       "- skip greetings and capability preambles for direct asks",
       "- if one tool call answered the question, summarize the result and stop",
