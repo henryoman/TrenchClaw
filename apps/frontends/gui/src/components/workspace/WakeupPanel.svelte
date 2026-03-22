@@ -1,13 +1,19 @@
 <script lang="ts">
-  import type { GuiWakeupSettingsView } from "@trenchclaw/types";
+  import type { GuiScheduleJobView, GuiWakeupSettingsView } from "@trenchclaw/types";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroField from "../ui/RetroField.svelte";
   import RetroPanel from "../ui/RetroPanel.svelte";
   import RetroSectionHeader from "../ui/RetroSectionHeader.svelte";
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
+  import {
+    buildWakeupSchedulePreview,
+    formatWakeupPreviewTime,
+    WAKEUP_PREVIEW_ROUNDS,
+  } from "./wakeup-preview";
 
   type WakeupPanelProps = {
     wakeupSettings?: GuiWakeupSettingsView | null;
+    scheduleJobs?: GuiScheduleJobView[];
     defaultPrompt?: string;
     busy?: boolean;
     error?: string;
@@ -17,6 +23,7 @@
 
   let {
     wakeupSettings = null,
+    scheduleJobs = [],
     defaultPrompt = "",
     busy = false,
     error = "",
@@ -35,6 +42,17 @@
   let enabledIntervalInput = $state(String(DEFAULT_ENABLED_INTERVAL_MINUTES));
   let hydrationSignature = $state("");
   let dirty = $state(false);
+  let previewGeneratedAt = $state(Date.now());
+
+  const wakeupSchedulePreview = $derived(
+    buildWakeupSchedulePreview({
+      jobs: scheduleJobs,
+      wakeupSettings,
+      now: previewGeneratedAt,
+      maxWakeupRounds: WAKEUP_PREVIEW_ROUNDS,
+    }),
+  );
+  const hasProjectedWakeups = $derived(wakeupSchedulePreview.some((entry) => entry.kind === "wakeup"));
 
   const createHydrationSignature = (): string =>
     JSON.stringify({
@@ -112,6 +130,12 @@
     hydrationSignature = signature;
     dirty = false;
   });
+
+  $effect(() => {
+    void scheduleJobs;
+    void wakeupSettings;
+    previewGeneratedAt = Date.now();
+  });
 </script>
 
 <RetroPanel title="Wakeup">
@@ -171,6 +195,7 @@
       </div>
     </RetroField>
     <p class="hint">The next wakeup is scheduled from the moment you save these settings.</p>
+
     <RetroSectionHeader title="Prompt" />
     <RetroField label="Wakeup message">
       <textarea
@@ -191,6 +216,52 @@
     <p class="hint">
       Write the prompt like conditional operator logic. Example: “IF a pending job is safe to resume, explain it.”
     </p>
+
+    <RetroSectionHeader title="Timeline Preview" />
+    <p class="hint">
+      This view shows the next {WAKEUP_PREVIEW_ROUNDS} managed wakeup rounds plus every future scheduled job, merged into one
+      strict timeline from {formatWakeupPreviewTime(previewGeneratedAt)}.
+    </p>
+    {#if wakeupSettings?.intervalMinutes && wakeupSettings.intervalMinutes > 0 && !hasProjectedWakeups}
+      <p class="hint">Wakeups are enabled, but no future managed wakeup job is queued yet. Save or reload to resync the schedule.</p>
+    {/if}
+    <div class="timeline-table-wrap">
+      <table class="timeline-table">
+        <thead>
+          <tr>
+            <th>When</th>
+            <th>Type</th>
+            <th>What</th>
+            <th>Repeat</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#if wakeupSchedulePreview.length === 0}
+            <tr>
+              <td colspan="5">No future wakeups or scheduled jobs.</td>
+            </tr>
+          {:else}
+            {#each wakeupSchedulePreview as entry (entry.id)}
+              <tr>
+                <td>{formatWakeupPreviewTime(entry.at)}</td>
+                <td>{entry.kind === "wakeup" ? "Wakeup" : "Scheduled job"}</td>
+                <td>
+                  <div class="timeline-detail">
+                    <span>{entry.title}</span>
+                    {#if entry.subtitle}
+                      <small>{entry.subtitle}</small>
+                    {/if}
+                  </div>
+                </td>
+                <td>{entry.repeat}</td>
+                <td>{entry.status}</td>
+              </tr>
+            {/each}
+          {/if}
+        </tbody>
+      </table>
+    </div>
 
     <div class="actions">
       <RetroButton variant="secondary" disabled={busy} on:click={reload}>Reload</RetroButton>
@@ -222,6 +293,56 @@
     color: var(--tc-color-gray-2);
     font-size: var(--tc-status-font-size);
     line-height: 1.5;
+  }
+
+  .timeline-table-wrap {
+    overflow: auto;
+    border: var(--tc-border-muted);
+    background: var(--tc-color-black-2);
+  }
+
+  .timeline-table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: var(--tc-type-sm);
+  }
+
+  .timeline-table th,
+  .timeline-table td {
+    border-right: var(--tc-border-muted);
+    border-bottom: var(--tc-border-muted);
+    padding: var(--tc-space-2);
+    text-align: left;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  .timeline-table th:last-child,
+  .timeline-table td:last-child {
+    border-right: 0;
+  }
+
+  .timeline-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .timeline-table th {
+    color: var(--tc-color-turquoise);
+    background: var(--tc-color-black-2);
+    text-transform: uppercase;
+    letter-spacing: var(--tc-track-normal);
+    font-size: var(--tc-type-xs);
+  }
+
+  .timeline-detail {
+    display: grid;
+    gap: 2px;
+  }
+
+  .timeline-detail small {
+    color: var(--tc-color-gray-2);
+    font-size: var(--tc-type-xs);
   }
 
   .numeric-input,

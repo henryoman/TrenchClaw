@@ -1,17 +1,17 @@
 import type {
-  GuiActivityResponse,
-  GuiBootstrapResponse,
-  GuiScheduleJobView,
-  GuiScheduleResponse,
-  GuiQueueJobView,
-  GuiQueueResponse,
+  RuntimeApiActivityResponse,
+  RuntimeApiBootstrapResponse,
+  RuntimeApiScheduleJobView,
+  RuntimeApiScheduleResponse,
+  RuntimeApiQueueJobView,
+  RuntimeApiQueueResponse,
 } from "@trenchclaw/types";
 import type { RuntimeEventName } from "../../../ai/runtime/types/events";
 import { ACTIVE_JOB_STATUSES, GUI_QUEUE_INCLUDE_HISTORY } from "../constants";
 import { CORS_HEADERS } from "../constants";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
-export const mapJobToView = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): GuiQueueJobView => ({
+export const mapJobToView = (job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number]): RuntimeApiQueueJobView => ({
   id: job.id,
   serialNumber: job.serialNumber ?? null,
   botId: job.botId,
@@ -23,52 +23,31 @@ export const mapJobToView = (job: ReturnType<RuntimeGuiDomainContext["runtime"][
   cyclesCompleted: job.cyclesCompleted,
 });
 
-const toIntervalMs = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): number | null => {
-  const raw = job.config.intervalMs;
-  const parsed = typeof raw === "number" ? raw : Number(raw);
-  return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
-};
-
-const isRecurringJob = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean => {
-  const intervalMs = toIntervalMs(job);
-  if (intervalMs !== null) {
-    return true;
-  }
-  if (job.totalCycles === undefined) {
-    return true;
-  }
-  return job.totalCycles > 1;
-};
-
 const hasUpcomingRun = (
-  job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+  job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
   now = Date.now(),
 ): boolean => typeof job.nextRunAt === "number" && job.nextRunAt > now;
 
-const isScheduledJob = (job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean =>
+const isScheduledJob = (job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean =>
   ACTIVE_JOB_STATUSES.has(job.status)
   && (job.status === "paused" || hasUpcomingRun(job));
 
 const mapJobToScheduleView = (
-  job: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
-): GuiScheduleJobView => ({
+  job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
+): RuntimeApiScheduleJobView => ({
   id: job.id,
   serialNumber: job.serialNumber ?? null,
   botId: job.botId,
   routineName: job.routineName,
-  status: job.status,
+  status: job.status === "paused" ? "paused" : "upcoming",
   createdAt: job.createdAt,
   updatedAt: job.updatedAt,
   nextRunAt: typeof job.nextRunAt === "number" ? job.nextRunAt : null,
-  intervalMs: toIntervalMs(job),
-  cyclesCompleted: job.cyclesCompleted,
-  totalCycles: job.totalCycles ?? null,
-  recurring: isRecurringJob(job),
 });
 
 const compareQueueJobsChronologically = (
-  a: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
-  b: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+  a: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
+  b: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
 ): number => {
   const effectiveTimeA = typeof a.nextRunAt === "number" ? a.nextRunAt : a.createdAt;
   const effectiveTimeB = typeof b.nextRunAt === "number" ? b.nextRunAt : b.createdAt;
@@ -89,8 +68,8 @@ const compareQueueJobsChronologically = (
 };
 
 const compareScheduleJobsChronologically = (
-  a: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
-  b: ReturnType<RuntimeGuiDomainContext["runtime"]["stateStore"]["listJobs"]>[number],
+  a: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
+  b: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
 ): number => {
   const nextRunA = typeof a.nextRunAt === "number" ? a.nextRunAt : Number.MAX_SAFE_INTEGER;
   const nextRunB = typeof b.nextRunAt === "number" ? b.nextRunAt : Number.MAX_SAFE_INTEGER;
@@ -110,7 +89,7 @@ const compareScheduleJobsChronologically = (
   return a.id.localeCompare(b.id);
 };
 
-export const getBootstrap = async (context: RuntimeGuiDomainContext): Promise<GuiBootstrapResponse> => {
+export const getBootstrap = async (context: RuntimeSurfaceContext): Promise<RuntimeApiBootstrapResponse> => {
   const runtimeDescription = context.runtime.describe();
   return {
     profile: context.runtime.settings.profile,
@@ -120,7 +99,7 @@ export const getBootstrap = async (context: RuntimeGuiDomainContext): Promise<Gu
   };
 };
 
-export const getQueue = (context: RuntimeGuiDomainContext): GuiQueueResponse => {
+export const getQueue = (context: RuntimeSurfaceContext): RuntimeApiQueueResponse => {
   const jobs = context.runtime.stateStore
     .listJobs()
     .filter((job) => GUI_QUEUE_INCLUDE_HISTORY || ACTIVE_JOB_STATUSES.has(job.status))
@@ -129,7 +108,7 @@ export const getQueue = (context: RuntimeGuiDomainContext): GuiQueueResponse => 
   return { jobs };
 };
 
-export const getSchedule = (context: RuntimeGuiDomainContext): GuiScheduleResponse => {
+export const getSchedule = (context: RuntimeSurfaceContext): RuntimeApiScheduleResponse => {
   const jobs = context.runtime.stateStore
     .listJobs()
     .filter((job) => isScheduledJob(job))
@@ -138,7 +117,7 @@ export const getSchedule = (context: RuntimeGuiDomainContext): GuiScheduleRespon
   return { jobs };
 };
 
-export const getActivity = (context: RuntimeGuiDomainContext, limit = 100): GuiActivityResponse => {
+export const getActivity = (context: RuntimeSurfaceContext, limit = 100): RuntimeApiActivityResponse => {
   const normalizedLimit = Math.max(1, Math.trunc(limit));
   return {
     entries: context.getActivityEntries(normalizedLimit),
@@ -155,7 +134,7 @@ const EVENT_STREAM_HEADERS: HeadersInit = {
 const SSE_RETRY_MS = 2000;
 const HEARTBEAT_INTERVAL_MS = 15_000;
 
-export const streamRuntimeEvents = (context: RuntimeGuiDomainContext, signal?: AbortSignal): Response => {
+export const streamRuntimeEvents = (context: RuntimeSurfaceContext, signal?: AbortSignal): Response => {
   const encoder = new TextEncoder();
   const eventTypes: RuntimeEventName[] = ["queue:enqueue", "queue:dequeue", "queue:complete"];
 

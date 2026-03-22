@@ -16,7 +16,7 @@ const asRuntimeJobEnqueuer = (
   return value as (input: RuntimeJobEnqueueRequest) => Promise<JobState>;
 };
 
-interface SubmitTradingRoutineOutput {
+export interface SubmitTradingRoutineOutput {
   mode: "ready" | "scheduled" | "mixed";
   tradingRoutineId: string;
   kind: TradingRoutineSpec["kind"];

@@ -1411,12 +1411,15 @@ describe("RuntimeChatService", () => {
     }
 
     expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane: `closeTokenAccount`, `transfer`");
+    expect(execution.systemPrompt).toContain("## Command Groups");
+    expect(execution.systemPrompt).toContain("### Wallet Execution");
+    expect(execution.systemPrompt).toContain("## Async Tool Behavior");
     expect(execution.systemPrompt).toContain("## Live Runtime Context");
     expect(execution.systemPrompt).toContain("current time (UTC, exact minute):");
     expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
   });
 
-  test("routes scheduled managed Ultra swaps through the operator prompt guidance", async () => {
+  test("keeps Ultra scheduling guidance explicitly Ultra-only", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {
         actions: [],
@@ -1476,7 +1479,76 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("`managedUltraSwap`");
     expect(execution.systemPrompt).toContain("`scheduleManagedUltraSwap`");
     expect(execution.systemPrompt).toContain("the user explicitly wants to swap through Jupiter Ultra using a managed wallet");
-    expect(execution.systemPrompt).toContain("schedule a managed Ultra swap");
+    expect(execution.systemPrompt).toContain("Ultra-only scheduling surface");
+  });
+
+  test("routes flat JSON scheduled managed swaps through the operator prompt guidance", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "managedSwap",
+            description: "place managed swap",
+            purpose: "place a managed swap",
+            routingHint: "place a managed swap",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: { walletGroup: "core-wallets", walletName: "wallet_001", inputCoin: "SOL", outputCoin: "USDC", amount: "0.1" },
+            toolDescription: "place managed swap",
+            releaseReadinessStatus: "limited",
+            releaseReadinessNote: "Limited.",
+          },
+          {
+            kind: "action",
+            name: "scheduleManagedSwap",
+            description: "schedule managed swap",
+            purpose: "schedule a managed swap",
+            routingHint: "schedule a managed swap",
+            sideEffectLevel: "write",
+            enabledNow: true,
+            requiresConfirmation: true,
+            exampleInput: {
+              kind: "swap_once",
+              walletGroup: "core-wallets",
+              walletName: "wallet_001",
+              inputCoin: "SOL",
+              outputCoin: "USDC",
+              amount: "0.1",
+              whenIn: "60s",
+            },
+            toolDescription: "schedule managed swap",
+            releaseReadinessStatus: "limited",
+            releaseReadinessNote: "Limited.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-simple-schedule-summary-1",
+          role: "user",
+          parts: [{ type: "text", text: "schedule a swap for later with simple json" }],
+        },
+      ],
+      userMessage: "schedule a swap for later with simple json",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.systemPrompt).toContain("`scheduleManagedSwap`");
+    expect(execution.systemPrompt).toContain("the user explicitly wants to schedule a swap for later");
+    expect(execution.systemPrompt).toContain("configured main swap type is used by default");
   });
 
   test("shows upcoming trading schedule in the operator prompt and points to the read path", async () => {
@@ -1720,6 +1792,11 @@ describe("RuntimeChatService", () => {
     ]);
     expect(execution.toolNames).toContain(WORKSPACE_BASH_TOOL_NAME);
     expect(execution.toolNames).toContain(WORKSPACE_READ_FILE_TOOL_NAME);
+    expect(execution.systemPrompt).toContain("## Command Groups");
+    expect(execution.systemPrompt).toContain("### Runtime + Queue");
+    expect(execution.systemPrompt).toContain("### RPC Data Fetch");
+    expect(execution.systemPrompt).toContain("### CLI + Workspace");
+    expect(execution.systemPrompt).toContain("default sequence: `workspaceListDirectory` -> `workspaceReadFile` -> `workspaceBash`");
     expect(execution.systemPrompt).toContain("## Knowledge Index");
     expect(execution.systemPrompt).toContain("use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults");
   });
@@ -1916,6 +1993,86 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("Do not default to `getDexscreenerLatestTokenBoosts` for broad trending questions.");
     expect(execution.systemPrompt).toContain("Never answer a token question with only a raw token address unless the available tool results truly contain no better identifier");
     expect(execution.systemPrompt).toContain("for coin or token questions, answer with token metadata such as name or ticker whenever available");
+  });
+
+  test("includes whale-analysis routing when holder tools are available", async () => {
+    const gateway = await createConfiguredGateway({
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "getDexscreenerTopTokenBoosts",
+            description: "top token boosts",
+            purpose: "top token boosts",
+            routingHint: "rank what is hottest or most promoted on Dexscreener",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: {},
+            toolDescription: "top token boosts",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+          {
+            kind: "action",
+            name: "getTokenHolderDistribution",
+            description: "token holder distribution",
+            purpose: "token holder distribution",
+            routingHint: "inspect whales and holder concentration for one exact mint",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { mintAddress: "Mint111111111111111111111111111111111111111" },
+            toolDescription: "token holder distribution",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+          {
+            kind: "action",
+            name: "rankDexscreenerTopTokenBoostsByWhales",
+            description: "rank boosted tokens by whales",
+            purpose: "rank boosted tokens by whales",
+            routingHint: "compare boosted tokens by whale concentration",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { limit: 10, whaleThresholdPercent: 1 },
+            toolDescription: "rank boosted tokens by whales",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-whales-1",
+          role: "user",
+          parts: [{ type: "text", text: "find the hottest coins right now and tell me which one has the most whales" }],
+        },
+      ],
+      userMessage: "find the hottest coins right now and tell me which one has the most whales",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+    expect(execution.toolNames).toEqual([
+      "getDexscreenerTopTokenBoosts",
+      "getTokenHolderDistribution",
+      "rankDexscreenerTopTokenBoostsByWhales",
+    ]);
+    expect(execution.systemPrompt).toContain("For whales, top holders, largest accounts, or holder concentration on one known token, use `getTokenHolderDistribution`");
+    expect(execution.systemPrompt).toContain("prefer `rankDexscreenerTopTokenBoostsByWhales` when it is available");
+    expect(execution.systemPrompt).toContain("default whales to distinct owner wallets holding at least 1% of supply");
+    expect(execution.systemPrompt).toContain("continue from market discovery into the enabled holder-analysis tool instead of stopping at boosts or prices");
   });
 
   test("includes a compact wallet summary in the system prompt", async () => {

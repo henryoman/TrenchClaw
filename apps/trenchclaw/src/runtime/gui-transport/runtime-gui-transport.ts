@@ -1,19 +1,13 @@
 import type {
-  GuiActivityEntry,
-  GuiConversationView,
-  GuiInstanceProfileView,
+  RuntimeApiActivityEntry,
 } from "@trenchclaw/types";
 import type { RuntimeEvent, RuntimeEventName } from "../../ai";
-import { createChatMessageId, createInstanceConversationId } from "../../ai/runtime/types/ids";
 import type { RuntimeBootstrap } from "../bootstrap";
-import { MAX_ACTIVITY_ITEMS } from "./constants";
-import type { RuntimeGuiDomainContext } from "./contracts";
-import { createGuiApiHandler } from "./router";
+import type { RuntimeSurfaceContext } from "./contracts";
+import { createRuntimeSurfaceHandler as createRuntimeSurfaceRequestHandler } from "./router";
+import { RuntimeSurfaceSessionState } from "./session-state";
 import { streamChat } from "./domains/chat";
 import type { UIMessage } from "ai";
-import { readPersistedActiveInstanceSync } from "../instance-state";
-
-const createMessageId = (): string => createChatMessageId("activity");
 const MAX_ACTIVITY_PREVIEW_CHARS = 120;
 
 const truncateActivityText = (value: string, maxLength = MAX_ACTIVITY_PREVIEW_CHARS): string =>
@@ -37,15 +31,12 @@ const summarizeEndpoint = (value: string): string => {
 const summarizeSignature = (value: string): string =>
   value.length > 14 ? `${value.slice(0, 6)}...${value.slice(-6)}` : value;
 
-export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
-  private readonly activity: GuiActivityEntry[] = [];
-  private readonly activityListeners = new Set<() => void>();
+export class RuntimeSurfaceTransport implements RuntimeSurfaceContext {
   private readonly unsubscribers: Array<() => void> = [];
-  private activeInstance: GuiInstanceProfileView | null = null;
-  private activeChatId: string | null = null;
+  private readonly session: RuntimeSurfaceSessionState;
 
   constructor(public readonly runtime: RuntimeBootstrap) {
-    this.activeInstance = readPersistedActiveInstanceSync();
+    this.session = new RuntimeSurfaceSessionState(runtime);
     this.attachRuntimeActivitySubscriptions();
   }
 
@@ -55,51 +46,37 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
     }
   }
 
-  getActiveInstance(): GuiInstanceProfileView | null {
-    return this.activeInstance;
+  getActiveInstance() {
+    return this.session.getActiveInstance();
   }
 
-  setActiveInstance(instance: GuiInstanceProfileView | null): void {
-    this.activeInstance = instance;
+  setActiveInstance(instance: ReturnType<RuntimeSurfaceSessionState["getActiveInstance"]>): void {
+    this.session.setActiveInstance(instance);
   }
 
   getActiveChatId(): string | null {
-    return this.activeChatId;
+    return this.session.getActiveChatId();
   }
 
   setActiveChatId(chatId: string | null): void {
-    this.activeChatId = chatId;
+    this.session.setActiveChatId(chatId);
   }
 
-  addActivity(source: GuiActivityEntry["source"], summary: string): void {
-    this.activity.push({
-      id: createMessageId(),
-      source,
-      summary,
-      timestamp: Date.now(),
-    });
-    if (this.activity.length > MAX_ACTIVITY_ITEMS) {
-      this.activity.splice(0, this.activity.length - MAX_ACTIVITY_ITEMS);
-    }
-    for (const listener of this.activityListeners) {
-      listener();
-    }
+  addActivity(source: RuntimeApiActivityEntry["source"], summary: string): void {
+    this.session.addActivity(source, summary);
   }
 
   onActivity(listener: () => void): () => void {
-    this.activityListeners.add(listener);
-    return () => {
-      this.activityListeners.delete(listener);
-    };
+    return this.session.onActivity(listener);
   }
 
-  getActivityEntries(limit: number): GuiActivityEntry[] {
-    return this.activity.slice(-limit);
+  getActivityEntries(limit: number) {
+    return this.session.getActivityEntries(limit);
   }
 
   private subscribeToRuntimeEvent<K extends RuntimeEventName>(
     type: K,
-    source: GuiActivityEntry["source"],
+    source: RuntimeApiActivityEntry["source"],
     formatSummary: (event: RuntimeEvent<K>) => string | null,
   ): void {
     this.unsubscribers.push(
@@ -166,47 +143,12 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
     });
   }
 
-  private toConversationTitle(title: string | undefined, timestamp: number): string {
-    const trimmedTitle = title?.trim();
-    if (trimmedTitle) {
-      return trimmedTitle;
-    }
-    return new Date(timestamp).toISOString();
-  }
-
-  listInstanceConversations(limit = 100): GuiConversationView[] {
-    const normalizedLimit = Math.max(1, Math.trunc(limit));
-    const activeInstanceId = this.activeInstance?.localInstanceId;
-
-    return this.runtime.stateStore
-      .listConversations(normalizedLimit * 2)
-      .filter((conversation) => !activeInstanceId || !conversation.sessionId || conversation.sessionId === activeInstanceId)
-      .slice(0, normalizedLimit)
-      .map((conversation) => ({
-        id: conversation.id,
-        title: this.toConversationTitle(conversation.title, conversation.createdAt),
-        createdAt: conversation.createdAt,
-        updatedAt: conversation.updatedAt,
-      }));
+  listInstanceConversations(limit = 100) {
+    return this.session.listInstanceConversations(limit);
   }
 
   resolveDefaultChatId(): string {
-    if (this.activeChatId) {
-      return this.activeChatId;
-    }
-
-    const recentConversation = this.listInstanceConversations(1)[0];
-    if (recentConversation) {
-      this.activeChatId = recentConversation.id;
-      return this.activeChatId;
-    }
-
-    if (this.activeInstance) {
-      this.activeChatId = createInstanceConversationId(this.activeInstance.localInstanceId);
-      return this.activeChatId;
-    }
-    this.activeChatId = createInstanceConversationId("global");
-    return this.activeChatId;
+    return this.session.resolveDefaultChatId();
   }
 
   async waitForJobResult(jobId: string, waitMs: number): Promise<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>> {
@@ -234,11 +176,17 @@ export class RuntimeGuiTransport implements RuntimeGuiDomainContext {
   }
 
   createApiHandler(): (request: Request) => Promise<Response> {
-    return createGuiApiHandler(this);
+    return createRuntimeSurfaceRequestHandler(this);
   }
 }
 
-export const createRuntimeApiHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
-  const transport = new RuntimeGuiTransport(runtime);
+export const RuntimeGuiTransport = RuntimeSurfaceTransport;
+
+export const createRuntimeSurfaceHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
+  const transport = new RuntimeSurfaceTransport(runtime);
   return transport.createApiHandler();
+};
+
+export const createRuntimeApiHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
+  return createRuntimeSurfaceHandler(runtime);
 };

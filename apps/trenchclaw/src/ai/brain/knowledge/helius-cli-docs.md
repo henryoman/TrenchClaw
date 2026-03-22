@@ -167,6 +167,11 @@ helius asset token-accounts --owner "${OWNER}" --json
 
 Use the CLI for shell scripts and operator debugging. Inside TrenchClaw, prefer typed runtime actions over shell commands.
 
+If the model needs to run Helius CLI commands automatically, prefer a
+lightweight isolated shell runtime by default, and use host passthrough only
+for explicitly curated trusted CLI flows. Do not treat host-shell regex
+filtering alone as sufficient isolation.
+
 ## CLI Notes
 
 - Helper-managed TrenchClaw setup now installs or updates `helius-cli` in the same prerequisite script that handles Solana CLI.

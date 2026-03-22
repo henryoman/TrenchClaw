@@ -95,7 +95,7 @@ export const renderLiveRuntimeContextSection = async (input?: {
       ? `- SOL snapshot updated at (UTC exact minute): ${formatUtcExactMinute(solPrice.updatedAt)}`
       : "- SOL snapshot updated at (UTC exact minute): unavailable",
     "- this SOL snapshot comes from the same backend cache the GUI uses",
-    "- if the user needs a broader market read, another token, or deeper pair detail, use the enabled Dexscreener tools",
+    "- if the user needs a broader market read, another token, deeper pair detail, or holder concentration, use the enabled Dexscreener and token-holder tools",
     "",
     renderUpcomingTradingScheduleSection(input?.stateStore, nowUnixMs),
   ].join("\n");

@@ -1,5 +1,5 @@
 import { CORS_HEADERS } from "./constants";
-import type { RuntimeGuiDomainContext } from "./contracts";
+import type { RuntimeSurfaceContext } from "./contracts";
 import {
   parseUpdateAiSettingsRequest,
   parseCreateInstanceRequest,
@@ -22,6 +22,10 @@ import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeup-settin
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
+const LEGACY_GUI_API_BASE_PATH = "/api/gui";
+const RUNTIME_APP_API_BASE_PATH = "/v1/app";
+const APP_API_BASE_PATHS = [RUNTIME_APP_API_BASE_PATH, LEGACY_GUI_API_BASE_PATH] as const;
+
 const toErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const toErrorPayloadV1 = (code: string, message: string, details?: unknown): { error: { code: string; message: string; details?: unknown } } => ({
   error: {
@@ -30,9 +34,51 @@ const toErrorPayloadV1 = (code: string, message: string, details?: unknown): { e
     ...(details === undefined ? {} : { details }),
   },
 });
+
 const jsonWithCors = (payload: unknown, status = 200): Response => Response.json(payload, { status, headers: CORS_HEADERS });
 
-export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request: Request) => Promise<Response>) => {
+const isAppApiPath = (pathname: string): boolean =>
+  APP_API_BASE_PATHS.some((basePath) => pathname === basePath || pathname.startsWith(`${basePath}/`));
+
+const matchesAppRoute = (pathname: string, suffix: string): boolean =>
+  APP_API_BASE_PATHS.some((basePath) => pathname === `${basePath}${suffix}`);
+
+const extractConversationRoute = (
+  pathname: string,
+): { conversationId: string; isMessagesRoute: boolean } | null => {
+  for (const basePath of APP_API_BASE_PATHS) {
+    const prefix = `${basePath}/conversations/`;
+    if (!pathname.startsWith(prefix)) {
+      continue;
+    }
+
+    const encodedTail = pathname.slice(prefix.length);
+    if (!encodedTail) {
+      return null;
+    }
+
+    const messagesSuffix = "/messages";
+    if (encodedTail.endsWith(messagesSuffix)) {
+      const encodedConversationId = encodedTail.slice(0, -messagesSuffix.length);
+      if (!encodedConversationId) {
+        return null;
+      }
+      return {
+        conversationId: decodeURIComponent(encodedConversationId),
+        isMessagesRoute: true,
+      };
+    }
+
+    return {
+      conversationId: decodeURIComponent(encodedTail),
+      isMessagesRoute: false,
+    };
+  }
+
+  return null;
+};
+
+export const createRuntimeSurfaceHandler = (context: RuntimeSurfaceContext): ((request: Request) => Promise<Response>) => {
   return async (request: Request) => {
     const verboseApiLogs = process.env.TRENCHCLAW_API_LOGS === "1";
     const url = new URL(request.url);
@@ -46,14 +92,12 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
       return response;
     };
+
     if (verboseApiLogs) {
       console.log(`[api] [${requestId}] ${request.method} ${url.pathname}${url.search} <- start`);
     }
 
-    if (
-      request.method === "OPTIONS" &&
-      (url.pathname.startsWith("/api/gui/") || url.pathname.startsWith("/v1/"))
-    ) {
+    if (request.method === "OPTIONS" && (isAppApiPath(url.pathname) || url.pathname.startsWith("/v1/"))) {
       return logResponse(new Response(null, {
         status: 204,
         headers: CORS_HEADERS,
@@ -97,7 +141,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/api/gui/client-error") {
+    if (request.method === "POST" && matchesAppRoute(url.pathname, "/client-error")) {
       try {
         const payload = await request.json();
         const source =
@@ -121,69 +165,63 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/bootstrap") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/bootstrap")) {
       return Response.json(await getBootstrap(context), { headers: CORS_HEADERS });
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/sol-price") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/sol-price")) {
       return Response.json(await getSolPrice(), { headers: CORS_HEADERS });
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/events") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/events")) {
       return streamRuntimeEvents(context, request.signal);
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/queue") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/queue")) {
       return Response.json(getQueue(context), { headers: CORS_HEADERS });
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/schedule") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/schedule")) {
       return Response.json(getSchedule(context), { headers: CORS_HEADERS });
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/activity") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/activity")) {
       const limitParam = Number(url.searchParams.get("limit") ?? 100);
       const limit = Number.isFinite(limitParam) ? limitParam : 100;
       return Response.json(getActivity(context, limit), { headers: CORS_HEADERS });
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/conversations") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/conversations")) {
       const limitParam = Number(url.searchParams.get("limit") ?? 100);
       const limit = Number.isFinite(limitParam) ? limitParam : 100;
       return Response.json(getConversations(context, limit), { headers: CORS_HEADERS });
     }
 
-    if (request.method === "DELETE" && url.pathname.startsWith("/api/gui/conversations/")) {
-      const prefix = "/api/gui/conversations/";
-      const encodedConversationId = url.pathname.slice(prefix.length);
-      if (!encodedConversationId || encodedConversationId.endsWith("/messages")) {
+    const conversationRoute = extractConversationRoute(url.pathname);
+    if (request.method === "DELETE" && conversationRoute && !conversationRoute.isMessagesRoute) {
+      if (!conversationRoute.conversationId) {
         return Response.json({ error: "Conversation id is required" }, { status: 400, headers: CORS_HEADERS });
       }
 
-      const conversationId = decodeURIComponent(encodedConversationId);
       try {
-        return Response.json(deleteConversation(context, conversationId), { headers: CORS_HEADERS });
+        return Response.json(deleteConversation(context, conversationRoute.conversationId), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 404, headers: CORS_HEADERS });
       }
     }
 
-    if (request.method === "GET" && url.pathname.startsWith("/api/gui/conversations/") && url.pathname.endsWith("/messages")) {
-      const prefix = "/api/gui/conversations/";
-      const suffix = "/messages";
-      const encodedConversationId = url.pathname.slice(prefix.length, -suffix.length);
-      const conversationId = decodeURIComponent(encodedConversationId);
+    if (request.method === "GET" && conversationRoute?.isMessagesRoute) {
       const limitParam = Number(url.searchParams.get("limit") ?? 500);
       const limit = Number.isFinite(limitParam) ? limitParam : 500;
 
       try {
-        return Response.json(getConversationMessages(context, conversationId, limit), { headers: CORS_HEADERS });
+        return Response.json(getConversationMessages(context, conversationRoute.conversationId, limit), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 404, headers: CORS_HEADERS });
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/instances") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/instances")) {
       try {
         return Response.json(await listInstances(), { headers: CORS_HEADERS });
       } catch (error) {
@@ -191,7 +229,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/api/gui/instances") {
+    if (request.method === "POST" && matchesAppRoute(url.pathname, "/instances")) {
       const payload = await parseCreateInstanceRequest(request);
       if (!payload) {
         return Response.json({ error: "Invalid instance payload" }, { status: 400, headers: CORS_HEADERS });
@@ -204,7 +242,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "POST" && url.pathname === "/api/gui/instances/sign-in") {
+    if (request.method === "POST" && matchesAppRoute(url.pathname, "/instances/sign-in")) {
       const payload = await parseSignInRequest(request);
       if (!payload) {
         return Response.json({ error: "Invalid sign-in payload" }, { status: 400, headers: CORS_HEADERS });
@@ -217,7 +255,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/vault") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/vault")) {
       try {
         return Response.json(await getVault(context), { headers: CORS_HEADERS });
       } catch (error) {
@@ -225,70 +263,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/ai-settings") {
-      try {
-        return Response.json(await getAiSettings(), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/gui/ai-settings") {
-      const payload = await parseUpdateAiSettingsRequest(request);
-      if (!payload) {
-        return Response.json({ error: "Invalid AI settings payload" }, { status: 400, headers: CORS_HEADERS });
-      }
-
-      try {
-        return Response.json(await updateAiSettings(context, payload), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/gui/trading-settings") {
-      try {
-        return Response.json(await getTradingSettings(context), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/gui/trading-settings") {
-      const payload = await parseUpdateTradingSettingsRequest(request);
-      if (!payload) {
-        return Response.json({ error: "Invalid trading settings payload" }, { status: 400, headers: CORS_HEADERS });
-      }
-
-      try {
-        return Response.json(await updateTradingSettings(context, payload), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "GET" && url.pathname === "/api/gui/wakeup-settings") {
-      try {
-        return Response.json(await getWakeupSettings(context), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/gui/wakeup-settings") {
-      const payload = await parseUpdateWakeupSettingsRequest(request);
-      if (!payload) {
-        return Response.json({ error: "Invalid wakeup settings payload" }, { status: 400, headers: CORS_HEADERS });
-      }
-
-      try {
-        return Response.json(await updateWakeupSettings(context, payload), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "PUT" && url.pathname === "/api/gui/vault") {
+    if (request.method === "PUT" && matchesAppRoute(url.pathname, "/vault")) {
       const payload = await parseUpdateVaultRequest(request);
       if (!payload) {
         return Response.json({ error: "Invalid vault payload" }, { status: 400, headers: CORS_HEADERS });
@@ -301,7 +276,70 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/secrets") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/ai-settings")) {
+      try {
+        return Response.json(await getAiSettings(), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "PUT" && matchesAppRoute(url.pathname, "/ai-settings")) {
+      const payload = await parseUpdateAiSettingsRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid AI settings payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      try {
+        return Response.json(await updateAiSettings(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/trading-settings")) {
+      try {
+        return Response.json(await getTradingSettings(context), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "PUT" && matchesAppRoute(url.pathname, "/trading-settings")) {
+      const payload = await parseUpdateTradingSettingsRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid trading settings payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      try {
+        return Response.json(await updateTradingSettings(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/wakeup-settings")) {
+      try {
+        return Response.json(await getWakeupSettings(context), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "PUT" && matchesAppRoute(url.pathname, "/wakeup-settings")) {
+      const payload = await parseUpdateWakeupSettingsRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid wakeup settings payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      try {
+        return Response.json(await updateWakeupSettings(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/secrets")) {
       try {
         return Response.json(await getSecrets(context), { headers: CORS_HEADERS });
       } catch (error) {
@@ -309,7 +347,31 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/wallets") {
+    if (request.method === "PUT" && matchesAppRoute(url.pathname, "/secrets")) {
+      const payload = await parseUpsertSecretRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid secrets payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+      try {
+        return Response.json(await upsertSecret(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "DELETE" && matchesAppRoute(url.pathname, "/secrets")) {
+      const payload = await parseDeleteSecretRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid delete secret payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+      try {
+        return Response.json(await deleteSecret(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/wallets")) {
       try {
         return Response.json(await listWalletTree(context), { headers: CORS_HEADERS });
       } catch (error) {
@@ -317,7 +379,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/wallets/download") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/wallets/download")) {
       const relativePath = (url.searchParams.get("path") ?? "").trim();
       if (!relativePath) {
         return Response.json({ error: "Missing wallet file path" }, { status: 400, headers: CORS_HEADERS });
@@ -337,7 +399,7 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "GET" && url.pathname === "/api/gui/llm/check") {
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/llm/check")) {
       try {
         return Response.json(await runLlmCheck(), { headers: CORS_HEADERS });
       } catch (error) {
@@ -345,30 +407,8 @@ export const createGuiApiHandler = (context: RuntimeGuiDomainContext): ((request
       }
     }
 
-    if (request.method === "PUT" && url.pathname === "/api/gui/secrets") {
-      const payload = await parseUpsertSecretRequest(request);
-      if (!payload) {
-        return Response.json({ error: "Invalid secrets payload" }, { status: 400, headers: CORS_HEADERS });
-      }
-      try {
-        return Response.json(await upsertSecret(context, payload), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
-      }
-    }
-
-    if (request.method === "DELETE" && url.pathname === "/api/gui/secrets") {
-      const payload = await parseDeleteSecretRequest(request);
-      if (!payload) {
-        return Response.json({ error: "Invalid delete secret payload" }, { status: 400, headers: CORS_HEADERS });
-      }
-      try {
-        return Response.json(await deleteSecret(context, payload), { headers: CORS_HEADERS });
-      } catch (error) {
-        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
-      }
-    }
-
     return logResponse(new Response("Not Found", { status: 404, headers: CORS_HEADERS }));
   };
 };
+
+export const createGuiApiHandler = createRuntimeSurfaceHandler;

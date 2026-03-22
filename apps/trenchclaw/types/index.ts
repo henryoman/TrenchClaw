@@ -125,14 +125,10 @@ export interface GuiScheduleJobView {
   serialNumber: number | null;
   botId: string;
   routineName: string;
-  status: GuiQueueJobStatus;
+  status: "upcoming" | "paused";
   createdAt: number;
   updatedAt: number;
   nextRunAt: number | null;
-  intervalMs: number | null;
-  cyclesCompleted: number;
-  totalCycles: number | null;
-  recurring: boolean;
 }
 
 export interface GuiBootstrapResponse {
@@ -464,3 +460,58 @@ export interface GuiWalletsResponse {
   nodes: GuiWalletNodeView[];
   walletFileCount: number;
 }
+
+export type RuntimeApiQueueJobStatus = GuiQueueJobStatus;
+export type RuntimeApiQueueJobView = GuiQueueJobView;
+export type RuntimeApiScheduleJobView = GuiScheduleJobView;
+export type RuntimeApiBootstrapResponse = GuiBootstrapResponse;
+export type RuntimeApiQueueResponse = GuiQueueResponse;
+export type RuntimeApiScheduleResponse = GuiScheduleResponse;
+export type RuntimeApiActivityEntry = GuiActivityEntry;
+export type RuntimeApiActivityResponse = GuiActivityResponse;
+export type RuntimeApiSolPriceResponse = GuiSolPriceResponse;
+export type RuntimeApiConversationView = GuiConversationView;
+export type RuntimeApiConversationsResponse = GuiConversationsResponse;
+export type RuntimeApiConversationMessageView = GuiConversationMessageView;
+export type RuntimeApiConversationMessagesResponse = GuiConversationMessagesResponse;
+export type RuntimeApiDeleteConversationResponse = GuiDeleteConversationResponse;
+export type RuntimeApiInstanceProfileView = GuiInstanceProfileView;
+export type RuntimeApiInstancesResponse = GuiInstancesResponse;
+export type RuntimeApiCreateInstanceRequest = GuiCreateInstanceRequest;
+export type RuntimeApiCreateInstanceResponse = GuiCreateInstanceResponse;
+export type RuntimeApiSignInInstanceRequest = GuiSignInInstanceRequest;
+export type RuntimeApiSignInInstanceResponse = GuiSignInInstanceResponse;
+export type RuntimeApiVaultResponse = GuiVaultResponse;
+export type RuntimeApiUpdateVaultRequest = GuiUpdateVaultRequest;
+export type RuntimeApiUpdateVaultResponse = GuiUpdateVaultResponse;
+export type RuntimeApiAiSettingsView = GuiAiSettingsView;
+export type RuntimeApiAiProviderOptionView = GuiAiProviderOptionView;
+export type RuntimeApiAiModelOptionView = GuiAiModelOptionView;
+export type RuntimeApiAiSettingsResponse = GuiAiSettingsResponse;
+export type RuntimeApiUpdateAiSettingsRequest = GuiUpdateAiSettingsRequest;
+export type RuntimeApiUpdateAiSettingsResponse = GuiUpdateAiSettingsResponse;
+export type RuntimeApiTradingSwapProvider = GuiTradingSwapProvider;
+export type RuntimeApiTradingSwapMode = GuiTradingSwapMode;
+export type RuntimeApiTradingAmountUnit = GuiTradingAmountUnit;
+export type RuntimeApiTradingPresetView = GuiTradingPresetView;
+export type RuntimeApiTradingSettingsView = GuiTradingSettingsView;
+export type RuntimeApiTradingSettingsResponse = GuiTradingSettingsResponse;
+export type RuntimeApiUpdateTradingSettingsRequest = GuiUpdateTradingSettingsRequest;
+export type RuntimeApiUpdateTradingSettingsResponse = GuiUpdateTradingSettingsResponse;
+export type RuntimeApiWakeupSettingsView = GuiWakeupSettingsView;
+export type RuntimeApiWakeupSettingsResponse = GuiWakeupSettingsResponse;
+export type RuntimeApiUpdateWakeupSettingsRequest = GuiUpdateWakeupSettingsRequest;
+export type RuntimeApiUpdateWakeupSettingsResponse = GuiUpdateWakeupSettingsResponse;
+export type RuntimeApiSecretCategory = GuiSecretCategory;
+export type RuntimeApiSecretOptionView = GuiSecretOptionView;
+export type RuntimeApiRpcProviderOptionView = GuiRpcProviderOptionView;
+export type RuntimeApiSecretEntryView = GuiSecretEntryView;
+export type RuntimeApiPublicRpcOptionView = GuiPublicRpcOptionView;
+export type RuntimeApiSecretsResponse = GuiSecretsResponse;
+export type RuntimeApiUpsertSecretRequest = GuiUpsertSecretRequest;
+export type RuntimeApiUpsertSecretResponse = GuiUpsertSecretResponse;
+export type RuntimeApiDeleteSecretRequest = GuiDeleteSecretRequest;
+export type RuntimeApiDeleteSecretResponse = GuiDeleteSecretResponse;
+export type RuntimeApiLlmCheckResponse = GuiLlmCheckResponse;
+export type RuntimeApiWalletNodeView = GuiWalletNodeView;
+export type RuntimeApiWalletsResponse = GuiWalletsResponse;

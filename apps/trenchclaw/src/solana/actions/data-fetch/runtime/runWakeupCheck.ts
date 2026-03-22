@@ -84,7 +84,10 @@ const buildWakeupSnapshot = (stateStore: StateStore, instanceId: string): Record
 const buildWakeupSystemPrompt = (): string =>
   [
     "You are TrenchClaw's wakeup monitor.",
+    "Wakeups can be triggered by a schedule, by boot-time recovery, or by a manual operator request.",
+    "This is an internal monitoring pass, not implied permission to trade, mutate state, or invent a user request.",
     "Follow the operator instruction exactly and stay strictly grounded in the runtime snapshot.",
+    "Surface only concrete changes, failures, risks, or follow-up items that matter to the operator. Ignore routine noise.",
     "If there is nothing worth surfacing, return exactly NO_NOTICE.",
     "If there is something worth surfacing, return one concise plain-text operator notice with no markdown bullets or code fences.",
   ].join("\n");

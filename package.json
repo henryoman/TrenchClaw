@@ -3,10 +3,9 @@
   "version": "0.0.4",
   "type": "module",
   "private": true,
-  "packageManager": "bun@1.3.10",
+  "packageManager": "bun@1.3.11",
   "engines": {
-    "bun": ">=1.3.10",
-    "node": "^20.19.0 || >=22.12.0"
+    "bun": ">=1.3.11"
   },
   "workspaces": [
     "apps/runner",
@@ -28,7 +27,11 @@
     "dev:runtime:init": "bun run scripts/dev-runtime-init.ts",
     "dev:instance:clone": "bun run scripts/dev-instance-clone.ts",
     "dev:gui-only": "bun run --bun --cwd apps/frontends/gui dev:standalone",
-    "gui:dev": "bun run --bun --cwd apps/frontends/gui dev",
+    "frontend:dev": "bun run scripts/run-frontend.ts dev",
+    "frontend:build": "bun run scripts/run-frontend.ts build",
+    "frontend:lint": "bun run scripts/run-frontend.ts lint",
+    "frontend:typecheck": "bun run scripts/run-frontend.ts typecheck",
+    "gui:dev": "TRENCHCLAW_FRONTEND_SURFACE=gui bun run frontend:dev",
     "website:dev": "bun run --bun --cwd website dev",
     "website:lint": "bun run --bun --cwd website lint",
     "website:test": "bun run --bun --cwd website test",
@@ -37,7 +40,7 @@
     "website:build": "bun run --bun --cwd website build",
     "website:preview": "bun run --bun --cwd website preview",
     "website:ci": "bun run --bun --cwd website ci",
-    "appci": "bun run --cwd apps/frontends/gui lint && bun run --cwd apps/frontends/gui typecheck && bun run --cwd apps/frontends/gui build && bun test tests/frontends/gui-transport.test.ts tests/frontends/runtime-controller.logic.test.ts && bun run --cwd apps/runner lint && bun run --cwd apps/runner typecheck && bun run --cwd apps/runner build && bun run --cwd apps/trenchclaw lint && bun run --cwd apps/trenchclaw test && bun run --cwd apps/trenchclaw typecheck && bun run --cwd apps/trenchclaw build",
+    "appci": "bun run frontend:lint && bun run frontend:typecheck && bun run frontend:build && bun test tests/frontends/gui-transport.test.ts tests/frontends/runtime-controller.logic.test.ts && bun run --cwd apps/runner lint && bun run --cwd apps/runner typecheck && bun run --cwd apps/runner build && bun run --cwd apps/trenchclaw lint && bun run --cwd apps/trenchclaw test && bun run --cwd apps/trenchclaw typecheck && bun run --cwd apps/trenchclaw build",
     "siteci": "bun run website:ci",
     "site": "bun run website:lint && bun run website:svelte-check && bun run website:typecheck && bun run website:test && bun run website:build && bun run website:dev",
     "start": "bun --cwd apps/runner index.ts",
@@ -86,5 +89,8 @@
     "tslib": "2.8.1",
     "undici-types": "7.22.0",
     "vite": "8.0.0"
+  },
+  "dependencies": {
+    "bun": "^1.3.11"
   }
 }

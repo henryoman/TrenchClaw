@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { GuiInstanceProfileView } from "@trenchclaw/types";
+import type { RuntimeApiInstanceProfileView } from "@trenchclaw/types";
 
 import { assertInstanceSystemWritePath } from "./security/write-scope";
 import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
@@ -47,7 +47,7 @@ const toPersistedActiveInstanceId = (value: unknown): string | null => {
   return typeof candidate.localInstanceId === "string" ? candidate.localInstanceId.trim() : null;
 };
 
-const readStoredInstanceProfileSync = (localInstanceId: string): GuiInstanceProfileView | null => {
+const readStoredInstanceProfileSync = (localInstanceId: string): RuntimeApiInstanceProfileView | null => {
   try {
     const normalizedInstanceId = normalizeInstanceId(localInstanceId);
     const profilePath = getInstanceProfileFilePath(normalizedInstanceId);
@@ -90,7 +90,7 @@ const readStoredInstanceProfileSync = (localInstanceId: string): GuiInstanceProf
   }
 };
 
-const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | null => {
+const parsePersistedActiveInstance = (raw: string): RuntimeApiInstanceProfileView | null => {
   try {
     const parsed = JSON.parse(raw) as unknown;
     const localInstanceId = toPersistedActiveInstanceId(parsed);
@@ -103,7 +103,7 @@ const parsePersistedActiveInstance = (raw: string): GuiInstanceProfileView | nul
   }
 };
 
-const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
+const readSingleAvailableInstanceSync = (): RuntimeApiInstanceProfileView | null => {
   try {
     const instanceIds = new Set<string>();
     for (const entry of readdirSync(RUNTIME_INSTANCE_ROOT, { withFileTypes: true })) {
@@ -123,7 +123,7 @@ const readSingleAvailableInstanceSync = (): GuiInstanceProfileView | null => {
   }
 };
 
-export const readPersistedActiveInstanceSync = (): GuiInstanceProfileView | null => {
+export const readPersistedActiveInstanceSync = (): RuntimeApiInstanceProfileView | null => {
   if (existsSync(ACTIVE_INSTANCE_STATE_FILE)) {
     try {
       const persisted = parsePersistedActiveInstance(readFileSync(ACTIVE_INSTANCE_STATE_FILE, "utf8"));
@@ -166,7 +166,7 @@ export const resolveRequiredActiveInstanceIdSync = (
   return activeInstanceId;
 };
 
-export const persistActiveInstance = async (instance: GuiInstanceProfileView | null): Promise<void> => {
+export const persistActiveInstance = async (instance: RuntimeApiInstanceProfileView | null): Promise<void> => {
   assertInstanceSystemWritePath(ACTIVE_INSTANCE_STATE_FILE, "persist active instance state");
   await mkdir(RUNTIME_INSTANCE_ROOT, { recursive: true });
 

@@ -160,4 +160,60 @@ describe("runWakeupCheckAction", () => {
         .filter((job) => job.routineName === "runtimeWakeup" && job.status === "pending"),
     ).toHaveLength(1);
   });
+
+  test("uses wakeup-specific guardrails in the llm system prompt", async () => {
+    const instanceId = "13";
+    const savedAtUnixMs = Date.now();
+    await createWakeupSettingsFile({
+      instanceId,
+      savedAtUnixMs,
+      intervalMinutes: 5,
+      prompt: "Tell me if anything important happened.",
+    });
+
+    const stateStore = new InMemoryStateStore();
+    const calls: Array<{ system: string; prompt: string; mode?: string }> = [];
+    const llm: LlmClient = {
+      provider: "openrouter",
+      model: "openai/gpt-5.4-nano",
+      defaultSystemPrompt: "test",
+      generate: async (input) => {
+        calls.push({
+          system: input.system,
+          prompt: input.prompt,
+          mode: input.mode,
+        });
+        return {
+          text: "NO_NOTICE",
+          finishReason: "stop",
+        };
+      },
+      stream: async () => ({
+        textStream: (async function* streamText() {
+          yield "NO_NOTICE";
+        })(),
+        consumeText: async () => "NO_NOTICE",
+      }),
+    };
+
+    const result = await runWakeupCheckAction.execute(
+      {
+        actor: "system",
+        stateStore,
+        llm,
+      },
+      {
+        instanceId,
+        trigger: "manual",
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.mode).toBe("runtime-wakeup");
+    expect(calls[0]?.system).toContain("Wakeups can be triggered by a schedule, by boot-time recovery, or by a manual operator request.");
+    expect(calls[0]?.system).toContain("This is an internal monitoring pass, not implied permission to trade, mutate state, or invent a user request.");
+    expect(calls[0]?.system).toContain("Surface only concrete changes, failures, risks, or follow-up items that matter to the operator. Ignore routine noise.");
+    expect(calls[0]?.prompt).toContain("Wakeup trigger: manual");
+  });
 });

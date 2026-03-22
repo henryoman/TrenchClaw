@@ -1,6 +1,12 @@
 import { fileURLToPath } from "node:url";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { loadRuntimeSettings } from "../../runtime/load";
+import { getRuntimeCapabilitySnapshot } from "../../runtime/capabilities/selectors";
+import {
+  renderAsyncToolBehaviorSection,
+  renderCommandMenuSection,
+  renderWorkspaceDirectoryMapSection,
+} from "../../runtime/prompt/tool-menu";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
 import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
@@ -87,15 +93,18 @@ const renderShellToolingSummary = (): string => {
     "### Shell Tooling",
     "- `workspaceListDirectory` is the default browse tool for runtime workspace files and folders.",
     "- `workspaceBash` is for actual shell or CLI work after you know the path or command you need.",
+    "- If no typed runtime action covers the needed read and a bounded trusted CLI command can answer it, prefer `workspaceBash` over refusing the task.",
+    "- `workspaceBash` is a policy-constrained host shell today, not the preferred runtime for arbitrary model-driven bash or host `bun run *.ts`.",
     `- detected CLI commands on PATH: ${detectedCommands.join(", ") || "none detected"}`,
   ].join("\n");
 };
 
 const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const [filesystemPolicy, liveRuntimeContext] = await Promise.all([
+  const [filesystemPolicy, liveRuntimeContext, capabilitySnapshot] = await Promise.all([
     summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
     renderLiveRuntimeContextSection(),
+    getRuntimeCapabilitySnapshot(settings),
   ]);
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
   const vault = resolveVaultFile({ activeInstanceId });
@@ -118,6 +127,12 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     "- workspace tools are still restricted to the runtime workspace root, and direct reads of protected vault/keypair files are blocked",
     "",
     renderShellToolingSummary(),
+    "",
+    renderCommandMenuSection(capabilitySnapshot.modelTools),
+    "",
+    renderWorkspaceDirectoryMapSection(),
+    "",
+    renderAsyncToolBehaviorSection(capabilitySnapshot.modelTools),
     "",
     liveRuntimeContext,
     "",

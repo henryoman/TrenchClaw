@@ -1,19 +1,19 @@
 import type {
-  GuiConversationMessagesResponse,
-  GuiConversationsResponse,
-  GuiDeleteConversationResponse,
+  RuntimeApiConversationMessagesResponse,
+  RuntimeApiConversationsResponse,
+  RuntimeApiDeleteConversationResponse,
 } from "@trenchclaw/types";
 import type { GatewayLane } from "../../../ai/gateway";
 import type { UIMessage } from "ai";
 import { CORS_HEADERS } from "../constants";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
 const countToolUiParts = (parts: unknown): number =>
   Array.isArray(parts)
     ? parts.filter((part) => part && typeof part === "object" && "type" in part && typeof part.type === "string" && part.type.startsWith("tool-")).length
     : 0;
 
-const buildAssistantResponseActivitySummary = (context: RuntimeGuiDomainContext, chatId: string): string => {
+const buildAssistantResponseActivitySummary = (context: RuntimeSurfaceContext, chatId: string): string => {
   const messages = context.runtime.stateStore.listChatMessages(chatId, 500);
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
@@ -37,7 +37,7 @@ const buildAssistantResponseActivitySummary = (context: RuntimeGuiDomainContext,
 };
 
 export const streamChat = async (
-  context: RuntimeGuiDomainContext,
+  context: RuntimeSurfaceContext,
   messages: UIMessage[],
   input?: { chatId?: string; conversationTitle?: string; lane?: GatewayLane; abortSignal?: AbortSignal },
 ): Promise<Response> => {
@@ -84,15 +84,15 @@ export const streamChat = async (
   });
 };
 
-export const getConversations = (context: RuntimeGuiDomainContext, limit = 100): GuiConversationsResponse => ({
+export const getConversations = (context: RuntimeSurfaceContext, limit = 100): RuntimeApiConversationsResponse => ({
   conversations: context.listInstanceConversations(limit),
 });
 
 export const getConversationMessages = (
-  context: RuntimeGuiDomainContext,
+  context: RuntimeSurfaceContext,
   conversationId: string,
   limit = 500,
-): GuiConversationMessagesResponse => {
+): RuntimeApiConversationMessagesResponse => {
   const normalizedConversationId = conversationId.trim();
   if (!normalizedConversationId) {
     throw new Error("Conversation id is required");
@@ -126,9 +126,9 @@ export const getConversationMessages = (
 };
 
 export const deleteConversation = (
-  context: RuntimeGuiDomainContext,
+  context: RuntimeSurfaceContext,
   conversationId: string,
-): GuiDeleteConversationResponse => {
+): RuntimeApiDeleteConversationResponse => {
   const normalizedConversationId = conversationId.trim();
   if (!normalizedConversationId) {
     throw new Error("Conversation id is required");

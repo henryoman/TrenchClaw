@@ -86,6 +86,10 @@ Operational rule: prefer MCP for targeted in-editor doc queries, and prefer
 
 These are the high-value shell commands from Jupiter's AI docs.
 
+Treat them as trusted operator or internal automation examples. For
+model-triggered shell execution, prefer a lightweight isolated shell runtime
+with allowlisted network access and execution limits.
+
 Search for a token:
 
 ```bash

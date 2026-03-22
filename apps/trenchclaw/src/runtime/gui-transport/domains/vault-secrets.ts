@@ -1,15 +1,15 @@
 import { readFile, writeFile } from "node:fs/promises";
 import type {
-  GuiDeleteSecretRequest,
-  GuiDeleteSecretResponse,
-  GuiSecretEntryView,
-  GuiSecretOptionView,
-  GuiSecretsResponse,
-  GuiUpdateVaultRequest,
-  GuiUpdateVaultResponse,
-  GuiUpsertSecretRequest,
-  GuiUpsertSecretResponse,
-  GuiVaultResponse,
+  RuntimeApiDeleteSecretRequest,
+  RuntimeApiDeleteSecretResponse,
+  RuntimeApiSecretEntryView,
+  RuntimeApiSecretOptionView,
+  RuntimeApiSecretsResponse,
+  RuntimeApiUpdateVaultRequest,
+  RuntimeApiUpdateVaultResponse,
+  RuntimeApiUpsertSecretRequest,
+  RuntimeApiUpsertSecretResponse,
+  RuntimeApiVaultResponse,
 } from "@trenchclaw/types";
 import {
   ensureVaultFileExists,
@@ -20,9 +20,9 @@ import {
 import { isRecord } from "../../object-utils";
 import { assertInstanceSystemWritePath } from "../../security/write-scope";
 import { PUBLIC_RPC_OPTIONS, RPC_PROVIDER_OPTIONS, SECRET_OPTIONS } from "../constants";
-import type { RuntimeGuiDomainContext } from "../contracts";
+import type { RuntimeSurfaceContext } from "../contracts";
 
-interface SecretOptionInternal extends GuiSecretOptionView {
+interface SecretOptionInternal extends RuntimeApiSecretOptionView {
   pathSegments: string[];
 }
 
@@ -185,7 +185,7 @@ const updatePrivateRpcVaultState = (
   setByPath(vaultData, ["rpc", providerId, "ws-url"], urls.wsUrl);
 };
 
-const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionInternal): GuiSecretEntryView => {
+const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionInternal): RuntimeApiSecretEntryView => {
   const rawValue = getByPath(vaultData, option.pathSegments);
   const value = typeof rawValue === "string" ? rawValue : "";
 
@@ -222,7 +222,7 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
   };
 };
 
-const resolveManagedVaultTarget = async (context?: RuntimeGuiDomainContext) => {
+const resolveManagedVaultTarget = async (context?: RuntimeSurfaceContext) => {
   const resolved = resolveRequiredVaultFile({
     activeInstanceId: context?.getActiveInstance()?.localInstanceId ?? undefined,
   });
@@ -241,7 +241,7 @@ const resolveManagedVaultTarget = async (context?: RuntimeGuiDomainContext) => {
 
 const serializeVaultData = (vaultData: Record<string, unknown>): string => `${JSON.stringify(vaultData, null, 2)}\n`;
 
-const loadManagedVaultData = async (context?: RuntimeGuiDomainContext) => {
+const loadManagedVaultData = async (context?: RuntimeSurfaceContext) => {
   const target = await resolveManagedVaultTarget(context);
   const content = await readFile(target.vaultPath, "utf8");
   const vaultData = parseVaultJsonText(content);
@@ -255,7 +255,7 @@ const loadManagedVaultData = async (context?: RuntimeGuiDomainContext) => {
   };
 };
 
-export const getVault = async (context: RuntimeGuiDomainContext): Promise<GuiVaultResponse> => {
+export const getVault = async (context: RuntimeSurfaceContext): Promise<RuntimeApiVaultResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);
   return {
     filePath: target.vaultPath,
@@ -266,9 +266,9 @@ export const getVault = async (context: RuntimeGuiDomainContext): Promise<GuiVau
 };
 
 export const updateVault = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiUpdateVaultRequest,
-): Promise<GuiUpdateVaultResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiUpdateVaultRequest,
+): Promise<RuntimeApiUpdateVaultResponse> => {
   const target = await resolveManagedVaultTarget(context);
   const parsed = parseVaultJsonText(payload.content);
   sanitizeVaultData(parsed);
@@ -281,7 +281,7 @@ export const updateVault = async (
   };
 };
 
-export const getSecrets = async (context: RuntimeGuiDomainContext): Promise<GuiSecretsResponse> => {
+export const getSecrets = async (context: RuntimeSurfaceContext): Promise<RuntimeApiSecretsResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);
   const entries = SECRET_OPTIONS_INTERNAL.map((option) => toSecretEntry(vaultData, option));
   return {
@@ -296,9 +296,9 @@ export const getSecrets = async (context: RuntimeGuiDomainContext): Promise<GuiS
 };
 
 export const upsertSecret = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiUpsertSecretRequest,
-): Promise<GuiUpsertSecretResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiUpsertSecretRequest,
+): Promise<RuntimeApiUpsertSecretResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
@@ -349,9 +349,9 @@ export const upsertSecret = async (
 };
 
 export const deleteSecret = async (
-  context: RuntimeGuiDomainContext,
-  payload: GuiDeleteSecretRequest,
-): Promise<GuiDeleteSecretResponse> => {
+  context: RuntimeSurfaceContext,
+  payload: RuntimeApiDeleteSecretRequest,
+): Promise<RuntimeApiDeleteSecretResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);
 
   const option = SECRET_OPTION_BY_ID.get(payload.optionId);
