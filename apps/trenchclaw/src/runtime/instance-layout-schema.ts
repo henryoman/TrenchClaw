@@ -26,14 +26,44 @@ export const INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES = [
   "routines",
 ] as const;
 
-const workspaceChildren = Object.fromEntries(
-  INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES.map((directoryName) => [
-    directoryName,
-    directory({
+const workspaceChildren = {
+  strategies: directory({
+    ".gitkeep": file(),
+  }),
+  configs: directory({
+    ".gitkeep": file(),
+  }),
+  typescript: directory({
+    ".gitkeep": file(),
+  }),
+  notes: directory({
+    ".gitkeep": file(),
+    research: directory({
       ".gitkeep": file(),
     }),
-  ]),
-) as Record<string, InstanceLayoutNode>;
+  }),
+  scratch: directory({
+    ".gitkeep": file(),
+  }),
+  output: directory({
+    ".gitkeep": file(),
+    research: directory({
+      ".gitkeep": file(),
+      "market-data": directory({
+        ".gitkeep": file(),
+        geckoterminal: directory({
+          ".gitkeep": file(),
+          ohlcv: directory({
+            ".gitkeep": file(),
+          }),
+        }),
+      }),
+    }),
+  }),
+  routines: directory({
+    ".gitkeep": file(),
+  }),
+} satisfies Record<string, InstanceLayoutNode>;
 
 export const INSTANCE_LAYOUT_SCHEMA = directory({
   "WAKEUP.md": file(),

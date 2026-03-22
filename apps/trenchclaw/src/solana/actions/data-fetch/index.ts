@@ -6,6 +6,7 @@ export * from "./rpc/getTokenMetadata";
 export * from "./rpc/getTokenPrice";
 export * from "./api/dexscreener";
 export * from "./api/dexscreener-actions";
+export * from "./api/geckoterminal";
 export * from "./api/swapHistory";
 export * from "./alerts";
 export * from "./runtime";

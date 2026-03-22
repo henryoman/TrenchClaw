@@ -14,11 +14,14 @@ Root model:
 - `.runtime-state/instances/<id>/` is the live mutable runtime state when using the repo-local runtime root.
 - An external runtime root such as `~/trenchclaw-dev-runtime` uses the same `instances/<id>/...` layout, just outside the repo.
 - Generated prompt-support artifacts are instance-scoped under `instances/<id>/cache/generated/`.
+- Long-form research notes belong under `instances/<id>/workspace/notes/`.
+- Raw downloaded market-data artifacts belong under `instances/<id>/workspace/output/`.
 
 Current shipping behavior:
 
 - Local dev bootstrap reads tracked seed/template content from `.runtime/`.
 - Runtime boot reads and writes mutable instance state under `.runtime-state/instances/<id>/...` or the external root selected by `TRENCHCLAW_RUNTIME_STATE_ROOT`, including generated snapshots under `cache/generated/`.
+- Runtime workspace downloads and operator-created artifacts should stay under the instance `workspace/` tree, not under `cache/generated/`.
 - Packaged releases currently do not ship `.runtime/` as the live runtime root. Mutable runtime state is created on first run under `~/.trenchclaw` by default or under `TRENCHCLAW_RUNTIME_STATE_ROOT`.
 
 Rules:
@@ -27,6 +30,8 @@ Rules:
 - Runtime code must never write into `.runtime/`.
 - Mutable runtime state lives under `.runtime-state/instances/<id>/`.
 - Generated prompt-support artifacts live under `.runtime-state/instances/<id>/cache/generated/`.
+- Raw JSON/API download artifacts belong under `.runtime-state/instances/<id>/workspace/output/`.
+- Long-form research writeups belong under `.runtime-state/instances/<id>/workspace/notes/`.
 - The only cross-instance mutable file is `.runtime-state/instances/active-instance.json`.
 - Append-only logs use `.jsonl`.
 - Session summary snapshots use `.json`.
@@ -82,3 +87,4 @@ Important distinction:
 
 - `.runtime/instances/01/` is a tracked seed instance, not an active runtime instance.
 - The active runtime instance lives under `.runtime-state/instances/<id>/` or the configured external runtime root.
+- Example research path: `instances/<id>/workspace/output/research/market-data/geckoterminal/ohlcv/`.

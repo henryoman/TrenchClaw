@@ -18,6 +18,7 @@ import { getManagedWalletContentsAction } from "../../solana/actions/data-fetch/
 import { getManagedWalletSolBalancesAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
 import { listKnowledgeDocsAction } from "../../solana/actions/data-fetch/runtime/listKnowledgeDocs";
 import { manageRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/manageRuntimeJob";
+import { downloadGeckoTerminalOhlcvAction } from "../../solana/actions/data-fetch/runtime/downloadGeckoTerminalOhlcv";
 import { pingRuntimeAction } from "../../solana/actions/data-fetch/runtime/pingRuntime";
 import { queryInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/queryInstanceMemory";
 import { queryRuntimeStoreAction } from "../../solana/actions/data-fetch/runtime/queryRuntimeStore";
@@ -108,6 +109,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   getDexscreenerTokensByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   getDexscreenerTopTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   searchDexscreenerPairs: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  downloadGeckoTerminalOhlcv: SHIPPED_NOW("GeckoTerminal OHLC downloads now write raw Solana market-data snapshots into the instance workspace."),
   devnetAirdrop: LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
   enqueueRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
   manageRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
@@ -324,6 +326,23 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: downloadGeckoTerminalOhlcvAction,
+    description: "Download raw GeckoTerminal OHLC JSON for a Solana pool into the active instance workspace.",
+    purpose: "Persist long OHLC payloads as JSON artifacts under workspace output so later research can read the exact downloaded market data instead of re-querying every time.",
+    routingHint: "you need raw Solana candle data saved to the runtime workspace for later research, charting, or offline inspection",
+    tags: ["geckoterminal", "ohlc", "market-data", "json", "workspace", "download"],
+    exampleInput: {
+      poolAddress: "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+      timeframe: "minute",
+      aggregate: 5,
+      limit: 100,
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
     chatExposed: true,
   },
   {
