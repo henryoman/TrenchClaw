@@ -252,6 +252,136 @@ describe("queryRuntimeStoreAction", () => {
     store.close();
   });
 
+  test("returns the upcoming trading schedule through a dedicated request type", async () => {
+    const dbPath = createTestDbPath();
+    dbPaths.push(dbPath);
+
+    const store = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const now = Date.now();
+    store.saveJob({
+      id: "job-trading-1",
+      serialNumber: 7,
+      botId: "trading-routine:future-1",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {
+        type: "tradingRoutine",
+        kind: "swap_once",
+        swapProvider: "ultra",
+        steps: [
+          {
+            key: "swap-1",
+            actionName: "managedSwap",
+            input: {
+              inputCoin: "SOL",
+              outputCoin: "USDC",
+              amount: "0.1",
+            },
+          },
+        ],
+      },
+      nextRunAt: now + 60_000,
+      cyclesCompleted: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    store.saveJob({
+      id: "job-trading-2",
+      serialNumber: 8,
+      botId: "trading-routine:future-2",
+      routineName: "actionSequence",
+      status: "paused",
+      config: {
+        type: "tradingRoutineSlice",
+        kind: "dca",
+        executionMode: "staggered_jobs",
+        swapProvider: "ultra",
+        steps: [
+          {
+            key: "swap-2",
+            actionName: "managedSwap",
+            input: {
+              inputCoin: "USDC",
+              outputCoin: "SOL",
+              amount: "100%",
+            },
+          },
+        ],
+      },
+      nextRunAt: now + 120_000,
+      cyclesCompleted: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+    store.saveJob({
+      id: "job-non-trading-1",
+      serialNumber: 9,
+      botId: "ops",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {
+        steps: [
+          {
+            key: "ping-1",
+            actionName: "pingRuntime",
+            input: {
+              message: "hello",
+            },
+          },
+        ],
+      },
+      nextRunAt: now + 30_000,
+      cyclesCompleted: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const ctx = createActionContext({ actor: "agent", stateStore: store });
+    const result = await queryRuntimeStoreAction.execute(ctx, {
+      request: {
+        type: "listUpcomingTradingJobs",
+        limit: 10,
+        nowUnixMs: now,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      requestType: string;
+      result: Array<{
+        id: string;
+        serialNumber: number | null;
+        kind: string | null;
+        executionMode: string | null;
+        swapProvider: string | null;
+        summary: string | null;
+      }>;
+    };
+    expect(payload.requestType).toBe("listUpcomingTradingJobs");
+    expect(payload.result).toHaveLength(2);
+    expect(payload.result[0]).toMatchObject({
+      id: "job-trading-1",
+      serialNumber: 7,
+      kind: "swap_once",
+      swapProvider: "ultra",
+      summary: "managedSwap | SOL -> USDC | amount=0.1",
+    });
+    expect(payload.result[1]).toMatchObject({
+      id: "job-trading-2",
+      serialNumber: 8,
+      kind: "dca",
+      executionMode: "staggered_jobs",
+      swapProvider: "ultra",
+      summary: "managedSwap | USDC -> SOL | amount=100%",
+    });
+
+    store.close();
+  });
+
   test("accepts stringified request payloads produced by model tool calls", () => {
     const parsed = queryRuntimeStoreAction.inputSchema!.parse({
       request: "{\"type\":\"getRuntimeKnowledgeSurface\",\"recentConversationsLimit\":20,\"recentJobsLimit\":20,\"recentReceiptsLimit\":20}",
@@ -262,6 +392,17 @@ describe("queryRuntimeStoreAction", () => {
       expect(parsed.request.recentConversationsLimit).toBe(20);
       expect(parsed.request.recentJobsLimit).toBe(20);
       expect(parsed.request.recentReceiptsLimit).toBe(20);
+    }
+  });
+
+  test("accepts stringified upcoming-trading request payloads", () => {
+    const parsed = queryRuntimeStoreAction.inputSchema!.parse({
+      request: "{\"type\":\"listUpcomingTradingJobs\",\"limit\":5}",
+    });
+
+    expect(parsed.request.type).toBe("listUpcomingTradingJobs");
+    if (parsed.request.type === "listUpcomingTradingJobs") {
+      expect(parsed.request.limit).toBe(5);
     }
   });
 });

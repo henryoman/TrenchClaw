@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="./package.json"><img src="https://img.shields.io/badge/Version-0.0.0-2563EB?style=for-the-badge" alt="Version 0.0.0" /></a>
+  <a href="https://github.com/henryoman/trenchclaw/releases/latest"><img src="https://img.shields.io/github/v/release/henryoman/trenchclaw?sort=semver&display_name=tag&style=for-the-badge&label=Release" alt="Latest release" /></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.3.11-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun 1.3.11" /></a>
   <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/badge/AI%20SDK-111827?style=for-the-badge" alt="AI SDK" /></a>
   <a href="https://x.com/mert"><img src="https://img.shields.io/badge/Teachings%20of%20Mert-000000?style=for-the-badge&logo=x&logoColor=white" alt="Teachings of Mert" /></a>
@@ -132,17 +132,20 @@ Public releases ship as standalone compiled `trenchclaw` binaries. Bun is requir
 # local verification
 bun run release:build -- --version v0.0.0 --run-checks
 
-# optional drafted release body for manual releases
-# releases/0.0.0.md
+# preview the same commit log the Release workflow will publish
+bun run release:notes -- --version v0.0.0 --output dist/release/preview.md
+
+# optional: manual release with a long drafted intro (releases/<version>.md)
+# the workflow still appends the full per-commit appendix after your markdown
 ```
 
 Release publishing runs through the GitHub Actions `Release` workflow (`workflow_dispatch`).
 
 - `release_mode=manual` publishes the current committed version
-- `release_mode=patch` auto-bumps the next patch version and uses GitHub-generated notes
-- `release_mode=minor` auto-bumps the next minor version and uses GitHub-generated notes
-- `release_notes_mode=auto` uses GitHub-generated notes for manual releases too
-- `release_notes_mode=draft` uses `releases/<version>.md` when you want a custom manual release body
+- `release_mode=patch` auto-bumps the next patch version
+- `release_mode=minor` auto-bumps the next minor version
+- `release_notes_mode=auto` (manual only) publishes **only** the repo-generated notes: grouped summary plus **every commit** with full message bodies (`scripts/generate-release-notes.ts`)
+- `release_notes_mode=draft` (manual only) publishes your `releases/<version>.md` first, then a horizontal rule, then the same auto-generated commit log
 
 ```mermaid
 flowchart LR

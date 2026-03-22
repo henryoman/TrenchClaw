@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
 import type { StateStore } from "../../../../ai/runtime/types/state";
+import { listUpcomingTradingJobs } from "../../../../runtime/trading/upcoming-schedule";
 
 const maxLimit = 200;
 
@@ -41,6 +42,12 @@ const getJobBySerialRequestSchema = z.object({
 const getRecentReceiptsRequestSchema = z.object({
   type: z.literal("getRecentReceipts"),
   limit: z.number().int().positive().max(maxLimit).default(50),
+});
+
+const listUpcomingTradingJobsRequestSchema = z.object({
+  type: z.literal("listUpcomingTradingJobs"),
+  limit: z.number().int().positive().max(maxLimit).default(20),
+  nowUnixMs: z.number().int().nonnegative().optional(),
 });
 
 const searchRuntimeTextRequestSchema = z.object({
@@ -83,6 +90,7 @@ const queryRuntimeStoreRequestSchema = z.preprocess(
     getJobRequestSchema,
     getJobBySerialRequestSchema,
     getRecentReceiptsRequestSchema,
+    listUpcomingTradingJobsRequestSchema,
     searchRuntimeTextRequestSchema,
     getRuntimeKnowledgeSurfaceRequestSchema,
   ]),
@@ -148,6 +156,11 @@ export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = 
           scope: request.scope,
           limit: request.limit,
           messageScanLimit: request.messageScanLimit,
+        });
+      } else if (request.type === "listUpcomingTradingJobs") {
+        data = listUpcomingTradingJobs(store, {
+          limit: request.limit,
+          now: request.nowUnixMs,
         });
       } else if (request.type === "getRuntimeKnowledgeSurface") {
         data = store.getRuntimeKnowledgeSurface({

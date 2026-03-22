@@ -2,7 +2,7 @@
 
 TrenchClaw has one public shipping path: GitHub Releases publishing standalone `trenchclaw` binaries.
 
-The normal release flow now uses stable version tags and GitHub-generated release notes by default.
+The Release workflow always builds the GitHub release body from **`scripts/generate-release-notes.ts`**: a grouped summary (conventional-commit-style heuristics) plus a **full commit appendix** (subject, hash, author, date, and multi-line bodies). This replaces GitHub’s REST “Generate release notes” option, which only produced a short summary and a link to the compare view.
 
 ## What Gets Published
 
@@ -27,7 +27,7 @@ No mutable state is bundled. Databases, logs, vaults, key files, and runtime sta
 
 ## Workflow
 
-Release publishing is handled by [`.github/workflows/release.yml`](/Volumes/T9/cursor/TrenchClaw/.github/workflows/release.yml).
+Release publishing is handled by [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 
 Trigger:
 
@@ -35,11 +35,12 @@ Trigger:
 
 Workflow input:
 
-- `release_mode=manual` publishes the current committed version
-- `release_mode=patch` auto-bumps the next patch version and uses GitHub-generated notes
-- `release_mode=minor` auto-bumps the next minor version and uses GitHub-generated notes
-- `release_notes_mode=auto` uses GitHub-generated notes for manual releases too
-- `release_notes_mode=draft` uses `releases/<version>.md` for manual releases when you want a custom body
+- `release_mode=manual` publishes the current committed version in `package.json`
+- `release_mode=patch` auto-bumps the next patch version, commits `package.json`, tags, and publishes
+- `release_mode=minor` auto-bumps the next minor version, commits `package.json`, tags, and publishes
+- `release_notes_mode` applies **only** when `release_mode=manual`:
+  - `auto` — release body is **only** the generated notes (full commit log)
+  - `draft` — body is `releases/<package-version>.md`, then `---`, then the same generated commit log (so you can write a long narrative and still ship every commit)
 
 Release/version gate:
 
@@ -60,18 +61,27 @@ Job behavior:
 8. Each matrix job builds readonly assets with `bun run app:build`.
 9. Each matrix job packages one tarball with `bun run release:package`.
 10. Each matrix job smoke-tests the packaged tarball with `bun run release:smoke -- --artifact-path ...`.
-11. `publish` downloads all packaged artifacts and creates the GitHub Release.
-12. `manual` mode publishes auto notes or `releases/<package-version>.md`; `patch` and `minor` mode use GitHub-generated notes.
+11. `publish` checks out the tag with **full git history** (`fetch-depth: 0`), downloads artifacts, runs `bun run release:notes` to write `dist/release/github-release-body.md`, and creates the GitHub Release with that file as the body.
 
-Release note categories are configured by [`.github/release.yml`](/Volumes/T9/cursor/TrenchClaw/.github/release.yml).
+The file [`.github/release.yml`](../.github/release.yml) only affects GitHub’s separate “Generate release notes” API; this repository’s workflow does not use that API for publishing.
 
-## Release Notes
+## Release Notes (local preview)
 
-- `manual` mode can publish `releases/<version>.md` as the public release body
-- `manual` mode can also use GitHub-generated release notes
-- `patch` and `minor` mode publish GitHub-generated release notes from the tagged commit window
-- `scripts/generate-release-notes.ts` is still useful for drafting or reviewing the auto-notes window
-- the workflow fails closed if a required drafted notes file is missing
+```bash
+# same window the workflow will use for tag v0.0.3 (after that tag exists), or HEAD for the latest commit
+bun run release:notes -- --version v0.0.3 --output dist/release/preview.md
+
+# only the grouped + appendix sections (for stitching under your own title)
+bun run release:notes -- --version v0.0.3 --template changelog-only --output dist/release/changelog.md
+```
+
+## Next release (checklist)
+
+1. Land changes on the branch the workflow runs from (usually `main`).
+2. Choose **patch** or **minor** if you want an automatic version bump and tag, or **manual** to tag the version already in `package.json`.
+3. For **manual** + **draft**, add or update `releases/<version>.md` (same version string as `package.json`, no `v` prefix), e.g. copy and adapt `releases/0.0.1.md`.
+4. Run `bun run release:notes -- --version vNEXT --output dist/release/preview.md` locally to review length and content.
+5. Dispatch the **Release** workflow in GitHub Actions.
 
 ## Current Public Scope
 

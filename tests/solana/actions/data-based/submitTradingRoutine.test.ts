@@ -247,6 +247,110 @@ describe("submitTradingRoutineAction", () => {
     });
   });
 
+  test("accepts second-based DCA start and interval inputs", async () => {
+    const capturedInputs: Array<{
+      botId: string;
+      routineName: string;
+      config?: Record<string, unknown>;
+      executeAtUnixMs?: number;
+      totalCycles?: number;
+    }> = [];
+    const before = Date.now();
+
+    const result = await submitTradingRoutineAction.execute(
+      createActionContext({
+        actor: "agent",
+        enqueueJob: async (input) => {
+          capturedInputs.push(input);
+          const job: JobState = {
+            id: `job-${capturedInputs.length}`,
+            botId: input.botId,
+            routineName: input.routineName,
+            status: "pending",
+            config: input.config ?? {},
+            cyclesCompleted: 0,
+            totalCycles: input.totalCycles,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            nextRunAt: input.executeAtUnixMs,
+          };
+          return job;
+        },
+      }),
+      {
+        version: 1,
+        kind: "dca",
+        executionMode: "staggered_jobs",
+        routineId: "seconds-dca-1",
+        swap: {
+          provider: "ultra",
+          wallet: "maker_1",
+          inputCoin: "SOL",
+          outputCoin: "USDC",
+          amount: "0.000003",
+          amountUnit: "ui",
+        },
+        schedule: {
+          installments: 3,
+          startIn: "60s",
+          interval: "5s",
+        },
+      },
+    );
+    const after = Date.now();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(capturedInputs).toHaveLength(3);
+    const firstExecuteAt = capturedInputs[0]?.executeAtUnixMs ?? 0;
+    expect(firstExecuteAt).toBeGreaterThanOrEqual(before + 60_000);
+    expect(firstExecuteAt).toBeLessThanOrEqual(after + 60_000);
+    expect(capturedInputs.map((entry) => entry.executeAtUnixMs)).toEqual([
+      firstExecuteAt,
+      firstExecuteAt + 5_000,
+      firstExecuteAt + 10_000,
+    ]);
+  });
+
+  test("rejects sub-second DCA intervals so trading stays on second granularity", async () => {
+    const result = await submitTradingRoutineAction.execute(
+      createActionContext({
+        actor: "agent",
+        enqueueJob: async () => {
+          throw new Error("enqueueJob should not be reached for invalid schedules");
+        },
+      }),
+      {
+        version: 1,
+        kind: "dca",
+        executionMode: "staggered_jobs",
+        routineId: "invalid-dca-subsecond",
+        swap: {
+          provider: "ultra",
+          wallet: "maker_1",
+          inputCoin: "SOL",
+          outputCoin: "USDC",
+          amount: "0.000003",
+          amountUnit: "ui",
+        },
+        schedule: {
+          installments: 3,
+          startIn: "60s",
+          interval: "500ms",
+        },
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) {
+      return;
+    }
+    expect(result.error).toContain("whole seconds");
+  });
+
   test("builds a future round-trip action sequence with swap back leg", async () => {
     const capturedInputs: Array<{
       botId: string;
@@ -363,5 +467,60 @@ describe("submitTradingRoutineAction", () => {
       return;
     }
     expect(parsed.error.issues[0]?.message).toContain("Invalid option");
+  });
+
+  test("accepts relative executeIn for one-off swaps", async () => {
+    const capturedInputs: Array<{
+      botId: string;
+      routineName: string;
+      config?: Record<string, unknown>;
+      executeAtUnixMs?: number;
+      totalCycles?: number;
+    }> = [];
+    const before = Date.now();
+
+    const result = await submitTradingRoutineAction.execute(
+      createActionContext({
+        actor: "agent",
+        enqueueJob: async (input) => {
+          capturedInputs.push(input);
+          const job: JobState = {
+            id: `job-${capturedInputs.length}`,
+            botId: input.botId,
+            routineName: input.routineName,
+            status: "pending",
+            config: input.config ?? {},
+            cyclesCompleted: 0,
+            totalCycles: input.totalCycles,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            nextRunAt: input.executeAtUnixMs,
+          };
+          return job;
+        },
+      }),
+      {
+        version: 1,
+        kind: "swap_once",
+        executeIn: "60s",
+        swap: {
+          provider: "ultra",
+          wallet: "maker_1",
+          inputCoin: "SOL",
+          outputCoin: "JUP",
+          amount: "0.25",
+          amountUnit: "ui",
+        },
+      },
+    );
+    const after = Date.now();
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    expect(capturedInputs).toHaveLength(1);
+    expect(capturedInputs[0]?.executeAtUnixMs ?? 0).toBeGreaterThanOrEqual(before + 60_000);
+    expect(capturedInputs[0]?.executeAtUnixMs ?? 0).toBeLessThanOrEqual(after + 60_000);
   });
 });

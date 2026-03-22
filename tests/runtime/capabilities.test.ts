@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
+import { getGatewayToolNamesForLane, OPERATOR_TOOL_ALLOWLIST } from "../../apps/trenchclaw/src/ai/gateway/lane-policy";
 import { getRuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
 import { createPersistedTestInstance } from "../helpers/instance-fixtures";
@@ -322,5 +323,44 @@ describe("runtime capability snapshot", () => {
     } finally {
       console.warn = originalWarn;
     }
+  });
+
+  test("hides submitTradingRoutine from model tool exposure until its schema is provider-compatible", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML
+        .replace("trading:\n  enabled: false", "trading:\n  enabled: true")
+        .replace(
+          "  jupiter:\n    ultra:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
+          "  jupiter:\n    ultra:\n      enabled: true\n      allowQuotes: true\n      allowExecutions: true",
+        ),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
+
+    expect(modelToolNames).not.toContain("submitTradingRoutine");
+  });
+
+  test("operator-chat lane only exposes allowlisted tools that exist in the snapshot", async () => {
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const operatorNames = getGatewayToolNamesForLane(snapshot, "operator-chat");
+    const allow = new Set<string>(OPERATOR_TOOL_ALLOWLIST);
+    const snapshotNames = new Set(snapshot.modelTools.map((entry) => entry.name));
+
+    for (const name of operatorNames) {
+      expect(allow.has(name)).toBe(true);
+      expect(snapshotNames.has(name)).toBe(true);
+    }
+  });
+
+  test("workspace-agent lane exposes the full model tool list from the snapshot", async () => {
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const laneNames = getGatewayToolNamesForLane(snapshot, "workspace-agent").toSorted();
+    const snapshotNames = snapshot.modelTools.map((entry) => entry.name).toSorted();
+    expect(laneNames).toEqual(snapshotNames);
   });
 });

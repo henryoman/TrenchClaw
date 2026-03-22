@@ -146,4 +146,104 @@ describe("scheduleManagedUltraSwapAction", () => {
     expect(result.data?.steps[3]?.input).toMatchObject({ waitMs: 3000 });
     expect(result.data?.steps[4]?.input).toMatchObject({ amount: "0.1" });
   });
+
+  test("accepts relative once schedules and second-based DCA interval strings", async () => {
+    const capturedInputs: Array<{
+      botId: string;
+      routineName: string;
+      config?: Record<string, unknown>;
+      totalCycles?: number;
+      executeAtUnixMs?: number;
+    }> = [];
+    const before = Date.now();
+
+    const onceResult = await scheduleManagedUltraSwapAction.execute(
+      createActionContext({
+        actor: "agent",
+        enqueueJob: async (input) => {
+          capturedInputs.push(input);
+          const job: JobState = {
+            id: `job-${capturedInputs.length}`,
+            botId: input.botId,
+            routineName: input.routineName,
+            status: "pending",
+            config: input.config ?? {},
+            cyclesCompleted: 0,
+            totalCycles: input.totalCycles,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            nextRunAt: input.executeAtUnixMs,
+          };
+          return job;
+        },
+      }),
+      {
+        wallet: "maker_1",
+        swapType: "ultra",
+        inputCoin: "SOL",
+        outputCoin: "JUP",
+        amount: "0.15",
+        amountUnit: "ui",
+        schedule: {
+          kind: "once",
+          executeIn: "60s",
+        },
+      },
+    );
+    const after = Date.now();
+
+    expect(onceResult.ok).toBe(true);
+    if (!onceResult.ok) {
+      return;
+    }
+    expect(capturedInputs[0]?.executeAtUnixMs ?? 0).toBeGreaterThanOrEqual(before + 60_000);
+    expect(capturedInputs[0]?.executeAtUnixMs ?? 0).toBeLessThanOrEqual(after + 60_000);
+
+    const dcaResult = await scheduleManagedUltraSwapAction.execute(
+      createActionContext({
+        actor: "agent",
+        enqueueJob: async (input) => {
+          capturedInputs.push(input);
+          const job: JobState = {
+            id: `job-${capturedInputs.length}`,
+            botId: input.botId,
+            routineName: input.routineName,
+            status: "pending",
+            config: input.config ?? {},
+            cyclesCompleted: 0,
+            totalCycles: input.totalCycles,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            nextRunAt: input.executeAtUnixMs,
+          };
+          return job;
+        },
+      }),
+      {
+        wallet: "maker_1",
+        swapType: "ultra",
+        inputCoin: "SOL",
+        outputCoin: "USDC",
+        amount: "0.000003",
+        amountUnit: "ui",
+        schedule: {
+          kind: "dca",
+          installments: 3,
+          startIn: "60s",
+          interval: "3s",
+        },
+      },
+    );
+
+    expect(dcaResult.ok).toBe(true);
+    if (!dcaResult.ok) {
+      return;
+    }
+    expect(dcaResult.data?.schedule).toEqual({
+      kind: "dca",
+      installments: 3,
+      intervalMs: 3000,
+    });
+    expect(dcaResult.data?.steps[1]?.input).toMatchObject({ waitMs: 3000 });
+  });
 });

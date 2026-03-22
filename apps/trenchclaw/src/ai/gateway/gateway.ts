@@ -40,6 +40,7 @@ export const createRuntimeGateway = (
         settings: context.settings,
         capabilitySnapshot: context.capabilitySnapshot,
         toolNames,
+        stateStore: context.stateStore,
       })
       : lanePolicy.promptKind === "workspace"
         ? await loadDefaultSystemPrompt()

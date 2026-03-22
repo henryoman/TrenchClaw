@@ -7,6 +7,7 @@ import {
   loadInstanceWakeupSettings,
   type WakeupSettings,
 } from "../load/wakeup-settings";
+import { resolveGranularDurationMs } from "../time/scheduling";
 
 export const MANAGED_WAKEUP_ROUTINE_NAME = "runtimeWakeup";
 const MANAGED_WAKEUP_BOT_ID_PREFIX = "runtime:wakeup:";
@@ -55,7 +56,11 @@ export const computeAnchoredWakeupRunAt = (input: {
   now?: number;
 }): number => {
   const now = Math.max(0, Math.trunc(input.now ?? Date.now()));
-  const intervalMs = Math.max(1, Math.trunc(input.intervalMinutes)) * 60_000;
+  const intervalMs = resolveGranularDurationMs({
+    duration: Math.max(1, Math.trunc(input.intervalMinutes)) * 60_000,
+    granularity: "minutes",
+    label: "wakeup interval",
+  });
   const anchorUnixMs = Math.max(0, Math.trunc(input.anchorUnixMs));
   const firstRunAt = anchorUnixMs + intervalMs;
 

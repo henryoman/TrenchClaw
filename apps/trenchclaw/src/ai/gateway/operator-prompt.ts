@@ -1,3 +1,4 @@
+import type { StateStore } from "../../ai/runtime/types/state";
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
 import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
@@ -81,8 +82,9 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     inputAdvice: "Pass `path` for the folder to browse. Increase `depth` only when you truly need recursive results. Use the returned workspace-relative paths directly with `workspaceReadFile`.",
   },
   queryRuntimeStore: {
-    useWhen: "the user asks about runtime state like jobs, conversations, receipts, stored runtime records, or wants the status of a queued wallet scan",
+    useWhen: "the user asks about runtime state like jobs, conversations, receipts, stored runtime records, wants the status of a queued wallet scan, or asks what trading routines or upcoming trades are scheduled",
     avoidWhen: "the user is asking about wallets, tokens, balances, swaps, or market data",
+    inputAdvice: "Use `request.type = \"listUpcomingTradingJobs\"` for the live queued trade schedule. Use `listJobs`, `getJob`, or `getJobBySerial` for broader runtime job inspection.",
   },
   queryInstanceMemory: {
     useWhen: "the user asks about saved preferences, durable notes, or instance memory facts",
@@ -166,7 +168,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   scheduleManagedUltraSwap: {
     useWhen: "the user explicitly wants to schedule a managed Ultra swap for later or create a managed Ultra DCA plan",
     avoidWhen: "the user only wants one immediate swap or the request is better expressed as a richer JSON trading routine",
-    inputAdvice: "Use this to schedule a managed Ultra swap or DCA with `schedule.kind = \"once\"` or `schedule.kind = \"dca\"`.",
+    inputAdvice: "Use this to schedule a managed Ultra swap or DCA with `schedule.kind = \"once\"` or `schedule.kind = \"dca\"`. For trading routines, relative times like `executeIn = \"60s\"`, `startIn = \"60s\"`, and `interval = \"5s\"` are valid; keep wakeup settings on minute increments only.",
   },
   managedSwap: {
     useWhen: "the user explicitly wants a managed-wallet swap and you want the runtime to use the configured swap provider instead of hard-coding one provider in the tool call",
@@ -176,7 +178,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   submitTradingRoutine: {
     useWhen: "the user explicitly wants a JSON trading routine, scheduled swap, DCA plan, or curated multi-step trading sequence",
     avoidWhen: "the user only wants one immediate swap and does not need a durable queued routine",
-    inputAdvice: "Pass the versioned trading-routine JSON object directly. Prefer `kind = \"swap_once\"` for one queued swap, `kind = \"dca\"` for installment plans, and `kind = \"action_sequence\"` only for curated step types such as `swap`, `sleep`, or approved helper actions.",
+    inputAdvice: "Pass the versioned trading-routine JSON object directly. Prefer `kind = \"swap_once\"` for one queued swap, `kind = \"dca\"` for installment plans, and `kind = \"action_sequence\"` only for curated step types such as `swap`, `sleep`, or approved helper actions. Trading schedules can use absolute Unix times or relative strings like `executeIn = \"60s\"`, `startIn = \"60s\"`, and `interval = \"5s\"`.",
   },
 };
 
@@ -241,10 +243,13 @@ export const buildOperatorChatPrompt = async (input: {
   settings: RuntimeSettings;
   capabilitySnapshot?: RuntimeCapabilitySnapshot;
   toolNames: string[];
+  stateStore?: StateStore;
 }): Promise<string> => {
   const [walletSummary, liveRuntimeContext] = await Promise.all([
     renderRuntimeWalletPromptSummary(),
-    renderLiveRuntimeContextSection(),
+    renderLiveRuntimeContextSection({
+      stateStore: input.stateStore,
+    }),
   ]);
 
   return [
@@ -263,6 +268,7 @@ export const buildOperatorChatPrompt = async (input: {
     [
       "## Operator Routing",
       "- for direct runtime questions, answer from a single runtime action when possible",
+      "- if the user asks what trades are queued, scheduled, or upcoming, prefer `queryRuntimeStore` with `request.type = \"listUpcomingTradingJobs\"`.",
       "- for direct market questions, use Dexscreener runtime actions first and ask a short clarification only if the token set or market scope is genuinely ambiguous",
       "- do not keep exploring once the returned market data is enough to answer the user",
       "- skip greetings and capability preambles for direct asks",

@@ -256,14 +256,18 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
       },
       schedule: {
         installments: 3,
-        startAtUnixMs: 1_767_000_000_000,
-        intervalMs: 3_600_000,
+        startIn: "60s",
+        interval: "5s",
       },
     },
     includeInCatalog: () => true,
     enabledBySettings: canUseUltraSwap,
     requiresUserConfirmation: true,
-    chatExposed: true,
+    // The current tool input is a top-level discriminated union. OpenRouter rejects
+    // that schema for function parameters, which blocks all live chat tool registration.
+    // Keep the action available internally until its input is reshaped to a provider-
+    // compatible top-level object schema.
+    chatExposed: false,
   },
   {
     kind: "action",
@@ -301,12 +305,12 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
   {
     kind: "action",
     action: queryRuntimeStoreAction,
-    description: "Read conversations, jobs, receipts, runtime search results, and other durable runtime state.",
-    purpose: "Inspect runtime history and state without mutating it, including queued wallet-scan job status and results.",
+    description: "Read conversations, jobs, upcoming trading schedule, receipts, and other durable runtime state.",
+    purpose: "Inspect runtime history and state without mutating it, including queued wallet-scan status, scheduled trades, and recent runtime results.",
     tags: ["runtime", "search", "state", "read"],
     exampleInput: {
       request: {
-        type: "getRuntimeKnowledgeSurface",
+        type: "listUpcomingTradingJobs",
       },
     },
     includeInCatalog: () => true,
@@ -790,8 +794,8 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
       schedule: {
         kind: "dca",
         installments: 3,
-        startAtUnixMs: 1_767_000_000_000,
-        intervalMs: 3_600_000,
+        startIn: "60s",
+        interval: "5s",
       },
     },
     includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
