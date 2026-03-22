@@ -236,6 +236,61 @@ const formatCloseTokenAccountToolResultText = (output: unknown): string | null =
   ].join("\n");
 };
 
+const formatManagedTriggerOrderToolResultText = (output: unknown): string | null => {
+  if (!isRecord(output) || output.ok !== true || !isRecord(output.data)) {
+    return null;
+  }
+
+  const data = output.data;
+  const order = typeof data.order === "string" ? data.order : null;
+  const maker = typeof data.maker === "string" ? data.maker : null;
+  const inputMint = typeof data.inputMint === "string" ? data.inputMint : null;
+  const outputMint = typeof data.outputMint === "string" ? data.outputMint : null;
+  const makingAmount = typeof data.makingAmount === "string" ? data.makingAmount : null;
+  const takingAmount = typeof data.takingAmount === "string" ? data.takingAmount : null;
+  const derivedTriggerPrice = typeof data.derivedTriggerPrice === "string" ? data.derivedTriggerPrice : null;
+  const status = typeof data.status === "string" ? data.status : null;
+  const signature = typeof data.signature === "string" ? data.signature : null;
+  const tracking =
+    isRecord(data.tracking)
+      ? {
+          action: typeof data.tracking.action === "string" ? data.tracking.action : null,
+          user: typeof data.tracking.user === "string" ? data.tracking.user : null,
+          orderStatus: typeof data.tracking.orderStatus === "string" ? data.tracking.orderStatus : null,
+        }
+      : null;
+
+  if (
+    !order
+    || !maker
+    || !inputMint
+    || !outputMint
+    || !makingAmount
+    || !takingAmount
+    || !derivedTriggerPrice
+  ) {
+    return null;
+  }
+
+  const lines = [
+    "Trigger order submitted successfully.",
+    `Order \`${order}\` for maker \`${maker}\` is ${status ? `currently \`${status}\`` : "submitted"}.`,
+    `It will trade \`${makingAmount}\` raw unit(s) of \`${inputMint}\` for \`${takingAmount}\` raw unit(s) of \`${outputMint}\` at trigger price \`${derivedTriggerPrice}\`.`,
+  ];
+
+  if (signature) {
+    lines.push(`Transaction signature: \`${signature}\`.`);
+  }
+
+  if (tracking?.action === "getTriggerOrders" && tracking.user && tracking.orderStatus) {
+    lines.push(
+      `Track it with \`${tracking.action}\` for user \`${tracking.user}\` and orderStatus \`${tracking.orderStatus}\`.`,
+    );
+  }
+
+  return lines.join("\n");
+};
+
 export const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined): string | null => {
   if (!message || message.role !== "assistant") {
     return null;
@@ -274,6 +329,13 @@ export const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined
 
     if (toolName === "closeTokenAccount") {
       const formatted = formatCloseTokenAccountToolResultText(output);
+      if (formatted) {
+        return formatted;
+      }
+    }
+
+    if (toolName === "managedTriggerOrder") {
+      const formatted = formatManagedTriggerOrderToolResultText(output);
       if (formatted) {
         return formatted;
       }
