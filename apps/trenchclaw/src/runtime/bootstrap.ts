@@ -23,6 +23,7 @@ import {
   type LlmGenerateResult,
 } from "../ai";
 import { createJupiterTriggerAdapterFromConfig } from "../solana/lib/adapters/jupiter-trigger";
+import { createJupiterAdapterFromConfig } from "../solana/lib/adapters/jupiter";
 import { createJupiterUltraAdapterFromConfig } from "../solana/lib/adapters/jupiter-ultra";
 import { createTokenAccountAdapter } from "../solana/lib/adapters/token-account";
 import { createUltraSignerAdapterFromVault } from "../solana/lib/adapters/ultra-signer";
@@ -64,6 +65,7 @@ import { syncManagedWakeupJob } from "./wakeup/managed-wakeup";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set([
+  "managedSwap",
   "executeSwap",
   "ultraExecuteSwap",
   "ultraSwap",
@@ -635,6 +637,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   }
 
   const jupiterTrigger = await createJupiterTriggerAdapterFromConfig();
+  const jupiter = await createJupiterAdapterFromConfig();
   const jupiterUltra = await createJupiterUltraAdapterFromConfig();
   const tokenAccounts = createTokenAccountAdapter({ rpcUrl: runtimeRpcUrl });
   const ultraSigner = await createUltraSignerAdapterFromVault({ rpcUrl: runtimeRpcUrl });
@@ -644,6 +647,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       actor: overrides.actor ?? "agent",
       eventBus,
       rpcUrl: runtimeRpcUrl,
+      jupiter,
       jupiterTrigger,
       jupiterUltra,
       tokenAccounts,
@@ -918,6 +922,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       eventBus,
       stateStore,
       rpcUrl: runtimeRpcUrl,
+      jupiter,
       jupiterTrigger,
       jupiterUltra,
       tokenAccounts,

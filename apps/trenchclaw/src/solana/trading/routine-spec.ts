@@ -27,8 +27,8 @@ const stepCommonSchema = z.object({
   retryPolicy: retryPolicySchema.optional(),
 });
 
-export const tradingSwapProviderPreferenceSchema = z.enum(["configured", "ultra"]);
-export const resolvedTradingSwapProviderSchema = z.enum(["ultra"]);
+export const tradingSwapProviderPreferenceSchema = z.enum(["configured", "ultra", "standard"]);
+export const resolvedTradingSwapProviderSchema = z.enum(["ultra", "standard"]);
 
 export type TradingSwapProviderPreference = z.infer<typeof tradingSwapProviderPreferenceSchema>;
 export type ResolvedTradingSwapProvider = z.infer<typeof resolvedTradingSwapProviderSchema>;
@@ -503,15 +503,13 @@ export const resolveRequestedTradingSwapProvider = async (
     return "ultra";
   }
 
-  const settings = await loadRuntimeSettings();
-  const configuredProvider = settings.trading.preferences.defaultSwapProvider;
-  if (configuredProvider === "ultra") {
-    return "ultra";
+  if (requestedProvider === "standard") {
+    return "standard";
   }
 
-  throw new Error(
-    `Configured swap provider "${configuredProvider}" is not implemented for trading routines yet.`,
-  );
+  const settings = await loadRuntimeSettings();
+  const configuredProvider = settings.trading.preferences.defaultSwapProvider;
+  return configuredProvider === "standard" ? "standard" : "ultra";
 };
 
 export const planTradingRoutineSubmission = async (

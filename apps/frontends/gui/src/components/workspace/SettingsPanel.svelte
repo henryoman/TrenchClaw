@@ -459,7 +459,7 @@
             }}
           >
             <option value="ultra">Ultra</option>
-            <option value="standard">RPC (Coming soon)</option>
+            <option value="standard">Standard RPC</option>
           </RetroSelect>
         </RetroField>
 

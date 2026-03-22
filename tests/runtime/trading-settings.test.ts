@@ -146,6 +146,10 @@ describe("trading settings layering", () => {
     expect(settings.trading.preferences.defaultSwapProvider).toBe("standard");
     expect(settings.trading.preferences.defaultSwapMode).toBe("ExactOut");
     expect(settings.trading.preferences.defaultAmountUnit).toBe("percent");
+    expect(settings.trading.jupiter.standard.enabled).toBe(true);
+    expect(settings.trading.jupiter.standard.allowQuotes).toBe(true);
+    expect(settings.trading.jupiter.standard.allowExecutions).toBe(true);
+    expect(settings.trading.jupiter.ultra.enabled).toBe(false);
     expect(settings.trading.preferences.scheduleActionName).toBe("scheduleManagedUltraSwap");
     expect(settings.trading.preferences.quickBuyPresets).toHaveLength(1);
     expect(settings.trading.preferences.quickBuyPresets[0]?.label).toBe("Quick Buy 0.25 SOL");

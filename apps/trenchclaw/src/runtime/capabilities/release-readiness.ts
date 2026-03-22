@@ -50,10 +50,10 @@ const comingSoonFeatures: RuntimeComingSoonFeatureEntry[] = [
   },
   {
     id: "non-ultra-swap-surfaces",
-    label: "Broader non-Ultra or expanded swap surfaces",
-    aliases: ["standard swaps", "jupiter standard", "expanded swap engine"],
+    label: "Broader expanded swap surfaces beyond the current managed Jupiter paths",
+    aliases: ["expanded swap engine", "broader swap engine", "non-managed standard swaps"],
     status: "coming-soon",
-    note: "The current shipped swap story is narrow; broader swap surfaces should be described as coming soon unless explicitly exposed as tools.",
+    note: "Managed Jupiter standard swaps now exist through the configured managed swap surface, but broader standalone swap surfaces should still be described as coming soon unless explicitly exposed as tools.",
   },
 ];
 

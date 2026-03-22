@@ -24,6 +24,7 @@ TRENCHCLAW_UPDATE_EXISTING_TOOLS="${TRENCHCLAW_UPDATE_EXISTING_TOOLS:-1}"
 TRENCHCLAW_RELOAD_SHELL="${TRENCHCLAW_RELOAD_SHELL:-0}"
 TRENCHCLAW_AUTO_CONFIRM="${TRENCHCLAW_AUTO_CONFIRM:-0}"
 TRENCHCLAW_INSTALLED_VERSION=""
+TRENCHCLAW_INSTALL_CANCELLED="0"
 
 info() {
   printf '%s\n' "[trenchclaw-install] $1"
@@ -87,9 +88,31 @@ prompt_install_confirmation() {
       ;;
     *)
       info "Install cancelled."
-      exit 0
+      TRENCHCLAW_INSTALL_CANCELLED="1"
+      return 0
       ;;
   esac
+}
+
+parent_dir() {
+  target_path="$1"
+  dirname -- "$target_path"
+}
+
+assert_writable_install_path() {
+  target_path="$1"
+  label="$2"
+  existing_path="$target_path"
+
+  while [ ! -e "$existing_path" ]; do
+    next_path="$(parent_dir "$existing_path")"
+    [ "$next_path" != "$existing_path" ] || break
+    existing_path="$next_path"
+  done
+
+  if [ ! -w "$existing_path" ]; then
+    fail "$label is not writable: $target_path. Current user: $(id -un). Check ownership/permissions for $existing_path (for example: ls -ld \"$existing_path\")."
+  fi
 }
 
 resolve_sha256_command() {
@@ -181,6 +204,8 @@ install_trenchclaw_bundle() {
   require_cmd curl
   require_cmd tar
   require_cmd mktemp
+  assert_writable_install_path "$TRENCHCLAW_APP_HOME" "Install directory"
+  assert_writable_install_path "$TRENCHCLAW_BIN_DIR" "Launcher directory"
   mkdir -p "$TRENCHCLAW_APP_HOME" "$TRENCHCLAW_BIN_DIR"
   add_path_for_current_process "$TRENCHCLAW_BIN_DIR"
   ensure_path_in_shell_profiles "$TRENCHCLAW_BIN_DIR"
@@ -284,6 +309,9 @@ print_summary() {
 main() {
   parse_args "$@"
   prompt_install_confirmation
+  if [ "$TRENCHCLAW_INSTALL_CANCELLED" = "1" ]; then
+    exit 0
+  fi
   install_trenchclaw_bundle
   if [ "$TRENCHCLAW_INSTALL_REQUIRED_TOOLS" = "1" ]; then
     info "Skipping automatic external tool installation in the public install flow."
