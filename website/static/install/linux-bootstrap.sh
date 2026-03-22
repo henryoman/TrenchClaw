@@ -62,11 +62,16 @@ install_or_upgrade_trenchclaw() {
   require_cmd curl
 
   info "Installing/upgrading TrenchClaw..."
-  curl_secure "$TRENCHCLAW_INSTALLER_URL" | TRENCHCLAW_VERSION="$TRENCHCLAW_VERSION" sh
+  installer_tmp="$(mktemp)"
+  trap 'rm -f "$installer_tmp"' EXIT INT TERM HUP
+  curl_secure "$TRENCHCLAW_INSTALLER_URL" -o "$installer_tmp"
+  TRENCHCLAW_VERSION="$TRENCHCLAW_VERSION" sh "$installer_tmp"
 
   add_path_for_current_process "$LOCAL_BIN_DIR"
   ensure_path_in_shell_profiles "$LOCAL_BIN_DIR"
   need_cmd trenchclaw || fail "TrenchClaw launcher is unavailable after install/upgrade"
+  trap - EXIT INT TERM HUP
+  rm -f "$installer_tmp"
 }
 
 print_summary() {

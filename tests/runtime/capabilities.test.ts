@@ -343,6 +343,27 @@ describe("runtime capability snapshot", () => {
     expect(modelToolNames).not.toContain("submitTradingRoutine");
   });
 
+  test("exposes managedSwap to the model when standard swap settings are enabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML
+        .replace("profile: safe", "profile: dangerous")
+        .replace("trading:\n  enabled: false", "trading:\n  enabled: true")
+        .replace(
+          "    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
+          "    standard:\n      enabled: true\n      allowQuotes: true\n      allowExecutions: true",
+        ),
+    );
+
+    const settings = await loadRuntimeSettings("dangerous");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const managedSwap = snapshot.modelTools.find((toolEntry) => toolEntry.name === "managedSwap");
+
+    expect(managedSwap).toBeDefined();
+    expect(managedSwap?.enabledNow).toBe(true);
+    expect(managedSwap?.toolDescription).toContain("configured swap provider");
+  });
+
   test("operator-chat lane only exposes allowlisted tools that exist in the snapshot", async () => {
     const settings = await loadRuntimeSettings("safe");
     const snapshot = await getRuntimeCapabilitySnapshot(settings);

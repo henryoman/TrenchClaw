@@ -21,7 +21,7 @@ interface SubmitTradingRoutineOutput {
   tradingRoutineId: string;
   kind: TradingRoutineSpec["kind"];
   executionMode?: "inline_sleep" | "staggered_jobs";
-  swapProvider?: "ultra";
+  swapProvider?: "ultra" | "standard";
   jobCount: number;
   jobs: JobState[];
   plannedSteps?: ActionStep[];

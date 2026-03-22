@@ -6,6 +6,78 @@ import { submitTradingRoutineAction } from "../../../../apps/trenchclaw/src/sola
 import { tradingRoutineSpecSchema } from "../../../../apps/trenchclaw/src/solana/trading/routine-spec";
 
 describe("submitTradingRoutineAction", () => {
+  test("queues a standard-provider one-off swap through the same managedSwap surface", async () => {
+    const capturedInputs: Array<{
+      botId: string;
+      routineName: string;
+      config?: Record<string, unknown>;
+      executeAtUnixMs?: number;
+      totalCycles?: number;
+    }> = [];
+
+    const result = await submitTradingRoutineAction.execute(
+      createActionContext({
+        actor: "agent",
+        enqueueJob: async (input) => {
+          capturedInputs.push(input);
+          const job: JobState = {
+            id: `job-${capturedInputs.length}`,
+            botId: input.botId,
+            routineName: input.routineName,
+            status: "pending",
+            config: input.config ?? {},
+            cyclesCompleted: 0,
+            totalCycles: input.totalCycles,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            nextRunAt: input.executeAtUnixMs,
+          };
+          return job;
+        },
+      }),
+      {
+        version: 1,
+        kind: "swap_once",
+        swap: {
+          provider: "standard",
+          walletGroup: "core-wallets",
+          walletName: "maker-1",
+          inputCoin: "SOL",
+          outputCoin: "JUP",
+          amount: "0.25",
+          amountUnit: "ui",
+        },
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data?.swapProvider).toBe("standard");
+    expect(capturedInputs[0]).toMatchObject({
+      routineName: "actionSequence",
+      config: {
+        kind: "swap_once",
+        swapProvider: "standard",
+        steps: [
+          {
+            actionName: "managedSwap",
+            input: {
+              provider: "standard",
+              walletGroup: "core-wallets",
+              walletName: "maker-1",
+              inputCoin: "SOL",
+              outputCoin: "JUP",
+              amount: "0.25",
+            },
+          },
+        ],
+      },
+    });
+  });
+
   test("queues a provider-agnostic one-off swap as an actionSequence job", async () => {
     const capturedInputs: Array<{
       botId: string;
@@ -447,6 +519,123 @@ describe("submitTradingRoutineAction", () => {
       outputCoin: "SOL",
       amount: "100%",
     });
+  });
+
+  test("builds a standard-provider round-trip action sequence with seconds between swaps", async () => {
+    const capturedInputs: Array<{
+      botId: string;
+      routineName: string;
+      config?: Record<string, unknown>;
+      executeAtUnixMs?: number;
+      totalCycles?: number;
+    }> = [];
+    const executeAtUnixMs = Date.now() + 15_000;
+
+    const result = await submitTradingRoutineAction.execute(
+      createActionContext({
+        actor: "agent",
+        enqueueJob: async (input) => {
+          capturedInputs.push(input);
+          const job: JobState = {
+            id: `job-${capturedInputs.length}`,
+            botId: input.botId,
+            routineName: input.routineName,
+            status: "pending",
+            config: input.config ?? {},
+            cyclesCompleted: 0,
+            totalCycles: input.totalCycles,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            nextRunAt: input.executeAtUnixMs,
+          };
+          return job;
+        },
+      }),
+      {
+        version: 1,
+        kind: "action_sequence",
+        executeAtUnixMs,
+        routineId: "standard-roundtrip-1",
+        steps: [
+          {
+            kind: "swap",
+            key: "buy-usdc",
+            swap: {
+              provider: "standard",
+              wallet: "maker_1",
+              inputCoin: "SOL",
+              outputCoin: "USDC",
+              amount: "0.01",
+              amountUnit: "ui",
+            },
+          },
+          {
+            kind: "sleep",
+            key: "wait-5s",
+            dependsOn: "buy-usdc",
+            waitMs: 5_000,
+          },
+          {
+            kind: "swap",
+            key: "sell-back",
+            dependsOn: "wait-5s",
+            swap: {
+              provider: "standard",
+              wallet: "maker_1",
+              inputCoin: "USDC",
+              outputCoin: "SOL",
+              amount: "100%",
+            },
+          },
+        ],
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(capturedInputs).toHaveLength(1);
+    expect(capturedInputs[0]?.executeAtUnixMs).toBe(executeAtUnixMs);
+    expect(capturedInputs[0]?.config).toMatchObject({
+      kind: "action_sequence",
+      swapProvider: "standard",
+      steps: [
+        {
+          key: "buy-usdc",
+          actionName: "managedSwap",
+          input: {
+            provider: "standard",
+            inputCoin: "SOL",
+            outputCoin: "USDC",
+            amount: "0.01",
+          },
+        },
+        {
+          key: "wait-5s",
+          actionName: "sleep",
+          input: {
+            waitMs: 5_000,
+          },
+        },
+        {
+          key: "sell-back",
+          actionName: "managedSwap",
+          input: {
+            provider: "standard",
+            inputCoin: "USDC",
+            outputCoin: "SOL",
+            amount: "100%",
+          },
+        },
+      ],
+    });
+    expect(result.data?.plannedSteps?.map((step) => step.actionName)).toEqual([
+      "managedSwap",
+      "sleep",
+      "managedSwap",
+    ]);
   });
 
   test("limits action_sequence custom actions to the hardened allowlist", async () => {

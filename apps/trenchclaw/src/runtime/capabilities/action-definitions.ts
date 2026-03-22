@@ -60,6 +60,15 @@ const canUseUltraSwap = ({ settings }: { settings: Parameters<RuntimeActionCapab
   settings.trading.jupiter.ultra.allowQuotes &&
   settings.trading.jupiter.ultra.allowExecutions;
 
+const canUseStandardSwap = ({ settings }: { settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"] }): boolean =>
+  settings.trading.enabled &&
+  settings.trading.jupiter.standard.enabled &&
+  settings.trading.jupiter.standard.allowQuotes &&
+  settings.trading.jupiter.standard.allowExecutions;
+
+const canUseManagedSwap = ({ settings }: { settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"] }): boolean =>
+  canUseUltraSwap({ settings }) || canUseStandardSwap({ settings });
+
 const canUseTriggerOrders = ({ settings }: { settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"] }): boolean =>
   settings.trading.enabled &&
   settings.trading.jupiter.trigger.enabled &&
@@ -112,7 +121,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   privacyTransfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   privacyAirdrop: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   privacySwap: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
-  managedSwap: LIMITED("Provider-agnostic managed swap routing is available now, with Jupiter Ultra as the current execution provider."),
+  managedSwap: LIMITED("Provider-agnostic managed swap routing is available now across the configured Jupiter Ultra or Jupiter standard execution paths."),
   ultraQuoteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   ultraExecuteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   managedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
@@ -261,7 +270,7 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
       },
     },
     includeInCatalog: () => true,
-    enabledBySettings: canUseUltraSwap,
+    enabledBySettings: canUseManagedSwap,
     requiresUserConfirmation: true,
     // The current tool input is a top-level discriminated union. OpenRouter rejects
     // that schema for function parameters, which blocks all live chat tool registration.
@@ -754,7 +763,7 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
       amountUnit: "ui",
     },
     includeInCatalog: ({ settings }) => settings.trading.enabled,
-    enabledBySettings: canUseUltraSwap,
+    enabledBySettings: canUseManagedSwap,
     requiresUserConfirmation: true,
     chatExposed: true,
   },

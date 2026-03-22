@@ -36,6 +36,7 @@ export interface RuntimeChatServiceDeps {
   eventBus: RuntimeEventBus;
   stateStore: StateStore;
   rpcUrl?: string;
+  jupiter?: unknown;
   jupiterTrigger?: unknown;
   jupiterUltra?: unknown;
   tokenAccounts?: unknown;
