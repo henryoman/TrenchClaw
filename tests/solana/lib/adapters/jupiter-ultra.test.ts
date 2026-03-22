@@ -1,6 +1,10 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 
 import { createJupiterUltraAdapter } from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
+import {
+  createJupiterUltraAdapterFromConfig,
+  resolveJupiterUltraApiKey,
+} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
 
 describe("createJupiterUltraAdapter", () => {
   test("retries 429 responses using Retry-After before succeeding", async () => {
@@ -29,7 +33,7 @@ describe("createJupiterUltraAdapter", () => {
 
     const adapter = createJupiterUltraAdapter({
       apiKey: "test-key",
-      fetchImpl: async () => responses.shift() ?? responses[responses.length - 1]!,
+      fetchImpl: (async () => responses.shift() ?? responses[responses.length - 1]!) as unknown as typeof fetch,
       rateLimitRetry: {
         maxAttempts: 2,
         baseDelayMs: 10,
@@ -52,12 +56,6 @@ describe("createJupiterUltraAdapter", () => {
     expect(order.transaction).toBe("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
   });
 });
-import { afterEach, describe, expect, test } from "bun:test";
-
-import {
-  createJupiterUltraAdapterFromConfig,
-  resolveJupiterUltraApiKey,
-} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
 
 const MUTABLE_ENV_KEYS = [
   "JUPITER_ULTRA_API_KEY",

@@ -84,9 +84,11 @@ describe.skipIf(!OPENROUTER_KEY)("model drives workspace tools (live LLM)", () =
         throw new Error("Expected language model (vault or OPENROUTER_API_KEY)");
       }
 
-      const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-      const listTool = tools[WORKSPACE_LIST_DIRECTORY_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-      const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
+      const aiTools = {
+        workspaceBash: tools[WORKSPACE_BASH_TOOL_NAME],
+        workspaceListDirectory: tools[WORKSPACE_LIST_DIRECTORY_TOOL_NAME],
+        workspaceReadFile: tools[WORKSPACE_READ_FILE_TOOL_NAME],
+      } as NonNullable<Parameters<typeof generateText>[0]["tools"]>;
 
       const result = await generateText({
         model,
@@ -97,11 +99,7 @@ describe.skipIf(!OPENROUTER_KEY)("model drives workspace tools (live LLM)", () =
           "3) workspaceReadFile only if you see a file path worth reading under notes/ or output/ — otherwise skip step 3. " +
           "End with a one-sentence summary that includes the substring solana-cli or the word solana.",
         prompt: "Run the three steps (readFile optional).",
-        tools: {
-          workspaceBash: bashTool,
-          workspaceListDirectory: listTool,
-          workspaceReadFile: readTool,
-        },
+        tools: aiTools,
         stopWhen: stepCountIs(12),
         temperature: 0,
       });
