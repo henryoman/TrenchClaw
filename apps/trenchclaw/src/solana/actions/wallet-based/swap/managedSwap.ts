@@ -53,7 +53,10 @@ export const managedSwapAction: Action<ManagedSwapInput, ManagedSwapOutput> = {
 
     const result = await managedUltraSwapAction.execute(ctx, omitProvider(input));
     if (!result.ok || !result.data) {
-      return result;
+      return {
+        ...result,
+        data: undefined,
+      };
     }
 
     return {
