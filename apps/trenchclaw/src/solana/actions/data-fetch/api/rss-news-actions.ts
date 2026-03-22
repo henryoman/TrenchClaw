@@ -1,0 +1,106 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import { z } from "zod";
+
+import type { Action } from "../../../../ai/runtime/types/action";
+import {
+  isNormalizedNewsFeedRetryableError,
+  readNormalizedNewsFeed,
+  type NormalizedNewsFeedResult,
+} from "../../../../lib/news/rss";
+import { ensureInstanceLayout } from "../../../../runtime/instance-layout";
+import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance-state";
+import { resolveInstanceWorkspaceNewsRoot } from "../../../../runtime/instance-workspace";
+import { toRuntimeContractRelativePath } from "../../../../runtime/runtime-paths";
+
+export const DEFAULT_SOLANA_NEWS_FEED_URL = "https://cryptopotato.com/tag/solana/feed/";
+
+const getLatestSolanaNewsInputSchema = z.object({
+  feedUrl: z.url().optional().default(DEFAULT_SOLANA_NEWS_FEED_URL),
+  limit: z.number().int().positive().max(25).default(5),
+  excerptMaxChars: z.number().int().positive().max(600).default(280),
+  includeFullContent: z.boolean().default(false),
+  contentMaxChars: z.number().int().positive().max(4_000).default(1_200),
+});
+
+type GetLatestSolanaNewsInput = z.input<typeof getLatestSolanaNewsInputSchema>;
+
+interface GetLatestSolanaNewsOutput extends NormalizedNewsFeedResult {
+  instanceId: string;
+  outputPath: string;
+  runtimePath: string;
+}
+
+const sanitizePathSegment = (value: string): string =>
+  value.trim().toLowerCase().replace(/[^a-z0-9]+/gu, "-").replace(/^-+|-+$/gu, "").slice(0, 80) || "segment";
+
+const createNewsArtifactFileName = (feedUrl: string, fetchedAtIso: string): string => {
+  const url = new URL(feedUrl);
+  const hostSegment = sanitizePathSegment(url.hostname);
+  const pathSegment = sanitizePathSegment(url.pathname.replace(/\/feed\/?$/u, "") || "feed");
+  const timestampSegment = fetchedAtIso.replace(/[:.]/gu, "-");
+  return `${hostSegment}-${pathSegment}-${timestampSegment}.json`;
+};
+
+export const getLatestSolanaNewsAction: Action<GetLatestSolanaNewsInput, GetLatestSolanaNewsOutput> = {
+  name: "getLatestSolanaNews",
+  category: "data-based",
+  inputSchema: getLatestSolanaNewsInputSchema,
+  async execute(_ctx, rawInput) {
+    const startedAt = Date.now();
+    const idempotencyKey = crypto.randomUUID();
+
+    try {
+      const input = getLatestSolanaNewsInputSchema.parse(rawInput);
+      const activeInstanceId = resolveRequiredActiveInstanceIdSync(
+        "No active instance selected. News downloads are instance-scoped.",
+      );
+      await ensureInstanceLayout(activeInstanceId);
+
+      const data = await readNormalizedNewsFeed(input);
+      const outputDirectory = resolveInstanceWorkspaceNewsRoot(activeInstanceId);
+      const outputPath = path.join(outputDirectory, createNewsArtifactFileName(data.feed.feedUrl, data.fetchedAt));
+      const artifactDocument = {
+        fetchedAt: data.fetchedAt,
+        artifactType: "news-feed-download",
+        source: "rss-news",
+        instanceId: activeInstanceId,
+        request: data.request,
+        feed: data.feed,
+        totalArticleCount: data.totalArticleCount,
+        returnedArticleCount: data.returnedArticleCount,
+        hasMore: data.hasMore,
+        articles: data.articles,
+      };
+
+      await mkdir(outputDirectory, { recursive: true });
+      await writeFile(outputPath, `${JSON.stringify(artifactDocument, null, 2)}\n`, "utf8");
+
+      return {
+        ok: true,
+        retryable: false,
+        data: {
+          ...data,
+          instanceId: activeInstanceId,
+          outputPath,
+          runtimePath: toRuntimeContractRelativePath(outputPath),
+        },
+        durationMs: Date.now() - startedAt,
+        timestamp: Date.now(),
+        idempotencyKey,
+      };
+    } catch (error) {
+      const retryable = isNormalizedNewsFeedRetryableError(error);
+      return {
+        ok: false,
+        retryable,
+        error: error instanceof Error ? error.message : String(error),
+        code: retryable ? "RSS_NEWS_ACTION_RETRYABLE" : "RSS_NEWS_ACTION_FAILED",
+        durationMs: Date.now() - startedAt,
+        timestamp: Date.now(),
+        idempotencyKey,
+      };
+    }
+  },
+};

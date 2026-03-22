@@ -11,6 +11,7 @@ import {
   getDexscreenerTopTokenBoostsAction,
   searchDexscreenerPairsAction,
 } from "../../solana/actions/data-fetch/api/dexscreener-actions";
+import { getLatestSolanaNewsAction } from "../../solana/actions/data-fetch/api/rss-news-actions";
 import { getSwapHistoryAction } from "../../solana/actions/data-fetch/api/swapHistory";
 import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runtime/mutateInstanceMemory";
 import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
@@ -109,6 +110,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   getDexscreenerTokensByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   getDexscreenerTopTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   searchDexscreenerPairs: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getLatestSolanaNews: SHIPPED_NOW("Live Solana news reads through normalized RSS/Atom feeds ship in the current release."),
   downloadGeckoTerminalOhlcv: SHIPPED_NOW("GeckoTerminal OHLC downloads now write raw Solana market-data snapshots into the instance workspace."),
   devnetAirdrop: LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
   enqueueRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
@@ -326,6 +328,20 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getLatestSolanaNewsAction,
+    description: "Fetch the latest Solana headlines from a live RSS or Atom feed and save a timestamped JSON snapshot into the workspace news folder.",
+    purpose: "Download a compact current-news artifact with titles, links, timestamps, categories, and short excerpts so later reads can inspect the saved JSON without re-querying the feed every time.",
+    routingHint: "the user asks for current Solana news, recent headlines, or you need to download a fresh news snapshot from an RSS or Atom feed into the workspace",
+    tags: ["news", "rss", "atom", "headlines", "read", "workspace", "download"],
+    exampleInput: {
+      limit: 5,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
     chatExposed: true,
   },
   {

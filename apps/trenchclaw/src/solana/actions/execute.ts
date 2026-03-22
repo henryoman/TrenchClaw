@@ -248,4 +248,5 @@ const start = async (): Promise<void> => {
 
 if (import.meta.main) {
   await start();
+  process.exit(process.exitCode ?? 0);
 }

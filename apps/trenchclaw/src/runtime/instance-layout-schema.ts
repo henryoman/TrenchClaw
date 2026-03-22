@@ -21,6 +21,7 @@ export const INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES = [
   "configs",
   "typescript",
   "notes",
+  "news",
   "scratch",
   "output",
   "routines",
@@ -41,6 +42,9 @@ const workspaceChildren = {
     research: directory({
       ".gitkeep": file(),
     }),
+  }),
+  news: directory({
+    ".gitkeep": file(),
   }),
   scratch: directory({
     ".gitkeep": file(),

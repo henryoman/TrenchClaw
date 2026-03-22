@@ -20,6 +20,10 @@ const DEXSCREENER_MODEL_TOOL_NAMES = [
   "searchDexscreenerPairs",
 ] as const;
 
+const GECKOTERMINAL_MODEL_TOOL_NAMES = [
+  "downloadGeckoTerminalOhlcv",
+] as const;
+
 const TEST_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",
   "TRENCHCLAW_RUNTIME_SETTINGS_FILE",
@@ -250,6 +254,23 @@ describe("runtime capability snapshot", () => {
     expect(latestBoosts?.toolDescription).toContain("not as the default tool for broad 'hot today' or trending questions");
     expect(topBoosts?.toolDescription).toContain("what is hot, trending, or most promoted right now");
     expect(tokenBatch?.toolDescription).toContain("concrete batch comparison or ranking answer");
+  });
+
+  test("exposes GeckoTerminal OHLC download with workspace-oriented reasoning when trading is enabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML.replace("trading:\n  enabled: false", "trading:\n  enabled: true"),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
+    const ohlcDownloadTool = snapshot.modelTools.find((toolEntry) => toolEntry.name === "downloadGeckoTerminalOhlcv");
+
+    expect(modelToolNames).toEqual(expect.arrayContaining(GECKOTERMINAL_MODEL_TOOL_NAMES));
+    expect(ohlcDownloadTool?.toolDescription).toContain("raw Solana candle data saved to the runtime workspace");
+    expect(ohlcDownloadTool?.toolDescription).toContain("later research");
+    expect(ohlcDownloadTool?.releaseReadinessStatus).toBe("shipped-now");
   });
 
   test("hides Dexscreener model tools when the integration is disabled", async () => {
