@@ -1,3 +1,57 @@
+import { describe, expect, test } from "bun:test";
+
+import { createJupiterUltraAdapter } from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
+
+describe("createJupiterUltraAdapter", () => {
+  test("retries 429 responses using Retry-After before succeeding", async () => {
+    const sleeps: number[] = [];
+    const responses = [
+      new Response(JSON.stringify({ error: "rate limited" }), {
+        status: 429,
+        headers: {
+          "content-type": "application/json",
+          "retry-after": "1",
+        },
+      }),
+      new Response(
+        JSON.stringify({
+          requestId: "req-1",
+          transaction: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        }),
+        {
+          status: 200,
+          headers: {
+            "content-type": "application/json",
+          },
+        },
+      ),
+    ];
+
+    const adapter = createJupiterUltraAdapter({
+      apiKey: "test-key",
+      fetchImpl: async () => responses.shift() ?? responses[responses.length - 1]!,
+      rateLimitRetry: {
+        maxAttempts: 2,
+        baseDelayMs: 10,
+        maxDelayMs: 10,
+        jitterMs: 0,
+        sleepImpl: async (ms) => {
+          sleeps.push(ms);
+        },
+      },
+    });
+
+    const order = await adapter.getOrder({
+      inputMint: "So11111111111111111111111111111111111111112",
+      outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      amount: "1000000",
+    });
+
+    expect(sleeps).toEqual([1_000]);
+    expect(order.requestId).toBe("req-1");
+    expect(order.transaction).toBe("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+  });
+});
 import { afterEach, describe, expect, test } from "bun:test";
 
 import {

@@ -1,11 +1,8 @@
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
-import { buildKnowledgeLookup, resolveKnowledgeLookupEntry } from "../../../../lib/knowledge/knowledge-index";
-
-const KNOWLEDGE_ROOT = fileURLToPath(new URL("../../../../ai/brain/knowledge/", import.meta.url));
+import { buildKnowledgeLookup, resolveKnowledgeLookupEntry, resolveKnowledgeRoot } from "../../../../lib/knowledge/knowledge-index";
 const maxLines = 500;
 
 const readKnowledgeDocInputSchema = z.object({
@@ -28,9 +25,10 @@ export const readKnowledgeDocAction: Action<ReadKnowledgeDocInput, unknown> = {
     const startedAt = Date.now();
     const idempotencyKey = crypto.randomUUID();
     try {
-      const entry = await resolveKnowledgeLookupEntry(KNOWLEDGE_ROOT, input.doc);
+      const knowledgeRoot = resolveKnowledgeRoot();
+      const entry = await resolveKnowledgeLookupEntry(knowledgeRoot, input.doc);
       if (!entry) {
-        const suggestions = (await buildKnowledgeLookup(KNOWLEDGE_ROOT))
+        const suggestions = (await buildKnowledgeLookup(knowledgeRoot))
           .filter((candidate) => {
             const haystack = [candidate.alias, ...candidate.aliases, candidate.title, candidate.path]
               .join(" ")
@@ -58,7 +56,7 @@ export const readKnowledgeDocAction: Action<ReadKnowledgeDocInput, unknown> = {
         };
       }
 
-      const absolutePath = path.resolve(KNOWLEDGE_ROOT, entry.path.replace(/^src\/ai\/brain\/knowledge\//u, ""));
+      const absolutePath = path.resolve(knowledgeRoot, entry.path.replace(/^src\/ai\/brain\/knowledge\//u, ""));
       const file = Bun.file(absolutePath);
       if (!(await file.exists())) {
         return {

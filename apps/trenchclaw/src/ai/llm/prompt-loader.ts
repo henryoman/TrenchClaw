@@ -1,20 +1,13 @@
 import { fileURLToPath } from "node:url";
-import {
-  getRuntimeCapabilitySnapshot,
-  renderRuntimeReleaseReadinessSection,
-  renderRuntimeToolContractSection,
-} from "../../runtime/capabilities";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { loadRuntimeSettings } from "../../runtime/load";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
-import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
-import { renderKnowledgeAliasMenu } from "../../lib/knowledge/knowledge-index";
+import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
 import { resolveVaultFile } from "./vault-file";
 
 const SYSTEM_PROMPT_FILE = "../config/system.md";
 const PRIMARY_MODE_PROMPT_FILE = "../config/agent-modes/primary.md";
-const KNOWLEDGE_ROOT = "../brain/knowledge/";
 const AGENT_MODE_ENV = "TRENCHCLAW_AGENT_MODE";
 const SUPPORTED_MODE = "primary";
 
@@ -92,21 +85,17 @@ const renderShellToolingSummary = (): string => {
 
   return [
     "### Shell Tooling",
-    "- `workspaceListDirectory` is the default tool for browsing runtime workspace files and folders without using the shell.",
-    "- `workspaceBash` runs in an instance-scoped shell with its own `HOME`, `TMPDIR`, and a `tool-bin`-first `PATH`.",
+    "- `workspaceListDirectory` is the default browse tool for runtime workspace files and folders.",
+    "- `workspaceBash` is for actual shell or CLI work after you know the path or command you need.",
     `- detected CLI commands on PATH: ${detectedCommands.join(", ") || "none detected"}`,
-    "- Use shell tools for real local investigation when needed, and verify CLI availability with `command -v <tool>` or `<tool> --version` before depending on it.",
   ].join("\n");
 };
 
 const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const [capabilitySnapshot, filesystemPolicy, walletSummary, liveRuntimeContext, knowledgeMenu] = await Promise.all([
-    getRuntimeCapabilitySnapshot(settings),
+  const [filesystemPolicy, liveRuntimeContext] = await Promise.all([
     summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
-    renderRuntimeWalletPromptSummary(),
     renderLiveRuntimeContextSection(),
-    renderKnowledgeAliasMenu(resolvePromptFilePath(KNOWLEDGE_ROOT)),
   ]);
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
   const vault = resolveVaultFile({ activeInstanceId });
@@ -118,13 +107,10 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     `- profile meaning: ${renderProfileMeaning(settings.profile)}`,
     `- active instance: ${activeInstanceId ?? "none"}`,
     `- vault path: ${vault.vaultPath ?? "none"}`,
+    `- dangerous-action confirmation: ${confirmationEnabled ? `required with token \`${settings.trading.confirmations.userConfirmationToken}\`` : "not required in the current profile"}`,
+    `- enabled cluster: ${settings.network.cluster}`,
     "",
-    "### Confirmation Policy",
-    confirmationEnabled
-      ? `- dangerous actions can require explicit confirmation using the runtime token \`${settings.trading.confirmations.userConfirmationToken}\` or an equivalent confirmed flag`
-      : "- no extra runtime confirmation token is required for dangerous actions in the current profile",
-    "",
-    "### Filesystem Summary",
+    "## Filesystem Summary",
     `- default permission: ${filesystemPolicy.defaultPermission}`,
     `- readable roots: ${filesystemPolicy.readPaths.join(", ") || "none"}`,
     `- writable roots: ${filesystemPolicy.writePaths.join(", ") || "none"}`,
@@ -133,31 +119,11 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     "",
     renderShellToolingSummary(),
     "",
-    renderRuntimeToolContractSection(capabilitySnapshot),
-    "",
-    renderRuntimeReleaseReadinessSection(capabilitySnapshot),
-    "",
     liveRuntimeContext,
     "",
-    knowledgeMenu,
+    renderKnowledgePromptSummary(),
     "",
-    "## Wallet Summary",
-    walletSummary,
-    "",
-    "## Key Paths",
-    "- `src/runtime/bootstrap.ts`",
-    "- `src/runtime/chat.ts`",
-    "- `src/runtime/capabilities/`",
-    "- `src/ai/config/system.md`",
-    "- `.runtime-state/instances/<id>/cache/generated/knowledge-index.md`",
-    "- `.runtime-state/instances/<id>/cache/generated/workspace-context.md`",
-    "",
-    "Use `listKnowledgeDocs` to browse knowledge aliases and `readKnowledgeDoc` to open one by alias.",
-    "Prefer `readKnowledgeDoc` over guessing long knowledge file paths.",
-    "Use `workspaceListDirectory` first when you need to browse the runtime workspace or discover exact file paths.",
-    "Use `workspaceReadFile` only for exact runtime-workspace reads when you know the path.",
-    "Use `workspaceWriteFile` only for exact runtime-workspace artifacts such as notes, scratch files, and generated output.",
-    "Use `queryRuntimeStore` and `queryInstanceMemory` for structured runtime state instead of reading files when a structured action exists.",
+    "Registered tools for this request are attached separately. Treat those tool definitions as the exact contract.",
   ].join("\n");
 };
 

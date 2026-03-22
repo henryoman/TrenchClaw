@@ -194,7 +194,6 @@
       />
     {:else if activeTab === "wakeup"}
       <WakeupPanel
-        wakeupSettingsFilePath={runtime.state.wakeupSettingsFilePath}
         wakeupSettings={runtime.state.wakeupSettings}
         defaultPrompt={runtime.state.wakeupSettingsDefaultPrompt}
         busy={runtime.state.wakeupSettingsBusy}

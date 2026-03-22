@@ -4,9 +4,7 @@ import type { Action } from "../ai/runtime/types/action";
 import {
   ActionDispatcher,
   ActionRegistry,
-  createChatMessageId,
   createJobId,
-  createRuntimeConversationId,
   createRuntimeGateway,
   createActionContext,
   resolveLlmRuntimeBinding,
@@ -42,6 +40,7 @@ import {
   type RuntimeSettings,
 } from "./load";
 import { createRuntimeLogger, type RuntimeLogger } from "./logging/runtime-logger";
+import { createRuntimeActionThrottle } from "./trading/throttle";
 import { refreshWorkspaceContext } from "../lib/agent-scripts/refresh-workspace-context";
 import { refreshKnowledgeIndex } from "../lib/agent-scripts/refresh-knowledge-index";
 import {
@@ -59,7 +58,9 @@ import { createRuntimeChatService, type RuntimeChatService } from "./chat";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
 import { resolveInstanceKnowledgeIndexPath, resolveInstanceWorkspaceContextPath } from "./instance-paths";
 import { isRecord } from "./object-utils";
+import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./runtime-notices";
 import { migrateLegacyRuntimeState } from "./runtime-state-migration";
+import { syncManagedWakeupJob } from "./wakeup/managed-wakeup";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set([
@@ -626,6 +627,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     policyEngine,
     stateStore,
     eventBus,
+    actionThrottle: createRuntimeActionThrottle(settings),
   });
 
   for (const action of actions) {
@@ -647,37 +649,19 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       tokenAccounts,
       ultraSigner,
       stateStore,
+      llm: llm ?? undefined,
       enqueueJob,
       manageJob,
       ...overrides,
     });
 
   const persistRuntimeNotice = (content: string): void => {
-    const now = Date.now();
     const activeInstanceId = resolveCurrentActiveInstanceIdSync() ?? undefined;
-    const recentConversation = stateStore
-      .listConversations(100)
-      .find((conversation) => (activeInstanceId ? conversation.sessionId === activeInstanceId : true));
-    const conversationId = recentConversation?.id ?? createRuntimeConversationId(activeInstanceId);
-
-    stateStore.saveConversation({
-      id: conversationId,
-      sessionId: recentConversation?.sessionId ?? activeInstanceId,
-      title: recentConversation?.title ?? "Runtime notices",
-      summary: recentConversation?.summary,
-      createdAt: recentConversation?.createdAt ?? now,
-      updatedAt: now,
-    });
-    stateStore.saveChatMessage({
-      id: createChatMessageId("runtime"),
-      conversationId,
-      role: "system",
+    persistRuntimeNoticeEntry({
+      stateStore,
+      instanceId: activeInstanceId,
       content,
-      metadata: {
-        source: "runtime",
-        kind: "job-notice",
-      },
-      createdAt: now,
+      kind: "job-notice",
     });
   };
 
@@ -857,6 +841,42 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
 
   attachEventLogging(settings, logger, eventBus, sessionLogStore, memoryLogStore, summaryLogStore);
   scheduler.start();
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  if (activeInstanceId) {
+    const wakeupSync = await syncManagedWakeupJob({
+      stateStore,
+      instanceId: activeInstanceId,
+    });
+    logger.info("wakeup:sync", {
+      instanceId: activeInstanceId,
+      enabled: wakeupSync.enabled,
+      nextRunAt: wakeupSync.nextRunAt,
+      jobId: wakeupSync.jobId,
+    });
+    void dispatcher.dispatchStep(
+      createRuntimeActionContext({
+        actor: "system",
+      }),
+      {
+        actionName: "runWakeupCheck",
+        input: {
+          instanceId: activeInstanceId,
+          trigger: "boot",
+        },
+      },
+    ).then((result) => {
+      const bootResult = result.results[0];
+      logger.info("wakeup:boot_check", {
+        instanceId: activeInstanceId,
+        ok: bootResult?.ok ?? false,
+      });
+    }).catch((error) => {
+      logger.warn("wakeup:boot_check_failed", {
+        instanceId: activeInstanceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }
 
   const gateway = createRuntimeGateway({
     settings,

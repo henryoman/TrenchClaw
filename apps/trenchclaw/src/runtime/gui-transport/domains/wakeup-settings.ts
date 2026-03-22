@@ -12,6 +12,7 @@ import {
   writeInstanceWakeupSettings,
 } from "../../load/wakeup-settings";
 import { resolveCurrentActiveInstanceIdSync } from "../../instance-state";
+import { syncManagedWakeupJob } from "../../wakeup/managed-wakeup";
 import type { RuntimeGuiDomainContext } from "../contracts";
 
 const cloneWakeupSettings = (settings: WakeupSettings): WakeupSettings => ({
@@ -42,17 +43,28 @@ export const updateWakeupSettings = async (
     throw new Error("No active instance selected. Wakeup settings are instance-scoped.");
   }
 
+  const savedAtUnixMs = Date.now();
   const filePath = await writeInstanceWakeupSettings(activeInstanceId, {
     configVersion: 1,
+    savedAtUnixMs,
     wakeup: payload.settings,
   });
+  const syncResult = await syncManagedWakeupJob({
+    stateStore: context.runtime.stateStore,
+    instanceId: activeInstanceId,
+  });
 
-  context.addActivity("runtime", `Wakeup settings updated: every ${payload.settings.intervalMinutes}m`);
+  context.addActivity(
+    "runtime",
+    syncResult.enabled
+      ? `Wakeup scheduled every ${payload.settings.intervalMinutes}m`
+      : "Wakeup disabled",
+  );
 
   return {
     instanceId: activeInstanceId,
     filePath,
-    savedAt: new Date().toISOString(),
+    savedAt: new Date(savedAtUnixMs).toISOString(),
     defaultPrompt: DEFAULT_WAKEUP_PROMPT,
     settings: cloneWakeupSettings(payload.settings as WakeupSettings),
   };

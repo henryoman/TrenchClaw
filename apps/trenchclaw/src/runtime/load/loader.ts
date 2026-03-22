@@ -104,6 +104,7 @@ const normalizeRuntimeSettings = (
   const tradingPreferences = isRecord(trading.preferences) ? trading.preferences : undefined;
   const wallet = isRecord(candidate.wallet) ? candidate.wallet : {};
   const agent = isRecord(candidate.agent) ? candidate.agent : {};
+  const runtime = isRecord(candidate.runtime) ? candidate.runtime : {};
   const storage = isRecord(candidate.storage) ? candidate.storage : {};
   const sessionsStorage = isRecord(storage.sessions) ? storage.sessions : {};
   const rpc = isRecord(candidate.rpc) ? candidate.rpc : {};
@@ -140,6 +141,17 @@ const normalizeRuntimeSettings = (
   const walletDangerously = isRecord(wallet.dangerously) ? wallet.dangerously : {};
   const agentDangerously = isRecord(agent.dangerously) ? agent.dangerously : {};
   const internetAccess = isRecord(agent.internetAccess) ? agent.internetAccess : {};
+  const runtimeScheduler = isRecord(runtime.scheduler) ? runtime.scheduler : {};
+  const runtimeDispatcher = isRecord(runtime.dispatcher) ? runtime.dispatcher : {};
+  const runtimeIdempotency = isRecord(runtime.idempotency) ? runtime.idempotency : {};
+  const runtimeTradingThrottle = isRecord(runtime.tradingThrottle) ? runtime.tradingThrottle : {};
+  const runtimeTradingThrottleLanes = isRecord(runtimeTradingThrottle.lanes) ? runtimeTradingThrottle.lanes : {};
+  const swapExecutionThrottle = isRecord(runtimeTradingThrottleLanes.swapExecution)
+    ? runtimeTradingThrottleLanes.swapExecution
+    : {};
+  const solanaRpcThrottle = isRecord(runtimeTradingThrottleLanes.solanaRpc)
+    ? runtimeTradingThrottleLanes.solanaRpc
+    : {};
 
   return {
     configVersion: 1,
@@ -261,17 +273,42 @@ const normalizeRuntimeSettings = (
     },
     runtime: {
       scheduler: {
-        tickMs: 1_000,
-        maxConcurrentJobs: 4,
+        tickMs: Math.max(1, Math.trunc(toNumberValue(runtimeScheduler.tickMs, 1_000))),
+        maxConcurrentJobs: Math.max(1, Math.trunc(toNumberValue(runtimeScheduler.maxConcurrentJobs, 4))),
       },
       dispatcher: {
-        maxActionAttempts: 3,
-        defaultActionTimeoutMs: 120_000,
-        defaultBackoffMs: 300,
+        maxActionAttempts: Math.max(1, Math.trunc(toNumberValue(runtimeDispatcher.maxActionAttempts, 3))),
+        defaultActionTimeoutMs: Math.max(
+          1,
+          Math.trunc(toNumberValue(runtimeDispatcher.defaultActionTimeoutMs, 120_000)),
+        ),
+        defaultBackoffMs: Math.max(0, Math.trunc(toNumberValue(runtimeDispatcher.defaultBackoffMs, 300))),
       },
       idempotency: {
-        enabled: true,
-        ttlHours: 24,
+        enabled: toBooleanValue(runtimeIdempotency.enabled, true),
+        ttlHours: Math.max(1, Math.trunc(toNumberValue(runtimeIdempotency.ttlHours, 24))),
+      },
+      tradingThrottle: {
+        enabled: toBooleanValue(runtimeTradingThrottle.enabled, true),
+        lanes: {
+          swapExecution: {
+            enabled: toBooleanValue(swapExecutionThrottle.enabled, true),
+            requestsPerWindow: Math.max(
+              1,
+              Math.trunc(toNumberValue(swapExecutionThrottle.requestsPerWindow, 20)),
+            ),
+            windowMs: Math.max(1, Math.trunc(toNumberValue(swapExecutionThrottle.windowMs, 10_000))),
+            maxBurst: Math.max(1, Math.trunc(toNumberValue(swapExecutionThrottle.maxBurst, 10))),
+            minSpacingMs: Math.max(0, Math.trunc(toNumberValue(swapExecutionThrottle.minSpacingMs, 250))),
+          },
+          solanaRpc: {
+            enabled: toBooleanValue(solanaRpcThrottle.enabled, false),
+            requestsPerWindow: Math.max(1, Math.trunc(toNumberValue(solanaRpcThrottle.requestsPerWindow, 15))),
+            windowMs: Math.max(1, Math.trunc(toNumberValue(solanaRpcThrottle.windowMs, 1_000))),
+            maxBurst: Math.max(1, Math.trunc(toNumberValue(solanaRpcThrottle.maxBurst, 5))),
+            minSpacingMs: Math.max(0, Math.trunc(toNumberValue(solanaRpcThrottle.minSpacingMs, 0))),
+          },
+        },
       },
     },
     storage: {

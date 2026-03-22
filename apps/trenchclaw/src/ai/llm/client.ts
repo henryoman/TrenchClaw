@@ -28,7 +28,6 @@ const buildTemporalContext = (now: Date = new Date()): string => {
   const local = new Intl.DateTimeFormat("en-US", {
     dateStyle: "full",
     timeStyle: "long",
-    timeZoneName: "short",
   }).format(now);
 
   return [
