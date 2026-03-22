@@ -10,4 +10,5 @@ export * from "./runWakeupCheck";
 export * from "./sleep";
 export * from "./enqueueRuntimeJob";
 export * from "./manageRuntimeJob";
+export * from "./downloadGeckoTerminalOhlcv";
 export * from "./submitTradingRoutine";
