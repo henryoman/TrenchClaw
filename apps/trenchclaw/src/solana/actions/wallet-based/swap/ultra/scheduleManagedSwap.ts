@@ -3,6 +3,12 @@ import { z } from "zod";
 import type { Action, ActionStep } from "../../../../../ai/runtime/types/action";
 import type { RuntimeJobEnqueueRequest } from "../../../../../ai/runtime/types/context";
 import type { JobState } from "../../../../../ai/runtime/types/state";
+import {
+  deriveEvenlySpacedIntervalMs,
+  resolveIntervalDurationMs,
+  resolveScheduledTimeUnixMs,
+  scheduleDurationInputSchema,
+} from "../../../../../runtime/time/scheduling";
 import { managedWalletSelectorSchema } from "../../../../lib/wallet/wallet-selector";
 import { walletGroupNameSchema } from "../../../../lib/wallet/wallet-types";
 import { amountInputSchema } from "./shared";
@@ -42,7 +48,23 @@ const managedUltraSwapBaseSchema = amountInputSchema.extend({
 
 const singleScheduleSchema = z.object({
   kind: z.literal("once"),
-  executeAtUnixMs: z.number().int().nonnegative(),
+  executeAtUnixMs: z.number().int().nonnegative().optional(),
+  executeIn: scheduleDurationInputSchema.optional(),
+}).superRefine((value, ctx) => {
+  if (value.executeAtUnixMs !== undefined && value.executeIn !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide either executeAtUnixMs or executeIn, not both.",
+      path: ["executeIn"],
+    });
+  }
+  if (value.executeAtUnixMs === undefined && value.executeIn === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide either executeAtUnixMs or executeIn.",
+      path: ["executeAtUnixMs"],
+    });
+  }
 });
 
 const dcaScheduleSchema = z
@@ -50,12 +72,30 @@ const dcaScheduleSchema = z
     kind: z.literal("dca"),
     installments: z.number().int().min(2).max(100),
     startAtUnixMs: z.number().int().nonnegative().optional(),
+    startIn: scheduleDurationInputSchema.optional(),
     intervalMs: z.number().int().positive().optional(),
+    interval: scheduleDurationInputSchema.optional(),
     endAtUnixMs: z.number().int().nonnegative().optional(),
   })
-  .refine((value) => value.intervalMs !== undefined || value.endAtUnixMs !== undefined, {
-    message: "Provide either intervalMs or endAtUnixMs for DCA scheduling",
+  .refine((value) => value.intervalMs !== undefined || value.interval !== undefined || value.endAtUnixMs !== undefined, {
+    message: "Provide intervalMs, interval, or endAtUnixMs for DCA scheduling",
     path: ["intervalMs"],
+  })
+  .superRefine((value, ctx) => {
+    if (value.startAtUnixMs !== undefined && value.startIn !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either startAtUnixMs or startIn, not both.",
+        path: ["startIn"],
+      });
+    }
+    if (value.intervalMs !== undefined && value.interval !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either intervalMs or interval, not both.",
+        path: ["interval"],
+      });
+    }
   });
 
 const scheduleManagedUltraSwapInputSchema = managedUltraSwapBaseSchema.extend({
@@ -181,21 +221,27 @@ const resolveDcaIntervalMs = (
   schedule: z.output<typeof dcaScheduleSchema>,
   startAtUnixMs: number,
 ): number => {
-  if (typeof schedule.intervalMs === "number") {
-    return schedule.intervalMs;
+  const explicitIntervalMs = resolveIntervalDurationMs({
+    intervalMs: schedule.intervalMs,
+    interval: schedule.interval,
+    granularity: "seconds",
+    label: "interval",
+  });
+  if (explicitIntervalMs !== undefined) {
+    return explicitIntervalMs;
   }
 
   const endAtUnixMs = schedule.endAtUnixMs;
   if (typeof endAtUnixMs !== "number") {
-    throw new Error("DCA schedule requires intervalMs or endAtUnixMs");
+    throw new Error("DCA schedule requires intervalMs, interval, or endAtUnixMs");
   }
-  if (endAtUnixMs <= startAtUnixMs) {
-    throw new Error("DCA endAtUnixMs must be greater than startAtUnixMs");
-  }
-
-  const spanMs = endAtUnixMs - startAtUnixMs;
-  const gaps = schedule.installments - 1;
-  return Math.max(1, Math.floor(spanMs / gaps));
+  return deriveEvenlySpacedIntervalMs({
+    startAtUnixMs,
+    endAtUnixMs,
+    installments: schedule.installments,
+    granularity: "seconds",
+    label: "DCA schedule",
+  });
 };
 
 const buildScheduledSwapPlan = (input: ScheduleManagedUltraSwapInput): ScheduledSwapPlan => {
@@ -235,7 +281,13 @@ const buildScheduledSwapPlan = (input: ScheduleManagedUltraSwapInput): Scheduled
   if (schedule.kind === "once") {
     return {
       routineName: "actionSequence",
-      executeAtUnixMs: schedule.executeAtUnixMs,
+      executeAtUnixMs:
+        resolveScheduledTimeUnixMs({
+          atUnixMs: schedule.executeAtUnixMs,
+          inDuration: schedule.executeIn,
+          granularity: "seconds",
+          label: "execute",
+        }) ?? Date.now(),
       scheduleSummary: {
         kind: "once",
         installments: 1,
@@ -254,7 +306,13 @@ const buildScheduledSwapPlan = (input: ScheduleManagedUltraSwapInput): Scheduled
     };
   }
 
-  const startAtUnixMs = schedule.startAtUnixMs ?? Date.now();
+  const startAtUnixMs =
+    resolveScheduledTimeUnixMs({
+      atUnixMs: schedule.startAtUnixMs,
+      inDuration: schedule.startIn,
+      granularity: "seconds",
+      label: "start",
+    }) ?? Date.now();
   const intervalMs = resolveDcaIntervalMs(schedule, startAtUnixMs);
   const splitAmounts = splitScheduledAmount(amount, schedule.installments);
   const steps: ActionStep[] = [];

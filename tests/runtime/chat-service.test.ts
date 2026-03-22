@@ -1479,6 +1479,85 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("schedule a managed Ultra swap");
   });
 
+  test("shows upcoming trading schedule in the operator prompt and points to the read path", async () => {
+    const stateStore = new InMemoryStateStore();
+    const now = Date.now();
+    stateStore.saveJob({
+      id: "job-trading-prompt-1",
+      serialNumber: 17,
+      botId: "trading-routine:prompt-1",
+      routineName: "actionSequence",
+      status: "pending",
+      config: {
+        type: "tradingRoutine",
+        kind: "swap_once",
+        swapProvider: "ultra",
+        steps: [
+          {
+            key: "swap-1",
+            actionName: "managedSwap",
+            input: {
+              inputCoin: "SOL",
+              outputCoin: "USDC",
+              amount: "0.05",
+            },
+          },
+        ],
+      },
+      nextRunAt: now + 60_000,
+      cyclesCompleted: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const gateway = await createConfiguredGateway({
+      stateStore,
+      capabilitySnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "queryRuntimeStore",
+            description: "runtime store",
+            purpose: "inspect runtime state",
+            routingHint: "inspect runtime state",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { request: { type: "listUpcomingTradingJobs" } },
+            toolDescription: "runtime store",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-upcoming-trades-1",
+          role: "user",
+          parts: [{ type: "text", text: "what trades are scheduled?" }],
+        },
+      ],
+      userMessage: "what trades are scheduled?",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.systemPrompt).toContain("### Upcoming Trading Schedule");
+    expect(execution.systemPrompt).toContain("request.type = \"listUpcomingTradingJobs\"");
+    expect(execution.systemPrompt).toContain("#17 pending swap_once");
+    expect(execution.systemPrompt).toContain("SOL -> USDC");
+  });
+
   test("guides direct exact-price trigger orders through the operator prompt", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {

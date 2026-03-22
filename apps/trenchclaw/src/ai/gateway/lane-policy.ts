@@ -1,7 +1,8 @@
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { GatewayLane, GatewayLanePolicy, GatewayLaneStatus } from "./types";
 
-const OPERATOR_TOOL_ALLOWLIST = [
+/** Tools the operator-chat lane may expose (intersected with the runtime capability snapshot). */
+export const OPERATOR_TOOL_ALLOWLIST = [
   "getManagedWalletContents",
   "getManagedWalletSolBalances",
   "listKnowledgeDocs",
@@ -26,7 +27,6 @@ const OPERATOR_TOOL_ALLOWLIST = [
   "managedSwap",
   "managedUltraSwap",
   "scheduleManagedUltraSwap",
-  "submitTradingRoutine",
   "workspaceBash",
   "workspaceListDirectory",
   "workspaceReadFile",

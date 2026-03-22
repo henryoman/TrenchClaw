@@ -3,6 +3,12 @@ import { z } from "zod";
 import type { ActionStep, RetryPolicy } from "../../ai/runtime/types/action";
 import type { RuntimeJobEnqueueRequest } from "../../ai/runtime/types/context";
 import { loadRuntimeSettings } from "../../runtime/load";
+import {
+  deriveEvenlySpacedIntervalMs,
+  resolveIntervalDurationMs,
+  resolveScheduledTimeUnixMs,
+  scheduleDurationInputSchema,
+} from "../../runtime/time/scheduling";
 import { managedWalletSelectorSchema } from "../lib/wallet/wallet-selector";
 import { walletGroupNameSchema } from "../lib/wallet/wallet-types";
 
@@ -72,11 +78,13 @@ const dcaScheduleSchema = z
   .object({
     installments: z.number().int().min(2).max(100),
     startAtUnixMs: z.number().int().nonnegative().optional(),
+    startIn: scheduleDurationInputSchema.optional(),
     intervalMs: z.number().int().positive().optional(),
+    interval: scheduleDurationInputSchema.optional(),
     endAtUnixMs: z.number().int().nonnegative().optional(),
   })
-  .refine((value) => value.intervalMs !== undefined || value.endAtUnixMs !== undefined, {
-    message: "Provide either intervalMs or endAtUnixMs for DCA scheduling",
+  .refine((value) => value.intervalMs !== undefined || value.interval !== undefined || value.endAtUnixMs !== undefined, {
+    message: "Provide intervalMs, interval, or endAtUnixMs for DCA scheduling",
     path: ["intervalMs"],
   });
 
@@ -133,7 +141,16 @@ const validateSequenceStepOrdering = (
 const swapOnceTradingRoutineSchema = routineBaseSchema.extend({
   kind: z.literal("swap_once"),
   executeAtUnixMs: z.number().int().nonnegative().optional(),
+  executeIn: scheduleDurationInputSchema.optional(),
   swap: tradingManagedSwapSchema,
+}).superRefine((value, ctx) => {
+  if (value.executeAtUnixMs !== undefined && value.executeIn !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide either executeAtUnixMs or executeIn, not both.",
+      path: ["executeIn"],
+    });
+  }
 });
 
 const dcaTradingRoutineSchema = routineBaseSchema.extend({
@@ -141,15 +158,38 @@ const dcaTradingRoutineSchema = routineBaseSchema.extend({
   executionMode: z.enum(["inline_sleep", "staggered_jobs"]).default("inline_sleep"),
   schedule: dcaScheduleSchema,
   swap: tradingManagedSwapSchema,
+}).superRefine((value, ctx) => {
+  if (value.schedule.startAtUnixMs !== undefined && value.schedule.startIn !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide either startAtUnixMs or startIn, not both.",
+      path: ["schedule", "startIn"],
+    });
+  }
+  if (value.schedule.intervalMs !== undefined && value.schedule.interval !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Provide either intervalMs or interval, not both.",
+      path: ["schedule", "interval"],
+    });
+  }
 });
 
 const actionSequenceTradingRoutineSchema = routineBaseSchema
   .extend({
     kind: z.literal("action_sequence"),
     executeAtUnixMs: z.number().int().nonnegative().optional(),
+    executeIn: scheduleDurationInputSchema.optional(),
     steps: z.array(tradingSequenceStepSchema).min(1).max(100),
   })
   .superRefine((value, ctx) => {
+    if (value.executeAtUnixMs !== undefined && value.executeIn !== undefined) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Provide either executeAtUnixMs or executeIn, not both.",
+        path: ["executeIn"],
+      });
+    }
     validateSequenceStepOrdering(value.steps, ctx);
   });
 
@@ -247,25 +287,59 @@ const splitScheduledAmount = (amount: number | string, parts: number): Array<num
   return splitIntegerAmount(total, parts).map((part) => fromScaledBigInt(part, scale));
 };
 
-const resolveDcaIntervalMs = (
-  schedule: z.infer<typeof dcaScheduleSchema>,
+const resolveTradingExecuteAtUnixMs = (input: {
+  executeAtUnixMs?: number;
+  executeIn?: z.infer<typeof scheduleDurationInputSchema>;
+  now?: number;
+  label: string;
+}): number | undefined =>
+  resolveScheduledTimeUnixMs({
+    atUnixMs: input.executeAtUnixMs,
+    inDuration: input.executeIn,
+    now: input.now,
+    granularity: "seconds",
+    label: input.label,
+  });
+
+const resolveTradingDcaStartAtUnixMs = (input: {
+  startAtUnixMs?: number;
+  startIn?: z.infer<typeof scheduleDurationInputSchema>;
+  now?: number;
+}): number =>
+  resolveScheduledTimeUnixMs({
+    atUnixMs: input.startAtUnixMs,
+    inDuration: input.startIn,
+    now: input.now,
+    granularity: "seconds",
+    label: "start",
+  }) ?? Math.max(0, Math.trunc(input.now ?? Date.now()));
+
+const resolveTradingDcaIntervalMs = (
+  schedule: z.infer<typeof dcaTradingRoutineSchema>["schedule"],
   startAtUnixMs: number,
 ): number => {
-  if (typeof schedule.intervalMs === "number") {
-    return schedule.intervalMs;
+  const explicitIntervalMs = resolveIntervalDurationMs({
+    intervalMs: schedule.intervalMs,
+    interval: schedule.interval,
+    granularity: "seconds",
+    label: "interval",
+  });
+  if (explicitIntervalMs !== undefined) {
+    return explicitIntervalMs;
   }
 
   const endAtUnixMs = schedule.endAtUnixMs;
   if (typeof endAtUnixMs !== "number") {
-    throw new Error("DCA schedule requires intervalMs or endAtUnixMs");
-  }
-  if (endAtUnixMs <= startAtUnixMs) {
-    throw new Error("DCA endAtUnixMs must be greater than startAtUnixMs");
+    throw new Error("DCA schedule requires intervalMs, interval, or endAtUnixMs");
   }
 
-  const spanMs = endAtUnixMs - startAtUnixMs;
-  const gaps = schedule.installments - 1;
-  return Math.max(1, Math.floor(spanMs / gaps));
+  return deriveEvenlySpacedIntervalMs({
+    startAtUnixMs,
+    endAtUnixMs,
+    installments: schedule.installments,
+    granularity: "seconds",
+    label: "DCA schedule",
+  });
 };
 
 const resolveStepKey = (
@@ -351,8 +425,11 @@ const buildInlineDcaSteps = (
   intervalMs: number;
   steps: ActionStep[];
 } => {
-  const startAtUnixMs = spec.schedule.startAtUnixMs ?? Date.now();
-  const intervalMs = resolveDcaIntervalMs(spec.schedule, startAtUnixMs);
+  const startAtUnixMs = resolveTradingDcaStartAtUnixMs({
+    startAtUnixMs: spec.schedule.startAtUnixMs,
+    startIn: spec.schedule.startIn,
+  });
+  const intervalMs = resolveTradingDcaIntervalMs(spec.schedule, startAtUnixMs);
   const splitAmounts = splitScheduledAmount(spec.swap.amount, spec.schedule.installments);
   const steps: ActionStep[] = [];
   let previousKey: string | undefined;
@@ -460,7 +537,11 @@ export const planTradingRoutineSubmission = async (
         {
           botId: createBotId(spec, tradingRoutineId),
           routineName: "actionSequence",
-          executeAtUnixMs: spec.executeAtUnixMs,
+          executeAtUnixMs: resolveTradingExecuteAtUnixMs({
+            executeAtUnixMs: spec.executeAtUnixMs,
+            executeIn: spec.executeIn,
+            label: "execute",
+          }),
           config: {
             type: "tradingRoutine",
             tradingRoutineId,
@@ -477,8 +558,11 @@ export const planTradingRoutineSubmission = async (
   if (spec.kind === "dca") {
     const swapProvider = await resolveRequestedTradingSwapProvider(spec.swap.provider);
     if (spec.executionMode === "staggered_jobs") {
-      const startAtUnixMs = spec.schedule.startAtUnixMs ?? Date.now();
-      const intervalMs = resolveDcaIntervalMs(spec.schedule, startAtUnixMs);
+      const startAtUnixMs = resolveTradingDcaStartAtUnixMs({
+        startAtUnixMs: spec.schedule.startAtUnixMs,
+        startIn: spec.schedule.startIn,
+      });
+      const intervalMs = resolveTradingDcaIntervalMs(spec.schedule, startAtUnixMs);
       const splitAmounts = splitScheduledAmount(spec.swap.amount, spec.schedule.installments);
       const jobs = splitAmounts.map<RuntimeJobEnqueueRequest>((installmentAmount, index) => {
         const stepKey = `swap-${index + 1}`;
@@ -584,7 +668,11 @@ export const planTradingRoutineSubmission = async (
       {
         botId: createBotId(spec, tradingRoutineId),
         routineName: "actionSequence",
-        executeAtUnixMs: spec.executeAtUnixMs,
+        executeAtUnixMs: resolveTradingExecuteAtUnixMs({
+          executeAtUnixMs: spec.executeAtUnixMs,
+          executeIn: spec.executeIn,
+          label: "execute",
+        }),
         config: {
           type: "tradingRoutine",
           tradingRoutineId,

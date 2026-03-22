@@ -1,3 +1,5 @@
+# Used only by GitHub's REST "Generate release notes" API. The Release workflow
+# publishes bodies from scripts/generate-release-notes.ts instead (full git history).
 changelog:
   categories:
     - title: Breaking Changes
