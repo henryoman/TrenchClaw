@@ -14,6 +14,90 @@ Use this file only for GeckoTerminal data on the `solana` network.
 - Cache window: `1 minute`
 - Freshness target: data can update as fast as `2-3 seconds` after on-chain confirmation
 
+## TrenchClaw Runtime Download Command
+
+TrenchClaw now exposes a runtime action and CLI command for downloading raw
+GeckoTerminal OHLC JSON into the active instance workspace.
+
+Action name:
+
+- `downloadGeckoTerminalOhlcv`
+
+Exact CLI form:
+
+```bash
+TRENCHCLAW_RUNTIME_STATE_ROOT="/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/.runtime-state" \
+TRENCHCLAW_ACTIVE_INSTANCE_ID="01" \
+bun run "src/solana/actions/execute.ts" downloadGeckoTerminalOhlcv \
+  --input-json '{"poolAddress":"Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE","timeframe":"minute","aggregate":5,"limit":5}'
+```
+
+Required input fields:
+
+- `poolAddress` GeckoTerminal Solana pool address
+- `timeframe` one of `minute`, `hour`, `day`
+
+Optional input fields:
+
+- `aggregate` integer; allowed values depend on `timeframe`
+- `beforeTimestamp` integer seconds since Unix epoch
+- `limit` integer, max `1000`, default `100`
+- `currency` one of `usd`, `token`
+- `includeEmptyIntervals` boolean, default `false`
+- `token` one of `base`, `quote`, or a token address
+
+Timeframe and aggregate rules enforced by the runtime action:
+
+- `minute` supports `1`, `5`, `15`
+- `hour` supports `1`, `4`, `12`
+- `day` supports `1`
+
+If `aggregate` is omitted:
+
+- GeckoTerminal uses its endpoint default behavior
+- the saved filename uses `agg-default`
+
+Runtime output location:
+
+- `.runtime-state/instances/<id>/workspace/output/research/market-data/geckoterminal/ohlcv/`
+
+Example real output path:
+
+- `.runtime-state/instances/01/workspace/output/research/market-data/geckoterminal/ohlcv/czfq3xzzdmsdgduyrnltrhgc47cxcztlg4crryfu44ze-minute-agg-5-2026-03-22T07-52-35-942Z.json`
+
+Saved filename pattern:
+
+- `{sanitized-pool-address}-{timeframe}-agg-{aggregate-or-default}-{downloadedAtIso}.json`
+
+Command return payload includes:
+
+- `instanceId`
+- `network`
+- `source`
+- `requestUrl`
+- `downloadedAt`
+- `candleCount`
+- `latestOpenTimestamp`
+- `earliestOpenTimestamp`
+- `outputPath`
+- `runtimePath`
+
+Saved JSON artifact shape:
+
+- top-level metadata such as `artifactType`, `source`, `network`, `downloadedAt`
+- a `request` object containing the exact normalized input used
+- `requestUrl`
+- full GeckoTerminal `response`
+
+OHLC candle row format in `response.data.attributes.ohlcv_list`:
+
+- index `0`: open timestamp, Unix seconds
+- index `1`: open
+- index `2`: high
+- index `3`: low
+- index `4`: close
+- index `5`: volume
+
 ## Request Template
 
 ```bash
@@ -202,11 +286,11 @@ Fetch OHLCV candles for a Solana pool.
 Parameters:
 
 - `pool_address` required, pool address
-- `timeframe` required, string
-- `aggregate` optional, string
+- `timeframe` required; allowed values: `minute`, `hour`, `day`
+- `aggregate` optional, integer
 - `before_timestamp` optional, seconds since epoch
 - `limit` optional, max `1000`
-- `currency` optional, string
+- `currency` optional; use `usd` or `token`
 - `include_empty_intervals` optional, boolean
 - `token` optional; available values: `base`, `quote`, or a token address
 

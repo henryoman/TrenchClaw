@@ -24,6 +24,9 @@ export const resolveInstanceWorkspaceNotesRoot = (instanceId: string): string =>
 export const resolveInstanceWorkspaceResearchNotesRoot = (instanceId: string): string =>
   resolveInstanceWorkspaceChildRoot(instanceId, "notes", "research");
 
+export const resolveInstanceWorkspaceNewsRoot = (instanceId: string): string =>
+  resolveInstanceWorkspaceChildRoot(instanceId, "news");
+
 export const resolveInstanceWorkspaceOutputRoot = (instanceId: string): string =>
   resolveInstanceWorkspaceChildRoot(instanceId, "output");
 
@@ -72,6 +75,14 @@ export const resolveActiveInstanceWorkspaceResearchNotesRootOrThrow = (): string
     throw new Error("No active instance selected. Workspace research notes are instance-scoped.");
   }
   return resolveInstanceWorkspaceResearchNotesRoot(activeInstanceId);
+};
+
+export const resolveActiveInstanceWorkspaceNewsRootOrThrow = (): string => {
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync();
+  if (!activeInstanceId) {
+    throw new Error("No active instance selected. Workspace news is instance-scoped.");
+  }
+  return resolveInstanceWorkspaceNewsRoot(activeInstanceId);
 };
 
 export const resolveActiveInstanceWorkspaceGeckoTerminalOhlcvRootOrThrow = (): string => {

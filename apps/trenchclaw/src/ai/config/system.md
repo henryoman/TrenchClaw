@@ -37,6 +37,6 @@ TrenchClaw is a runtime-bound Solana agent. The model reasons, but the runtime o
 ## Workspace
 
 - The runtime workspace is instance-scoped.
-- Standard workspace folders are `strategies`, `configs`, `typescript`, `notes`, `scratch`, `output`, and `routines`.
+- Standard workspace folders are `strategies`, `configs`, `typescript`, `notes`, `news`, `scratch`, `output`, and `routines`.
 - Treat the workspace as a support surface for notes, generated output, config fragments, routines, and other working files.
 - Do not treat the workspace as unrestricted filesystem access.

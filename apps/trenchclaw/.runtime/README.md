@@ -32,6 +32,7 @@ Rules:
 - Generated prompt-support artifacts live under `.runtime-state/instances/<id>/cache/generated/`.
 - Raw JSON/API download artifacts belong under `.runtime-state/instances/<id>/workspace/output/`.
 - Long-form research writeups belong under `.runtime-state/instances/<id>/workspace/notes/`.
+- GeckoTerminal OHLC downloads belong under `.runtime-state/instances/<id>/workspace/output/research/market-data/geckoterminal/ohlcv/`.
 - The only cross-instance mutable file is `.runtime-state/instances/active-instance.json`.
 - Append-only logs use `.jsonl`.
 - Session summary snapshots use `.json`.
@@ -88,3 +89,43 @@ Important distinction:
 - `.runtime/instances/01/` is a tracked seed instance, not an active runtime instance.
 - The active runtime instance lives under `.runtime-state/instances/<id>/` or the configured external runtime root.
 - Example research path: `instances/<id>/workspace/output/research/market-data/geckoterminal/ohlcv/`.
+
+## GeckoTerminal OHLC Command
+
+Working CLI form:
+
+```bash
+TRENCHCLAW_RUNTIME_STATE_ROOT="/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/.runtime-state" \
+TRENCHCLAW_ACTIVE_INSTANCE_ID="01" \
+bun run "src/solana/actions/execute.ts" downloadGeckoTerminalOhlcv \
+  --input-json '{"poolAddress":"Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE","timeframe":"minute","aggregate":5,"limit":5}'
+```
+
+Allowed timeframe values:
+
+- `minute`
+- `hour`
+- `day`
+
+Allowed aggregate values by timeframe:
+
+- `minute`: `1`, `5`, `15`
+- `hour`: `1`, `4`, `12`
+- `day`: `1`
+
+Action defaults and limits:
+
+- `limit` defaults to `100`
+- `limit` max is `1000`
+- `includeEmptyIntervals` defaults to `false`
+- `beforeTimestamp` is Unix seconds
+
+Saved artifact filename pattern:
+
+- `{poolAddressSanitized}-{timeframe}-agg-{aggregate-or-default}-{downloadedAtIso}.json`
+
+Saved JSON contains:
+
+- normalized request metadata
+- exact request URL
+- full GeckoTerminal response payload
