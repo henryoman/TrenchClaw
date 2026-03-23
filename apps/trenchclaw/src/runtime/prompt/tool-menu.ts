@@ -106,6 +106,41 @@ const classifyToolGroup = (tool: RuntimeModelToolSnapshotEntry): ToolGroupId => 
 const formatToolList = (tools: RuntimeModelToolSnapshotEntry[]): string =>
   tools.map((tool) => `\`${tool.name}\``).join(", ");
 
+const formatToolListOrNone = (tools: RuntimeModelToolSnapshotEntry[]): string =>
+  tools.length > 0 ? formatToolList(tools) : "none";
+
+export const renderModelAccessSummarySection = (tools: RuntimeModelToolSnapshotEntry[]): string => {
+  const sortedTools = tools.toSorted((left, right) => left.name.localeCompare(right.name));
+  const workspaceTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "workspace-cli");
+  const knowledgeTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "knowledge");
+  const readTools = sortedTools.filter((tool) =>
+    tool.sideEffectLevel === "read"
+    && classifyToolGroup(tool) !== "workspace-cli"
+    && classifyToolGroup(tool) !== "knowledge");
+  const mutatingTools = sortedTools.filter((tool) =>
+    tool.sideEffectLevel !== "read"
+    && classifyToolGroup(tool) !== "workspace-cli"
+    && classifyToolGroup(tool) !== "knowledge");
+  const hasRuntimeStoreRead = sortedTools.some((tool) => tool.name === "queryRuntimeStore");
+
+  return [
+    "## What You Can See Right Now",
+    "- current chat input: only the current conversation messages that were sent with this request",
+    "- live injected context: current clock, SOL snapshot, upcoming trading schedule, wallet summary, and repo knowledge index hints",
+    hasRuntimeStoreRead
+      ? "- other chats/runtime records: not preloaded; use `queryRuntimeStore` only when you actually need runtime state outside the current conversation"
+      : "- other chats/runtime records: not preloaded and not directly available in this request",
+    "- protected material: vaults, keypairs, and hidden tools are not directly available",
+    "",
+    "## Tools Available Right Now",
+    "- if a tool is not listed below, it is unavailable for this turn",
+    `- read tools: ${formatToolListOrNone(readTools)}`,
+    `- write/execute tools: ${formatToolListOrNone(mutatingTools)}`,
+    `- workspace tools: ${formatToolListOrNone(workspaceTools)}`,
+    `- knowledge tools: ${formatToolListOrNone(knowledgeTools)}`,
+  ].join("\n");
+};
+
 export const renderCommandMenuSection = (tools: RuntimeModelToolSnapshotEntry[], heading = "## Command Menu"): string => {
   const grouped = new Map<ToolGroupId, RuntimeModelToolSnapshotEntry[]>();
   for (const tool of tools) {

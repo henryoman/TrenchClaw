@@ -233,7 +233,13 @@
       {#if GUI_QUEUE_PANEL_ENABLED}
         <QueuePanel jobs={runtime.state.queueJobs} />
       {/if}
-      <SummaryPanel entries={runtime.state.activityEntries} {formatTime} />
+      <SummaryPanel
+        entries={runtime.state.activityEntries}
+        liveMessages={chat?.chat.messages ?? []}
+        liveChatStatus={chat?.chat.status ?? "ready"}
+        liveRuntimeError={chat?.state.runtimeError ?? ""}
+        {formatTime}
+      />
     </section>
   </WorkspaceShell>
 {/if}

@@ -3,6 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
+const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = "trenchclaw-dev-runtime";
 
 const normalize = (value: string): string => path.resolve(value);
 const resolveAbsoluteEnvPath = (envKey: string, value: string): string => {
@@ -37,7 +38,7 @@ export const runtimeStatePath = (...segments: string[]): string => {
   const configuredRoot = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
   const runtimeRoot = configuredRoot
     ? resolveAbsoluteEnvPath("TRENCHCLAW_RUNTIME_STATE_ROOT", configuredRoot)
-    : path.join(CORE_APP_ROOT, ".runtime-state");
+    : path.join(process.env.HOME || process.env.USERPROFILE || process.cwd(), DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY);
   return path.join(runtimeRoot, ...segments);
 };
 

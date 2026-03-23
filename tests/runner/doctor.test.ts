@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
-import { collectDoctorReport, formatDoctorReport, type ResolvedLayout } from "../../apps/runner/index";
+import { collectDoctorReport, formatDoctorReport, resolveLayout, type ResolvedLayout } from "../../apps/runner/index";
 
 const tempRoots: string[] = [];
 
@@ -36,6 +36,21 @@ afterEach(async () => {
 });
 
 describe("collectDoctorReport", () => {
+  test("uses the external developer runtime root instead of the repo-local fallback in workspace mode", () => {
+    const homeRoot = path.join("/tmp", `trenchclaw-home-${crypto.randomUUID()}`);
+    const layout = resolveLayout({
+      ...process.env,
+      HOME: homeRoot,
+      USERPROFILE: homeRoot,
+      TRENCHCLAW_RELEASE_ROOT: "",
+      TRENCHCLAW_RUNTIME_STATE_ROOT: "",
+    });
+
+    expect(layout.kind).toBe("workspace");
+    expect(layout.runtimeStateRoot).toBe(path.join(homeRoot, "trenchclaw-dev-runtime"));
+    expect(layout.runtimeStateRoot).not.toBe(path.join(layout.root, "apps", "trenchclaw", ".runtime-state"));
+  });
+
   test("treats missing optional CLIs as warnings instead of blocking first launch", async () => {
     const layout = await createLayout();
     const report = collectDoctorReport({

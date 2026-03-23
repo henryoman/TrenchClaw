@@ -61,6 +61,8 @@ interface ResolvedTokenPool extends ParsedTokenPool {
   currentPriceUsd: number;
 }
 
+type LookbackUnit = keyof typeof LOOKBACK_UNIT_MS;
+
 interface OhlcvRow {
   openTimestamp: number;
   open: number;
@@ -167,8 +169,11 @@ const parseLookback = (value: string): ParsedLookback => {
   }
 
   const magnitude = Number(match[1]);
-  const unit = match[2];
+  const unit = match[2] as LookbackUnit;
   const unitMs = LOOKBACK_UNIT_MS[unit];
+  if (unitMs === undefined) {
+    throw new Error("Invalid `lookback` unit.");
+  }
   const milliseconds = Math.round(magnitude * unitMs);
   if (!Number.isFinite(milliseconds) || milliseconds <= 0) {
     throw new Error("Invalid `lookback`. The resolved duration must be greater than zero.");
@@ -267,71 +272,61 @@ const parseTokenPools = (payload: JsonObject): ParsedTokenPool[] => {
   });
 };
 
-const resolveBestPool = (pools: ParsedTokenPool[], coinAddress: string): ResolvedTokenPool | null => {
+const resolvePoolCandidate = (
+  pool: ParsedTokenPool,
+  normalizedCoinAddress: string,
+): ResolvedTokenPool | null => {
+  if (pool.baseToken?.address === normalizedCoinAddress && pool.baseTokenPriceUsd !== null) {
+    return {
+      ...pool,
+      token: pool.baseToken,
+      tokenSide: "base",
+      currentPriceUsd: pool.baseTokenPriceUsd,
+    };
+  }
+
+  if (pool.quoteToken?.address === normalizedCoinAddress && pool.quoteTokenPriceUsd !== null) {
+    return {
+      ...pool,
+      token: pool.quoteToken,
+      tokenSide: "quote",
+      currentPriceUsd: pool.quoteTokenPriceUsd,
+    };
+  }
+
+  return null;
+};
+
+const rankResolvedPoolCandidates = (left: ResolvedTokenPool, right: ResolvedTokenPool): number => {
+  const volumeDelta = (right.volume24hUsd ?? 0) - (left.volume24hUsd ?? 0);
+  if (volumeDelta !== 0) {
+    return volumeDelta;
+  }
+
+  return (right.reserveUsd ?? 0) - (left.reserveUsd ?? 0);
+};
+
+const collectPoolCandidates = (pools: ParsedTokenPool[], coinAddress: string): ResolvedTokenPool[] => {
   const normalizedCoinAddress = coinAddress.trim();
-  const candidates = pools.flatMap((pool) => {
-    if (pool.baseToken?.address === normalizedCoinAddress && pool.baseTokenPriceUsd !== null) {
-      return [{
-        ...pool,
-        token: pool.baseToken,
-        tokenSide: "base" as const,
-        currentPriceUsd: pool.baseTokenPriceUsd,
-      }];
-    }
-    if (pool.quoteToken?.address === normalizedCoinAddress && pool.quoteTokenPriceUsd !== null) {
-      return [{
-        ...pool,
-        token: pool.quoteToken,
-        tokenSide: "quote" as const,
-        currentPriceUsd: pool.quoteTokenPriceUsd,
-      }];
-    }
-    return [];
+
+  return pools.flatMap<ResolvedTokenPool>((pool) => {
+    const candidate = resolvePoolCandidate(pool, normalizedCoinAddress);
+    return candidate ? [candidate] : [];
   });
+};
+
+const resolveBestPool = (pools: ParsedTokenPool[], coinAddress: string): ResolvedTokenPool | null => {
+  const candidates = collectPoolCandidates(pools, coinAddress);
 
   if (candidates.length === 0) {
     return null;
   }
 
-  return candidates
-    .slice()
-    .sort((left, right) => {
-      const volumeDelta = (right.volume24hUsd ?? 0) - (left.volume24hUsd ?? 0);
-      if (volumeDelta !== 0) {
-        return volumeDelta;
-      }
-      return (right.reserveUsd ?? 0) - (left.reserveUsd ?? 0);
-    })[0] ?? null;
+  return candidates.toSorted(rankResolvedPoolCandidates)[0] ?? null;
 };
 
-const rankPoolCandidates = (pools: ParsedTokenPool[], coinAddress: string): ResolvedTokenPool[] => {
-  const normalizedCoinAddress = coinAddress.trim();
-  return pools.flatMap((pool) => {
-    if (pool.baseToken?.address === normalizedCoinAddress && pool.baseTokenPriceUsd !== null) {
-      return [{
-        ...pool,
-        token: pool.baseToken,
-        tokenSide: "base" as const,
-        currentPriceUsd: pool.baseTokenPriceUsd,
-      }];
-    }
-    if (pool.quoteToken?.address === normalizedCoinAddress && pool.quoteTokenPriceUsd !== null) {
-      return [{
-        ...pool,
-        token: pool.quoteToken,
-        tokenSide: "quote" as const,
-        currentPriceUsd: pool.quoteTokenPriceUsd,
-      }];
-    }
-    return [];
-  }).toSorted((left, right) => {
-    const volumeDelta = (right.volume24hUsd ?? 0) - (left.volume24hUsd ?? 0);
-    if (volumeDelta !== 0) {
-      return volumeDelta;
-    }
-    return (right.reserveUsd ?? 0) - (left.reserveUsd ?? 0);
-  });
-};
+const rankPoolCandidates = (pools: ParsedTokenPool[], coinAddress: string): ResolvedTokenPool[] =>
+  collectPoolCandidates(pools, coinAddress).toSorted(rankResolvedPoolCandidates);
 
 const parseOhlcvRows = (payload: JsonObject): OhlcvRow[] => {
   const dataNode = isJsonObject(payload.data) ? payload.data : null;

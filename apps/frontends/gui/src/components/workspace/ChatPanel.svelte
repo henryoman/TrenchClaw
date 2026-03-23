@@ -3,6 +3,7 @@
   import { isToolUIPart, type UIMessage } from "ai";
   import { marked } from "marked";
   import type { GuiConversationView } from "@trenchclaw/types";
+  import { getMessageActivityItems } from "./chat-activity";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroModal from "../ui/RetroModal.svelte";
 
@@ -53,7 +54,22 @@
   let settingsToggleButton: HTMLButtonElement | null = $state(null);
   let settingsMenuElement: HTMLElement | null = $state(null);
   let shouldFollowStream = $state(true);
-  const renderKey = $derived(`${messages.length}:${sending ? "1" : "0"}`);
+  const renderKey = $derived(
+    `${sending ? "1" : "0"}:${messages
+      .map((message) =>
+        `${message.id}:${message.role}:${message.parts
+          .map((part) => {
+            if (part.type === "text") {
+              return `text:${part.text?.length ?? 0}`;
+            }
+            if (isToolUIPart(part)) {
+              return `${part.toolCallId}:${part.state}:${"errorText" in part ? (part.errorText ?? "") : ""}`;
+            }
+            return part.type;
+          })
+          .join("|")}`)
+      .join("::")}`,
+  );
   let lastRenderKey = "";
   const SCROLL_BOTTOM_TOLERANCE_PX = 20;
   const COMPOSER_MAX_LINES = 5;
@@ -65,15 +81,9 @@
 
   type MessagePart = UIMessage["parts"][number];
 
-  interface ToolActivityLine {
-    key: string;
-    label: string;
-  }
-
   interface AssistantMessageSegments {
     visibleTextParts: string[];
-    errorTexts: string[];
-    toolActivity: ToolActivityLine[];
+    activityItems: ReturnType<typeof getMessageActivityItems>;
   }
 
   const normalizeDisplayText = (value: string): string =>
@@ -92,25 +102,6 @@
   };
 
   const isTextPart = (part: MessagePart): part is Extract<MessagePart, { type: "text" }> => part.type === "text";
-
-  const isErrorPart = (part: MessagePart): part is MessagePart & { errorText: string } =>
-    "errorText" in part && typeof part.errorText === "string";
-
-  const summarizeToolState = (state: string | undefined): string => {
-    switch (state) {
-      case "input-streaming":
-        return "preparing";
-      case "input-available":
-        return "running";
-      case "output-available":
-        return "done";
-      default:
-        return state ?? "working";
-    }
-  };
-
-  const getToolName = (part: MessagePart): string =>
-    part.type.startsWith("tool-") ? part.type.slice(5) : part.type;
 
   const truncateText = (value: string, maxLength: number): string => {
     if (value.length <= maxLength) {
@@ -149,11 +140,9 @@
 
   const getAssistantMessageSegments = (message: UIMessage): AssistantMessageSegments => {
     const visibleTextParts: string[] = [];
-    const errorTexts: string[] = [];
-    const toolActivity: ToolActivityLine[] = [];
-    const seenToolActivityLabels = new Set<string>();
+    const activityItems = getMessageActivityItems(message);
 
-    message.parts.forEach((part, index) => {
+    message.parts.forEach((part) => {
       if (isTextPart(part)) {
         const text = normalizeDisplayText(part.text ?? "");
         if (!text) {
@@ -161,65 +150,14 @@
         }
 
         visibleTextParts.push(text);
-        return;
-      }
-
-      if (isErrorPart(part)) {
-        const text = normalizeDisplayText(part.errorText);
-        if (text) {
-          errorTexts.push(text);
-        }
-        return;
-      }
-
-      if (isToolUIPart(part)) {
-        const label = `${getToolName(part)}: ${summarizeToolState(part.state)}`;
-        if (seenToolActivityLabels.has(label)) {
-          return;
-        }
-        seenToolActivityLabels.add(label);
-        toolActivity.push({
-          key: part.toolCallId,
-          label,
-        });
       }
     });
 
     return {
       visibleTextParts,
-      errorTexts,
-      toolActivity,
+      activityItems,
     };
   };
-
-  const hasAssistantActivity = (segments: AssistantMessageSegments): boolean =>
-    segments.errorTexts.length > 0
-    || segments.toolActivity.length > 0;
-
-  const isToolOnlyAssistantMessage = (message: UIMessage): boolean => {
-    if (message.role !== "assistant") {
-      return false;
-    }
-    const segments = getAssistantMessageSegments(message);
-    return segments.visibleTextParts.length === 0
-      && segments.errorTexts.length === 0
-      && segments.toolActivity.length > 0;
-  };
-
-  const getDisplayMessages = (sourceMessages: UIMessage[]): UIMessage[] =>
-    sourceMessages.filter((message, index) => {
-      if (!isToolOnlyAssistantMessage(message)) {
-        return true;
-      }
-      for (let nextIndex = index + 1; nextIndex < sourceMessages.length; nextIndex += 1) {
-        if (sourceMessages[nextIndex]?.role === "assistant") {
-          return false;
-        }
-      }
-      return true;
-    });
-
-  const displayMessages = $derived(getDisplayMessages(messages));
 
   const isNearBottom = (): boolean => {
     if (!messageViewport) {
@@ -586,65 +524,64 @@
     </section>
   {/if}
 
-  <div class="chat-messages" bind:this={messageViewport} onscroll={onMessagesScroll}>
-    {#each displayMessages as message (message.id)}
-      {#if message.role === "assistant"}
-        {@const segments = getAssistantMessageSegments(message)}
+  <div class="chat-stage">
+    <div class="chat-messages" bind:this={messageViewport} onscroll={onMessagesScroll}>
+      {#each messages as message (message.id)}
+        {#if message.role === "assistant"}
+          {@const segments = getAssistantMessageSegments(message)}
 
-        {#if hasAssistantActivity(segments)}
-          <div class="message-row assistant activity-row">
-            <details class="activity-panel">
-              <summary>
-                <span>Activity</span>
-                <span class="activity-summary-caret" aria-hidden="true">▼</span>
-              </summary>
-              <div class="activity-body">
-                {#each segments.toolActivity as tool (`${message.id}:tool:${tool.key}`)}
-                  <p class="tool-activity">{tool.label}</p>
+          {#if segments.visibleTextParts.length > 0 || segments.activityItems.length > 0}
+            <div class="message-row assistant">
+              <div class="bubble assistant">
+                {#each segments.visibleTextParts as text, textIndex (`${message.id}:visible:${textIndex}`)}
+                  {@const html = renderMarkdown(text)}
+                  {#if html}
+                    <div class="markdown-content">{@html html}</div>
+                  {/if}
                 {/each}
 
-                {#each segments.errorTexts as errorText, errorIndex (`${message.id}:error:${errorIndex}`)}
-                  <p class="error-text" title={errorText}>Error: {summarizeErrorText(errorText)}</p>
-                {/each}
+                {#if segments.activityItems.length > 0}
+                  <section class={`assistant-activity ${segments.visibleTextParts.length > 0 ? "with-copy" : ""}`}>
+                    <div class="assistant-activity-header">
+                      <p>Live agent activity</p>
+                    </div>
+
+                    <div class="assistant-activity-list">
+                      {#each segments.activityItems as item (item.id)}
+                        <article class={`assistant-activity-card tone-${item.tone}`}>
+                          <div class="assistant-activity-card-head">
+                            <span class="assistant-activity-badge">{item.badge}</span>
+                            <h4>{item.title}</h4>
+                          </div>
+                          <p>{item.detail}</p>
+                          {#if item.meta}
+                            <small>{item.meta}</small>
+                          {/if}
+                        </article>
+                      {/each}
+                    </div>
+                  </section>
+                {/if}
               </div>
-            </details>
-          </div>
-        {/if}
-
-        {#if segments.visibleTextParts.length > 0}
-          <div class="message-row assistant">
-            <div class="bubble assistant">
-              {#each segments.visibleTextParts as text, textIndex (`${message.id}:visible:${textIndex}`)}
-                {@const html = renderMarkdown(text)}
-                {#if html}
-                  <div class="markdown-content">{@html html}</div>
+            </div>
+          {/if}
+        {:else}
+          <div class="message-row {message.role}">
+            <div class="bubble {message.role}">
+              {#each message.parts as part, partIndex (`${message.id}:${partIndex}:${part.type}`)}
+                {#if part.type === "text"}
+                  <p>{normalizeDisplayText(part.text ?? "")}</p>
+                {:else if "errorText" in part && typeof part.errorText === "string"}
+                  {@const normalizedErrorText = normalizeDisplayText(part.errorText)}
+                  <p class="error-text" title={normalizedErrorText}>Error: {summarizeErrorText(normalizedErrorText)}</p>
                 {/if}
               {/each}
             </div>
           </div>
         {/if}
-      {:else}
-        <div class="message-row {message.role}">
-          <div class="bubble {message.role}">
-            {#each message.parts as part, partIndex (`${message.id}:${partIndex}:${part.type}`)}
-              {#if part.type === "text"}
-                <p>{normalizeDisplayText(part.text ?? "")}</p>
-              {:else if "errorText" in part && typeof part.errorText === "string"}
-                {@const normalizedErrorText = normalizeDisplayText(part.errorText)}
-                <p class="error-text" title={normalizedErrorText}>Error: {summarizeErrorText(normalizedErrorText)}</p>
-              {/if}
-            {/each}
-          </div>
-        </div>
-      {/if}
-    {/each}
-    {#if sending}
-      <div class="message-row assistant">
-        <div class="bubble assistant thinking-bubble">
-          <p>Working...</p>
-        </div>
-      </div>
-    {/if}
+      {/each}
+    </div>
+
   </div>
 
   {#if chatDisabled}
@@ -815,6 +752,13 @@
   .chat-header-actions {
     display: inline-flex;
     gap: var(--tc-space-1);
+  }
+
+  .chat-stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .conversation-modal {
@@ -1104,71 +1048,6 @@
     font-weight: 100;
   }
 
-  .thinking-bubble {
-    opacity: 0.9;
-    animation: pulse 1.1s ease-in-out infinite;
-  }
-
-  .activity-row {
-    margin-bottom: calc(var(--tc-space-1) * -1);
-  }
-
-  .activity-panel {
-    width: min(90%, 32rem);
-    border: var(--tc-border-muted);
-    color: var(--tc-color-gray-2);
-    background: var(--tc-color-black-light);
-    font-size: 0.78rem;
-  }
-
-  .activity-panel summary {
-    cursor: pointer;
-    list-style: none;
-    padding: var(--tc-space-2) var(--tc-space-3);
-    color: var(--tc-color-turquoise);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--tc-space-2);
-  }
-
-  .activity-panel summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .activity-summary-caret {
-    color: var(--tc-color-lime);
-    font-size: 0.7rem;
-    line-height: 1;
-    display: inline-flex;
-    flex-shrink: 0;
-    transform-origin: center;
-    transition: transform 160ms ease;
-  }
-
-  .activity-panel[open] .activity-summary-caret {
-    transform: rotate(180deg);
-  }
-
-  .activity-body {
-    border-top: var(--tc-border-muted);
-    padding: var(--tc-space-2) var(--tc-space-3);
-    display: grid;
-    gap: var(--tc-space-2);
-  }
-
-  .activity-body p {
-    margin: 0;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-
-  .tool-activity {
-    color: var(--tc-color-gray-3);
-  }
-
   .bubble.system {
     color: var(--tc-color-red);
     background: var(--tc-color-black-2);
@@ -1184,6 +1063,106 @@
 
   .markdown-content + .markdown-content {
     margin-top: var(--tc-space-2);
+  }
+
+  .assistant-activity {
+    margin-top: var(--tc-space-2);
+    padding-top: var(--tc-space-2);
+    border-top: var(--tc-border-muted);
+    display: grid;
+    gap: var(--tc-space-2);
+  }
+
+  .assistant-activity.with-copy {
+    margin-top: var(--tc-space-3);
+  }
+
+  .assistant-activity-header p {
+    margin: 0;
+    color: var(--tc-color-gray-2);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: var(--tc-track-wide);
+  }
+
+  .assistant-activity-list {
+    display: grid;
+    gap: var(--tc-space-2);
+  }
+
+  .assistant-activity-card {
+    display: grid;
+    gap: 6px;
+    padding: var(--tc-space-2);
+    border: var(--tc-border-muted);
+    background: color-mix(in srgb, var(--tc-color-black-light) 88%, transparent);
+  }
+
+  .assistant-activity-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .assistant-activity-badge {
+    flex-shrink: 0;
+    min-width: 3.5rem;
+    padding: 2px 6px;
+    border: var(--tc-border-muted);
+    color: var(--tc-color-gray-3);
+    font-size: 10px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: var(--tc-track-wide);
+  }
+
+  .assistant-activity-card h4,
+  .assistant-activity-card p,
+  .assistant-activity-card small {
+    margin: 0;
+  }
+
+  .assistant-activity-card h4 {
+    min-width: 0;
+    color: var(--tc-color-cream);
+    font-size: 0.86rem;
+    font-weight: 500;
+    line-height: 1.3;
+  }
+
+  .assistant-activity-card p {
+    color: var(--tc-color-gray-3);
+    font-size: 0.76rem;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  .assistant-activity-card small {
+    color: var(--tc-color-gray-2);
+    font-size: 10px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .assistant-activity-card.tone-pending,
+  .assistant-activity-card.tone-running {
+    border-color: color-mix(in srgb, var(--tc-color-turquoise) 42%, var(--tc-color-gray-2));
+    background: color-mix(in srgb, var(--tc-color-turquoise) 7%, var(--tc-color-black-light));
+  }
+
+  .assistant-activity-card.tone-queued {
+    border-color: color-mix(in srgb, var(--tc-color-lime) 45%, var(--tc-color-gray-2));
+    background: color-mix(in srgb, var(--tc-color-lime) 7%, var(--tc-color-black-light));
+  }
+
+  .assistant-activity-card.tone-done {
+    border-color: color-mix(in srgb, var(--tc-color-cream) 28%, var(--tc-color-gray-2));
+  }
+
+  .assistant-activity-card.tone-error {
+    border-color: color-mix(in srgb, var(--tc-color-red) 56%, var(--tc-color-gray-2));
+    background: color-mix(in srgb, var(--tc-color-red) 8%, var(--tc-color-black-light));
   }
 
   .markdown-content :global(*) {
@@ -1249,18 +1228,6 @@
 
   .error-text {
     color: var(--tc-color-red);
-  }
-
-  @keyframes pulse {
-    0% {
-      opacity: 0.45;
-    }
-    50% {
-      opacity: 1;
-    }
-    100% {
-      opacity: 0.45;
-    }
   }
 
   .chat-form {
@@ -1343,4 +1310,5 @@
   .chat-composer::placeholder {
     color: var(--tc-color-turquoise);
   }
+
 </style>

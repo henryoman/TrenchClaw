@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const RUNTIME_DIRECTORY = fileURLToPath(new URL(".", import.meta.url));
 const BRAIN_SOURCE_ROOT = "src/ai/brain";
 const RUNTIME_STATE_CONTRACT_ROOT = ".runtime-state";
+const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = "trenchclaw-dev-runtime";
 
 const resolveAbsoluteEnvPath = (envKey: string, value: string): string => {
   const trimmed = value.trim();
@@ -53,9 +54,12 @@ const isWorkspaceCoreAppRoot = (candidate: string): boolean =>
   existsSync(path.join(candidate, "package.json"))
   && existsSync(path.join(candidate, "..", "frontends", "gui"));
 
+const resolveDefaultWorkspaceRuntimeStateRoot = (): string =>
+  path.join(process.env.HOME || process.env.USERPROFILE || os.homedir(), DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY);
+
 const resolveDefaultRuntimeStateRoot = (): string => {
   if (isWorkspaceCoreAppRoot(CORE_APP_ROOT)) {
-    return path.join(CORE_APP_ROOT, ".runtime-state");
+    return resolveDefaultWorkspaceRuntimeStateRoot();
   }
 
   return path.join(os.homedir(), ".trenchclaw");

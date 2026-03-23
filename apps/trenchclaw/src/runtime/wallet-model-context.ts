@@ -130,7 +130,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     "### Wallet Alias Variables",
     "- To read all managed wallets in the active instance, omit `wallet`, `wallets`, `walletGroup`, and `walletNames` entirely.",
     "- To read one whole wallet group, pass `walletGroup` only and optionally `walletNames` for a named subset inside that group.",
-    "- For single-wallet mutation tools like `transfer`, `closeTokenAccount`, `managedUltraSwap`, `managedTriggerOrder`, and `managedTriggerCancelOrders`, prefer passing `wallet` as the wallet name string when it is unique in this active instance.",
+    "- For single-wallet mutation tools like `transfer`, `closeTokenAccount`, `managedSwap`, `managedTriggerOrder`, and `managedTriggerCancelOrders`, prefer passing `wallet` as the wallet name string when it is unique in this active instance.",
     "- For multi-wallet read tools like `getManagedWalletContents` and `getManagedWalletSolBalances`, prefer passing `wallets` as an array of wallet name strings when the names are unique in this active instance.",
     "- If a wallet name is ambiguous across groups, pass `wallet` as an object like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
     "- If multiple wallet names are ambiguous across groups, pass `wallets` as objects like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
