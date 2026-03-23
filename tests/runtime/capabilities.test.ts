@@ -299,6 +299,22 @@ describe("runtime capability snapshot", () => {
     expect(toolEntry?.toolDescription).toContain("current price, historical candle, and signed percentage change");
   });
 
+  test("exposes managed token launch time with minimal-input guidance when trading is enabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML.replace("trading:\n  enabled: false", "trading:\n  enabled: true"),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const toolEntry = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getTokenLaunchTime");
+
+    expect(toolEntry).toBeDefined();
+    expect(toolEntry?.releaseReadinessStatus).toBe("shipped-now");
+    expect(toolEntry?.toolDescription).toContain("one tiny JSON surface");
+    expect(toolEntry?.toolDescription).toContain("first known pool or the current main pool");
+  });
+
   test("hides Dexscreener model tools when the integration is disabled", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
       "yaml",

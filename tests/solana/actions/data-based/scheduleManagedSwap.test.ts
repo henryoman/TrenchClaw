@@ -41,6 +41,7 @@ describe("scheduleManagedSwapAction", () => {
       {
         kind: "swap_once",
         provider: "standard",
+        executionMode: "inline_sleep",
         walletGroup: "core-wallets",
         walletName: "maker-1",
         inputCoin: "SOL",
@@ -111,6 +112,7 @@ describe("scheduleManagedSwapAction", () => {
       {
         kind: "dca",
         provider: "ultra",
+        executionMode: "inline_sleep",
         walletGroup: "core-wallets",
         walletName: "maker-1",
         inputCoin: "SOL",
@@ -175,6 +177,7 @@ describe("scheduleManagedSwapAction", () => {
         kind: "swap_once",
         routineId: "future-swap-schedule-check",
         provider: "standard",
+        executionMode: "inline_sleep",
         walletGroup: "core-wallets",
         walletName: "maker-1",
         inputCoin: "SOL",

@@ -37,12 +37,12 @@ Checked = already in the app or repo now. Unchecked = concrete work still to shi
 - [x] Default scheduled action
 - [x] Wakeup settings
 - [x] LLM connection check
-- [ ] Telegram UI
-- [ ] Telegram adapter
+- [ ] Telegram chat surface
 - [ ] Discord alert connector
-- [ ] TUI shell
-- [ ] TUI overview
+- [ ] TUI app
 - [ ] Mobile app
+- [ ] Available in Homebrew
+- [ ] Available on npm
 
 ## Research
 

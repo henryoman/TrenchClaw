@@ -93,6 +93,78 @@ const listWorkspaceDirectoryInputSchema = z.object({
   includeHidden: z.boolean().default(false),
 });
 
+const WORKSPACE_BASH_MODE_VALUES = [
+  "shell",
+  "cli",
+  "version",
+  "help",
+  "which",
+  "search_text",
+  "list_directory",
+  "http_get",
+] as const;
+
+const workspaceBashModeSchema = z.enum(WORKSPACE_BASH_MODE_VALUES);
+
+const workspaceBashInputSchema = z.object({
+  type: workspaceBashModeSchema,
+  command: z.string().trim().min(1).optional(),
+  program: z.string().trim().min(1).optional(),
+  args: z.array(z.string().trim().min(1)).max(64).optional(),
+  subcommand: z.string().trim().min(1).optional(),
+  path: z.string().trim().min(1).optional(),
+  query: z.string().trim().min(1).optional(),
+  url: z.string().trim().url().optional(),
+  includeHidden: z.boolean().optional(),
+}).superRefine((input, ctx) => {
+  switch (input.type) {
+    case "shell":
+      if (!input.command) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["command"],
+          message: "`type: \"shell\"` requires `command`.",
+        });
+      }
+      return;
+    case "cli":
+    case "version":
+    case "help":
+    case "which":
+      if (!input.program) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["program"],
+          message: `\`type: "${input.type}"\` requires \`program\`.`,
+        });
+      }
+      return;
+    case "search_text":
+      if (!input.query) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["query"],
+          message: "`type: \"search_text\"` requires `query`.",
+        });
+      }
+      return;
+    case "http_get":
+      if (!input.url) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["url"],
+          message: "`type: \"http_get\"` requires `url`.",
+        });
+      }
+      return;
+    case "list_directory":
+      return;
+  }
+});
+
+type WorkspaceBashInput = z.output<typeof workspaceBashInputSchema>;
+type WorkspaceBashMode = z.infer<typeof workspaceBashModeSchema>;
+
 type WorkspaceDirectoryListResult = {
   directory: string;
   entries: Array<{
@@ -147,6 +219,37 @@ const sanitizeCommand = (command: string): string => {
     }
   }
   return trimmed;
+};
+
+const shellQuote = (value: string): string => `'${value.replaceAll("'", "'\\''")}'`;
+
+const buildCliInvocation = (program: string, args: readonly string[] = []): string =>
+  [program, ...args].map(shellQuote).join(" ");
+
+const resolveWorkspaceBashCommand = (input: WorkspaceBashInput): string => {
+  const mode: WorkspaceBashMode = input.type;
+
+  switch (mode) {
+    case "shell":
+      return input.command ?? "";
+    case "cli":
+      return buildCliInvocation(input.program ?? "", input.args ?? []);
+    case "version":
+      return buildCliInvocation(input.program ?? "", ["--version"]);
+    case "help":
+      return buildCliInvocation(
+        input.program ?? "",
+        [...(input.subcommand ? [input.subcommand] : []), "--help"],
+      );
+    case "which":
+      return `command -v ${shellQuote(input.program ?? "")}`;
+    case "search_text":
+      return `rg --line-number --no-heading${input.includeHidden ? " --hidden" : ""} ${shellQuote(input.query ?? "")} ${shellQuote(input.path ?? ".")}`;
+    case "list_directory":
+      return `ls ${input.includeHidden ? "-la" : "-l"} ${shellQuote(input.path ?? ".")}`;
+    case "http_get":
+      return `curl -fsSL ${shellQuote(input.url ?? "")}`;
+  }
 };
 
 const isMutatingCommand = (command: string): boolean =>
@@ -499,11 +602,16 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
           includeHidden,
         }),
     }),
-    [WORKSPACE_BASH_TOOL_NAME]: wrapTool({
+    [WORKSPACE_BASH_TOOL_NAME]: tool({
       description:
         `Run policy-constrained shell commands from the runtime workspace root ${bashRootDirectory}. This session is ${writableSession}. ` +
-        "Prefer this for shell-native tasks like `pwd`, `rg`, `command -v`, or trusted CLI investigation after you already know what path or command you need. This is not a true isolated VM sandbox.",
-      rawTool: rawBashTool,
+        "Always call this with an explicit `type` plus the basic params for that mode, such as `shell`, `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, or `http_get`. This is not a true isolated VM sandbox.",
+      inputSchema: workspaceBashInputSchema,
+      execute: async (rawInput) => {
+        const input = workspaceBashInputSchema.parse(rawInput);
+        const command = resolveWorkspaceBashCommand(input);
+        return rawBashTool.execute({ command });
+      },
     }),
     [WORKSPACE_READ_FILE_TOOL_NAME]: wrapTool({
       description:

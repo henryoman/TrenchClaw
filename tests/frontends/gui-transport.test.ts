@@ -838,6 +838,9 @@ describe("Runtime v1 API", () => {
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
       expect(initialPayload.options.some((option) => option.id === "openai/gpt-5.4-nano")).toBe(true);
       expect(initialPayload.options.find((option) => option.id === "openai/gpt-5.4-nano")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.5:free")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.7")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.find((option) => option.id === "qwen/qwen3.5-flash-02-23")?.providers).toEqual(["openrouter"]);
 
       const updateResponse = await handler(new Request("http://localhost/v1/app/ai-settings", {
         method: "PUT",
@@ -863,6 +866,7 @@ describe("Runtime v1 API", () => {
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
       expect(updatePayload.options.some((option) => option.id === "openai/gpt-5.4-nano")).toBe(true);
+      expect(updatePayload.options.some((option) => option.id === "xiaomi/mimo-v2-flash")).toBe(true);
     } finally {
       if (previous === undefined) {
         delete process.env.TRENCHCLAW_AI_SETTINGS_FILE;

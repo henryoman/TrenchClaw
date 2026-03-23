@@ -16,6 +16,7 @@ export const OPERATOR_TOOL_ALLOWLIST = [
   "getDexscreenerPairByChainAndPairId",
   "getDexscreenerTokenPairsByChain",
   "getDexscreenerTokensByChain",
+  "getTokenLaunchTime",
   "getTokenPricePerformance",
   "getTokenHolderDistribution",
   "rankDexscreenerTopTokenBoostsByWhales",

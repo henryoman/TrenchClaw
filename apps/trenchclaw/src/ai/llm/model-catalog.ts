@@ -50,8 +50,33 @@ export const AI_MODEL_CATALOG = [
     providers: BOTH_PROVIDERS,
   },
   {
+    id: "openai/gpt-oss-120b:free",
+    label: "GPT-OSS 120B Free",
+    providers: OPENROUTER_ONLY,
+  },
+  {
     id: "openrouter/hunter-alpha",
     label: "Hunter Alpha",
+    providers: OPENROUTER_ONLY,
+  },
+  {
+    id: "liquid/lfm-2.5-1.2b-thinking:free",
+    label: "LFM 2.5 1.2B Thinking Free",
+    providers: OPENROUTER_ONLY,
+  },
+  {
+    id: "minimax/minimax-m2.5:free",
+    label: "MiniMax M2.5 Free",
+    providers: OPENROUTER_ONLY,
+  },
+  {
+    id: "minimax/minimax-m2.7",
+    label: "MiniMax M2.7",
+    providers: OPENROUTER_ONLY,
+  },
+  {
+    id: "nvidia/nemotron-3-nano-30b-a3b:free",
+    label: "Nemotron 3 Nano 30B A3B Free",
     providers: OPENROUTER_ONLY,
   },
   {
@@ -65,8 +90,18 @@ export const AI_MODEL_CATALOG = [
     providers: OPENROUTER_ONLY,
   },
   {
+    id: "qwen/qwen3.5-flash-02-23",
+    label: "Qwen 3.5 Flash 02-23",
+    providers: OPENROUTER_ONLY,
+  },
+  {
     id: "stepfun/step-3.5-flash:free",
     label: "Step 3.5 Flash Free",
+    providers: OPENROUTER_ONLY,
+  },
+  {
+    id: "xiaomi/mimo-v2-flash",
+    label: "Mimo V2 Flash",
     providers: OPENROUTER_ONLY,
   },
 ] as const satisfies readonly AiModelCatalogEntry[];

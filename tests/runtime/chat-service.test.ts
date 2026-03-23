@@ -1271,7 +1271,7 @@ describe("RuntimeChatService", () => {
           sideEffectLevel: "read",
           enabledNow: true,
           requiresConfirmation: false,
-          exampleInput: { command: "pwd" },
+          exampleInput: { type: "shell", command: "pwd" },
           toolDescription: "workspace bash",
           releaseReadinessStatus: "shipped-now",
           releaseReadinessNote: "Shipped now.",
@@ -1742,7 +1742,7 @@ describe("RuntimeChatService", () => {
             sideEffectLevel: "read",
             enabledNow: true,
             requiresConfirmation: false,
-            exampleInput: { command: "pwd" },
+            exampleInput: { type: "shell", command: "pwd" },
             toolDescription: "workspace bash",
             releaseReadinessStatus: "shipped-now",
             releaseReadinessNote: "Shipped now.",
@@ -1991,7 +1991,7 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("Pass up to 30 `tokenAddresses`.");
     expect(execution.systemPrompt).toContain("Do not default to `getDexscreenerLatestTokenBoosts` for broad trending questions.");
     expect(execution.systemPrompt).toContain("Never answer a token question with only a raw token address unless the available tool results truly contain no better identifier");
-    expect(execution.systemPrompt).toContain("for coin or token questions, answer with token metadata such as name or ticker whenever available");
+    expect(execution.systemPrompt).toContain("For coin or token answers, prefer `name (symbol)` or equivalent metadata first");
   });
 
   test("includes whale-analysis routing when holder tools are available", async () => {
@@ -2071,7 +2071,7 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("For whales, top holders, largest accounts, or holder concentration on one known token, use `getTokenHolderDistribution`");
     expect(execution.systemPrompt).toContain("prefer `rankDexscreenerTopTokenBoostsByWhales` when it is available");
     expect(execution.systemPrompt).toContain("default whales to distinct owner wallets holding at least 1% of supply");
-    expect(execution.systemPrompt).toContain("continue from market discovery into the enabled holder-analysis tool instead of stopping at boosts or prices");
+    expect(execution.systemPrompt).toContain("Do not stop after a partial market-discovery answer when the user also asked for whales");
   });
 
   test("includes a compact wallet summary in the system prompt", async () => {

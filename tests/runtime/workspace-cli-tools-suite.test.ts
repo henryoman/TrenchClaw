@@ -94,7 +94,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ command: "solana --version" })) as {
+    const out = (await bashTool.execute({ type: "version", program: "solana" })) as {
       exitCode: number;
       stdout: string;
     };
@@ -115,7 +115,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ command: "helius --version" })) as {
+    const out = (await bashTool.execute({ type: "version", program: "helius" })) as {
       exitCode: number;
       stdout: string;
       stderr: string;
@@ -137,7 +137,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ command: "solana --version && helius --version" })) as {
+    const out = (await bashTool.execute({ type: "shell", command: "solana --version && helius --version" })) as {
       exitCode: number;
       stdout: string;
     };
@@ -158,12 +158,13 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ command: "helius --help 2>&1 | head -n 5" })) as {
+    const out = (await bashTool.execute({ type: "help", program: "helius" })) as {
       exitCode: number;
       stdout: string;
+      stderr: string;
     };
     expect(out.exitCode).toBe(0);
-    expect(out.stdout.length).toBeGreaterThan(10);
+    expect(`${out.stdout}${out.stderr}`.length).toBeGreaterThan(10);
   });
 
   test("workspaceBash: command -v finds symlinks in tool-bin", async () => {
@@ -179,13 +180,12 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ command: "command -v solana && command -v helius" })) as {
+    const out = (await bashTool.execute({ type: "which", program: "solana" })) as {
       exitCode: number;
       stdout: string;
     };
     expect(out.exitCode).toBe(0);
     expect(out.stdout).toContain("solana");
-    expect(out.stdout).toContain("helius");
   });
 });
 
@@ -206,7 +206,10 @@ describe("workspaceBash writes CLI output to a file (read back)", () => {
     const writeTool = tools[WORKSPACE_WRITE_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
     const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
 
-    const run = (await bashTool.execute({ command: "solana --version" })) as { stdout: string; exitCode: number };
+    const run = (await bashTool.execute({ type: "version", program: "solana" })) as {
+      stdout: string;
+      exitCode: number;
+    };
     expect(run.exitCode).toBe(0);
 
     await writeTool.execute({

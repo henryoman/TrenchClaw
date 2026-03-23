@@ -17,6 +17,7 @@ import { mutateInstanceMemoryAction } from "../../solana/actions/data-fetch/runt
 import { enqueueRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
 import { getManagedWalletContentsAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletContents";
 import { getManagedWalletSolBalancesAction } from "../../solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
+import { getTokenLaunchTimeAction } from "../../solana/actions/data-fetch/runtime/getTokenLaunchTime";
 import { getTokenPricePerformanceAction } from "../../solana/actions/data-fetch/runtime/getTokenPricePerformance";
 import { listKnowledgeDocsAction } from "../../solana/actions/data-fetch/runtime/listKnowledgeDocs";
 import { manageRuntimeJobAction } from "../../solana/actions/data-fetch/runtime/manageRuntimeJob";
@@ -117,6 +118,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   getDexscreenerTopTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   getTokenHolderDistribution: SHIPPED_NOW("On-chain token holder concentration reads ship in the current release."),
   rankDexscreenerTopTokenBoostsByWhales: SHIPPED_NOW("Combined Dexscreener discovery plus on-chain holder concentration ranking ships in the current release."),
+  getTokenLaunchTime: SHIPPED_NOW("Managed liquidity-pool launch-time reads now resolve the best pool timestamp from one tiny JSON input."),
   getTokenPricePerformance: SHIPPED_NOW("Managed historical price-performance reads now resolve the pool and candle window from one minimal JSON input."),
   searchDexscreenerPairs: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
   getLatestSolanaNews: SHIPPED_NOW("Live Solana news reads through normalized RSS/Atom feeds ship in the current release."),
@@ -375,6 +377,21 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     },
     includeInCatalog: () => true,
     enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTokenLaunchTimeAction,
+    description: "Resolve a token launch timestamp from liquidity-pool creation data using one coin address plus one launch type.",
+    purpose: "Give the model one tiny JSON surface for requests like 'when did this token launch' while the runtime picks either the first known pool or the current main pool and returns one concrete launch timestamp.",
+    routingHint: "the user asks when a known coin launched, when its first pool appeared, or when the current main liquidity pool went live",
+    tags: ["dexscreener", "geckoterminal", "launch", "pool", "market-data"],
+    exampleInput: {
+      coinAddress: "So11111111111111111111111111111111111111112",
+      type: "main_pool",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
     chatExposed: true,
   },
   {
