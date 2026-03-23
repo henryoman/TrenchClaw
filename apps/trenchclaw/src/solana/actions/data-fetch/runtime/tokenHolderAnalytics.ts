@@ -256,14 +256,11 @@ export const analyzeTokenHolderDistribution = async (input: {
     MAX_RETURNED_OWNERS,
   );
   const rpc = createRateLimitedSolanaRpc(rpcUrl);
+  const mint = address(mintAddress);
 
   const [tokenSupplyResponse, largestAccountsResponse] = await Promise.all([
-    (rpc as Record<string, unknown> & {
-      getTokenSupply: (mint: string) => { send: () => Promise<unknown> };
-    }).getTokenSupply(address(mintAddress)).send(),
-    (rpc as Record<string, unknown> & {
-      getTokenLargestAccounts: (mint: string) => { send: () => Promise<unknown> };
-    }).getTokenLargestAccounts(address(mintAddress)).send(),
+    rpc.getTokenSupply(mint).send(),
+    rpc.getTokenLargestAccounts(mint).send(),
   ]);
 
   const tokenSupplyRecord = isRecord(tokenSupplyResponse) && isRecord(tokenSupplyResponse.value)

@@ -27,6 +27,7 @@ const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 const strong = (value: string): string => applyAnsi(value, "bold");
 const spotlight = (value: string): string => applyAnsi(value, "bold", "neonTurquoise");
 const DEFAULT_BOOTSTRAP_INSTANCE_ID = "00";
+const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = "trenchclaw-dev-runtime";
 
 export type LayoutKind = "workspace" | "release";
 
@@ -117,31 +118,34 @@ const isReleaseRoot = (candidate: string): boolean =>
   existsSync(path.join(candidate, "core", "src", "ai", "brain")) &&
   existsSync(path.join(candidate, "gui", "index.html"));
 
-const resolveDefaultRuntimeStateRoot = (): string =>
-  path.join(process.env.HOME || process.env.USERPROFILE || process.cwd(), ".trenchclaw");
+const resolveDefaultWorkspaceRuntimeStateRoot = (env: NodeJS.ProcessEnv): string =>
+  path.join(env.HOME || env.USERPROFILE || process.cwd(), DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY);
+
+const resolveDefaultRuntimeStateRoot = (env: NodeJS.ProcessEnv): string =>
+  path.join(env.HOME || env.USERPROFILE || process.cwd(), ".trenchclaw");
 
 const resolveDefaultGeneratedStateRoot = (runtimeStateRoot: string): string =>
   path.join(runtimeStateRoot, "instances", DEFAULT_BOOTSTRAP_INSTANCE_ID, "cache", "generated");
 
-const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string): string => {
-  const configured = process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
+const resolveRuntimeStateRoot = (kind: LayoutKind, _coreAssetRoot: string, env: NodeJS.ProcessEnv = process.env): string => {
+  const configured = env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
   if (configured) {
     return resolveAbsoluteConfiguredPath("TRENCHCLAW_RUNTIME_STATE_ROOT", configured);
   }
 
   if (kind === "workspace") {
-    return path.join(coreAssetRoot, ".runtime-state");
+    return resolveDefaultWorkspaceRuntimeStateRoot(env);
   }
 
-  return resolveDefaultRuntimeStateRoot();
+  return resolveDefaultRuntimeStateRoot(env);
 };
 
 const resolveGeneratedStateRoot = (runtimeStateRoot: string): string => {
   return resolveDefaultGeneratedStateRoot(runtimeStateRoot);
 };
 
-const resolveLayout = (): ResolvedLayout => {
-  const envReleaseRoot = process.env.TRENCHCLAW_RELEASE_ROOT?.trim();
+export const resolveLayout = (env: NodeJS.ProcessEnv = process.env): ResolvedLayout => {
+  const envReleaseRoot = env.TRENCHCLAW_RELEASE_ROOT?.trim();
   const candidates = [
     envReleaseRoot ? resolveAbsoluteConfiguredPath("TRENCHCLAW_RELEASE_ROOT", envReleaseRoot) : null,
     path.dirname(process.execPath),
@@ -153,7 +157,7 @@ const resolveLayout = (): ResolvedLayout => {
   for (const candidate of candidates) {
     if (isReleaseRoot(candidate)) {
       const guiDistDir = path.join(candidate, "gui");
-      const runtimeStateRoot = resolveRuntimeStateRoot("release", path.join(candidate, "core"));
+      const runtimeStateRoot = resolveRuntimeStateRoot("release", path.join(candidate, "core"), env);
       return {
         kind: "release",
         root: candidate,
@@ -167,7 +171,7 @@ const resolveLayout = (): ResolvedLayout => {
     if (isWorkspaceRoot(candidate)) {
       const guiDistDir = path.join(candidate, "apps/frontends/gui/dist");
       const coreAssetRoot = path.join(candidate, "apps/trenchclaw");
-      const runtimeStateRoot = resolveRuntimeStateRoot("workspace", coreAssetRoot);
+      const runtimeStateRoot = resolveRuntimeStateRoot("workspace", coreAssetRoot, env);
       return {
         kind: "workspace",
         root: candidate,

@@ -3,7 +3,11 @@ import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/load";
 import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
-import { renderAsyncToolBehaviorSection, renderCommandMenuSection } from "../../runtime/prompt/tool-menu";
+import {
+  renderAsyncToolBehaviorSection,
+  renderCommandMenuSection,
+  renderModelAccessSummarySection,
+} from "../../runtime/prompt/tool-menu";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
 
 const OPERATOR_KERNEL_PROMPT = [
@@ -29,9 +33,7 @@ const MUTATING_OPERATOR_TOOLS = new Set([
   "managedTriggerOrder",
   "managedTriggerCancelOrders",
   "managedSwap",
-  "managedUltraSwap",
   "scheduleManagedSwap",
-  "scheduleManagedUltraSwap",
   "submitTradingRoutine",
 ]);
 
@@ -230,9 +232,8 @@ const renderOperatorDecisionRules = (): string => [
   "- For managed-wallet reads across one group, pass `walletGroup` only. Do not put a group name into the single-wallet `wallet` field.",
   "- For direct trigger-order asks with a concrete target price, prefer `managedTriggerOrder` with `trigger.kind = \"exactPrice\"`.",
   "- Use `percentFromBuyPrice` only when the user explicitly frames the trigger relative to entry price, buy price, stop loss, or take profit percentage.",
-  "- Prefer `managedSwap` for direct managed-wallet swaps when you want the runtime to choose the configured provider. Use `managedUltraSwap` only when the user explicitly wants the Ultra-specific surface.",
+  "- Prefer `managedSwap` for direct managed-wallet swaps when you want the runtime to choose the configured provider.",
   "- Prefer `scheduleManagedSwap` for normal 'swap for later' asks and simple DCA plans. Omit `provider` unless the user explicitly asks for one so the configured main swap type is used by default.",
-  "- Use `scheduleManagedUltraSwap` only when the user explicitly wants the Ultra-only scheduling surface.",
   "- Use `submitTradingRoutine` only when a richer curated multi-step JSON routine is truly necessary instead of the flatter scheduling surface.",
   "- Never use a write tool just because it is available. Use it only when the user clearly requested the mutation.",
   "- If confirmation is required, pass `userConfirmationToken` only when the user explicitly confirmed the action in this conversation.",
@@ -302,6 +303,7 @@ export const buildOperatorChatPrompt = async (input: {
       snapshot: input.capabilitySnapshot,
       toolNames: input.toolNames,
     }),
+    renderModelAccessSummarySection(toolEntries),
     renderCommandMenuSection(toolEntries, "## Command Groups"),
     renderAsyncToolBehaviorSection(toolEntries),
     liveRuntimeContext,
@@ -311,18 +313,11 @@ export const buildOperatorChatPrompt = async (input: {
     "## Wallet Summary",
     walletSummary,
     [
-      "## Operator Routing",
-      "- for direct runtime questions, answer from a single runtime action when possible",
-      "- if the user asks what trades are queued, scheduled, or upcoming, prefer `queryRuntimeStore` with `request.type = \"listUpcomingTradingJobs\"`.",
-      "- for direct market questions, use Dexscreener runtime actions first and ask a short clarification only if the token set or market scope is genuinely ambiguous",
-      "- for one exact coin-address performance request over a concrete lookback window, prefer `getTokenPricePerformance`",
-      "- for whale, holder-concentration, or top-holder asks, continue from market discovery into the enabled holder-analysis tool instead of stopping at boosts or prices",
-      "- when both a broad market ranking and a whale comparison are requested together, prefer the one-step ranking tool when it exists",
-      "- for coin or token questions, answer with token metadata such as name or ticker whenever available; do not reply with only a raw token address unless metadata is genuinely unavailable",
-      "- do not keep exploring once the returned market or holder data is enough to answer the user",
-      "- skip greetings and capability preambles for direct asks",
-      "- if one tool call answered the full question, summarize the result and stop",
-      "- if a runtime action fails, report the exact failure and the next corrective action",
+      "## Fast Routing",
+      "- use the smallest listed tool that can answer the request",
+      "- current conversation messages are already loaded; other runtime records require an explicit tool call",
+      "- for market questions, prefer Dexscreener/token tools; for wallet state, prefer wallet tools",
+      "- answer with token metadata first and report queued or failed work plainly",
     ].join("\n"),
   ]
     .filter((section) => section.trim().length > 0)

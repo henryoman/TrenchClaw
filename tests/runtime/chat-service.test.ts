@@ -1419,7 +1419,7 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
   });
 
-  test("keeps Ultra scheduling guidance explicitly Ultra-only", async () => {
+  test("operator-chat hides Ultra-only swap tools in favor of swap-agnostic surfaces", async () => {
     const gateway = await createConfiguredGateway({
       capabilitySnapshot: {
         actions: [],
@@ -1476,10 +1476,9 @@ describe("RuntimeChatService", () => {
     }
 
     expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane:");
-    expect(execution.systemPrompt).toContain("`managedUltraSwap`");
-    expect(execution.systemPrompt).toContain("`scheduleManagedUltraSwap`");
-    expect(execution.systemPrompt).toContain("the user explicitly wants to swap through Jupiter Ultra using a managed wallet");
-    expect(execution.systemPrompt).toContain("Ultra-only scheduling surface");
+    expect(execution.systemPrompt).not.toContain("`managedUltraSwap`");
+    expect(execution.systemPrompt).not.toContain("`scheduleManagedUltraSwap`");
+    expect(execution.systemPrompt).not.toContain("Ultra-only scheduling surface");
   });
 
   test("routes flat JSON scheduled managed swaps through the operator prompt guidance", async () => {

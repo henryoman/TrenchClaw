@@ -85,6 +85,25 @@ afterEach(async () => {
 });
 
 describe("runtime path contract", () => {
+  test("defaults workspace runtime state to the external developer runtime root", async () => {
+    const homeRoot = await makeTempDirectory();
+    const result = await runModuleEval(
+      `
+        const mod = await import(${JSON.stringify(RUNTIME_PATHS_MODULE)});
+        console.log(mod.RUNTIME_STATE_ROOT);
+      `,
+      {
+        HOME: homeRoot,
+        USERPROFILE: homeRoot,
+        TRENCHCLAW_RUNTIME_STATE_ROOT: "",
+      },
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout.trim()).toBe(path.join(homeRoot, "trenchclaw-dev-runtime"));
+    expect(result.stdout.trim()).not.toBe(path.join(CORE_APP_ROOT, ".runtime-state"));
+  });
+
   test("rejects a relative runtime state root override", async () => {
     const result = await runModuleEval(
       `await import(${JSON.stringify(RUNTIME_PATHS_MODULE)});`,

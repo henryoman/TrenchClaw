@@ -7,7 +7,7 @@ import {
   walletGroupNameSchema,
   walletNameSchema,
 } from "../../../lib/wallet/wallet-types";
-import type { TradingRoutineSpec } from "../../../trading/routine-spec";
+import type { TradingManagedSwap, TradingRoutineSpec } from "../../../trading/routine-spec";
 import { tradingSwapProviderPreferenceSchema } from "../../../trading/routine-spec";
 import {
   submitTradingRoutineAction,
@@ -147,7 +147,7 @@ const scheduleManagedSwapInputSchema = z
 
 type ScheduleManagedSwapInput = z.output<typeof scheduleManagedSwapInputSchema>;
 
-const buildManagedSwapInput = (input: ScheduleManagedSwapInput): TradingRoutineSpec["swap"] => ({
+const buildManagedSwapInput = (input: ScheduleManagedSwapInput): TradingManagedSwap => ({
   provider: input.provider,
   wallet: input.wallet,
   walletGroup: input.walletGroup,
