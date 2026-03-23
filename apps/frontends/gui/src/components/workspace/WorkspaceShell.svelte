@@ -4,8 +4,8 @@
   export let runtimeStatus = "";
   export let appVersion = "";
   export let instanceName = "";
-  export let activeTab: "chat" | "keys" | "settings" | "wakeup" | "info" | "wallets" | "schedule" = "chat";
-  export let onTabChange: (tab: "chat" | "keys" | "settings" | "wakeup" | "info" | "wallets" | "schedule") => void;
+  export let activeTab: "chat" | "keys" | "settings" | "tracker" | "wakeup" | "info" | "wallets" | "schedule" = "chat";
+  export let onTabChange: (tab: "chat" | "keys" | "settings" | "tracker" | "wakeup" | "info" | "wallets" | "schedule") => void;
 </script>
 
 <main class="layout">

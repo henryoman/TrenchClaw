@@ -12,7 +12,7 @@ Root model:
 - `.runtime/` is tracked repo content. It is not live mutable runtime state.
 - `.runtime/instances/01/` is the tracked seed instance template used by developer-runtime initialization.
 - `.runtime-state/instances/<id>/` is the live mutable runtime state when using the repo-local runtime root.
-- An external runtime root such as `~/trenchclaw-dev-runtime` uses the same `instances/<id>/...` layout, just outside the repo.
+- An external runtime root such as `~/.trenchclaw-dev-runtime` uses the same `instances/<id>/...` layout, just outside the repo.
 - Generated prompt-support artifacts are instance-scoped under `instances/<id>/cache/generated/`.
 - Long-form research notes belong under `instances/<id>/workspace/notes/`.
 - Raw downloaded market-data artifacts belong under `instances/<id>/workspace/output/`.
@@ -39,7 +39,7 @@ Rules:
 
 Developer workflow notes:
 
-- `bun run dev` defaults to a persistent external runtime root at `~/trenchclaw-dev-runtime`.
+- `bun run dev` defaults to a persistent external runtime root at `~/.trenchclaw-dev-runtime`.
 - Generated prompt-support artifacts default to the active instance's `cache/generated/` directory inside that runtime root.
 - That external runtime root is for local development and tester state, not for committed repo data.
 - Personal vaults, keypairs, databases, logs, caches, and generated artifacts must stay outside the repo.

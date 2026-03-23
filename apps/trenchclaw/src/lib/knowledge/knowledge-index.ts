@@ -72,6 +72,8 @@ export interface KnowledgeLookupEntry {
 
 type KnowledgeDocMetadata = Omit<KnowledgeDocEntry, "path">;
 
+const promptKnowledgeSummaryCache = new Map<string, Promise<string>>();
+
 const KNOWLEDGE_ROOT_ENV = "TRENCHCLAW_KNOWLEDGE_DIR";
 export const KNOWLEDGE_WORKSPACE_ROOT = "src/ai/brain/knowledge";
 const INDEX_AND_SUPPORT_FILES = new Set(["KNOWLEDGE_MANIFEST.md"]);
@@ -338,6 +340,15 @@ const SUPPORT_DOC_METADATA = new Map<string, KnowledgeDocMetadata>([
 ]);
 
 const SKILL_METADATA = new Map<string, Omit<KnowledgeSkillPackSummary, "path" | "referenceCount">>([
+  [
+    "dune",
+    {
+      name: "dune",
+      title: "Dune Skill",
+      topics: ["dune", "sql", "analytics", "cli"],
+      readWhen: "Dune SQL, query execution, dataset discovery, or Dune CLI-style workflows are requested",
+    },
+  ],
   [
     "agent-browser",
     {
@@ -606,17 +617,88 @@ export const resolveKnowledgeRoot = (): string => {
 export const renderKnowledgeRoutingRules = (): string =>
   KNOWLEDGE_ROUTING_RULES.map((rule) => `- ${rule}`).join("\n");
 
-export const renderKnowledgePromptSummary = (): string => [
-  "## Knowledge Index",
-  "- core doc aliases: `runtime-reference`, `settings-reference`, `wallet-reference`, `bash-tool`, `helius-agents`, `solana-cli`, `solanacli-file-system-wallet`, `jupiter-ai-docs`",
-  "- skill pack aliases: use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
-  "- use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults",
-  "- use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs",
-  '- Use `tier = "skills"` when you specifically need a skill pack.',
-  "## Knowledge Routing",
-  renderKnowledgeRoutingRules(),
-  "- Start with `runtime-reference` for runtime behavior and `settings-reference` for settings ownership.",
-].join("\n");
+const matchesCliKnowledgeEntry = (entry: KnowledgeLookupEntry): boolean => {
+  const haystack = [entry.alias, entry.title, entry.path, ...entry.topics].join(" ").toLowerCase();
+  return /\b(cli|shell|bash|solana|helius|dune)\b/u.test(haystack);
+};
+
+const formatKnowledgeAliasLabel = (entry: KnowledgeLookupEntry): string => `\`${entry.alias}\` - ${entry.title}`;
+
+const formatKnowledgeRegistryLine = (
+  label: string,
+  entries: KnowledgeLookupEntry[],
+): string => `- ${label}: ${entries.length > 0 ? entries.map(formatKnowledgeAliasLabel).join(", ") : "none"}`;
+
+const renderKnowledgePromptSummaryFromEntries = (entries: KnowledgeLookupEntry[]): string => {
+  const coreDocs = entries.filter((entry) => entry.kind === "core-doc");
+  const deepDocs = entries.filter((entry) => entry.kind === "deep-doc");
+  const supportDocs = entries.filter((entry) => entry.kind === "support-doc");
+  const skillPacks = entries.filter((entry) => entry.kind === "skill-pack");
+  const cliDocs = entries.filter(matchesCliKnowledgeEntry);
+
+  return [
+    "## Knowledge",
+    "The tree lives under the brain/knowledge workspace: **core** references at the repo root, long **vendor** material under `deep-knowledge/`, and **skill packs** under `skills/`.",
+    "You may read as many docs or skills as needed, but keep the retrieval chain tight: start with the smallest likely doc, then expand only if it leaves a real gap.",
+    "",
+    "### When to retrieve",
+    "- Prefer **live tools** (runtime store, wallet and RPC actions, workspace files) for truth about *this* instance right now.",
+    "- Use knowledge for **durable procedures**, CLI semantics, integration notes, provider details, and skill workflows that live runtime tools do not carry.",
+    "- Workflow: if you already know the alias, call **`readKnowledgeDoc`** directly. Otherwise call **`listKnowledgeDocs`** with a short `request.query` (optional `tier`: `core`, `deep`, `support`, `skills`, or `all`) and then open the exact alias.",
+    '- Use `tier = "skills"` when the task matches a packaged skill workflow, not a one-off doc.',
+    "",
+    "### Direct-Open Registry",
+    formatKnowledgeRegistryLine("core docs", coreDocs),
+    formatKnowledgeRegistryLine("deep references", deepDocs),
+    formatKnowledgeRegistryLine("support docs", supportDocs),
+    formatKnowledgeRegistryLine("skill packs", skillPacks),
+    "",
+    "### Shell + CLI References",
+    "- Run shell, CLI, search, and host-command work through `workspaceBash` only; do not treat docs as executable surfaces.",
+    formatKnowledgeRegistryLine("CLI-oriented docs and skills", cliDocs),
+    "- High-value shell paths to remember: `solana-cli`, `bash-tool`, Dune skill docs, and Helius CLI references are all available through the knowledge surface when present in the registry above.",
+    "",
+    "### Authority",
+    renderKnowledgeRoutingRules(),
+  ].join("\n");
+};
+
+const loadPromptKnowledgeSummary = async (): Promise<string> => {
+  const knowledgeRoot = resolveKnowledgeRoot();
+  const cached = promptKnowledgeSummaryCache.get(knowledgeRoot);
+  if (cached) {
+    return cached;
+  }
+
+  const summaryPromise = (async () => {
+    try {
+      const entries = await buildKnowledgeLookup(knowledgeRoot);
+      return renderKnowledgePromptSummaryFromEntries(entries);
+    } catch {
+      return [
+        "## Knowledge",
+        "The tree lives under the brain/knowledge workspace: **core** references at the repo root, long **vendor** material under `deep-knowledge/`, and **skill packs** under `skills/`. Do not assume you have seen any file until you retrieve it — this block is orientation only.",
+        "",
+        "### When to retrieve",
+        "- Prefer **live tools** (runtime store, wallet and RPC actions, workspace files) for truth about *this* instance right now.",
+        "- Use knowledge for **durable procedures**, CLI semantics, integration notes, or vendor detail that live tools do not carry.",
+        "- Workflow: **`listKnowledgeDocs`** with a short `request.query` (optional `tier`: `core`, `deep`, `support`, `skills`, or `all`) → **`readKnowledgeDoc`** with the exact `doc` alias once you know it. If you already know the alias, skip listing and read directly.",
+        '- Use `tier = "skills"` when the task matches a packaged skill workflow, not a one-off doc.',
+        "",
+        "### Anchor aliases (optional shortcuts)",
+        "- If you already know the name: `runtime-reference`, `settings-reference`, `wallet-reference`, `solana-cli`, and `bash-tool`. For anything else, search with `listKnowledgeDocs` instead of guessing aliases.",
+        "",
+        "### Authority",
+        renderKnowledgeRoutingRules(),
+      ].join("\n");
+    }
+  })();
+
+  promptKnowledgeSummaryCache.set(knowledgeRoot, summaryPromise);
+  return summaryPromise;
+};
+
+export const renderKnowledgePromptSummary = async (): Promise<string> => loadPromptKnowledgeSummary();
 
 export const buildKnowledgeInventory = async (targetDir: string): Promise<KnowledgeInventory> => {
   const resolved = path.resolve(targetDir);

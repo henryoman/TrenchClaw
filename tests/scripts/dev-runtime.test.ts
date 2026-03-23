@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -171,9 +171,137 @@ describe("developer runtime workflow", () => {
   });
 
   test("developer bootstrap roots default to the persistent external dev runtime", () => {
-    const defaults = getDefaultDeveloperRuntimeRoots();
-    const resolved = resolveDeveloperBootstrapRoots({ env: {} });
+    const env = {
+      ...process.env,
+      TRENCHCLAW_RUNTIME_STATE_ROOT: "",
+    };
+    const defaults = getDefaultDeveloperRuntimeRoots({ env });
+    const resolved = resolveDeveloperBootstrapRoots({ env });
 
     expect(resolved).toEqual(defaults);
+  });
+
+  test("developer bootstrap prefers the populated external runtime root", async () => {
+    const homeRoot = await createTempRoot("trenchclaw-home-");
+    const hiddenRuntimeRoot = path.join(homeRoot, ".trenchclaw-dev-runtime");
+    const legacyRuntimeRoot = path.join(homeRoot, "trenchclaw-dev-runtime");
+
+    await mkdir(path.join(legacyRuntimeRoot, "instances", "01", "settings"), { recursive: true });
+    await mkdir(path.join(legacyRuntimeRoot, "instances", "01", "secrets"), { recursive: true });
+    await writeFile(
+      path.join(legacyRuntimeRoot, "instances", "active-instance.json"),
+      `${JSON.stringify({ localInstanceId: "01" }, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(legacyRuntimeRoot, "instances", "01", "instance.json"),
+      `${JSON.stringify({
+        instance: {
+          name: "legacy-dev",
+          localInstanceId: "01",
+          userPin: null,
+        },
+        runtime: {
+          safetyProfile: "dangerous",
+          createdAt: "2026-03-19T00:00:00.000Z",
+          updatedAt: "2026-03-19T00:00:00.000Z",
+        },
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(legacyRuntimeRoot, "instances", "01", "secrets", "vault.json"),
+      `${JSON.stringify({
+        integrations: {
+          jupiter: {
+            "api-key": "jupiter-live-key",
+          },
+        },
+      }, null, 2)}\n`,
+      "utf8",
+    );
+
+    const resolved = resolveDeveloperBootstrapRoots({
+      env: {
+        ...process.env,
+        HOME: homeRoot,
+        USERPROFILE: homeRoot,
+        TRENCHCLAW_RUNTIME_STATE_ROOT: "",
+      },
+    });
+
+    expect(resolved.runtimeRoot).toBe(legacyRuntimeRoot);
+    expect(resolved.runtimeRoot).not.toBe(hiddenRuntimeRoot);
+    expect(resolved.generatedRoot).toBe(path.join(legacyRuntimeRoot, "instances", "01", "cache", "generated"));
+  });
+
+  test("initialization repairs stale wallet library absolute paths into the current instance root", async () => {
+    const runtimeRoot = await createTempRoot("trenchclaw-dev-runtime-");
+    const generatedRoot = await createTempRoot("trenchclaw-dev-generated-");
+
+    await initializeDeveloperRuntime({
+      runtimeRoot,
+      generatedRoot,
+      instanceId: "01",
+      instanceName: "default",
+    });
+
+    await mkdir(path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets"), { recursive: true });
+    await writeFile(
+      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.json"),
+      "[1,2,3]\n",
+      "utf8",
+    );
+    await writeFile(
+      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.label.json"),
+      `${JSON.stringify({
+        version: 1,
+        walletId: "practice-wallets.practice001",
+        walletGroup: "practice-wallets",
+        walletName: "practice001",
+        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+        walletFileName: "practice001-0001.json",
+        createdAt: "2026-03-11T04:14:44.060Z",
+        updatedAt: "2026-03-11T04:14:44.060Z",
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    await writeFile(
+      path.join(runtimeRoot, "instances", "01", "keypairs", "wallet-library.jsonl"),
+      `${JSON.stringify({
+        walletId: "practice-wallets.practice001",
+        walletGroup: "practice-wallets",
+        walletName: "practice001",
+        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+        keypairFilePath: "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/brain/protected/instance/i-01/keypairs/practice-wallets/practice001-0001.json",
+        walletLabelFilePath: "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/brain/protected/instance/i-01/keypairs/practice-wallets/practice001-0001.label.json",
+        createdAt: "2026-03-11T04:14:44.060Z",
+        updatedAt: "2026-03-11T04:14:44.060Z",
+      })}\n`,
+      "utf8",
+    );
+
+    await initializeDeveloperRuntime({
+      runtimeRoot,
+      generatedRoot,
+      instanceId: "01",
+      instanceName: "default",
+    });
+
+    const repaired = JSON.parse(await readFile(
+      path.join(runtimeRoot, "instances", "01", "keypairs", "wallet-library.jsonl"),
+      "utf8",
+    ).then((content) => content.trim())) as {
+      keypairFilePath: string;
+      walletLabelFilePath: string;
+    };
+
+    expect(repaired.keypairFilePath).toBe(
+      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.json"),
+    );
+    expect(repaired.walletLabelFilePath).toBe(
+      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.label.json"),
+    );
+    expect((await readdir(path.join(runtimeRoot, ".backups"))).length).toBeGreaterThan(0);
   });
 });

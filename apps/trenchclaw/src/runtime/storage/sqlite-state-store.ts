@@ -3,6 +3,7 @@ import { Database } from "bun:sqlite";
 import type { ActionResult } from "../../ai/runtime/types/action";
 import type {
   ChatMessageState,
+  ConversationHistorySlice,
   ConversationState,
   InstanceFactState,
   InstanceProfileState,
@@ -13,6 +14,10 @@ import type {
   RuntimeSearchScope,
   StateStore,
 } from "../../ai/runtime/types/state";
+import {
+  MAX_CONVERSATION_HISTORY_SCAN_MESSAGES,
+  createConversationHistorySlice,
+} from "../conversation-history";
 import {
   actionResultSchema,
   chatMessageStateSchema,
@@ -678,6 +683,122 @@ export class SqliteStateStore implements StateStore {
             : parseJson<Record<string, unknown> | undefined>(parsed.metadata_json, undefined),
         createdAt: parsed.created_at,
       });
+    });
+  }
+
+  getConversationHistorySlice(input: {
+    conversationId: string;
+    beforeMessageId?: string;
+    limit?: number;
+    tokenBudget?: number;
+  }): ConversationHistorySlice {
+    const normalizedConversationId = input.conversationId.trim();
+    if (!normalizedConversationId) {
+      return createConversationHistorySlice({
+        conversationId: input.conversationId,
+        eligibleMessages: [],
+        totalEligibleCount: 0,
+        beforeMessageId: input.beforeMessageId,
+        limit: input.limit,
+        tokenBudget: input.tokenBudget,
+      });
+    }
+
+    const beforeMessageId = input.beforeMessageId?.trim();
+    let cursorCreatedAt: number | null = null;
+    let cursorId: string | null = null;
+
+    if (beforeMessageId) {
+      const cursorRow = this.db
+        .query(
+          `
+          SELECT id, created_at
+          FROM chat_messages
+          WHERE conversation_id = ?
+            AND id = ?
+          LIMIT 1
+        `,
+        )
+        .get(normalizedConversationId, beforeMessageId) as Record<string, unknown> | null;
+
+      if (!cursorRow) {
+        throw new Error(`beforeMessageId "${beforeMessageId}" was not found in conversation "${normalizedConversationId}"`);
+      }
+
+      cursorCreatedAt = Number(cursorRow.created_at);
+      cursorId = String(cursorRow.id);
+    }
+
+    const countRow = this.db
+      .query(
+        beforeMessageId
+          ? `
+            SELECT COUNT(*) AS message_count
+            FROM chat_messages
+            WHERE conversation_id = ?
+              AND (created_at < ? OR (created_at = ? AND id < ?))
+          `
+          : `
+            SELECT COUNT(*) AS message_count
+            FROM chat_messages
+            WHERE conversation_id = ?
+          `,
+      )
+      .get(
+        ...(beforeMessageId
+          ? [normalizedConversationId, cursorCreatedAt!, cursorCreatedAt!, cursorId!]
+          : [normalizedConversationId]),
+      ) as { message_count?: number } | null;
+
+    const rows = this.db
+      .query(
+        beforeMessageId
+          ? `
+            SELECT id, conversation_id, role, content, metadata_json, created_at
+            FROM chat_messages
+            WHERE conversation_id = ?
+              AND (created_at < ? OR (created_at = ? AND id < ?))
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+          `
+          : `
+            SELECT id, conversation_id, role, content, metadata_json, created_at
+            FROM chat_messages
+            WHERE conversation_id = ?
+            ORDER BY created_at DESC, id DESC
+            LIMIT ?
+          `,
+      )
+      .all(
+        ...(beforeMessageId
+          ? [normalizedConversationId, cursorCreatedAt!, cursorCreatedAt!, cursorId!, MAX_CONVERSATION_HISTORY_SCAN_MESSAGES]
+          : [normalizedConversationId, MAX_CONVERSATION_HISTORY_SCAN_MESSAGES]),
+      ) as Record<string, unknown>[];
+
+    const eligibleMessages = rows
+      .map((row) => {
+        const parsed = sqliteChatMessageRowSchema.parse(row);
+        return chatMessageStateSchema.parse({
+          id: parsed.id,
+          conversationId: parsed.conversation_id,
+          role: parsed.role,
+          content: parsed.content,
+          metadata:
+            parsed.metadata_json == null
+              ? undefined
+              : parseJson<Record<string, unknown> | undefined>(parsed.metadata_json, undefined),
+          createdAt: parsed.created_at,
+        });
+      })
+      .reverse();
+
+    return createConversationHistorySlice({
+      conversationId: normalizedConversationId,
+      eligibleMessages,
+      totalEligibleCount: Number(countRow?.message_count ?? 0),
+      beforeMessageId,
+      limit: input.limit,
+      tokenBudget: input.tokenBudget,
     });
   }
 

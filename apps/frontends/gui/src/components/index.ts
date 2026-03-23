@@ -11,6 +11,7 @@ export { default as SecretsPanel } from "./workspace/SecretsPanel.svelte";
 export { default as SettingsPanel } from "./workspace/SettingsPanel.svelte";
 export { default as SolPriceStrip } from "./workspace/SolPriceStrip.svelte";
 export { default as SummaryPanel } from "./workspace/SummaryPanel.svelte";
+export { default as TrackerPanel } from "./workspace/TrackerPanel.svelte";
 export { default as WakeupPanel } from "./workspace/WakeupPanel.svelte";
 export { default as WalletsPanel } from "./workspace/WalletsPanel.svelte";
 export { default as WorkspaceShell } from "./workspace/WorkspaceShell.svelte";

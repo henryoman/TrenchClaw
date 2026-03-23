@@ -3,6 +3,7 @@ import type { RuntimeModelToolSnapshotEntry } from "../capabilities/types";
 type ToolGroupId =
   | "runtime-queue"
   | "rpc-data-fetch"
+  | "market-news"
   | "wallet-execution"
   | "workspace-cli"
   | "knowledge";
@@ -10,6 +11,7 @@ type ToolGroupId =
 const TOOL_GROUP_ORDER: readonly ToolGroupId[] = [
   "runtime-queue",
   "rpc-data-fetch",
+  "market-news",
   "wallet-execution",
   "workspace-cli",
   "knowledge",
@@ -24,7 +26,7 @@ const TOOL_GROUP_COPY: Record<ToolGroupId, {
   "runtime-queue": {
     title: "Runtime + Queue",
     forLine: "runtime state, memory, queued jobs, schedules, wakeups, and background-job status",
-    flowLine: "use `queryRuntimeStore` for live job and schedule inspection; use queue-write tools only when the user explicitly wants durable work submitted or changed",
+    flowLine: "use `queryRuntimeStore` for live job/schedule inspection and older conversation slices; use queue-write tools only when the user explicitly wants durable work submitted or changed",
     expectLine: "expect inline JSON for reads or job metadata when work was accepted into the queue",
   },
   "rpc-data-fetch": {
@@ -32,6 +34,12 @@ const TOOL_GROUP_COPY: Record<ToolGroupId, {
     forLine: "live wallet reads, balances, holdings, swap history, token discovery, market data, and current external data pulls",
     flowLine: "prefer one valid batch read when the schema supports it instead of many tiny duplicate calls",
     expectLine: "expect inline JSON for most reads, but heavier inventory scans may come back as queued background work",
+  },
+  "market-news": {
+    title: "Market + News",
+    forLine: "headline pulls, sentiment, trend reads, token discovery, launch timing, holder concentration, and market comparison work",
+    flowLine: "start with the smallest discovery or market tool that identifies the asset cleanly, then follow with one concrete comparison or deep read if needed",
+    expectLine: "expect inline JSON snapshots, token metadata, market fields, or saved news artifacts in the workspace",
   },
   "wallet-execution": {
     title: "Wallet Execution",
@@ -59,6 +67,17 @@ const isRpcDataFetchTool = (toolName: string): boolean =>
   toolName === "getManagedWalletContents"
   || toolName === "getManagedWalletSolBalances"
   || toolName === "getSwapHistory"
+  || toolName === "getConfiguredNewsFeeds"
+  || toolName === "getWalletTracker";
+
+const isMarketNewsTool = (toolName: string): boolean =>
+  toolName === "getConfiguredNewsFeeds"
+  || toolName === "getWalletTracker"
+  || toolName === "getCryptoNewsLatest"
+  || toolName === "searchCryptoNews"
+  || toolName === "getCryptoAssetSentiment"
+  || toolName === "getCryptoFearGreedIndex"
+  || toolName === "getCryptoTrendingTopics"
   || toolName === "getTokenLaunchTime"
   || toolName === "getTokenPricePerformance"
   || toolName === "getTokenHolderDistribution"
@@ -98,6 +117,9 @@ const classifyToolGroup = (tool: RuntimeModelToolSnapshotEntry): ToolGroupId => 
   if (isRuntimeQueueTool(tool.name)) {
     return "runtime-queue";
   }
+  if (isMarketNewsTool(tool.name)) {
+    return "market-news";
+  }
   if (isRpcDataFetchTool(tool.name)) {
     return "rpc-data-fetch";
   }
@@ -112,12 +134,11 @@ const formatToolListOrNone = (tools: RuntimeModelToolSnapshotEntry[]): string =>
 
 export const renderModelAccessSummarySection = (tools: RuntimeModelToolSnapshotEntry[]): string => {
   const sortedTools = tools.toSorted((left, right) => left.name.localeCompare(right.name));
+  const runtimeQueueTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "runtime-queue");
+  const rpcTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "rpc-data-fetch");
+  const marketNewsTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "market-news");
   const workspaceTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "workspace-cli");
   const knowledgeTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "knowledge");
-  const readTools = sortedTools.filter((tool) =>
-    tool.sideEffectLevel === "read"
-    && classifyToolGroup(tool) !== "workspace-cli"
-    && classifyToolGroup(tool) !== "knowledge");
   const mutatingTools = sortedTools.filter((tool) =>
     tool.sideEffectLevel !== "read"
     && classifyToolGroup(tool) !== "workspace-cli"
@@ -126,16 +147,18 @@ export const renderModelAccessSummarySection = (tools: RuntimeModelToolSnapshotE
 
   return [
     "## What You Can See Right Now",
-    "- current chat input: only the current conversation messages that were sent with this request",
-    "- live injected context: current clock, SOL snapshot, upcoming trading schedule, wallet summary, and repo knowledge index hints",
+    "- current conversation context: this request's messages plus a **token-bounded** same-conversation history window when persisted; preloaded rows are prefixed `[History #i/N | messageId=…]` (oldest `i=1` in the window)",
+    "- live injected context: current clock, SOL snapshot, upcoming trading schedule, wallet summary, and a short **knowledge orientation** (not full docs — retrieve with `listKnowledgeDocs` / `readKnowledgeDoc`)",
     hasRuntimeStoreRead
-      ? "- other chats/runtime records: not preloaded; use `queryRuntimeStore` only when you actually need runtime state outside the current conversation"
+      ? "- older same-conversation history and other runtime records: not preloaded beyond that window; use `queryRuntimeStore` (`getConversationHistorySlice` with `beforeMessageId` from `[History #1/…]`, or other request types) only when you need deeper history or runtime state"
       : "- other chats/runtime records: not preloaded and not directly available in this request",
     "- protected material: vaults, keypairs, and hidden tools are not directly available",
     "",
     "## Tools Available Right Now",
     "- if a tool is not listed below, it is unavailable for this turn",
-    `- read tools: ${formatToolListOrNone(readTools)}`,
+    `- runtime + queue tools: ${formatToolListOrNone(runtimeQueueTools)}`,
+    `- RPC data tools: ${formatToolListOrNone(rpcTools)}`,
+    `- market + news tools: ${formatToolListOrNone(marketNewsTools)}`,
     `- write/execute tools: ${formatToolListOrNone(mutatingTools)}`,
     `- workspace tools: ${formatToolListOrNone(workspaceTools)}`,
     `- knowledge tools: ${formatToolListOrNone(knowledgeTools)}`,
@@ -158,6 +181,7 @@ export const renderCommandMenuSection = (tools: RuntimeModelToolSnapshotEntry[],
     heading,
     "- Treat these as command groups. Pick the smallest group and smallest tool that can answer the request.",
     "- If a tool is not listed inside these groups for the current request, it is unavailable.",
+    "- Every tool call uses one machine JSON envelope: put the real arguments under `params`. Optional `thought`, `notes`, or `meta` may be included and are ignored by runtime execution.",
   ];
 
   for (const groupId of TOOL_GROUP_ORDER) {
@@ -181,6 +205,8 @@ export const renderWorkspaceDirectoryMapSection = (): string => [
   "- The runtime workspace is instance-scoped. Treat all workspace paths as relative to that active instance root.",
   "- `strategies/`: strategy drafts, plans, and operator-authored working material.",
   "- `configs/`: config fragments and runtime-side config artifacts.",
+  "- `configs/news-feeds.json`: instance-scoped RSS and Atom feed registry; use `getConfiguredNewsFeeds` or `workspaceReadFile` when you need exact feed aliases or URLs.",
+  "- `configs/tracker.json`: instance-scoped tracked wallets and tracked tokens; use `getWalletTracker` for a compact summary or `workspaceReadFile`/`workspaceWriteFile` for exact edits.",
   "- `typescript/`: TypeScript helpers or code artifacts placed in the workspace surface.",
   "- `notes/`: operator notes and durable scratch notes.",
   "- `notes/research/`: deeper research notes and investigation writeups.",
@@ -218,7 +244,8 @@ export const renderAsyncToolBehaviorSection = (tools: RuntimeModelToolSnapshotEn
   }
 
   if (hasWorkspaceBash) {
-    lines.push("- `workspaceBash` is synchronous and timeout-bound. Always use an explicit mode like `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, `http_get`, or `shell`. Do not use it for long-lived background daemons.");
+    lines.push("- `workspaceBash` is synchronous and timeout-bound. Put its command mode inside `params.type`, using values like `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, `http_get`, or `shell`. Do not use it for long-lived background daemons.");
+    lines.push("- Use `workspaceBash` for CLI programs like `solana`, `solana-keygen`, `helius`, `dune`, `bun`, or other host commands when present in PATH; keep every call machine-structured under `params`.");
   }
 
   lines.push("- For multi-step work, keep the user oriented with short status notes that say what you are opening, what you are waiting on, and what result changed the next step.");

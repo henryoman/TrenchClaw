@@ -41,7 +41,7 @@ describe("buildChatActivitySnapshot", () => {
     });
 
     expect(snapshot.statusLabel).toBe("Queued");
-    expect(snapshot.currentItems[0]?.detail).toContain("check wallets");
+    expect(snapshot.currentItems.some((item) => item.badge === "ASK")).toBe(false);
     expect(snapshot.currentItems.some((item) => item.badge === "QUEUE" && item.detail.includes("#12"))).toBe(true);
   });
 
@@ -87,5 +87,39 @@ describe("buildChatActivitySnapshot", () => {
     expect(snapshot.feedItems).toHaveLength(2);
     expect(snapshot.feedItems[0]?.tone).toBe("queued");
     expect(snapshot.feedItems[1]?.tone).toBe("done");
+  });
+
+  test("collapses chat prompt lifecycle into one response-time entry", () => {
+    const snapshot = buildChatActivitySnapshot({
+      messages: [],
+      chatStatus: "ready",
+      runtimeEntries: [
+        {
+          id: "chat-1",
+          source: "chat",
+          summary: "Prompt sent (1 message)",
+          timestamp: 1_000,
+        },
+        {
+          id: "chat-2",
+          source: "chat",
+          summary: "Assistant response started",
+          timestamp: 1_200,
+        },
+        {
+          id: "chat-3",
+          source: "chat",
+          summary: "Assistant response finished",
+          timestamp: 3_400,
+        },
+      ],
+    });
+
+    expect(snapshot.feedItems).toHaveLength(1);
+    expect(snapshot.feedItems[0]).toMatchObject({
+      sourceLabel: "agent",
+      summary: "Agent responded in 2.4 seconds",
+      tone: "done",
+    });
   });
 });

@@ -80,6 +80,7 @@ describe("token holder analytics actions", () => {
           chainId: "solana",
           pairAddress: "PairA",
           baseToken: { address: "MintA", name: "Alpha", symbol: "ALPHA" },
+          priceChange: { m5: 1.5, h1: 4.2, h24: 19.8 },
           liquidity: { usd: 25_000 },
           volume: { h24: 400_000 },
           marketCap: 1_000_000,
@@ -89,6 +90,7 @@ describe("token holder analytics actions", () => {
           chainId: "solana",
           pairAddress: "PairB",
           baseToken: { address: "MintB", name: "Beta", symbol: "BETA" },
+          priceChange: { m5: -0.6, h1: 2.1, h24: 14.4 },
           liquidity: { usd: 30_000 },
           volume: { h24: 500_000 },
           marketCap: 2_000_000,
@@ -98,6 +100,7 @@ describe("token holder analytics actions", () => {
           chainId: "solana",
           pairAddress: "PairC",
           baseToken: { address: "MintC", name: "Gamma", symbol: "GAMMA" },
+          priceChange: { m5: 3.4, h1: 9.1, h24: 22.7 },
           liquidity: { usd: 12_000 },
           volume: { h24: 125_000 },
           marketCap: 700_000,
@@ -151,6 +154,9 @@ describe("token holder analytics actions", () => {
       top10OwnerShareFraction: 0.52,
     }));
     expect(result.data?.ranking[0]).toEqual(expect.objectContaining({
+      pricePerformance5mPercent: 3.4,
+      pricePerformance1hPercent: 9.1,
+      pricePerformance24hPercent: 22.7,
       liquidityUsd: 12_000,
       volume24hUsd: 125_000,
       marketCapUsd: 700_000,

@@ -1,6 +1,7 @@
 import type {
   ActionResult,
   ChatMessageState,
+  ConversationHistorySlice,
   ConversationState,
   InstanceFactState,
   InstanceProfileState,
@@ -11,6 +12,7 @@ import type {
   RuntimeSearchScope,
   StateStore as IStateStore,
 } from "../runtime/types";
+import { createConversationHistorySlice } from "../../runtime/conversation-history";
 
 export class InMemoryStateStore implements IStateStore {
   private readonly jobs = new Map<string, JobState>();
@@ -148,6 +150,35 @@ export class InMemoryStateStore implements IStateStore {
     return (this.chatMessages.get(conversationId) ?? [])
       .toSorted((a, b) => a.createdAt - b.createdAt)
       .slice(0, Math.max(1, Math.trunc(limit)));
+  }
+
+  getConversationHistorySlice(input: {
+    conversationId: string;
+    beforeMessageId?: string;
+    limit?: number;
+    tokenBudget?: number;
+  }): ConversationHistorySlice {
+    const ordered = (this.chatMessages.get(input.conversationId) ?? [])
+      .toSorted((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+    const beforeMessageId = input.beforeMessageId?.trim();
+    const endExclusive =
+      beforeMessageId && beforeMessageId.length > 0
+        ? ordered.findIndex((message) => message.id === beforeMessageId)
+        : ordered.length;
+
+    if (beforeMessageId && endExclusive < 0) {
+      throw new Error(`beforeMessageId "${beforeMessageId}" was not found in conversation "${input.conversationId}"`);
+    }
+
+    const eligibleMessages = ordered.slice(0, Math.max(0, endExclusive));
+    return createConversationHistorySlice({
+      conversationId: input.conversationId,
+      eligibleMessages,
+      totalEligibleCount: eligibleMessages.length,
+      beforeMessageId,
+      limit: input.limit,
+      tokenBudget: input.tokenBudget,
+    });
   }
 
   saveInstanceProfile(profile: InstanceProfileState): void {

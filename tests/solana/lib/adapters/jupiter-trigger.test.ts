@@ -109,7 +109,7 @@ describe("jupiter trigger adapter", () => {
     expect(requests[1]?.url).toContain("page=2");
   });
 
-  test("reads the Trigger API key from vault", async () => {
+  test("reads the shared Jupiter portal API key from vault (same path as Ultra)", async () => {
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson("vault-trigger-key");
 
     expect(await resolveJupiterTriggerApiKey()).toBe("vault-trigger-key");

@@ -58,7 +58,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     const listTool = tools[WORKSPACE_LIST_DIRECTORY_TOOL_NAME] as {
       execute: (input: unknown) => Promise<{ directory: string; entries: unknown[]; truncated: boolean }>;
     };
-    const result = await listTool.execute({ path: ".", depth: 1, limit: 50, includeHidden: false });
+    const result = await listTool.execute({ params: { path: ".", depth: 1, limit: 50, includeHidden: false } });
     expect(result.truncated).toBe(false);
     expect(result.directory).toBe(".");
     expect(Array.isArray(result.entries)).toBe(true);
@@ -74,10 +74,12 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     const writeTool = tools[WORKSPACE_WRITE_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
     const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
     await writeTool.execute({
-      path: "notes/cli-smoke.md",
-      content: "# ok\n",
+      params: {
+        path: "notes/cli-smoke.md",
+        content: "# ok\n",
+      },
     });
-    const readResult = (await readTool.execute({ path: "notes/cli-smoke.md" })) as { content: string };
+    const readResult = (await readTool.execute({ params: { path: "notes/cli-smoke.md" } })) as { content: string };
     expect(readResult.content).toContain("# ok");
   });
 
@@ -94,7 +96,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ type: "version", program: "solana" })) as {
+    const out = (await bashTool.execute({ params: { type: "version", program: "solana" } })) as {
       exitCode: number;
       stdout: string;
     };
@@ -115,7 +117,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ type: "version", program: "helius" })) as {
+    const out = (await bashTool.execute({ params: { type: "version", program: "helius" } })) as {
       exitCode: number;
       stdout: string;
       stderr: string;
@@ -137,7 +139,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ type: "shell", command: "solana --version && helius --version" })) as {
+    const out = (await bashTool.execute({ params: { type: "shell", command: "solana --version && helius --version" } })) as {
       exitCode: number;
       stdout: string;
     };
@@ -158,7 +160,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ type: "help", program: "helius" })) as {
+    const out = (await bashTool.execute({ params: { type: "help", program: "helius" } })) as {
       exitCode: number;
       stdout: string;
       stderr: string;
@@ -180,7 +182,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
-    const out = (await bashTool.execute({ type: "which", program: "solana" })) as {
+    const out = (await bashTool.execute({ params: { type: "which", program: "solana" } })) as {
       exitCode: number;
       stdout: string;
     };
@@ -206,21 +208,23 @@ describe("workspaceBash writes CLI output to a file (read back)", () => {
     const writeTool = tools[WORKSPACE_WRITE_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
     const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
 
-    const run = (await bashTool.execute({ type: "version", program: "solana" })) as {
+    const run = (await bashTool.execute({ params: { type: "version", program: "solana" } })) as {
       stdout: string;
       exitCode: number;
     };
     expect(run.exitCode).toBe(0);
 
     await writeTool.execute({
-      path: "output/solana-version.txt",
-      content: run.stdout,
+      params: {
+        path: "output/solana-version.txt",
+        content: run.stdout,
+      },
     });
 
     const disk = await readFile(path.join(workspaceRoot, "output/solana-version.txt"), "utf8");
     expect(disk).toMatch(/solana-cli|solana\s/i);
 
-    const viaTool = (await readTool.execute({ path: "output/solana-version.txt" })) as { content: string };
+    const viaTool = (await readTool.execute({ params: { path: "output/solana-version.txt" } })) as { content: string };
     expect(viaTool.content).toBe(disk);
   });
 });

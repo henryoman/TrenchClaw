@@ -45,6 +45,7 @@ export const pipeModelFullStreamToUIMessageStream = async (
 ): Promise<void> => {
   const responseMessageId = createResponseMessageId();
   const activeTextPartIds = new Set<string>();
+  const activeReasoningPartIds = new Set<string>();
   for await (const part of stream) {
     const partType = typeof part.type === "string" ? part.type : "";
     let chunk: UIMessageChunk | null = null;
@@ -61,6 +62,19 @@ export const pipeModelFullStreamToUIMessageStream = async (
         writeChunk(chunk);
         chunk = { type: "text-end", id };
         activeTextPartIds.delete(id);
+        break;
+      }
+      case "reasoning": {
+        const text = typeof part.text === "string" ? part.text : "";
+        const id = typeof part.id === "string" && part.id.length > 0 ? part.id : createUiTextPartId();
+        chunk = { type: "reasoning-start", id };
+        observeChunk?.(chunk);
+        writeChunk(chunk);
+        chunk = { type: "reasoning-delta", id, delta: text };
+        observeChunk?.(chunk);
+        writeChunk(chunk);
+        chunk = { type: "reasoning-end", id };
+        activeReasoningPartIds.delete(id);
         break;
       }
       case "text-start": {
@@ -83,9 +97,26 @@ export const pipeModelFullStreamToUIMessageStream = async (
         chunk = { type: "text-end", id };
         break;
       }
-      case "reasoning-start":
-      case "reasoning-delta":
-      case "reasoning-end":
+      case "reasoning-start": {
+        const id = typeof part.id === "string" ? part.id : "";
+        if (!id) break;
+        activeReasoningPartIds.add(id);
+        chunk = { type: "reasoning-start", id };
+        break;
+      }
+      case "reasoning-delta": {
+        const id = typeof part.id === "string" ? part.id : "";
+        if (!id || !activeReasoningPartIds.has(id) || typeof part.text !== "string") break;
+        chunk = { type: "reasoning-delta", id, delta: part.text };
+        break;
+      }
+      case "reasoning-end": {
+        const id = typeof part.id === "string" ? part.id : "";
+        if (!id || !activeReasoningPartIds.has(id)) break;
+        activeReasoningPartIds.delete(id);
+        chunk = { type: "reasoning-end", id };
+        break;
+      }
       case "tool-input-end":
       case "raw":
         break;

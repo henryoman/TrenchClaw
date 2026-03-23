@@ -16,6 +16,8 @@ import {
   signTriggerTransactionIfNeeded,
 } from "./shared";
 
+const NATIVE_SOL_MINT = "So11111111111111111111111111111111111111112";
+
 const triggerOrderInputSchema = z.object({
   maker: z.string().trim().min(1).optional(),
   payer: z.string().trim().min(1).optional(),
@@ -132,7 +134,8 @@ export const triggerOrderAction: Action<TriggerOrderInput, TriggerOrderOutput> =
           takingAmount: amounts.takingAmount,
           ...(input.expiresAtUnixMs ? { expiredAt: Math.max(1, Math.trunc(input.expiresAtUnixMs / 1000)) } : {}),
         },
-        computeUnitPrice: input.computeUnitPrice,
+        computeUnitPrice: input.computeUnitPrice ?? "auto",
+        ...(amounts.inputMint === NATIVE_SOL_MINT ? { wrapAndUnwrapSol: true } : {}),
       });
       timings.createOrderMs = performance.now() - createStartedAt;
 

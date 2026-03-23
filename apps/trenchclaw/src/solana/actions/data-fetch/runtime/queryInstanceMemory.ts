@@ -49,7 +49,7 @@ const parseJsonObject = (value: unknown): unknown => {
   }
 };
 
-const queryInstanceMemoryRequestSchema = z.preprocess(
+export const queryInstanceMemoryRequestSchema = z.preprocess(
   parseJsonObject,
   z.discriminatedUnion("type", [
     getProfileRequestSchema,
@@ -59,7 +59,7 @@ const queryInstanceMemoryRequestSchema = z.preprocess(
   ]),
 );
 
-const queryInstanceMemoryInputSchema = z.object({
+export const queryInstanceMemoryInputSchema = z.object({
   request: queryInstanceMemoryRequestSchema,
 });
 

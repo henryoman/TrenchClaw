@@ -1,4 +1,4 @@
-import { loadVaultData, readVaultString } from "../../../ai/llm/vault-file";
+import { resolveJupiterApiKey } from "./jupiter";
 
 const DEFAULT_JUPITER_TRIGGER_BASE_URL = "https://api.jup.ag/trigger/v1";
 
@@ -19,6 +19,8 @@ export interface JupiterTriggerCreateOrderRequest {
     expiredAt?: number;
   };
   computeUnitPrice?: string;
+  /** Per Jupiter Trigger V1 docs; set when the input side is native SOL. */
+  wrapAndUnwrapSol?: boolean;
 }
 
 export interface JupiterTriggerCreateOrderResponse {
@@ -258,17 +260,10 @@ export const createJupiterTriggerAdapter = (config: JupiterTriggerAdapterConfig)
   };
 };
 
-export const getJupiterTriggerApiKeyFromVault = async (): Promise<string | undefined> => {
-  const { vaultData } = await loadVaultData();
-  return readVaultString(vaultData, "integrations/jupiter/api-key");
-};
-
-export const resolveJupiterTriggerApiKey = async (): Promise<string | undefined> => {
-  return getJupiterTriggerApiKeyFromVault();
-};
+export { getJupiterApiKeyFromVault as getJupiterTriggerApiKeyFromVault, resolveJupiterApiKey as resolveJupiterTriggerApiKey } from "./jupiter";
 
 export const createJupiterTriggerAdapterFromConfig = async () => {
-  const apiKey = await resolveJupiterTriggerApiKey();
+  const apiKey = await resolveJupiterApiKey();
 
   if (!apiKey) {
     return undefined;

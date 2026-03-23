@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = path.resolve(fileURLToPath(new URL("../..", import.meta.url)));
-const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = "trenchclaw-dev-runtime";
+const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = ".trenchclaw-dev-runtime";
 
 const normalize = (value: string): string => path.resolve(value);
 const resolveAbsoluteEnvPath = (envKey: string, value: string): string => {

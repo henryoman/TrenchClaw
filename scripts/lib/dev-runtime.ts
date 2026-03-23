@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -9,14 +10,18 @@ const RUNTIME_TEMPLATE_ROOT = path.join(CORE_APP_ROOT, ".runtime");
 const REPO_LOCAL_RUNTIME_ROOT = path.join(CORE_APP_ROOT, ".runtime-state");
 const TEMPLATE_INSTANCE_ID = "01";
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
+const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
 const GITIGNORE_MARKER_START = "# >>> trenchclaw dev runtime >>>";
 const GITIGNORE_MARKER_END = "# <<< trenchclaw dev runtime <<<";
-const DEFAULT_DEV_RUNTIME_ROOT = path.join(os.homedir(), "trenchclaw-dev-runtime");
 const DEFAULT_INSTANCE_NAME = "default";
 const LEGACY_AUTO_INSTANCE_NAME_PATTERN = /^dev[- ](\d{2})$/u;
+const IGNORED_VAULT_STRING_VALUES = new Set(["custom"]);
+const WALLET_LIBRARY_FILE_NAME = "wallet-library.jsonl";
+const WALLET_LABEL_FILE_SUFFIX = ".label.json";
 
 const DEV_RUNTIME_GITIGNORE_BLOCK = [
   GITIGNORE_MARKER_START,
+  "/.backups/",
   "/instances/*/secrets/vault.json",
   "/instances/*/keypairs/",
   "/instances/*/data/",
@@ -38,6 +43,7 @@ export interface DeveloperRuntimeInitInput {
   instanceId?: string;
   instanceName?: string;
   writeGitignore?: boolean;
+  env?: NodeJS.ProcessEnv;
 }
 
 export interface DeveloperRuntimeInitResult {
@@ -73,6 +79,15 @@ const resolveAbsolutePath = (value: string, label: string): string => {
   return path.resolve(trimmed);
 };
 
+const resolveHomeDirectory = (env: NodeJS.ProcessEnv = process.env): string =>
+  env.HOME?.trim() || env.USERPROFILE?.trim() || os.homedir();
+
+const resolveDefaultDeveloperRuntimeRoot = (env: NodeJS.ProcessEnv = process.env): string =>
+  path.join(resolveHomeDirectory(env), ".trenchclaw-dev-runtime");
+
+const resolveLegacyDeveloperRuntimeRoot = (env: NodeJS.ProcessEnv = process.env): string =>
+  path.join(resolveHomeDirectory(env), "trenchclaw-dev-runtime");
+
 const normalizeInstanceId = (value: string | undefined, fallback = TEMPLATE_INSTANCE_ID): string => {
   const candidate = (value ?? fallback).trim();
   if (!INSTANCE_ID_PATTERN.test(candidate)) {
@@ -99,6 +114,22 @@ const directoryExists = async (targetPath: string): Promise<boolean> => {
 
 const ensureDirectory = async (targetPath: string): Promise<void> => {
   await mkdir(targetPath, { recursive: true });
+};
+
+const isDirectorySync = (targetPath: string): boolean => {
+  try {
+    return statSync(targetPath).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+const isFileSync = (targetPath: string): boolean => {
+  try {
+    return statSync(targetPath).isFile();
+  } catch {
+    return false;
+  }
 };
 
 const copyFileIfExists = async (sourcePath: string, destinationPath: string): Promise<boolean> => {
@@ -194,6 +225,158 @@ const runtimeInstancePath = (runtimeRoot: string, instanceId: string, ...segment
 
 const resolveDefaultGeneratedRoot = (runtimeRoot: string, instanceId: string): string =>
   runtimeInstancePath(runtimeRoot, instanceId, "cache", "generated");
+
+const runtimeBackupsRoot = (runtimeRoot: string): string => path.join(runtimeRoot, ".backups");
+
+const readNonEmptyVaultStringCountSync = (vaultPath: string): number => {
+  if (!isFileSync(vaultPath)) {
+    return 0;
+  }
+
+  try {
+    const parsed = JSON.parse(readFileSync(vaultPath, "utf8")) as unknown;
+    let count = 0;
+    const walk = (value: unknown): void => {
+      if (typeof value === "string") {
+        const normalized = value.trim();
+        if (normalized.length > 0 && !IGNORED_VAULT_STRING_VALUES.has(normalized)) {
+          count += 1;
+        }
+        return;
+      }
+      if (Array.isArray(value)) {
+        value.forEach(walk);
+        return;
+      }
+      if (value && typeof value === "object") {
+        Object.values(value as Record<string, unknown>).forEach(walk);
+      }
+    };
+    walk(parsed);
+    return count;
+  } catch {
+    return 0;
+  }
+};
+
+const listInstanceIdsSync = (runtimeRoot: string): string[] => {
+  const instancesRoot = path.join(runtimeRoot, "instances");
+  if (!isDirectorySync(instancesRoot)) {
+    return [];
+  }
+
+  return readdirSync(instancesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && INSTANCE_DIRECTORY_PATTERN.test(entry.name))
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
+};
+
+const directoryHasManagedWalletFilesSync = (directoryPath: string): boolean => {
+  if (!isDirectorySync(directoryPath)) {
+    return false;
+  }
+
+  const walk = (currentPath: string): boolean => {
+    const entries = readdirSync(currentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const absolutePath = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        if (walk(absolutePath)) {
+          return true;
+        }
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      if (entry.name === ".gitkeep" || entry.name === ".keep") {
+        continue;
+      }
+
+      if (entry.name === WALLET_LIBRARY_FILE_NAME && statSync(absolutePath).size > 0) {
+        return true;
+      }
+
+      if (entry.name.endsWith(".json") && !entry.name.endsWith(WALLET_LABEL_FILE_SUFFIX)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  return walk(directoryPath);
+};
+
+const directoryHasUserFilesSync = (directoryPath: string): boolean => {
+  if (!isDirectorySync(directoryPath)) {
+    return false;
+  }
+
+  const walk = (currentPath: string): boolean => {
+    const entries = readdirSync(currentPath, { withFileTypes: true });
+    for (const entry of entries) {
+      const absolutePath = path.join(currentPath, entry.name);
+      if (entry.isDirectory()) {
+        if (walk(absolutePath)) {
+          return true;
+        }
+        continue;
+      }
+
+      if (!entry.isFile()) {
+        continue;
+      }
+
+      if (entry.name === ".gitkeep" || entry.name === ".keep") {
+        continue;
+      }
+
+      return true;
+    }
+    return false;
+  };
+
+  return walk(directoryPath);
+};
+
+const runtimeRootHasMaterialStateSync = (runtimeRoot: string): boolean => {
+  const instancesRoot = path.join(runtimeRoot, "instances");
+  if (!isDirectorySync(instancesRoot)) {
+    return false;
+  }
+
+  for (const instanceId of listInstanceIdsSync(runtimeRoot)) {
+    const instanceRoot = runtimeInstancePath(runtimeRoot, instanceId);
+    if (directoryHasManagedWalletFilesSync(path.join(instanceRoot, "keypairs"))) {
+      return true;
+    }
+    if (readNonEmptyVaultStringCountSync(path.join(instanceRoot, "secrets", "vault.json")) > 0) {
+      return true;
+    }
+    if (directoryHasUserFilesSync(path.join(instanceRoot, "workspace"))) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+const resolvePreferredDeveloperRuntimeRoot = (env: NodeJS.ProcessEnv = process.env): string => {
+  const defaultRoot = resolveDefaultDeveloperRuntimeRoot(env);
+  const legacyRoot = resolveLegacyDeveloperRuntimeRoot(env);
+
+  if (runtimeRootHasMaterialStateSync(defaultRoot)) {
+    return defaultRoot;
+  }
+
+  if (runtimeRootHasMaterialStateSync(legacyRoot)) {
+    return legacyRoot;
+  }
+
+  return defaultRoot;
+};
 
 const toDefaultInstanceName = (instanceId: string): string =>
   instanceId === TEMPLATE_INSTANCE_ID ? DEFAULT_INSTANCE_NAME : `instance-${instanceId}`;
@@ -303,13 +486,18 @@ const expandCloneParts = (parts: DevInstanceClonePart[] | undefined): DevInstanc
   return Array.from(new Set<DevInstanceClonePart>(normalized));
 };
 
-export const getDefaultDeveloperRuntimeRoots = (): {
+export const getDefaultDeveloperRuntimeRoots = (input: {
+  env?: NodeJS.ProcessEnv;
+} = {}): {
   runtimeRoot: string;
   generatedRoot: string;
-} => ({
-  runtimeRoot: DEFAULT_DEV_RUNTIME_ROOT,
-  generatedRoot: resolveDefaultGeneratedRoot(DEFAULT_DEV_RUNTIME_ROOT, TEMPLATE_INSTANCE_ID),
-});
+} => {
+  const runtimeRoot = resolvePreferredDeveloperRuntimeRoot(input.env ?? process.env);
+  return {
+    runtimeRoot,
+    generatedRoot: resolveDefaultGeneratedRoot(runtimeRoot, TEMPLATE_INSTANCE_ID),
+  };
+};
 
 export const resolveDeveloperBootstrapRoots = (input: {
   runtimeRoot?: string;
@@ -319,10 +507,10 @@ export const resolveDeveloperBootstrapRoots = (input: {
   runtimeRoot: string;
   generatedRoot: string;
 } => {
-  const defaults = getDefaultDeveloperRuntimeRoots();
   const env = input.env ?? process.env;
+  const defaultRuntimeRoot = resolvePreferredDeveloperRuntimeRoot(env);
   const runtimeRoot = resolveAbsolutePath(
-    input.runtimeRoot?.trim() || env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim() || defaults.runtimeRoot,
+    input.runtimeRoot?.trim() || env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim() || defaultRuntimeRoot,
     "runtime root",
   );
   return {
@@ -335,8 +523,117 @@ export const resolveDeveloperBootstrapRoots = (input: {
   };
 };
 
+const maybeAdoptLegacyDeveloperRuntimeRoot = async (
+  runtimeRoot: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<void> => {
+  if (path.resolve(runtimeRoot) !== path.resolve(resolveDefaultDeveloperRuntimeRoot(env))) {
+    return;
+  }
+  if (await directoryExists(runtimeRoot)) {
+    return;
+  }
+  const legacyRuntimeRoot = resolveLegacyDeveloperRuntimeRoot(env);
+  if (!(await directoryExists(legacyRuntimeRoot))) {
+    return;
+  }
+
+  await ensureDirectory(path.dirname(runtimeRoot));
+  await cp(legacyRuntimeRoot, runtimeRoot, {
+    recursive: true,
+    force: false,
+    errorOnExist: false,
+  });
+};
+
+const createBackupSnapshot = async (runtimeRoot: string, destinationPath: string): Promise<void> => {
+  const targetStats = await stat(destinationPath).catch(() => null);
+  if (!targetStats) {
+    return;
+  }
+
+  const timestamp = new Date().toISOString().replaceAll(":", "-");
+  const relativePath = path.relative(runtimeRoot, destinationPath);
+  const backupPath = path.join(runtimeBackupsRoot(runtimeRoot), timestamp, relativePath);
+  await ensureDirectory(path.dirname(backupPath));
+  await cp(destinationPath, backupPath, { recursive: true });
+};
+
+const repairDeveloperInstanceWalletLibrary = async (runtimeRoot: string, instanceId: string): Promise<void> => {
+  const keypairsRoot = runtimeInstancePath(runtimeRoot, instanceId, "keypairs");
+  const walletLibraryPath = path.join(keypairsRoot, WALLET_LIBRARY_FILE_NAME);
+  if (!(await fileExists(walletLibraryPath))) {
+    return;
+  }
+
+  const lines = (await readFile(walletLibraryPath, "utf8")).split(/\r?\n/u);
+  let changed = false;
+  const repairedLines: string[] = [];
+  for (const line of lines) {
+    const normalized = line.trim();
+    if (!normalized) {
+      repairedLines.push(line);
+      continue;
+    }
+
+    try {
+      const parsed = JSON.parse(normalized) as {
+        walletGroup?: unknown;
+        keypairFilePath?: unknown;
+        walletLabelFilePath?: unknown;
+      } & Record<string, unknown>;
+
+      const walletGroup = typeof parsed.walletGroup === "string" ? parsed.walletGroup.trim() : "";
+      const keypairFileName = typeof parsed.keypairFilePath === "string" ? path.basename(parsed.keypairFilePath) : "";
+      const walletLabelFileName = typeof parsed.walletLabelFilePath === "string"
+        ? path.basename(parsed.walletLabelFilePath)
+        : keypairFileName.replace(/\.json$/u, WALLET_LABEL_FILE_SUFFIX);
+
+      if (!walletGroup || !keypairFileName) {
+        return line;
+      }
+
+      const repairedKeypairPath = path.join(keypairsRoot, walletGroup, keypairFileName);
+      const repairedLabelPath = path.join(keypairsRoot, walletGroup, walletLabelFileName);
+      if (!(await fileExists(repairedKeypairPath))) {
+        repairedLines.push(line);
+        continue;
+      }
+
+      const currentKeypairPath = typeof parsed.keypairFilePath === "string" ? path.resolve(parsed.keypairFilePath) : "";
+      const currentLabelPath = typeof parsed.walletLabelFilePath === "string" ? path.resolve(parsed.walletLabelFilePath) : "";
+      const nextKeypairPath = path.resolve(repairedKeypairPath);
+      const nextLabelPath = path.resolve(repairedLabelPath);
+
+      if (currentKeypairPath === nextKeypairPath && currentLabelPath === nextLabelPath) {
+        repairedLines.push(JSON.stringify(parsed));
+        continue;
+      }
+
+      changed = true;
+      repairedLines.push(JSON.stringify({
+        ...parsed,
+        keypairFilePath: nextKeypairPath,
+        walletLabelFilePath: nextLabelPath,
+      }));
+    } catch {
+      repairedLines.push(line);
+    }
+  }
+
+  if (!changed) {
+    return;
+  }
+
+  await createBackupSnapshot(runtimeRoot, walletLibraryPath);
+  await writeFile(walletLibraryPath, `${repairedLines.filter((line) => line.trim().length > 0).join("\n")}\n`, "utf8");
+};
+
 export const initializeDeveloperRuntime = async (input: DeveloperRuntimeInitInput = {}): Promise<DeveloperRuntimeInitResult> => {
-  const runtimeRoot = resolveAbsolutePath(input.runtimeRoot ?? DEFAULT_DEV_RUNTIME_ROOT, "runtime root");
+  const runtimeRoot = resolveAbsolutePath(
+    input.runtimeRoot ?? resolvePreferredDeveloperRuntimeRoot(input.env ?? process.env),
+    "runtime root",
+  );
   const instanceId = normalizeInstanceId(input.instanceId);
   const generatedRoot = resolveAbsolutePath(
     input.generatedRoot ?? resolveDefaultGeneratedRoot(runtimeRoot, instanceId),
@@ -344,8 +641,10 @@ export const initializeDeveloperRuntime = async (input: DeveloperRuntimeInitInpu
   );
   const instanceName = input.instanceName?.trim() || toDefaultInstanceName(instanceId);
 
+  await maybeAdoptLegacyDeveloperRuntimeRoot(runtimeRoot, input.env ?? process.env);
   await Promise.all([ensureDirectory(runtimeRoot), ensureDirectory(path.join(runtimeRoot, "instances")), ensureDirectory(generatedRoot)]);
   const instanceRoot = await ensureDeveloperInstanceLayout(runtimeRoot, instanceId, instanceName);
+  await repairDeveloperInstanceWalletLibrary(runtimeRoot, instanceId);
   await writeJson(path.join(runtimeRoot, "instances", "active-instance.json"), { localInstanceId: instanceId });
   if (shouldWriteRuntimeReadme(runtimeRoot)) {
     await writeRuntimeReadme(runtimeRoot, generatedRoot, instanceId);
@@ -377,6 +676,7 @@ export const cloneDeveloperInstance = async (input: CloneDeveloperInstanceInput)
 
   const copiedPaths: string[] = [];
   const copyPath = async (sourcePath: string, destinationPath: string): Promise<void> => {
+    await createBackupSnapshot(toRoot, destinationPath);
     const copiedDirectory = await copyDirectoryIfExists(sourcePath, destinationPath);
     if (copiedDirectory) {
       copiedPaths.push(destinationPath);
@@ -435,6 +735,8 @@ export const cloneDeveloperInstance = async (input: CloneDeveloperInstanceInput)
         break;
     }
   }
+
+  await repairDeveloperInstanceWalletLibrary(toRoot, toInstanceId);
 
   return {
     fromRoot,

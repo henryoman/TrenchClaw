@@ -192,6 +192,22 @@ afterEach(async () => {
 });
 
 describe("rss news capability snapshot", () => {
+  test("exposes getConfiguredNewsFeeds as a model tool for compact feed discovery", async () => {
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const toolEntry = snapshot.modelTools.find((entry) => entry.name === "getConfiguredNewsFeeds");
+
+    expect(toolEntry).toMatchObject({
+      name: "getConfiguredNewsFeeds",
+      sideEffectLevel: "read",
+      enabledNow: true,
+      releaseReadinessStatus: "shipped-now",
+    });
+    expect(toolEntry?.toolDescription).toContain("feed catalog");
+    expect(toolEntry?.toolDescription).toContain("workspace");
+    expect(toolEntry?.routingHint).toContain("configured");
+  });
+
   test("exposes getLatestSolanaNews as a model tool with workspace download guidance", async () => {
     const settings = await loadRuntimeSettings("safe");
     const snapshot = await getRuntimeCapabilitySnapshot(settings);
@@ -206,6 +222,6 @@ describe("rss news capability snapshot", () => {
     expect(toolEntry?.toolDescription).toContain("RSS or Atom feed");
     expect(toolEntry?.toolDescription).toContain("workspace");
     expect(toolEntry?.toolDescription).toContain("news snapshot");
-    expect(toolEntry?.routingHint).toContain("current Solana news");
+    expect(toolEntry?.routingHint).toContain("configured RSS or Atom feed");
   });
 });

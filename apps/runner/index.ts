@@ -27,7 +27,7 @@ const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 const strong = (value: string): string => applyAnsi(value, "bold");
 const spotlight = (value: string): string => applyAnsi(value, "bold", "neonTurquoise");
 const DEFAULT_BOOTSTRAP_INSTANCE_ID = "00";
-const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = "trenchclaw-dev-runtime";
+const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = ".trenchclaw-dev-runtime";
 
 export type LayoutKind = "workspace" | "release";
 
@@ -502,14 +502,14 @@ export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorRe
     },
     {
       id: "jupiter-key",
-      label: "Jupiter Ultra key",
+      label: "Jupiter API key",
       status: !activeInstance.id ? "warn" : jupiterKeyReady ? "ok" : "warn",
       details: !activeInstance.id
         ? "Jupiter key readiness cannot be checked until an instance vault exists."
         : jupiterKeyReady
-          ? "Jupiter Ultra API key detected in the active instance vault."
-          : "No Jupiter Ultra API key found in the active instance vault.",
-      fixHint: !activeInstance.id || jupiterKeyReady ? undefined : "Add the Jupiter Ultra API key in the vault or secrets panel before swap or trigger workflows.",
+          ? "Jupiter portal API key detected (Ultra, Swap API, Trigger)."
+          : "No Jupiter API key found in the active instance vault.",
+      fixHint: !activeInstance.id || jupiterKeyReady ? undefined : "Add your portal.jup.ag API key in the vault or secrets panel before Ultra swaps, standard swaps, or trigger orders.",
     },
     {
       id: "helius-config",
@@ -589,8 +589,8 @@ export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorRe
       label: "Ultra swaps and trigger orders",
       status: activeInstance.id && jupiterKeyReady ? "ok" : "warn",
       details: activeInstance.id && jupiterKeyReady
-        ? "Active instance and Jupiter Ultra key are ready."
-        : "Needs an active instance and a Jupiter Ultra API key.",
+        ? "Active instance and Jupiter API key are ready."
+        : "Needs an active instance and a Jupiter portal API key.",
     },
     {
       id: "cli-shell-workflows",

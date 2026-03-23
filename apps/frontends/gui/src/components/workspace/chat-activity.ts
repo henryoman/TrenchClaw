@@ -30,6 +30,7 @@ export interface ChatActivitySnapshot {
 
 const MAX_INPUT_PREVIEW = 84;
 const FEED_ITEM_LIMIT = 6;
+const RUNTIME_TRANSPORT_INITIALIZED_SUMMARY = "Runtime transport initialized";
 
 type MessagePart = UIMessage["parts"][number];
 type ToolPart = Extract<MessagePart, { type: string }> & {
@@ -157,28 +158,6 @@ const summarizeInput = (value: unknown): string | undefined => {
     return truncateText(`${value.inputCoin} -> ${value.outputCoin} · ${String(value.amount)}`, MAX_INPUT_PREVIEW);
   }
 
-  try {
-    const serialized = JSON.stringify(value);
-    return serialized ? truncateText(serialized, MAX_INPUT_PREVIEW) : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-const summarizePrompt = (messages: UIMessage[]): string | undefined => {
-  for (let index = messages.length - 1; index >= 0; index -= 1) {
-    const message = messages[index];
-    if (!message || message.role !== "user") {
-      continue;
-    }
-    const text = message.parts
-      .filter((part): part is Extract<MessagePart, { type: "text" }> => part.type === "text")
-      .map((part) => normalizeDisplayText(part.text ?? ""))
-      .find((part) => part.length > 0);
-    if (text) {
-      return truncateText(text, MAX_INPUT_PREVIEW);
-    }
-  }
   return undefined;
 };
 
@@ -262,6 +241,9 @@ const toCurrentActivityItem = (part: ToolPart): ChatActivityItem => {
   };
 };
 
+export const messagePartToActivityItem = (part: MessagePart): ChatActivityItem | null =>
+  isRenderableToolPart(part) ? toCurrentActivityItem(part) : null;
+
 export const getMessageActivityItems = (message: UIMessage): ChatActivityItem[] =>
   getMessageToolParts(message).map(toCurrentActivityItem);
 
@@ -304,6 +286,95 @@ const summarizeFeedTone = (entry: GuiActivityEntry): ChatActivityTone => {
   return "info";
 };
 
+const isPromptSentEntry = (entry: GuiActivityEntry): boolean =>
+  entry.source === "chat" && entry.summary.startsWith("Prompt sent");
+
+const isAssistantResponseStartedEntry = (entry: GuiActivityEntry): boolean =>
+  entry.source === "chat" && entry.summary === "Assistant response started";
+
+const isAssistantResponseFinishedEntry = (entry: GuiActivityEntry): boolean =>
+  entry.source === "chat" && entry.summary.startsWith("Assistant response finished");
+
+const formatResponseDuration = (durationMs: number): string => {
+  const safeDurationMs = Math.max(0, durationMs);
+  if (safeDurationMs < 1_000) {
+    return "under 1 second";
+  }
+
+  const seconds = safeDurationMs / 1_000;
+  if (seconds < 10) {
+    const rounded = seconds.toFixed(1).replace(/\.0$/u, "");
+    return `${rounded} seconds`;
+  }
+
+  const roundedSeconds = Math.round(seconds);
+  if (roundedSeconds < 60) {
+    return `${roundedSeconds} second${roundedSeconds === 1 ? "" : "s"}`;
+  }
+
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remainingSeconds = roundedSeconds % 60;
+  if (remainingSeconds === 0) {
+    return `${minutes} minute${minutes === 1 ? "" : "s"}`;
+  }
+  return `${minutes} minute${minutes === 1 ? "" : "s"} ${remainingSeconds} second${remainingSeconds === 1 ? "" : "s"}`;
+};
+
+const toFeedItem = (
+  entry: GuiActivityEntry,
+  overrides?: Partial<Pick<ChatActivityFeedItem, "sourceLabel" | "summary" | "tone">>,
+): ChatActivityFeedItem => ({
+  id: entry.id,
+  sourceLabel: overrides?.sourceLabel ?? entry.source,
+  summary: overrides?.summary ?? entry.summary,
+  timestamp: entry.timestamp,
+  tone: overrides?.tone ?? summarizeFeedTone(entry),
+});
+
+export const buildConsoleFeedItems = (
+  entries: GuiActivityEntry[],
+  limit?: number,
+): ChatActivityFeedItem[] => {
+  const items: ChatActivityFeedItem[] = [];
+  let latestPromptEntry: GuiActivityEntry | null = null;
+  let latestResponseStartedEntry: GuiActivityEntry | null = null;
+
+  for (const entry of entries) {
+    if (entry.summary === RUNTIME_TRANSPORT_INITIALIZED_SUMMARY) {
+      continue;
+    }
+
+    if (isPromptSentEntry(entry)) {
+      latestPromptEntry = entry;
+      latestResponseStartedEntry = null;
+      continue;
+    }
+
+    if (isAssistantResponseStartedEntry(entry)) {
+      latestResponseStartedEntry = entry;
+      continue;
+    }
+
+    if (isAssistantResponseFinishedEntry(entry)) {
+      const startedAt = latestPromptEntry?.timestamp ?? latestResponseStartedEntry?.timestamp;
+      items.push(toFeedItem(entry, {
+        sourceLabel: "agent",
+        summary: startedAt
+          ? `Agent responded in ${formatResponseDuration(entry.timestamp - startedAt)}`
+          : "Agent responded",
+        tone: "done",
+      }));
+      latestPromptEntry = null;
+      latestResponseStartedEntry = null;
+      continue;
+    }
+
+    items.push(toFeedItem(entry));
+  }
+
+  return typeof limit === "number" ? items.slice(-limit) : items;
+};
+
 const resolveStatus = (input: {
   runtimeError: string;
   chatStatus: ChatStatus;
@@ -338,19 +409,8 @@ export const buildChatActivitySnapshot = (input: {
 }): ChatActivitySnapshot => {
   const runtimeError = input.runtimeError?.trim() ?? "";
   const currentItems: ChatActivityItem[] = [];
-  const prompt = summarizePrompt(input.messages);
   const toolItems = collectToolPartsSinceLatestUser(input.messages).map(toCurrentActivityItem);
   const hasVisibleAssistantText = hasVisibleAssistantTextSinceLatestUser(input.messages);
-
-  if (prompt) {
-    currentItems.push({
-      id: "prompt",
-      tone: "info",
-      badge: "ASK",
-      title: "Prompt",
-      detail: prompt,
-    });
-  }
 
   if (runtimeError) {
     currentItems.push({
@@ -394,16 +454,7 @@ export const buildChatActivitySnapshot = (input: {
     });
   }
 
-  const feedItems = (input.runtimeEntries ?? [])
-    .filter((entry) => entry.summary !== "Runtime transport initialized")
-    .slice(0, FEED_ITEM_LIMIT)
-    .map((entry) => ({
-      id: entry.id,
-      sourceLabel: entry.source,
-      summary: entry.summary,
-      timestamp: entry.timestamp,
-      tone: summarizeFeedTone(entry),
-    }));
+  const feedItems = buildConsoleFeedItems(input.runtimeEntries ?? [], FEED_ITEM_LIMIT);
 
   const status = resolveStatus({
     runtimeError,

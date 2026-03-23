@@ -10,14 +10,14 @@ export const toToolDescription = (actionName: string, category: string, subcateg
   `Dispatch runtime action "${actionName}" (${category}${subcategory ? `/${subcategory}` : ""}).`;
 
 export const CHAT_MODEL_STREAM_TIMEOUT = {
-  totalMs: 45_000,
-  stepMs: 25_000,
-  chunkMs: 12_000,
+  totalMs: 900_000,
+  stepMs: 600_000,
+  chunkMs: 300_000,
 } as const;
 
 export const CHAT_MODEL_FALLBACK_GENERATE_TIMEOUT = {
-  totalMs: 20_000,
-  stepMs: 20_000,
+  totalMs: 300_000,
+  stepMs: 300_000,
 } as const;
 
 export const RUNTIME_WORKSPACE_TOOL_NAMES = [

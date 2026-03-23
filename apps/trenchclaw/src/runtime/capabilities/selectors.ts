@@ -1,6 +1,7 @@
 import type { Action } from "../../ai/runtime/types/action";
 import type { RuntimeSettings } from "../load";
 import { summarizeFilesystemPolicy } from "../security/filesystem-manifest";
+import { MACHINE_TOOL_ENVELOPE_NOTE, toModelToolExampleInput } from "../model-tool-language";
 import { runtimeActionCapabilityDefinitions } from "./action-definitions";
 import { getRuntimeComingSoonFeatures } from "./release-readiness";
 import { workspaceToolCapabilityDefinitions } from "./workspace-tool-definitions";
@@ -59,6 +60,23 @@ const inferWorkspaceSideEffectLevel = (
   return "read";
 };
 
+const TOOL_DESCRIPTION_ADDENDA: Record<string, string> = {
+  listKnowledgeDocs:
+    "Knowledge routing: use this before guessing aliases. It returns compact JSON across the indexed markdown/text knowledge surface, including core docs, deep references, support docs, and skill packs. Once you know the alias, switch to `readKnowledgeDoc`.",
+  readKnowledgeDoc:
+    "Knowledge reading: use this to open markdown/text docs by alias. Read in windows with `offset` and `limit`; if the result has more lines, call it again with the next offset instead of guessing the rest.",
+  workspaceListDirectory:
+    "Workspace routing: use this first when you need paths. It returns exact workspace-relative child paths that can be passed directly into `workspaceReadFile` or `workspaceBash`.",
+  workspaceReadFile:
+    "Workspace reading: use this when you already know one exact path and need file contents. Prefer it over bash for normal markdown, JSON, config, notes, or generated artifact reads.",
+  workspaceWriteFile:
+    "Workspace writing: use this for exact file creation or replacement inside writable workspace roots instead of mutating shell commands.",
+  workspaceBash:
+    "CLI routing: prefer typed modes first. Use `cli` with `program` and `args` for commands like `solana`, `solana-keygen`, `helius`, `dune`, `git`, or `bun`; use raw `shell` only when the typed modes are not enough.",
+  queryRuntimeStore:
+    "Runtime state: use this for older conversation slices, jobs, receipts, and queued or scheduled background work. Prefer it over filesystem inspection when the answer lives in runtime state.",
+};
+
 const buildToolDescription = (input: {
   description: string;
   purpose: string;
@@ -75,6 +93,7 @@ const buildToolDescription = (input: {
     `Use this when ${input.routingHint.trim().replace(/\.$/u, "")}.`,
     `Side effects: ${input.sideEffectLevel}.`,
     `Release readiness: ${input.releaseReadinessStatus}. ${input.releaseReadinessNote.trim().replace(/\.$/u, "")}.`,
+    MACHINE_TOOL_ENVELOPE_NOTE,
   ];
   const exampleInput = formatExampleInput(input.exampleInput);
   if (exampleInput) {
@@ -82,6 +101,10 @@ const buildToolDescription = (input: {
   }
   if (input.requiresConfirmation) {
     parts.push("This can require explicit user confirmation under the active runtime policy.");
+  }
+  const addendum = TOOL_DESCRIPTION_ADDENDA[(input.exampleInput as { toolName?: string } | undefined)?.toolName ?? ""];
+  if (addendum) {
+    parts.push(addendum);
   }
   return parts.join(" ");
 };
@@ -108,7 +131,7 @@ const toActionSnapshotEntry = async (
     description: definition.description,
     purpose: definition.purpose,
     tags: definition.tags,
-    exampleInput: definition.exampleInput,
+    exampleInput: toModelToolExampleInput(action.name, definition.exampleInput),
     routingHint,
     sideEffectLevel,
     hasInputSchema: Boolean(action.inputSchema),
@@ -129,7 +152,7 @@ const toActionSnapshotEntry = async (
       requiresConfirmation,
       releaseReadinessStatus: releaseReadiness.status,
       releaseReadinessNote: releaseReadiness.note,
-      exampleInput: definition.exampleInput,
+      exampleInput: toModelToolExampleInput(action.name, definition.exampleInput),
     }),
     action,
   };
@@ -151,7 +174,7 @@ const toWorkspaceToolSnapshotEntry = async (
     description: definition.description,
     purpose: definition.purpose,
     tags: definition.tags,
-    exampleInput: definition.exampleInput,
+    exampleInput: toModelToolExampleInput(definition.name, definition.exampleInput),
     routingHint,
     sideEffectLevel,
     enabledBySettings,
@@ -168,7 +191,7 @@ const toWorkspaceToolSnapshotEntry = async (
       requiresConfirmation: false,
       releaseReadinessStatus: releaseReadiness.status,
       releaseReadinessNote: releaseReadiness.note,
-      exampleInput: definition.exampleInput,
+      exampleInput: toModelToolExampleInput(definition.name, definition.exampleInput),
     }),
   };
 };

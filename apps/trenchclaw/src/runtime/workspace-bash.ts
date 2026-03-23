@@ -21,6 +21,7 @@ import {
   resolveInstanceToolBinRoot,
 } from "./instance-paths";
 import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
+import { getModelToolEnvelopeSchema, MACHINE_TOOL_ENVELOPE_NOTE } from "./model-tool-language";
 
 interface WorkspaceBashOptions {
   workspaceRootDirectory: string;
@@ -91,6 +92,15 @@ const listWorkspaceDirectoryInputSchema = z.object({
   depth: z.number().int().min(0).max(MAX_DIRECTORY_LIST_DEPTH).default(DEFAULT_DIRECTORY_LIST_DEPTH),
   limit: z.number().int().min(1).max(MAX_DIRECTORY_LIST_LIMIT).default(DEFAULT_DIRECTORY_LIST_LIMIT),
   includeHidden: z.boolean().default(false),
+});
+
+const workspaceReadFileInputSchema = z.object({
+  path: z.string().trim().min(1),
+});
+
+const workspaceWriteFileInputSchema = z.object({
+  path: z.string().trim().min(1),
+  content: z.string(),
 });
 
 const WORKSPACE_BASH_MODE_VALUES = [
@@ -534,16 +544,6 @@ class HostWorkspaceSandbox {
   }
 }
 
-const wrapTool = (input: {
-  description: string;
-  rawTool: { inputSchema: unknown; execute: (payload: unknown) => Promise<unknown> };
-}) =>
-  tool({
-    description: input.description,
-    inputSchema: input.rawTool.inputSchema as never,
-    execute: input.rawTool.execute as never,
-  });
-
 export const WORKSPACE_BASH_TOOL_NAME = "workspaceBash";
 export const WORKSPACE_LIST_DIRECTORY_TOOL_NAME = "workspaceListDirectory";
 export const WORKSPACE_READ_FILE_TOOL_NAME = "workspaceReadFile";
@@ -582,8 +582,6 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
   });
 
   const rawBashTool = toolkit.tools.bash as { inputSchema: unknown; execute: (payload: unknown) => Promise<unknown> };
-  const rawReadTool = toolkit.tools.readFile as { inputSchema: unknown; execute: (payload: unknown) => Promise<unknown> };
-  const rawWriteTool = toolkit.tools.writeFile as { inputSchema: unknown; execute: (payload: unknown) => Promise<unknown> };
   const writableSession = (options.allowMutatingCommands ?? DEFAULT_ALLOW_MUTATING_COMMANDS) ? "writable" : "read-only";
 
   return {
@@ -592,39 +590,51 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
         `List files and folders from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. ` +
         "Prefer this first for browsing the available runtime workspace paths before calling workspaceReadFile. " +
         "Returns exact workspace-relative paths that can be passed directly into workspaceReadFile. " +
-        "Protected vault and keypair paths are omitted.",
-      inputSchema: listWorkspaceDirectoryInputSchema,
-      execute: async ({ path: targetPath, depth, limit, includeHidden }) =>
+        `Protected vault and keypair paths are omitted. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+      inputSchema: getModelToolEnvelopeSchema(
+        WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
+        listWorkspaceDirectoryInputSchema,
+      ) as never,
+      execute: async ({ params }) =>
         sandbox.listDirectory({
-          directoryPath: targetPath,
-          depth,
-          limit,
-          includeHidden,
+          directoryPath: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).path,
+          depth: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).depth,
+          limit: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).limit,
+          includeHidden: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).includeHidden,
         }),
     }),
     [WORKSPACE_BASH_TOOL_NAME]: tool({
       description:
         `Run policy-constrained shell commands from the runtime workspace root ${bashRootDirectory}. This session is ${writableSession}. ` +
-        "Always call this with an explicit `type` plus the basic params for that mode, such as `shell`, `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, or `http_get`. This is not a true isolated VM sandbox.",
-      inputSchema: workspaceBashInputSchema,
-      execute: async (rawInput) => {
-        const input = workspaceBashInputSchema.parse(rawInput);
+        `Always call this with an explicit command ` +
+        "`type` inside `params`, such as `shell`, `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, or `http_get`. " +
+        `This is not a true isolated VM sandbox. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+      inputSchema: getModelToolEnvelopeSchema(WORKSPACE_BASH_TOOL_NAME, workspaceBashInputSchema) as never,
+      execute: async ({ params }) => {
+        const input = workspaceBashInputSchema.parse(params);
         const command = resolveWorkspaceBashCommand(input);
         return rawBashTool.execute({ command });
       },
     }),
-    [WORKSPACE_READ_FILE_TOOL_NAME]: wrapTool({
+    [WORKSPACE_READ_FILE_TOOL_NAME]: tool({
       description:
         `Read an exact file from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. ` +
         "Prefer this when you already know the runtime workspace file path and need notes, configs, generated artifacts, or other runtime workspace contents. " +
-        "Protected vault and keypair files are blocked from direct reads.",
-      rawTool: rawReadTool,
+        `Protected vault and keypair files are blocked from direct reads. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+      inputSchema: getModelToolEnvelopeSchema(WORKSPACE_READ_FILE_TOOL_NAME, workspaceReadFileInputSchema) as never,
+      execute: async ({ params }) =>
+        ({ content: await sandbox.readFile((params as z.output<typeof workspaceReadFileInputSchema>).path) }),
     }),
-    [WORKSPACE_WRITE_FILE_TOOL_NAME]: wrapTool({
+    [WORKSPACE_WRITE_FILE_TOOL_NAME]: tool({
       description:
         `Create or replace a file inside the runtime workspace root ${writeRootDirectory}. ` +
-        "Prefer this over mutating shell commands for notes, scratch files, output, and other runtime workspace artifacts.",
-      rawTool: rawWriteTool,
+        `Prefer this over mutating shell commands for notes, scratch files, output, and other runtime workspace artifacts. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+      inputSchema: getModelToolEnvelopeSchema(WORKSPACE_WRITE_FILE_TOOL_NAME, workspaceWriteFileInputSchema) as never,
+      execute: async ({ params }) => {
+        const parsed = params as z.output<typeof workspaceWriteFileInputSchema>;
+        await sandbox.writeFiles([{ path: parsed.path, content: parsed.content }]);
+        return { ok: true, path: parsed.path };
+      },
     }),
   };
 };

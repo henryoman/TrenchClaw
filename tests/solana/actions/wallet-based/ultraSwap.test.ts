@@ -227,4 +227,60 @@ describe("ultra swap actions", () => {
     expect(result.error).toContain("Insufficient SOL for a first-time buy");
     expect(result.error).toContain("0.00204428 SOL");
   });
+
+  test("returns Jupiter quote simulation errors when Ultra omits the transaction", async () => {
+    const result = await ultraSwapAction.execute(
+      {
+        jupiterUltra: {
+          async getOrder() {
+            return {
+              requestId: "req-no-tx",
+              transaction: null,
+              raw: {
+                requestId: "req-no-tx",
+                transaction: null,
+                errorCode: 2,
+                errorMessage: "Top up 0.01 SOL for gas",
+              },
+            };
+          },
+          async executeOrder() {
+            throw new Error("should not execute without a transaction");
+          },
+        },
+        tokenAccounts: {
+          async getSolBalance() {
+            return 1;
+          },
+          async getTokenBalance() {
+            return 0;
+          },
+          async hasTokenAccount() {
+            return true;
+          },
+          async getDecimals(mintAddress: string) {
+            return mintAddress === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? 6 : 9;
+          },
+        },
+        ultraSigner: {
+          address: "wallet-1",
+          async signBase64Transaction(base64Transaction: string) {
+            return `signed:${base64Transaction}`;
+          },
+        },
+        rpcUrl: "https://rpc.example",
+      } as never,
+      {
+        inputCoin: "SOL",
+        outputCoin: "USDC",
+        amount: "0.25",
+        amountUnit: "ui",
+        mode: "ExactIn",
+      },
+    );
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("Top up 0.01 SOL for gas");
+    expect(result.error).toContain("errorCode 2");
+  });
 });

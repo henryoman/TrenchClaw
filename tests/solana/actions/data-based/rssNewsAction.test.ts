@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
+import { getConfiguredNewsFeedsAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/api/news-feed-registry-actions";
 import {
   DEFAULT_SOLANA_NEWS_FEED_URL,
   getLatestSolanaNewsAction,
@@ -207,6 +208,38 @@ afterEach(async () => {
 });
 
 describe("rss news action", () => {
+  test("returns the instance-scoped configured news feed registry from workspace configs", async () => {
+    const result = await getConfiguredNewsFeedsAction.execute(createActionContext({ actor: "agent" }), {});
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toMatchObject({
+      instanceId: "01",
+      version: 1,
+      totalFeedCount: 1,
+      returnedFeedCount: 1,
+      runtimePath: ".runtime-state/instances/01/workspace/configs/news-feeds.json",
+      feeds: [
+        {
+          alias: "solana-cryptopotato",
+          title: "CryptoPotato Solana",
+          feedUrl: DEFAULT_SOLANA_NEWS_FEED_URL,
+          enabled: true,
+        },
+      ],
+    });
+
+    const savedRegistry = await Bun.file(result.data!.filePath).json();
+    expect(savedRegistry).toMatchObject({
+      version: 1,
+      feeds: [
+        {
+          alias: "solana-cryptopotato",
+          feedUrl: DEFAULT_SOLANA_NEWS_FEED_URL,
+        },
+      ],
+    });
+  });
+
   test("loads default Solana RSS feed, saves a workspace news snapshot, and returns compact normalized articles", async () => {
     globalThis.fetch = asMockFetch(async (input: RequestInfo | URL) => {
       const requestUrl = typeof input === "string" ? input : input.toString();
@@ -303,6 +336,43 @@ describe("rss news action", () => {
     });
     const savedSnapshotText = await Bun.file(result.data!.outputPath).text();
     expect(savedSnapshotText.split("\n")[1]).toContain("\"fetchedAt\"");
+  });
+
+  test("resolves a configured feed alias from the instance registry", async () => {
+    globalThis.fetch = asMockFetch(async (input: RequestInfo | URL) => {
+      const requestUrl = typeof input === "string" ? input : input.toString();
+      expect(requestUrl).toBe(DEFAULT_SOLANA_NEWS_FEED_URL);
+      return createXmlResponse(`<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Solana Alias Feed</title>
+    <link>https://cryptopotato.com</link>
+    <description>Alias-backed feed</description>
+    <item>
+      <title>Alias-backed headline</title>
+      <link>https://cryptopotato.com/alias-story</link>
+      <guid>alias-story</guid>
+      <description><![CDATA[Alias feed description.]]></description>
+    </item>
+  </channel>
+</rss>`);
+    });
+
+    const result = await getLatestSolanaNewsAction.execute(createActionContext({ actor: "agent" }), {
+      feedAlias: "solana-cryptopotato",
+      limit: 1,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toMatchObject({
+      feedAlias: "solana-cryptopotato",
+      feedRegistryRuntimePath: ".runtime-state/instances/01/workspace/configs/news-feeds.json",
+      request: {
+        feedUrl: DEFAULT_SOLANA_NEWS_FEED_URL,
+        limit: 1,
+      },
+      returnedArticleCount: 1,
+    });
   });
 
   test("supports overriding the feed URL and includes trimmed full content when requested", async () => {

@@ -61,9 +61,17 @@ export const SECRET_OPTIONS: RuntimeApiSecretOptionView[] = [
   {
     id: "jupiter-api-key",
     category: "blockchain",
-    label: "Jupiter Ultra API Key",
+    label: "Jupiter API key",
     vaultPath: "integrations/jupiter/api-key",
-    placeholder: "Enter Jupiter Ultra API key",
+    placeholder: "portal.jup.ag — one key for Ultra + Swap API + Trigger (same field)",
+    supportsPublicRpc: false,
+  },
+  {
+    id: "dune-api-key",
+    category: "blockchain",
+    label: "Dune API key",
+    vaultPath: "integrations/dune/api-key",
+    placeholder: "Dune Analytics API key (dune.com → settings → API)",
     supportsPublicRpc: false,
   },
   {

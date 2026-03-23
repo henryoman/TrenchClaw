@@ -93,6 +93,18 @@ export const ultraSwapAction: Action<UltraSwapInput, UltraSwapOutput> = {
       if (!requestId) {
         throw new Error("Ultra order response missing requestId");
       }
+      if (!order.transaction) {
+        const orderRecord = toRecord(order.raw);
+        const errorCode = typeof orderRecord.errorCode === "number" ? orderRecord.errorCode : undefined;
+        const errorMessage =
+          typeof orderRecord.errorMessage === "string" && orderRecord.errorMessage.trim().length > 0
+            ? orderRecord.errorMessage.trim()
+            : typeof orderRecord.error === "string" && orderRecord.error.trim().length > 0
+              ? orderRecord.error.trim()
+              : "Ultra order did not return a signable transaction.";
+        const suffix = errorCode !== undefined ? ` (errorCode ${errorCode})` : "";
+        throw new Error(`${errorMessage}${suffix}`);
+      }
 
       const signingPhaseStart = performance.now();
       const signedTransaction = await signOrderTransactionIfNeeded(ctx, {

@@ -94,9 +94,9 @@ describe.skipIf(!OPENROUTER_KEY)("model drives workspace tools (live LLM)", () =
         model,
         system:
           "You are testing TrenchClaw workspace tools. Call tools in order: " +
-          "1) workspaceBash with typed JSON such as `{ \"type\": \"version\", \"program\": \"solana\" }` and another typed version call for `helius` " +
-          "2) workspaceListDirectory with path `.`, depth 2, limit 80, includeHidden false " +
-          "3) workspaceReadFile only if you see a file path worth reading under notes/ or output/ — otherwise skip step 3. " +
+          "1) workspaceBash with the machine envelope, for example `{ \"params\": { \"type\": \"version\", \"program\": \"solana\" } }` and another version call for `helius` " +
+          "2) workspaceListDirectory with the machine envelope and params like path `.`, depth 2, limit 80, includeHidden false " +
+          "3) workspaceReadFile only if you see a file path worth reading under notes/ or output/, again using the machine envelope — otherwise skip step 3. " +
           "End with a one-sentence summary that includes the substring solana-cli or the word solana.",
         prompt: "Run the three steps (readFile optional).",
         tools: aiTools,

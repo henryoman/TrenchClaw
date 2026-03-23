@@ -87,8 +87,8 @@ Local development should use the same per-instance runtime shape as the shipped 
 
 Default local dev behavior:
 
-- `bun run dev` uses `~/trenchclaw-dev-runtime` for runtime state
-- generated prompt-support files live under `~/trenchclaw-dev-runtime/instances/<id>/cache/generated/`
+- `bun run dev` uses `~/.trenchclaw-dev-runtime` for runtime state
+- generated prompt-support files live under `~/.trenchclaw-dev-runtime/instances/<id>/cache/generated/`
 - that state persists across reconnects and restarts
 - that state is personal/local and never part of the repo
 
@@ -111,7 +111,7 @@ bun run dev
 # copy selected instance state into the external dev runtime
 bun run dev:instance:clone -- \
   --from-root /path/to/source-runtime \
-  --to-root ~/trenchclaw-dev-runtime \
+  --to-root ~/.trenchclaw-dev-runtime \
   --from-instance 01 \
   --to-instance 01 \
   --parts wallets,db,settings

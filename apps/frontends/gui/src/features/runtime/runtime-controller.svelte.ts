@@ -11,6 +11,7 @@ import type {
   GuiSecretEntryView,
   GuiSecretOptionView,
   GuiTradingSettingsView,
+  GuiTrackerView,
   GuiWakeupSettingsView,
   GuiWalletNodeView,
 } from "@trenchclaw/types";
@@ -84,6 +85,11 @@ interface RuntimeUiState {
   walletFileCount: number;
   walletsBusy: boolean;
   walletsError: string;
+  trackerFilePath: string;
+  trackerRuntimePath: string;
+  tracker: GuiTrackerView | null;
+  trackerBusy: boolean;
+  trackerError: string;
 }
 
 const humanizeProfile = (profile: string): string => {
@@ -167,6 +173,11 @@ export const createRuntimeController = () => {
     walletFileCount: 0,
     walletsBusy: false,
     walletsError: "",
+    trackerFilePath: "",
+    trackerRuntimePath: "",
+    tracker: null,
+    trackerBusy: false,
+    trackerError: "",
   });
 
   const resetWalletState = (): void => {
@@ -174,6 +185,12 @@ export const createRuntimeController = () => {
     state.walletsRootExists = false;
     state.walletNodes = [];
     state.walletFileCount = 0;
+  };
+
+  const resetTrackerState = (): void => {
+    state.trackerFilePath = "";
+    state.trackerRuntimePath = "";
+    state.tracker = null;
   };
 
   const loadInstances = async (): Promise<void> => {
@@ -336,10 +353,12 @@ export const createRuntimeController = () => {
         await loadSecrets();
         await checkLlm();
         await loadWallets();
+        await loadTracker();
       } else {
         state.activeInstance = null;
         state.signInPin = "";
         resetWalletState();
+        resetTrackerState();
         await loadInstances();
         state.phase = "login";
       }
@@ -410,6 +429,7 @@ export const createRuntimeController = () => {
       await loadSecrets();
       await checkLlm();
       await loadWallets();
+      await loadTracker();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_CREATE_INSTANCE_ERROR;
     } finally {
@@ -445,6 +465,7 @@ export const createRuntimeController = () => {
       await loadSecrets();
       await checkLlm();
       await loadWallets();
+      await loadTracker();
     } catch (error) {
       state.splashError = error instanceof Error ? error.message : DEFAULT_SIGN_IN_ERROR;
     } finally {
@@ -650,6 +671,38 @@ export const createRuntimeController = () => {
     }
   };
 
+  const loadTracker = async (): Promise<void> => {
+    state.trackerBusy = true;
+    state.trackerError = "";
+    resetTrackerState();
+    try {
+      const payload = await runtimeApi.tracker();
+      state.trackerFilePath = payload.filePath ?? "";
+      state.trackerRuntimePath = payload.runtimePath ?? "";
+      state.tracker = payload.tracker;
+    } catch (error) {
+      state.trackerError = error instanceof Error ? error.message : "Failed to load tracker.";
+      resetTrackerState();
+    } finally {
+      state.trackerBusy = false;
+    }
+  };
+
+  const saveTracker = async (tracker: GuiTrackerView): Promise<void> => {
+    state.trackerBusy = true;
+    state.trackerError = "";
+    try {
+      const result = await runtimeApi.updateTracker({ tracker });
+      state.trackerFilePath = result.filePath;
+      state.trackerRuntimePath = result.runtimePath;
+      state.tracker = result.tracker;
+    } catch (error) {
+      state.trackerError = error instanceof Error ? error.message : "Failed to save tracker.";
+    } finally {
+      state.trackerBusy = false;
+    }
+  };
+
   return {
     state,
     initializeSplash,
@@ -663,7 +716,9 @@ export const createRuntimeController = () => {
     loadTradingSettings,
     loadWakeupSettings,
     loadWallets,
+    loadTracker,
     saveAiSettings,
+    saveTracker,
     saveTradingSettings,
     saveWakeupSettings,
     upsertSecret,

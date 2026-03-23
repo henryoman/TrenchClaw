@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 const RUNTIME_DIRECTORY = fileURLToPath(new URL(".", import.meta.url));
 const BRAIN_SOURCE_ROOT = "src/ai/brain";
 const RUNTIME_STATE_CONTRACT_ROOT = ".runtime-state";
-const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = "trenchclaw-dev-runtime";
+const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = ".trenchclaw-dev-runtime";
 
 const resolveAbsoluteEnvPath = (envKey: string, value: string): string => {
   const trimmed = value.trim();

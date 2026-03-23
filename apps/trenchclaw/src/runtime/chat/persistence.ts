@@ -3,6 +3,14 @@ import { createChatMessageId } from "../../ai/runtime/types/ids";
 import type { RuntimeChatServiceDeps } from "./types";
 import { extractUiMessageText, trimOrUndefinedValue } from "./utils";
 
+const hasReplayableParts = (message: UIMessage): boolean =>
+  message.parts.some((part) => {
+    if (part.type === "text" || part.type === "reasoning") {
+      return typeof part.text === "string" && part.text.trim().length > 0;
+    }
+    return true;
+  });
+
 const stripPreToolNarrationFromAssistantMessage = (message: UIMessage): UIMessage => {
   if (message.role !== "assistant") {
     return message;
@@ -36,7 +44,8 @@ const filterPersistableMessages = (messages: UIMessage[]): UIMessage[] =>
     .filter(
       (message): message is UIMessage & { role: "assistant" | "system" | "user" } =>
         message.role === "assistant" || message.role === "system" || message.role === "user",
-    );
+    )
+    .filter((message) => hasReplayableParts(message));
 
 export const replaceLastAssistantMessageWithText = (messages: UIMessage[], text: string): UIMessage[] => {
   const nextMessages = [...messages];
