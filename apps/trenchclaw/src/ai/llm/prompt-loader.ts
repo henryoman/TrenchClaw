@@ -93,8 +93,9 @@ const renderShellToolingSummary = (): string => {
     "### Shell Tooling",
     "- `workspaceListDirectory` is the default browse tool for runtime workspace files and folders.",
     "- `workspaceBash` is for actual shell or CLI work after you know the path or command you need.",
+    "- Always call `workspaceBash` with an explicit `type`, such as `\"cli\"`, `\"version\"`, `\"help\"`, `\"which\"`, `\"search_text\"`, `\"list_directory\"`, `\"http_get\"`, or `\"shell\"` with `command`.",
     "- If no typed runtime action covers the needed read and a bounded trusted CLI command can answer it, prefer `workspaceBash` over refusing the task.",
-    "- `workspaceBash` is a policy-constrained host shell today, not the preferred runtime for arbitrary model-driven bash or host `bun run *.ts`.",
+    "- `workspaceBash` is a policy-constrained host shell today. Network-capable commands like `curl` or `type = \"http_get\"` can work when the host has network access, but this is still not the preferred runtime for arbitrary model-driven bash or host `bun run *.ts`.",
     `- detected CLI commands on PATH: ${detectedCommands.join(", ") || "none detected"}`,
   ].join("\n");
 };

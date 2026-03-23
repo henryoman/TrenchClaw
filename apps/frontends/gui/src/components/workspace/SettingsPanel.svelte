@@ -54,28 +54,6 @@
     openrouter: "openrouter-api-key",
   };
 
-  const createCustomAiModelOption = (model: string): GuiAiModelOptionView => ({
-    id: model,
-    label: model,
-    providers: [],
-  });
-
-  const describeAiModelProviders = (providers: GuiAiModelOptionView["providers"]): string => {
-    if (providers.length === 2) {
-      return "Gateway + OpenRouter";
-    }
-    if (providers[0] === "openrouter") {
-      return "OpenRouter only";
-    }
-    if (providers[0] === "gateway") {
-      return "Gateway only";
-    }
-    return "Custom";
-  };
-
-  const formatAiModelOptionLabel = (option: GuiAiModelOptionView): string =>
-    `${option.label} (${describeAiModelProviders(option.providers)})`;
-
   const providerHasKey = (provider: GuiAiSettingsView["provider"]): boolean => {
     const optionId = PROVIDER_KEY_OPTION_BY_ID[provider];
     const entry = secretEntries.find((candidate) => candidate.optionId === optionId);
@@ -153,12 +131,16 @@
   const resolveCompatibleAiModels = (provider: GuiAiSettingsView["provider"]): GuiAiModelOptionView[] =>
     aiModelOptions.filter((option) => option.providers.includes(provider));
 
-  const handleAiProviderChange = (provider: GuiAiSettingsView["provider"]): void => {
+  const resolveNextAiModel = (provider: GuiAiSettingsView["provider"], currentModel: string): string => {
     const compatibleModels = resolveCompatibleAiModels(provider);
-    const currentModel = aiSettingsDraft.model.trim();
-    const nextModel = compatibleModels.some((option) => option.id === currentModel)
-      ? currentModel
-      : compatibleModels[0]?.id ?? currentModel;
+    const normalizedModel = currentModel.trim();
+    return compatibleModels.some((option) => option.id === normalizedModel)
+      ? normalizedModel
+      : compatibleModels[0]?.id ?? "";
+  };
+
+  const handleAiProviderChange = (provider: GuiAiSettingsView["provider"]): void => {
+    const nextModel = resolveNextAiModel(provider, aiSettingsDraft.model);
 
     aiSettingsDraft = {
       ...aiSettingsDraft,
@@ -264,7 +246,11 @@
   $: {
     const signature = createAiSettingsHydrationSignature();
     if (signature !== aiSettingsHydrationSignature) {
-      aiSettingsDraft = aiSettings ? { ...aiSettings } : { ...DEFAULT_AI_SETTINGS };
+      const nextDraft = aiSettings ? { ...aiSettings } : { ...DEFAULT_AI_SETTINGS };
+      aiSettingsDraft = {
+        ...nextDraft,
+        model: resolveNextAiModel(nextDraft.provider, nextDraft.model),
+      };
       aiSettingsHydrationSignature = signature;
       aiSettingsDirty = false;
     }
@@ -299,10 +285,6 @@
   $: tradingSettingsErrorText = tradingSettingsError.trim();
   $: selectableAiProviderOptions = aiProviderOptions.length > 0 ? [...aiProviderOptions] : [...DEFAULT_AI_PROVIDER_OPTIONS];
   $: filteredAiModelOptions = resolveCompatibleAiModels(aiSettingsDraft.provider);
-  $: selectableAiModelOptions = aiSettingsDraft.model.trim().length > 0
-    && !filteredAiModelOptions.some((option) => option.id === aiSettingsDraft.model.trim())
-    ? [createCustomAiModelOption(aiSettingsDraft.model.trim()), ...filteredAiModelOptions]
-    : [...filteredAiModelOptions];
   $: selectedAiProviderHasKey = providerHasKey(aiSettingsDraft.provider);
 </script>
 
@@ -354,14 +336,18 @@
             value={aiSettingsDraft.model}
             indicatorShape="triangle"
             chevronColor="var(--tc-color-lime)"
-            disabled={aiSettingsBusy}
+            disabled={aiSettingsBusy || filteredAiModelOptions.length === 0}
             on:valueChange={(event) => {
               onAiSettingChange("model", (event as ValueInputEvent).detail.value);
             }}
           >
-            {#each selectableAiModelOptions as modelOption}
-              <option value={modelOption.id}>{formatAiModelOptionLabel(modelOption)}</option>
-            {/each}
+            {#if filteredAiModelOptions.length === 0}
+              <option value="" disabled selected>No models available for selected provider</option>
+            {:else}
+              {#each filteredAiModelOptions as modelOption}
+                <option value={modelOption.id}>{modelOption.label}</option>
+              {/each}
+            {/if}
           </RetroSelect>
         </RetroField>
 

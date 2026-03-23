@@ -77,13 +77,15 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
   {
     kind: "workspace-tool",
     name: WORKSPACE_BASH_TOOL_NAME,
-    description: "Run policy-constrained shell commands from the runtime workspace for directory inspection, ripgrep search, and trusted CLI work.",
-    purpose: "Use shell-native commands such as `pwd`, `ls`, `rg`, `command -v`, and trusted CLI help after simple directory or file tools are no longer enough.",
+    description: "Run policy-constrained shell commands from the runtime workspace through a small typed JSON surface for CLI, search, directory, HTTP, or raw shell work.",
+    purpose: "Use shell-native work such as `version`, `help`, `which`, `search_text`, `list_directory`, `http_get`, or raw `shell` only after simple directory or file tools are no longer enough.",
     routingHint: "you need a real shell command or CLI in the runtime workspace rather than simple folder browsing or exact file contents",
     sideEffectLevel: "read",
     tags: ["workspace", "shell", "search", "cli"],
     exampleInput: {
-      command: "rg \"wallet\" notes",
+      type: "search_text",
+      query: "wallet",
+      path: "notes",
     },
     releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
     enabledBySettings: hasReadableWorkspaceSurface,

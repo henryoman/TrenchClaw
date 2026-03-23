@@ -23,15 +23,15 @@
 
 ## gud tek built by a long-time solami dev
 
-Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you. It's gud tek built by a long-time solami dev.
+Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
 
 # TrenchClaw
 
-TrenchClaw is an openclaw-like agentic ai runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected.
+TrenchClaw is an openclaw-like agentic ai harness and runtime for the Solana blockchain. It's a personal solana assistant that executes modular on-chain actions, runs automated trading routines, and gives operators full visibility and control from our lightweight svelte gui. This is very dangerous and will be a while before security is perfected.
 
 Built on [`@solana/kit`](https://github.com/anza-xyz/kit) and [`Bun`](https://bun.sh) from the ground up, with GUI/mobile surfaces planned for 1.0. Zero legacy dependencies (including legacy `@solana/web3.js` v1). Functional, composable, tree-shakeable. Designed for operators who care about what ships in their binary.
 
-Current release keys: helius api key for helius-backed reads, jupiter ultra key for swap flows, and an OpenRouter or Gateway API key for chat-driven workflows.
+Current test requirement keys: helius api key for helius-backed reads, jupiter ultra key for swap flows, and an OpenRouter or Gateway API key for chat-driven workflows.
 
 Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 

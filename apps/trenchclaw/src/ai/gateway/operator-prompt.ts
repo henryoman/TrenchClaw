@@ -87,6 +87,11 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     avoidWhen: "you already know the exact file path and should call `workspaceReadFile`, or when you need an actual shell command or CLI instead",
     inputAdvice: "Pass `path` for the folder to browse. Increase `depth` only when you truly need recursive results. Use the returned workspace-relative paths directly with `workspaceReadFile`.",
   },
+  workspaceBash: {
+    useWhen: "you need a real CLI command, exact shell inspection, CLI help/version output, ripgrep search, or a small host-network HTTP fetch that no typed runtime action already covers",
+    avoidWhen: "a smaller typed runtime action, `workspaceListDirectory`, or `workspaceReadFile` can answer the question without shelling out",
+    inputAdvice: "Always use a tiny typed JSON call: `type = \"cli\"` with `program` and optional `args`, `type = \"version\"`, `\"help\"`, `\"which\"`, `\"search_text\"`, `\"list_directory\"`, `\"http_get\"`, or `type = \"shell\"` with `command` when you truly need raw shell.",
+  },
   queryRuntimeStore: {
     useWhen: "the user asks about runtime state like jobs, conversations, receipts, stored runtime records, wants the status of a queued wallet scan, or asks what trading routines or upcoming trades are scheduled",
     avoidWhen: "the user is asking about wallets, tokens, balances, swaps, or market data",
@@ -132,6 +137,11 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     useWhen: "you already know a small set of token addresses and want batch market data for ranking, comparison, or a concrete 'what is hottest' answer",
     avoidWhen: "you still need discovery or only care about one exact pair",
     inputAdvice: "Pass up to 30 `tokenAddresses`. When the response includes token metadata such as `baseToken.name` or `baseToken.symbol`, use that in the answer and keep raw addresses secondary.",
+  },
+  getTokenLaunchTime: {
+    useWhen: "the user gives one exact coin address and asks when that token launched from a liquidity-pool perspective",
+    avoidWhen: "you still need token discovery by symbol or name, or the user is asking for historical price performance instead of launch timing",
+    inputAdvice: "Pass only `coinAddress` plus `type`. Use `type = \"main_pool\"` for the current main pool launch time and `type = \"first_pool\"` for the earliest known pool launch.",
   },
   getTokenPricePerformance: {
     useWhen: "the user gives one exact coin address and asks how that coin performed over a concrete lookback such as 15m, 1h, 4h, 24h, or 7d",
@@ -214,6 +224,7 @@ const renderOperatorDecisionRules = (): string => [
   "- For wallet state, use wallet tools first; do not use Dexscreener, memory, or runtime store as substitutes for live balances.",
   "- For market data, use Dexscreener tools; do not use wallet-balance tools to answer price, liquidity, volume, or price-change questions.",
   "- For broad market asks like 'what is hot today', 'what meme coins are trending', or 'what is moving right now', start with `getDexscreenerTopTokenBoosts` or `getDexscreenerLatestTokenProfiles`, then use `getDexscreenerTokensByChain` if you need a concrete batch comparison.",
+  "- For 'when did this known coin launch' requests with one exact address, prefer `getTokenLaunchTime` instead of manually stitching discovery and pool metadata together.",
   "- For 'how did this known coin perform over X time' requests with one exact address, prefer `getTokenPricePerformance` instead of manually stitching discovery, current price, and candle reads together.",
   "- For whales, top holders, largest accounts, or holder concentration on one known token, use `getTokenHolderDistribution` instead of stopping at Dexscreener discovery.",
   "- For end-to-end asks that combine hot or boosted token discovery with whale comparison, prefer `rankDexscreenerTopTokenBoostsByWhales` when it is available instead of spending multiple steps on manual glue code.",

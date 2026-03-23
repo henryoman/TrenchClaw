@@ -172,7 +172,7 @@ describe("runWakeupCheckAction", () => {
     });
 
     const stateStore = new InMemoryStateStore();
-    const calls: Array<{ system: string; prompt: string; mode?: string }> = [];
+    const calls: Array<{ system?: string; prompt: string; mode?: string }> = [];
     const llm: LlmClient = {
       provider: "openrouter",
       model: "openai/gpt-5.4-nano",

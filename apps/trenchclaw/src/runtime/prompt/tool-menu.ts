@@ -41,8 +41,8 @@ const TOOL_GROUP_COPY: Record<ToolGroupId, {
   },
   "workspace-cli": {
     title: "CLI + Workspace",
-    forLine: "opening directories, reading exact files, writing allowed artifacts, running `rg`, checking CLI availability, and trusted local shell inspection",
-    flowLine: "default sequence: `workspaceListDirectory` -> `workspaceReadFile` -> `workspaceBash`; use `workspaceWriteFile` only for exact allowed writes",
+    forLine: "opening directories, reading exact files, writing allowed artifacts, running `rg`, checking CLI availability, simple HTTP fetches, and trusted local shell inspection",
+    flowLine: "default sequence: `workspaceListDirectory` -> `workspaceReadFile` -> `workspaceBash`; when you use `workspaceBash`, always send `type` plus the basic params for that mode; use `workspaceWriteFile` only for exact allowed writes",
     expectLine: "expect exact relative paths, file contents, or shell stdout/stderr with a bounded timeout",
   },
   knowledge: {
@@ -59,6 +59,7 @@ const isRpcDataFetchTool = (toolName: string): boolean =>
   toolName === "getManagedWalletContents"
   || toolName === "getManagedWalletSolBalances"
   || toolName === "getSwapHistory"
+  || toolName === "getTokenLaunchTime"
   || toolName === "getTokenPricePerformance"
   || toolName === "getTokenHolderDistribution"
   || toolName === "rankDexscreenerTopTokenBoostsByWhales"
@@ -217,7 +218,7 @@ export const renderAsyncToolBehaviorSection = (tools: RuntimeModelToolSnapshotEn
   }
 
   if (hasWorkspaceBash) {
-    lines.push("- `workspaceBash` is synchronous and timeout-bound. Use it for `pwd`, `ls`, `rg`, `command -v`, and CLI help, not for long-lived background daemons.");
+    lines.push("- `workspaceBash` is synchronous and timeout-bound. Always use an explicit mode like `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, `http_get`, or `shell`. Do not use it for long-lived background daemons.");
   }
 
   lines.push("- For multi-step work, keep the user oriented with short status notes that say what you are opening, what you are waiting on, and what result changed the next step.");

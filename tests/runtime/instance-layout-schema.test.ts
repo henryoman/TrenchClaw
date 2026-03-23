@@ -8,6 +8,20 @@ import {
 } from "../../apps/trenchclaw/src/runtime/instance-layout-schema";
 import { coreAppPath } from "../helpers/core-paths";
 
+const VOLATILE_RUNTIME_FILE_PATTERNS = [
+  /^cache\/generated\/(?!\.gitkeep$).+$/u,
+  /^cache\/memory\/(?!\.gitkeep$).+$/u,
+  /^cache\/queue\.sqlite(?:-shm|-wal)?$/u,
+  /^data\/runtime\.db(?:-shm|-wal)?$/u,
+  /^logs\/live\/(?!\.gitkeep$).+$/u,
+  /^logs\/sessions\/(?!\.gitkeep$).+$/u,
+  /^logs\/summaries\/(?!\.gitkeep$).+$/u,
+  /^logs\/system\/(?!\.gitkeep$).+$/u,
+] as const;
+
+const isVolatileRuntimeFile = (relativePath: string): boolean =>
+  VOLATILE_RUNTIME_FILE_PATTERNS.some((pattern) => pattern.test(relativePath));
+
 const listPaths = (root: string): { directories: string[]; files: string[] } => {
   const directories: string[] = [];
   const files: string[] = [];
@@ -44,6 +58,6 @@ describe("instance layout schema", () => {
     const tracked = listPaths(trackedSeedRoot);
 
     expect(tracked.directories).toEqual(INSTANCE_LAYOUT_DIRECTORY_PATHS);
-    expect(tracked.files).toEqual(INSTANCE_LAYOUT_FILE_PATHS);
+    expect(tracked.files.filter((relativePath) => !isVolatileRuntimeFile(relativePath))).toEqual(INSTANCE_LAYOUT_FILE_PATHS);
   });
 });
