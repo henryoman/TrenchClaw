@@ -53,6 +53,7 @@
   const BLOCKCHAIN_OPTION_IDS = [
     "solana-rpc-url",
     "jupiter-api-key",
+    "dune-api-key",
   ];
 
   let draftValues: Record<string, string> = {};

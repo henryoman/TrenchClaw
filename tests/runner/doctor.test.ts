@@ -47,7 +47,7 @@ describe("collectDoctorReport", () => {
     });
 
     expect(layout.kind).toBe("workspace");
-    expect(layout.runtimeStateRoot).toBe(path.join(homeRoot, "trenchclaw-dev-runtime"));
+    expect(layout.runtimeStateRoot).toBe(path.join(homeRoot, ".trenchclaw-dev-runtime"));
     expect(layout.runtimeStateRoot).not.toBe(path.join(layout.root, "apps", "trenchclaw", ".runtime-state"));
   });
 

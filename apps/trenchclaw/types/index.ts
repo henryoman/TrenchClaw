@@ -461,6 +461,49 @@ export interface GuiWalletsResponse {
   walletFileCount: number;
 }
 
+export interface GuiTrackedWalletView {
+  address: string;
+  label: string;
+  notes: string;
+  tags: string[];
+  enabled: boolean;
+}
+
+export interface GuiTrackedTokenView {
+  mintAddress: string;
+  symbol: string;
+  label: string;
+  notes: string;
+  tags: string[];
+  enabled: boolean;
+}
+
+export interface GuiTrackerView {
+  version: 1;
+  trackedWallets: GuiTrackedWalletView[];
+  trackedTokens: GuiTrackedTokenView[];
+}
+
+export interface GuiTrackerResponse {
+  instanceId: string | null;
+  filePath: string | null;
+  runtimePath: string | null;
+  exists: boolean;
+  tracker: GuiTrackerView;
+}
+
+export interface GuiUpdateTrackerRequest {
+  tracker: GuiTrackerView;
+}
+
+export interface GuiUpdateTrackerResponse {
+  instanceId: string;
+  filePath: string;
+  runtimePath: string;
+  savedAt: string;
+  tracker: GuiTrackerView;
+}
+
 export type RuntimeApiQueueJobStatus = GuiQueueJobStatus;
 export type RuntimeApiQueueJobView = GuiQueueJobView;
 export type RuntimeApiScheduleJobView = GuiScheduleJobView;
@@ -515,3 +558,9 @@ export type RuntimeApiDeleteSecretResponse = GuiDeleteSecretResponse;
 export type RuntimeApiLlmCheckResponse = GuiLlmCheckResponse;
 export type RuntimeApiWalletNodeView = GuiWalletNodeView;
 export type RuntimeApiWalletsResponse = GuiWalletsResponse;
+export type RuntimeApiTrackedWalletView = GuiTrackedWalletView;
+export type RuntimeApiTrackedTokenView = GuiTrackedTokenView;
+export type RuntimeApiTrackerView = GuiTrackerView;
+export type RuntimeApiTrackerResponse = GuiTrackerResponse;
+export type RuntimeApiUpdateTrackerRequest = GuiUpdateTrackerRequest;
+export type RuntimeApiUpdateTrackerResponse = GuiUpdateTrackerResponse;

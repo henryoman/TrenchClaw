@@ -224,12 +224,14 @@ const collectDexLaunchCandidates = (pairs: DexscreenerPairInfo[], coinAddress: s
 
 const collectGeckoLaunchCandidates = (pools: GeckoPoolRecord[], coinAddress: string): LaunchCandidate[] =>
   pools.flatMap((pool) => {
+    const candidates: LaunchCandidate[] = [];
+
     if (pool.poolCreatedAtMs === null) {
-      return [];
+      return candidates;
     }
 
     if (pool.baseToken?.address === coinAddress) {
-      return [{
+      candidates.push({
         source: "geckoterminal" as const,
         createdAtMs: pool.poolCreatedAtMs,
         poolAddress: pool.poolAddress,
@@ -244,11 +246,11 @@ const collectGeckoLaunchCandidates = (pools: GeckoPoolRecord[], coinAddress: str
           name: pool.baseToken.name,
           symbol: pool.baseToken.symbol,
         },
-      }];
+      });
     }
 
     if (pool.quoteToken?.address === coinAddress) {
-      return [{
+      candidates.push({
         source: "geckoterminal" as const,
         createdAtMs: pool.poolCreatedAtMs,
         poolAddress: pool.poolAddress,
@@ -263,10 +265,10 @@ const collectGeckoLaunchCandidates = (pools: GeckoPoolRecord[], coinAddress: str
           name: pool.quoteToken.name,
           symbol: pool.quoteToken.symbol,
         },
-      }];
+      });
     }
 
-    return [];
+    return candidates;
   });
 
 const compareByMainPoolPriority = (left: LaunchCandidate, right: LaunchCandidate): number => {

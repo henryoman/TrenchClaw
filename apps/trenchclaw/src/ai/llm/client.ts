@@ -12,14 +12,14 @@ import type {
 } from "./types";
 
 const LLM_GENERATE_TIMEOUT = {
-  totalMs: 30_000,
-  stepMs: 30_000,
+  totalMs: 300_000,
+  stepMs: 300_000,
 } as const;
 
 const LLM_STREAM_TIMEOUT = {
-  totalMs: 45_000,
-  stepMs: 25_000,
-  chunkMs: 12_000,
+  totalMs: 900_000,
+  stepMs: 600_000,
+  chunkMs: 300_000,
 } as const;
 
 const buildTemporalContext = (now: Date = new Date()): string => {

@@ -885,7 +885,7 @@ describe("RuntimeChatService", () => {
               if (!echoTool) {
                 throw new Error("echo tool not registered");
               }
-              const payload = await echoTool.execute({ value: 42 });
+              const payload = await echoTool.execute({ params: { value: 42 } });
               return Response.json(payload);
             },
           };
@@ -949,8 +949,8 @@ describe("RuntimeChatService", () => {
             if (!echoTool) {
               throw new Error("echo tool not registered");
             }
-            const first = await echoTool.execute({ value: 42 });
-            const second = await echoTool.execute({ value: 42 });
+            const first = await echoTool.execute({ params: { value: 42 } });
+            const second = await echoTool.execute({ params: { value: 42 } });
             return Response.json({ first, second });
           },
         })) as never,
@@ -1006,8 +1006,8 @@ describe("RuntimeChatService", () => {
             if (!echoTool) {
               throw new Error("echoBigInt tool not registered");
             }
-            const first = await echoTool.execute({ value: 42n });
-            const second = await echoTool.execute({ value: 42n });
+            const first = await echoTool.execute({ params: { value: 42n } });
+            const second = await echoTool.execute({ params: { value: 42n } });
             return Response.json({ first, second });
           },
         })) as never,
@@ -1166,6 +1166,194 @@ describe("RuntimeChatService", () => {
       activeTools: ["readKnowledgeDoc"],
     });
     expect(secondStepConfig).toEqual({ toolChoice: "auto" });
+  });
+
+  test("avoids required tool_choice forcing for OpenRouter when user broadly asks for tools", async () => {
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
+    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+      actions: [],
+      workspaceTools: [],
+      comingSoonFeatures: [],
+      modelTools: [
+        {
+          kind: "action",
+          name: "readKnowledgeDoc",
+          description: "read knowledge doc",
+          purpose: "read knowledge doc",
+          routingHint: "read knowledge doc",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { doc: "runtime-reference" },
+          toolDescription: "read knowledge doc",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+        {
+          kind: "workspace-tool",
+          name: WORKSPACE_BASH_TOOL_NAME,
+          description: "workspace bash",
+          purpose: "workspace bash",
+          routingHint: "workspace bash",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { type: "shell", command: "pwd" },
+          toolDescription: "workspace bash",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+      ],
+    };
+
+    let firstStepConfig: Record<string, unknown> | undefined;
+    let secondStepConfig: Record<string, unknown> | undefined;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry: new ActionRegistry(),
+        eventBus,
+        stateStore,
+        capabilitySnapshot,
+        gateway: {
+          prepareChatExecution: async () => ({
+            kind: "llm",
+            lane: "operator-chat",
+            provider: "openrouter",
+            modelId: "qwen/qwen3.5-flash-02-23",
+            model: {} as never,
+            systemPrompt: DEFAULT_TEST_SYSTEM_PROMPT,
+            toolNames: ["readKnowledgeDoc", WORKSPACE_BASH_TOOL_NAME],
+            executionTrace: {
+              lane: "operator-chat",
+              provider: "openrouter",
+              model: "qwen/qwen3.5-flash-02-23",
+              promptChars: DEFAULT_TEST_SYSTEM_PROMPT.length,
+              toolCount: 2,
+              toolSteps: 0,
+              durationMs: 0,
+            },
+          }),
+          listToolNames: () => ["readKnowledgeDoc", WORKSPACE_BASH_TOOL_NAME],
+          describe: () => ({ lanes: [] }),
+        },
+      },
+      {
+        convertToModelMessages: async () => [],
+        streamText: ((args: {
+          prepareStep?: (input: { stepNumber: number }) => Record<string, unknown> | undefined;
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+        }) => {
+          firstStepConfig = args.prepareStep?.({ stepNumber: 1 });
+          secondStepConfig = args.prepareStep?.({ stepNumber: 2 });
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([
+      {
+        id: "user-force-tool-2",
+        role: "user",
+        parts: [{ type: "text", text: "Use bash to inspect the workspace and help me." }],
+      },
+    ]);
+
+    expect(firstStepConfig).toBeUndefined();
+    expect(secondStepConfig).toBeUndefined();
+  });
+
+  test("uses OpenRouter activeTools-only forcing for an explicitly named tool", async () => {
+    const eventBus = new InMemoryRuntimeEventBus();
+    const stateStore = new InMemoryStateStore();
+    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+      actions: [],
+      workspaceTools: [],
+      comingSoonFeatures: [],
+      modelTools: [
+        {
+          kind: "action",
+          name: "readKnowledgeDoc",
+          description: "read knowledge doc",
+          purpose: "read knowledge doc",
+          routingHint: "read knowledge doc",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { doc: "runtime-reference" },
+          toolDescription: "read knowledge doc",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+      ],
+    };
+
+    let firstStepConfig: Record<string, unknown> | undefined;
+    let secondStepConfig: Record<string, unknown> | undefined;
+
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry: new ActionRegistry(),
+        eventBus,
+        stateStore,
+        capabilitySnapshot,
+        gateway: {
+          prepareChatExecution: async () => ({
+            kind: "llm",
+            lane: "operator-chat",
+            provider: "openrouter",
+            modelId: "qwen/qwen3.5-flash-02-23",
+            model: {} as never,
+            systemPrompt: DEFAULT_TEST_SYSTEM_PROMPT,
+            toolNames: ["readKnowledgeDoc"],
+            executionTrace: {
+              lane: "operator-chat",
+              provider: "openrouter",
+              model: "qwen/qwen3.5-flash-02-23",
+              promptChars: DEFAULT_TEST_SYSTEM_PROMPT.length,
+              toolCount: 1,
+              toolSteps: 0,
+              durationMs: 0,
+            },
+          }),
+          listToolNames: () => ["readKnowledgeDoc"],
+          describe: () => ({ lanes: [] }),
+        },
+      },
+      {
+        convertToModelMessages: async () => [],
+        streamText: ((args: {
+          prepareStep?: (input: { stepNumber: number }) => Record<string, unknown> | undefined;
+          tools: Record<string, { execute: (input: unknown) => Promise<unknown> }>;
+        }) => {
+          firstStepConfig = args.prepareStep?.({ stepNumber: 1 });
+          secondStepConfig = args.prepareStep?.({ stepNumber: 2 });
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([
+      {
+        id: "user-force-tool-openrouter-1",
+        role: "user",
+        parts: [{ type: "text", text: "Use readKnowledgeDoc to open runtime-reference." }],
+      },
+    ]);
+
+    expect(firstStepConfig).toEqual({ activeTools: ["readKnowledgeDoc"] });
+    expect(secondStepConfig).toEqual({});
   });
 
   test("filters operator-chat tools through the gateway allowlist and keeps read-only workspace tools", async () => {
@@ -1414,6 +1602,7 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("## Command Groups");
     expect(execution.systemPrompt).toContain("### Wallet Execution");
     expect(execution.systemPrompt).toContain("## Async Tool Behavior");
+    expect(execution.systemPrompt).toContain("## Tool Execution Flow");
     expect(execution.systemPrompt).toContain("## Live Runtime Context");
     expect(execution.systemPrompt).toContain("current time (UTC, exact minute):");
     expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
@@ -1782,7 +1971,7 @@ describe("RuntimeChatService", () => {
       return;
     }
     expect(execution.toolNames.length).toBeLessThanOrEqual(12);
-    expect(execution.maxToolSteps).toBe(4);
+    expect(execution.maxToolSteps).toBe(12);
     expect(execution.toolNames).toEqual([
       "getManagedWalletContents",
       "queryRuntimeStore",
@@ -1795,9 +1984,12 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("### Runtime + Queue");
     expect(execution.systemPrompt).toContain("### RPC Data Fetch");
     expect(execution.systemPrompt).toContain("### CLI + Workspace");
+    expect(execution.systemPrompt).toContain("### CLI + Workspace");
     expect(execution.systemPrompt).toContain("default sequence: `workspaceListDirectory` -> `workspaceReadFile` -> `workspaceBash`");
-    expect(execution.systemPrompt).toContain("## Knowledge Index");
-    expect(execution.systemPrompt).toContain("use `runtime-reference` for runtime roots, shipped bundle contents, and first-run generated defaults");
+    expect(execution.systemPrompt).toContain("Use `workspaceBash` for CLI programs like `solana`, `solana-keygen`, `helius`, `dune`, `bun`");
+    expect(execution.systemPrompt).toContain("## Knowledge");
+    expect(execution.systemPrompt).toContain("runtime-reference");
+    expect(execution.systemPrompt).toContain("listKnowledgeDocs");
   });
 
   test("grounds operator-chat with knowledge tools and skill aliases", async () => {
@@ -1857,11 +2049,15 @@ describe("RuntimeChatService", () => {
     }
 
     expect(execution.toolNames).toEqual(["listKnowledgeDocs", "readKnowledgeDoc"]);
-    expect(execution.systemPrompt).toContain("## Knowledge Index");
-    expect(execution.systemPrompt).toContain("core doc aliases:");
-    expect(execution.systemPrompt).toContain("skill pack aliases:");
-    expect(execution.systemPrompt).toContain("use `listKnowledgeDocs` to see the available knowledge docs, deep references, and skill packs");
-    expect(execution.systemPrompt).toContain("Use `tier = \"skills\"` when you specifically need a skill pack.");
+    expect(execution.systemPrompt).toContain("## Knowledge");
+    expect(execution.systemPrompt).toContain("listKnowledgeDocs");
+    expect(execution.systemPrompt).toContain("readKnowledgeDoc");
+    expect(execution.systemPrompt).toContain("Use `tier = \"skills\"` when the task matches a packaged skill workflow");
+    expect(execution.systemPrompt).toContain("### Direct-Open Registry");
+    expect(execution.systemPrompt).toContain("`dune` - Dune Skill");
+    expect(execution.systemPrompt).toContain("Helius Skill");
+    expect(execution.systemPrompt).toContain("SVM Skill");
+    expect(execution.systemPrompt).toContain("Solana Cli Docs");
   });
 
   test("includes Dexscreener discovery and market-data actions in the normal operator payload", async () => {
@@ -2070,6 +2266,7 @@ describe("RuntimeChatService", () => {
     ]);
     expect(execution.systemPrompt).toContain("For whales, top holders, largest accounts, or holder concentration on one known token, use `getTokenHolderDistribution`");
     expect(execution.systemPrompt).toContain("prefer `rankDexscreenerTopTokenBoostsByWhales` when it is available");
+    expect(execution.systemPrompt).toContain("prefer short-term price performance windows first: use `priceChange.m5` and `priceChange.h1`");
     expect(execution.systemPrompt).toContain("default whales to distinct owner wallets holding at least 1% of supply");
     expect(execution.systemPrompt).toContain("Do not stop after a partial market-discovery answer when the user also asked for whales");
   });
@@ -2223,7 +2420,7 @@ describe("RuntimeChatService", () => {
       {
         resolveStreamingModel: () => ({}) as never,
         convertToModelMessages: (async (messages: Array<Omit<UIMessage, "id">>) => {
-          capturedMessages = messages as UIMessage[];
+          capturedMessages = messages as unknown as UIMessage[];
           return [];
         }) as never,
         streamText: (() => ({
@@ -2242,7 +2439,7 @@ describe("RuntimeChatService", () => {
         id: "assistant-1",
         role: "assistant",
         parts: [
-          { type: "tool-echo", toolCallId: "tool-call-1", state: "output-available", input: { value: 42 }, output: { ok: true } },
+          { type: "tool-echo", toolCallId: "tool-call-1", state: "output-available", input: { params: { value: 42 } }, output: { ok: true } },
           { type: "text", text: "calling tool now" },
         ] as UIMessage["parts"],
       },
@@ -2255,7 +2452,7 @@ describe("RuntimeChatService", () => {
       type: "tool-echo",
       toolCallId: "tool-call-1",
       state: "output-available",
-      input: { value: 42 },
+      input: { params: { value: 42 } },
       output: { ok: true },
     });
   });
@@ -2314,6 +2511,159 @@ describe("RuntimeChatService", () => {
     expect(typeof capturedGenerateMessageId).toBe("function");
     expect(capturedGenerateMessageId?.()).toMatch(/^msg-/);
     expect(capturedOriginalMessages).toHaveLength(1);
+  });
+
+  test("preloads a recent persisted history window and advertises older-history retrieval when the token budget cuts off older messages", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    const now = Date.now();
+    stateStore.saveConversation({
+      id: "chat-history-window-1",
+      sessionId: "session-history-window-1",
+      title: "History Window",
+      createdAt: now,
+      updatedAt: now,
+    });
+    stateStore.saveChatMessage({
+      id: "history-msg-1",
+      conversationId: "chat-history-window-1",
+      role: "user",
+      content: "x".repeat(45_000),
+      createdAt: now,
+    });
+    stateStore.saveChatMessage({
+      id: "history-msg-2",
+      conversationId: "chat-history-window-1",
+      role: "assistant",
+      content: "most recent persisted reply",
+      createdAt: now + 1,
+    });
+
+    let capturedMessages: UIMessage[] = [];
+    let capturedSystemPrompt = "";
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: (async (messages: Array<Omit<UIMessage, "id">>) => {
+          capturedMessages = messages as unknown as UIMessage[];
+          return [];
+        }) as never,
+        streamText: ((args: { system?: string }) => {
+          capturedSystemPrompt = args.system ?? "";
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "user-history-window-1",
+          role: "user",
+          parts: [{ type: "text", text: "continue" }],
+        },
+      ],
+      { chatId: "chat-history-window-1" },
+    );
+
+    expect(capturedMessages).toHaveLength(2);
+    expect(capturedMessages[0]?.id).toBe("history-msg-2");
+    expect(capturedMessages[1]?.id).toBe("user-history-window-1");
+    const historyPart = capturedMessages[0]?.parts.find((part) => part.type === "text");
+    expect(historyPart && "text" in historyPart && historyPart.text).toContain("[History #1/1 | messageId=history-msg-2");
+    expect(capturedSystemPrompt).toContain("## Conversation memory");
+    expect(capturedSystemPrompt).toContain("getConversationHistorySlice");
+    expect(capturedSystemPrompt).toContain("\"conversationId\":\"chat-history-window-1\"");
+    expect(capturedSystemPrompt).toContain("\"beforeMessageId\":\"history-msg-2\"");
+  });
+
+  test("does not duplicate persisted history already present at the start of the request payload", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    const now = Date.now();
+    stateStore.saveConversation({
+      id: "chat-history-overlap-1",
+      sessionId: "session-history-overlap-1",
+      title: "History Overlap",
+      createdAt: now,
+      updatedAt: now,
+    });
+    stateStore.saveChatMessage({
+      id: "persisted-user-1",
+      conversationId: "chat-history-overlap-1",
+      role: "user",
+      content: "hello runtime",
+      createdAt: now,
+    });
+    stateStore.saveChatMessage({
+      id: "persisted-assistant-1",
+      conversationId: "chat-history-overlap-1",
+      role: "assistant",
+      content: "hello operator",
+      createdAt: now + 1,
+    });
+
+    let capturedMessages: UIMessage[] = [];
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: (async (messages: Array<Omit<UIMessage, "id">>) => {
+          capturedMessages = messages as UIMessage[];
+          return [];
+        }) as never,
+        streamText: (() => ({
+          toUIMessageStreamResponse: () => new Response("ok"),
+        })) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "request-user-overlap-1",
+          role: "user",
+          parts: [{ type: "text", text: "hello runtime" }],
+        },
+        {
+          id: "request-assistant-overlap-1",
+          role: "assistant",
+          parts: [{ type: "text", text: "hello operator" }],
+        },
+        {
+          id: "request-user-overlap-2",
+          role: "user",
+          parts: [{ type: "text", text: "what changed?" }],
+        },
+      ],
+      { chatId: "chat-history-overlap-1" },
+    );
+
+    expect(capturedMessages).toHaveLength(3);
+    expect(capturedMessages[0]?.id).toBe("request-user-overlap-1");
+    expect(capturedMessages[1]?.id).toBe("request-assistant-overlap-1");
+    expect(capturedMessages[2]?.id).toBe("request-user-overlap-2");
   });
 
   test("creates and persists conversation/messages from streamed chat", async () => {
@@ -2554,6 +2904,162 @@ describe("RuntimeChatService", () => {
     ]);
   });
 
+  test("does not persist assistant messages with empty ui parts", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => ({
+          toUIMessageStreamResponse: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) => {
+            const assistantMessage: UIMessage = {
+              id: "assistant-empty-parts-1",
+              role: "assistant",
+              parts: [] as UIMessage["parts"],
+            };
+            const original = options?.originalMessages ?? [];
+            options?.onFinish?.({
+              messages: [...original, assistantMessage],
+              isContinuation: false,
+              isAborted: false,
+              responseMessage: assistantMessage,
+              finishReason: "stop",
+            });
+            return new Response("ok");
+          },
+        })) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "user-empty-parts-1",
+          role: "user",
+          parts: [{ type: "text", text: "hello" }],
+        },
+      ],
+      { chatId: "chat-empty-parts-1" },
+    );
+
+    const persisted = stateStore.listChatMessages("chat-empty-parts-1", 10);
+    expect(persisted.map((message) => message.id)).toEqual(["user-empty-parts-1"]);
+  });
+
+  test("filters persisted empty assistant history before model validation on later turns", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    stateStore.saveConversation({
+      id: "chat-invalid-history-1",
+      createdAt: 1,
+      updatedAt: 2,
+    });
+    stateStore.saveChatMessage({
+      id: "user-history-valid-1",
+      conversationId: "chat-invalid-history-1",
+      role: "user",
+      content: "hello",
+      metadata: {
+        uiParts: [{ type: "text", text: "hello" }],
+      },
+      createdAt: 1,
+    });
+    stateStore.saveChatMessage({
+      id: "assistant-history-empty-1",
+      conversationId: "chat-invalid-history-1",
+      role: "assistant",
+      content: "",
+      metadata: {
+        uiParts: [],
+      },
+      createdAt: 2,
+    });
+
+    let capturedMessages: UIMessage[] = [];
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async (messages) => {
+          capturedMessages = messages as unknown as UIMessage[];
+          return [];
+        },
+        streamText: (() => ({
+          toUIMessageStreamResponse: (options?: {
+            originalMessages?: UIMessage[];
+            onFinish?: (event: {
+              messages: UIMessage[];
+              isContinuation: boolean;
+              isAborted: boolean;
+              responseMessage: UIMessage;
+              finishReason?: string;
+            }) => void;
+          }) => {
+            const assistantMessage: UIMessage = {
+              id: "assistant-followup-valid-1",
+              role: "assistant",
+              parts: [{ type: "text", text: "handled" }],
+            };
+            const original = options?.originalMessages ?? [];
+            options?.onFinish?.({
+              messages: [...original, assistantMessage],
+              isContinuation: false,
+              isAborted: false,
+              responseMessage: assistantMessage,
+              finishReason: "stop",
+            });
+            return new Response("ok");
+          },
+        })) as never,
+      },
+    );
+
+    await service.stream(
+      [
+        {
+          id: "user-later-turn-1",
+          role: "user",
+          parts: [{ type: "text", text: "continue" }],
+        },
+      ],
+      { chatId: "chat-invalid-history-1" },
+    );
+
+    expect(capturedMessages.map((message) => message.id)).toEqual([
+      "user-history-valid-1",
+      "user-later-turn-1",
+    ]);
+  });
+
   test("forces a second no-tool answer pass when merged streaming ends with only tool parts", async () => {
     const registry = new ActionRegistry();
     registry.register({
@@ -2626,7 +3132,7 @@ describe("RuntimeChatService", () => {
                   writer.write({ type: "start", messageId: "assistant-tool-pass-1" });
                   writer.write({ type: "start-step" });
                   writer.write({ type: "tool-input-start", toolCallId: "tool-call-1", toolName: "echo" });
-                  writer.write({ type: "tool-input-delta", toolCallId: "tool-call-1", inputTextDelta: "{\"value\":7}" });
+                  writer.write({ type: "tool-input-delta", toolCallId: "tool-call-1", inputTextDelta: "{\"params\":{\"value\":7}}" });
                   writer.write({
                     type: "tool-input-available",
                     toolCallId: "tool-call-1",
@@ -2679,13 +3185,13 @@ describe("RuntimeChatService", () => {
     expect(streamInvocationCount).toBe(1);
     expect(generateInvocationCount).toBe(1);
     expect(capturedStreamTimeout).toEqual({
-      totalMs: 45_000,
-      stepMs: 25_000,
-      chunkMs: 12_000,
+      totalMs: 900_000,
+      stepMs: 600_000,
+      chunkMs: 300_000,
     });
     expect(capturedFallbackGenerateTimeout).toEqual({
-      totalMs: 20_000,
-      stepMs: 20_000,
+      totalMs: 300_000,
+      stepMs: 300_000,
     });
 
     const assistantMessages = stateStore

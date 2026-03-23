@@ -86,7 +86,9 @@ describe("ensureInstanceLayout", () => {
     ).toEqual(result.expectedDirectoryPaths);
     expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual([
       "ai.json",
+      "news-feeds.json",
       "settings.json",
+      "tracker.json",
       "trading.json",
       "vault.json",
     ]);

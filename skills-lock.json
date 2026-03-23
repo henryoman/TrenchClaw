@@ -11,6 +11,11 @@
       "sourceType": "github",
       "computedHash": "58ce68f628890c3925aea2b5435a649251ac182057541045c68fc19a27aaa0ec"
     },
+    "dune": {
+      "source": "duneanalytics/skills",
+      "sourceType": "github",
+      "computedHash": "612e12d01773ccfdcdc5fbb00611c27496bbec5583b6cb494a931e04be34ea9f"
+    },
     "svelte-code-writer": {
       "source": "sveltejs/mcp",
       "sourceType": "github",

@@ -247,13 +247,14 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("### CLI + Workspace");
     expect(payload.systemPrompt).toContain("## Workspace Directory Map");
     expect(payload.systemPrompt).toContain("## Async Tool Behavior");
-    expect(payload.systemPrompt).toContain("## Knowledge Index");
-    expect(payload.systemPrompt).toContain("## Knowledge Routing");
+    expect(payload.systemPrompt).toContain("## Knowledge");
+    expect(payload.systemPrompt).toContain("### When to retrieve");
     expect(payload.systemPrompt).toContain("### Shell Tooling");
     expect(payload.systemPrompt).toContain("## Live Runtime Context");
     expect(payload.systemPrompt).toContain("workspaceBash");
     expect(payload.systemPrompt).toContain("workspaceListDirectory");
     expect(payload.systemPrompt).toContain("queryRuntimeStore");
+    expect(payload.systemPrompt).toContain("older conversation slices");
     expect(payload.systemPrompt).toContain("queryInstanceMemory");
     expect(payload.systemPrompt).toContain("listKnowledgeDocs");
     expect(payload.systemPrompt).toContain("readKnowledgeDoc");
@@ -270,6 +271,7 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.systemPrompt).toContain("- active instance: 01");
     expect(payload.systemPrompt).toContain(process.env.TRENCHCLAW_VAULT_FILE ?? "");
     expect(payload.systemPrompt).toContain("workspaceReadFile");
+    expect(payload.systemPrompt).toContain("configs/tracker.json");
     expect(payload.systemPrompt).toContain("scheduled trading jobs: unavailable");
     expect(payload.systemPrompt).not.toContain("## Prompt Assembly Order");
     expect(payload.systemPrompt).not.toContain("Source:");
@@ -284,7 +286,7 @@ describe("loadSystemPromptPayload", () => {
     expect(payload.mode).toBe("primary");
     expect(payload.title).toBe("Primary Runtime Rules");
     expect(payload.systemPrompt).toContain("## Live Runtime Rules");
-    expect(payload.systemPrompt).toContain("## Knowledge Routing");
+    expect(payload.systemPrompt).toContain("### Authority");
   });
 
   test("throws on unknown modes", async () => {

@@ -75,6 +75,9 @@ export interface RankedBoostedTokenWhaleEntry extends TokenHolderDistribution {
   tokenSymbol: string | null;
   boostAmount: number;
   boostTotalAmount: number;
+  pricePerformance5mPercent: number | null;
+  pricePerformance1hPercent: number | null;
+  pricePerformance24hPercent: number | null;
   liquidityUsd: number | null;
   volume24hUsd: number | null;
   marketCapUsd: number | null;
@@ -413,6 +416,9 @@ export const createRankDexscreenerTopTokenBoostsByWhalesAction = (
             tokenSymbol: tokenMetadata.tokenSymbol,
             boostAmount: boost.amount,
             boostTotalAmount: boost.totalAmount,
+            pricePerformance5mPercent: toFiniteNumberOrNull(pair?.priceChange?.m5),
+            pricePerformance1hPercent: toFiniteNumberOrNull(pair?.priceChange?.h1),
+            pricePerformance24hPercent: toFiniteNumberOrNull(pair?.priceChange?.h24),
             liquidityUsd: pair?.liquidity?.usd ?? null,
             volume24hUsd: toFiniteNumberOrNull(pair?.volume?.h24),
             marketCapUsd: toFiniteNumberOrNull(pair?.marketCap),

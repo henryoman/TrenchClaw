@@ -89,6 +89,17 @@ export interface InstanceMemoryBundle {
 
 export type RuntimeSearchScope = "all" | "conversations" | "messages" | "jobs" | "receipts";
 
+export interface ConversationHistorySlice {
+  conversationId: ConversationId;
+  requestedBeforeMessageId?: ChatMessageId;
+  messages: ChatMessageState[];
+  estimatedTokenCount: number;
+  hasMoreBefore: boolean;
+  nextBeforeMessageId?: ChatMessageId;
+  oldestReturnedMessageId?: ChatMessageId;
+  newestReturnedMessageId?: ChatMessageId;
+}
+
 export interface RuntimeSearchResult {
   query: string;
   scope: RuntimeSearchScope;
@@ -136,6 +147,12 @@ export interface StateStore {
   deleteConversation(id: ConversationId): boolean;
   saveChatMessage(message: ChatMessageState): void;
   listChatMessages(conversationId: ConversationId, limit?: number): ChatMessageState[];
+  getConversationHistorySlice(input: {
+    conversationId: ConversationId;
+    beforeMessageId?: ChatMessageId;
+    limit?: number;
+    tokenBudget?: number;
+  }): ConversationHistorySlice;
   saveInstanceProfile(profile: InstanceProfileState): void;
   getInstanceProfile(instanceId: InstanceId): InstanceProfileState | null;
   saveInstanceFact(fact: InstanceFactState): void;

@@ -11,17 +11,27 @@ import {
 } from "../../../../lib/news/rss";
 import { ensureInstanceLayout } from "../../../../runtime/instance-layout";
 import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance-state";
+import { resolveConfiguredNewsFeedByAlias } from "../../../../runtime/news-feed-registry";
 import { resolveInstanceWorkspaceNewsRoot } from "../../../../runtime/instance-workspace";
 import { toRuntimeContractRelativePath } from "../../../../runtime/runtime-paths";
 
 export const DEFAULT_SOLANA_NEWS_FEED_URL = "https://cryptopotato.com/tag/solana/feed/";
 
 const getLatestSolanaNewsInputSchema = z.object({
-  feedUrl: z.url().optional().default(DEFAULT_SOLANA_NEWS_FEED_URL),
+  feedAlias: z.string().trim().min(1).optional(),
+  feedUrl: z.url().optional(),
   limit: z.number().int().positive().max(25).default(5),
   excerptMaxChars: z.number().int().positive().max(600).default(280),
   includeFullContent: z.boolean().default(false),
   contentMaxChars: z.number().int().positive().max(4_000).default(1_200),
+}).superRefine((input, ctx) => {
+  if (input.feedAlias && input.feedUrl) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["feedAlias"],
+      message: "Pass either `feedAlias` or `feedUrl`, not both.",
+    });
+  }
 });
 
 type GetLatestSolanaNewsInput = z.input<typeof getLatestSolanaNewsInputSchema>;
@@ -30,6 +40,8 @@ interface GetLatestSolanaNewsOutput extends NormalizedNewsFeedResult {
   instanceId: string;
   outputPath: string;
   runtimePath: string;
+  feedAlias?: string | null;
+  feedRegistryRuntimePath?: string | null;
 }
 
 const sanitizePathSegment = (value: string): string =>
@@ -58,7 +70,13 @@ export const getLatestSolanaNewsAction: Action<GetLatestSolanaNewsInput, GetLate
       );
       await ensureInstanceLayout(activeInstanceId);
 
-      const data = await readNormalizedNewsFeed(input);
+      const configuredFeed = input.feedAlias
+        ? await resolveConfiguredNewsFeedByAlias(activeInstanceId, input.feedAlias)
+        : null;
+      const data = await readNormalizedNewsFeed({
+        ...input,
+        feedUrl: configuredFeed?.feed.feedUrl ?? input.feedUrl ?? DEFAULT_SOLANA_NEWS_FEED_URL,
+      });
       const outputDirectory = resolveInstanceWorkspaceNewsRoot(activeInstanceId);
       const outputPath = path.join(outputDirectory, createNewsArtifactFileName(data.feed.feedUrl, data.fetchedAt));
       const artifactDocument = {
@@ -66,6 +84,8 @@ export const getLatestSolanaNewsAction: Action<GetLatestSolanaNewsInput, GetLate
         artifactType: "news-feed-download",
         source: "rss-news",
         instanceId: activeInstanceId,
+        feedAlias: configuredFeed?.feed.alias ?? null,
+        feedRegistryRuntimePath: configuredFeed?.runtimePath ?? null,
         request: data.request,
         feed: data.feed,
         totalArticleCount: data.totalArticleCount,
@@ -85,6 +105,8 @@ export const getLatestSolanaNewsAction: Action<GetLatestSolanaNewsInput, GetLate
           instanceId: activeInstanceId,
           outputPath,
           runtimePath: toRuntimeContractRelativePath(outputPath),
+          feedAlias: configuredFeed?.feed.alias ?? null,
+          feedRegistryRuntimePath: configuredFeed?.runtimePath ?? null,
         },
         durationMs: Date.now() - startedAt,
         timestamp: Date.now(),

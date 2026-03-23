@@ -74,7 +74,7 @@ The runtime writes mutable state to `.runtime-state/instances/`, including per-i
 
 For local development, `bun run dev` defaults to a persistent external runtime root:
 
-- `~/trenchclaw-dev-runtime`
+- `~/.trenchclaw-dev-runtime`
 
 That external root is the preferred dev/test manual workflow because it preserves real per-instance behavior without putting personal state in the repo.
 

@@ -262,6 +262,7 @@ export const createJupiterAdapter = (config: JupiterSwapAdapterConfig) => {
   };
 };
 
+/** One portal.jup.ag API key for Swap API V2, Ultra, and Trigger V1 (header `x-api-key`). */
 export const getJupiterApiKeyFromVault = async (): Promise<string | undefined> => {
   const { vaultData } = await loadVaultData();
   return readVaultString(vaultData, "integrations/jupiter/api-key");

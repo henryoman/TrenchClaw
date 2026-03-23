@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
-  import { isToolUIPart, type UIMessage } from "ai";
+  import { onMount, tick, untrack } from "svelte";
+  import { isReasoningUIPart, isToolUIPart, type UIMessage } from "ai";
   import { marked } from "marked";
   import type { GuiConversationView } from "@trenchclaw/types";
-  import { getMessageActivityItems } from "./chat-activity";
+  import type { ChatStatus } from "./chat-activity";
+  import { buildAssistantMessageLayout } from "./chat-message-layout";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroModal from "../ui/RetroModal.svelte";
 
@@ -13,6 +14,7 @@
     conversations?: GuiConversationView[];
     activeConversationId?: string | null;
     sending?: boolean;
+    chatStatus?: ChatStatus;
     deletingConversations?: boolean;
     chatDisabledReason?: string;
     runtimeError?: string;
@@ -29,6 +31,7 @@
     conversations = [],
     activeConversationId = null,
     sending = false,
+    chatStatus = "ready",
     deletingConversations = false,
     chatDisabledReason = "",
     runtimeError = "",
@@ -55,12 +58,15 @@
   let settingsMenuElement: HTMLElement | null = $state(null);
   let shouldFollowStream = $state(true);
   const renderKey = $derived(
-    `${sending ? "1" : "0"}:${messages
+    `${chatStatus}:${messages
       .map((message) =>
         `${message.id}:${message.role}:${message.parts
           .map((part) => {
             if (part.type === "text") {
               return `text:${part.text?.length ?? 0}`;
+            }
+            if (isReasoningUIPart(part)) {
+              return `reasoning:${part.text?.length ?? 0}:${part.state ?? "done"}`;
             }
             if (isToolUIPart(part)) {
               return `${part.toolCallId}:${part.state}:${"errorText" in part ? (part.errorText ?? "") : ""}`;
@@ -79,12 +85,20 @@
   const selectedConversationCount = $derived(selectedConversationIds.length);
   const hasSelectedConversations = $derived(selectedConversationCount > 0);
 
-  type MessagePart = UIMessage["parts"][number];
+  type ThoughtBlockTiming = {
+    startedAt: number;
+    lastObservedAt: number;
+    endedAt: number | null;
+  };
 
-  interface AssistantMessageSegments {
-    visibleTextParts: string[];
-    activityItems: ReturnType<typeof getMessageActivityItems>;
-  }
+  type ThoughtBlockDescriptor = {
+    id: string;
+    state: "streaming" | "done";
+  };
+
+  let thoughtBlockTimings = $state<Record<string, ThoughtBlockTiming>>({});
+  let thoughtBlockOpenState = $state<Record<string, boolean>>({});
+  let thoughtClockMs = $state(Date.now());
 
   const normalizeDisplayText = (value: string): string =>
     value
@@ -101,7 +115,7 @@
     return marked.parse(text, { breaks: true }) as string;
   };
 
-  const isTextPart = (part: MessagePart): part is Extract<MessagePart, { type: "text" }> => part.type === "text";
+  const isPendingChatStatus = (value: ChatStatus): boolean => value === "submitted" || value === "streaming";
 
   const truncateText = (value: string, maxLength: number): string => {
     if (value.length <= maxLength) {
@@ -138,26 +152,62 @@
     return truncateText(firstSentence.replace(/\s+/g, " "), 96);
   };
 
-  const getAssistantMessageSegments = (message: UIMessage): AssistantMessageSegments => {
-    const visibleTextParts: string[] = [];
-    const activityItems = getMessageActivityItems(message);
-
-    message.parts.forEach((part) => {
-      if (isTextPart(part)) {
-        const text = normalizeDisplayText(part.text ?? "");
-        if (!text) {
-          return;
-        }
-
-        visibleTextParts.push(text);
+  const collectThoughtBlockDescriptors = (inputMessages: UIMessage[]): ThoughtBlockDescriptor[] =>
+    inputMessages.flatMap((message) => {
+      if (message.role !== "assistant") {
+        return [];
       }
+
+      return buildAssistantMessageLayout(message).blocks.flatMap((block) =>
+        block.kind === "thought"
+          ? [{ id: block.id, state: block.state }]
+          : []);
     });
 
-    return {
-      visibleTextParts,
-      activityItems,
+  const formatThoughtDuration = (durationMs: number): string => `${Math.max(1, Math.ceil(durationMs / 1000))}s`;
+
+  const getThoughtDurationMs = (blockId: string): number | null => {
+    const timing = thoughtBlockTimings[blockId];
+    if (!timing) {
+      return null;
+    }
+
+    const finishedAt = timing.endedAt ?? thoughtClockMs;
+    const durationMs = Math.max(0, finishedAt - timing.startedAt);
+    return durationMs >= 1_000 ? durationMs : timing.endedAt === null ? durationMs : null;
+  };
+
+  const getThoughtSummaryLabel = (blockId: string, state: "streaming" | "done"): string => {
+    const durationMs = getThoughtDurationMs(blockId);
+    const prefix = state === "streaming" ? "Thinking" : "Thought";
+    return durationMs === null ? prefix : `${prefix} for ${formatThoughtDuration(durationMs)}`;
+  };
+
+  const isThoughtBlockOpen = (blockId: string, state: "streaming" | "done"): boolean =>
+    thoughtBlockOpenState[blockId] ?? state === "streaming";
+
+  const setThoughtBlockOpen = (blockId: string, nextOpen: boolean): void => {
+    thoughtBlockOpenState = {
+      ...thoughtBlockOpenState,
+      [blockId]: nextOpen,
     };
   };
+
+  const isLatestMessage = (message: UIMessage): boolean => messages.at(-1)?.id === message.id;
+
+  const shouldShowAssistantPlaceholder = (
+    message: UIMessage,
+    layout: ReturnType<typeof buildAssistantMessageLayout>,
+  ): boolean =>
+    isLatestMessage(message)
+    && isPendingChatStatus(chatStatus)
+    && layout.blocks.length === 0;
+
+  const showPendingAssistantRow = $derived(
+    isPendingChatStatus(chatStatus) && messages.at(-1)?.role !== "assistant",
+  );
+
+  const pendingAssistantLabel = $derived(chatStatus === "submitted" ? "Planning next steps..." : "Thinking...");
 
   const isNearBottom = (): boolean => {
     if (!messageViewport) {
@@ -324,6 +374,47 @@
   });
 
   $effect(() => {
+    void messages;
+
+    const previousTimings = untrack(() => thoughtBlockTimings);
+    const previousOpenState = untrack(() => thoughtBlockOpenState);
+    const descriptors = collectThoughtBlockDescriptors(messages);
+    const now = Date.now();
+    const nextTimings: Record<string, ThoughtBlockTiming> = {};
+    const nextOpenState: Record<string, boolean> = {};
+
+    for (const descriptor of descriptors) {
+      const existingTiming = previousTimings[descriptor.id];
+      const justFinished = existingTiming?.endedAt === null && descriptor.state === "done";
+
+      nextTimings[descriptor.id] = !existingTiming
+        ? {
+            startedAt: now,
+            lastObservedAt: now,
+            endedAt: descriptor.state === "streaming" ? null : now,
+          }
+        : descriptor.state === "streaming"
+          ? {
+              ...existingTiming,
+              lastObservedAt: now,
+              endedAt: null,
+            }
+          : {
+              ...existingTiming,
+              lastObservedAt: now,
+              endedAt: existingTiming.endedAt ?? now,
+            };
+
+      nextOpenState[descriptor.id] = justFinished
+        ? false
+        : previousOpenState[descriptor.id] ?? descriptor.state === "streaming";
+    }
+
+    thoughtBlockTimings = nextTimings;
+    thoughtBlockOpenState = nextOpenState;
+  });
+
+  $effect(() => {
     void input;
     resizeComposer();
   });
@@ -341,10 +432,14 @@
   onMount(() => {
     scrollToBottom("auto");
     resizeComposer();
+    const thoughtClockInterval = window.setInterval(() => {
+      thoughtClockMs = Date.now();
+    }, 1_000);
     document.addEventListener("pointerdown", onGlobalPointerDown);
     window.addEventListener("keydown", onGlobalKeyDown);
 
     return () => {
+      window.clearInterval(thoughtClockInterval);
       document.removeEventListener("pointerdown", onGlobalPointerDown);
       window.removeEventListener("keydown", onGlobalKeyDown);
     };
@@ -493,7 +588,7 @@
               <button
                 type="button"
                 class="conversation-option {activeConversationId === conversation.id ? 'active' : ''}"
-                disabled={modalBusy}
+                disabled={deletingConversations}
                 onclick={() => {
                   onSelectConversation(conversation.id);
                   closeConversationModal();
@@ -528,40 +623,92 @@
     <div class="chat-messages" bind:this={messageViewport} onscroll={onMessagesScroll}>
       {#each messages as message (message.id)}
         {#if message.role === "assistant"}
-          {@const segments = getAssistantMessageSegments(message)}
+          {@const layout = buildAssistantMessageLayout(message)}
+          {@const showAssistantPlaceholder = shouldShowAssistantPlaceholder(message, layout)}
 
-          {#if segments.visibleTextParts.length > 0 || segments.activityItems.length > 0}
+          {#if layout.blocks.length > 0 || showAssistantPlaceholder}
             <div class="message-row assistant">
               <div class="bubble assistant">
-                {#each segments.visibleTextParts as text, textIndex (`${message.id}:visible:${textIndex}`)}
-                  {@const html = renderMarkdown(text)}
-                  {#if html}
-                    <div class="markdown-content">{@html html}</div>
+                {#if showAssistantPlaceholder}
+                  <div class="assistant-content-part assistant-thinking-inline assistant-thinking-placeholder-row">
+                    <p class="assistant-thinking-placeholder">{pendingAssistantLabel}</p>
+                    <span class="thinking-indicator" aria-hidden="true">
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </span>
+                  </div>
+                {/if}
+
+                {#each layout.blocks as block (block.id)}
+                  {#if block.kind === "thought"}
+                    <details
+                      class={`assistant-content-part assistant-thought-block ${block.state === "streaming" ? "streaming" : ""}`}
+                      open={isThoughtBlockOpen(block.id, block.state)}
+                      ontoggle={(event) => {
+                        const currentTarget = event.currentTarget;
+                        if (!(currentTarget instanceof HTMLDetailsElement)) {
+                          return;
+                        }
+                        setThoughtBlockOpen(block.id, currentTarget.open);
+                      }}
+                    >
+                      <summary class="assistant-thought-summary">
+                        <span class="assistant-thought-summary-main">
+                          <span class="assistant-thought-summary-label">{getThoughtSummaryLabel(block.id, block.state)}</span>
+                          {#if block.state === "streaming"}
+                            <span class="thinking-indicator" aria-hidden="true">
+                              <span></span>
+                              <span></span>
+                              <span></span>
+                            </span>
+                          {/if}
+                        </span>
+                        <span class="assistant-thought-chevron" aria-hidden="true">▾</span>
+                      </summary>
+
+                      <div class="assistant-thought-details">
+                        {#each block.entries as entry, entryIndex (`${block.id}:entry:${entryIndex}`)}
+                          {#if entry.kind === "reasoning"}
+                            {#if entry.text}
+                              {@const reasoningHtml = renderMarkdown(entry.text)}
+                              {#if reasoningHtml}
+                                <div class={`assistant-thinking-copy ${entry.state === "streaming" ? "streaming" : ""}`}>
+                                  {@html reasoningHtml}
+                                </div>
+                              {/if}
+                            {:else if entry.state === "streaming"}
+                              <div class="assistant-thinking-inline">
+                                <p class="assistant-thinking-placeholder">Thinking...</p>
+                                <span class="thinking-indicator" aria-hidden="true">
+                                  <span></span>
+                                  <span></span>
+                                  <span></span>
+                                </span>
+                              </div>
+                            {/if}
+                          {:else}
+                            <article class={`assistant-thought-activity tone-${entry.item.tone}`}>
+                              <div class="assistant-thought-activity-head">
+                                <span class="assistant-thought-activity-badge">{entry.item.badge}</span>
+                                <p>{entry.item.title}</p>
+                              </div>
+                              <span class="assistant-thought-activity-detail">{entry.item.detail}</span>
+                              {#if entry.item.meta}
+                                <small>{entry.item.meta}</small>
+                              {/if}
+                            </article>
+                          {/if}
+                        {/each}
+                      </div>
+                    </details>
+                  {:else}
+                    {@const html = renderMarkdown(block.text)}
+                    {#if html}
+                      <div class="assistant-content-part markdown-content">{@html html}</div>
+                    {/if}
                   {/if}
                 {/each}
-
-                {#if segments.activityItems.length > 0}
-                  <section class={`assistant-activity ${segments.visibleTextParts.length > 0 ? "with-copy" : ""}`}>
-                    <div class="assistant-activity-header">
-                      <p>Live agent activity</p>
-                    </div>
-
-                    <div class="assistant-activity-list">
-                      {#each segments.activityItems as item (item.id)}
-                        <article class={`assistant-activity-card tone-${item.tone}`}>
-                          <div class="assistant-activity-card-head">
-                            <span class="assistant-activity-badge">{item.badge}</span>
-                            <h4>{item.title}</h4>
-                          </div>
-                          <p>{item.detail}</p>
-                          {#if item.meta}
-                            <small>{item.meta}</small>
-                          {/if}
-                        </article>
-                      {/each}
-                    </div>
-                  </section>
-                {/if}
               </div>
             </div>
           {/if}
@@ -580,6 +727,21 @@
           </div>
         {/if}
       {/each}
+
+      {#if showPendingAssistantRow}
+        <div class="message-row assistant pending">
+          <div class="bubble assistant">
+            <div class="assistant-thinking-inline assistant-thinking-placeholder-row">
+              <p class="assistant-thinking-placeholder">{pendingAssistantLabel}</p>
+              <span class="thinking-indicator" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </span>
+            </div>
+          </div>
+        </div>
+      {/if}
     </div>
 
   </div>
@@ -1031,7 +1193,6 @@
     padding: var(--tc-space-2) var(--tc-space-3);
     font-size: var(--tc-chat-text-size);
     line-height: 1.4;
-    white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
 
@@ -1040,17 +1201,20 @@
     background: var(--tc-color-gray-2);
     border-color: var(--tc-color-gray-2);
     font-weight: 100;
+    white-space: pre-wrap;
   }
 
   .bubble.assistant {
     color: var(--tc-color-gray-3);
     background: var(--tc-color-black-2);
     font-weight: 100;
+    white-space: normal;
   }
 
   .bubble.system {
     color: var(--tc-color-red);
     background: var(--tc-color-black-2);
+    white-space: pre-wrap;
   }
 
   .bubble p {
@@ -1065,104 +1229,239 @@
     margin-top: var(--tc-space-2);
   }
 
-  .assistant-activity {
+  .assistant-content-part + .assistant-content-part {
     margin-top: var(--tc-space-2);
-    padding-top: var(--tc-space-2);
-    border-top: var(--tc-border-muted);
-    display: grid;
-    gap: var(--tc-space-2);
   }
 
-  .assistant-activity.with-copy {
-    margin-top: var(--tc-space-3);
-  }
-
-  .assistant-activity-header p {
+  .assistant-thought-block {
     margin: 0;
-    color: var(--tc-color-gray-2);
-    font-size: 0.68rem;
-    text-transform: uppercase;
-    letter-spacing: var(--tc-track-wide);
+    border: 0;
+    background: none;
   }
 
-  .assistant-activity-list {
-    display: grid;
-    gap: var(--tc-space-2);
+  .assistant-thought-block.streaming {
+    border-color: color-mix(in srgb, var(--tc-color-turquoise) 34%, var(--tc-color-gray-2));
   }
 
-  .assistant-activity-card {
-    display: grid;
-    gap: 6px;
-    padding: var(--tc-space-2);
-    border: var(--tc-border-muted);
-    background: color-mix(in srgb, var(--tc-color-black-light) 88%, transparent);
+  .assistant-thought-block-placeholder {
+    border-style: dashed;
   }
 
-  .assistant-activity-card-head {
+  .assistant-thought-block.streaming {
+    border: 0;
+    background: none;
+  }
+
+  .assistant-thought-summary {
+    list-style: none;
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 8px;
+    padding: 0;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .assistant-thought-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .assistant-thought-summary-main {
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .assistant-thought-summary-label {
+    color: var(--tc-color-gray-2);
+    font-size: 10px;
+    line-height: 1.2;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .assistant-thought-chevron {
+    flex-shrink: 0;
+    color: var(--tc-color-gray-2);
+    font-size: 10px;
+    line-height: 1;
+    transform: rotate(-90deg);
+    transition: transform 140ms ease;
+    opacity: 0.72;
+  }
+
+  .assistant-thought-block[open] .assistant-thought-chevron {
+    transform: rotate(0deg);
+  }
+
+  .assistant-thought-details {
+    display: grid;
+    gap: 6px;
+    padding: 4px 0 0;
+    border-top: 0;
+  }
+
+  .assistant-thought-block.streaming .assistant-thought-summary {
+    padding: 0;
+  }
+
+  .assistant-thought-block.streaming .assistant-thought-details {
+    padding: 4px 0 0;
+  }
+
+  .assistant-thought-block.streaming .assistant-thought-activity {
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  .assistant-thinking-inline {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+  }
+
+  .assistant-thinking-placeholder-row {
+    color: var(--tc-color-gray-2);
+    font-size: 0.74rem;
+    opacity: 0.86;
+  }
+
+  .assistant-thinking-placeholder {
+    margin: 0;
+  }
+
+  .assistant-thinking-copy {
+    color: var(--tc-color-gray-2);
+    font-size: 10px;
+    line-height: 1.35;
+    opacity: 0.88;
+  }
+
+  .assistant-thinking-copy.streaming {
+    opacity: 0.75;
+  }
+
+  .assistant-thinking-copy :global(*) {
+    max-width: 100%;
+    color: inherit;
+  }
+
+  .assistant-thinking-copy :global(p),
+  .assistant-thinking-copy :global(ul),
+  .assistant-thinking-copy :global(ol),
+  .assistant-thinking-copy :global(pre),
+  .assistant-thinking-copy :global(blockquote) {
+    margin: 0 0 4px 0;
+  }
+
+  .assistant-thinking-copy :global(:last-child) {
+    margin-bottom: 0;
+  }
+
+  .assistant-thinking-placeholder {
+    color: var(--tc-color-gray-2);
+    font-size: 10px;
+    opacity: 0.82;
+  }
+
+  .thinking-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.72;
+  }
+
+  .thinking-indicator span {
+    width: 4px;
+    height: 4px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--tc-color-gray-2) 78%, white);
+    opacity: 0.45;
+    animation: tc-thinking-pulse 1s ease-in-out infinite;
+  }
+
+  .thinking-indicator span:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .thinking-indicator span:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  .assistant-thought-activity {
+    display: grid;
+    gap: 3px;
+    padding-left: 6px;
+    border-left: 1px solid color-mix(in srgb, var(--tc-color-gray-2) 52%, transparent);
+  }
+
+  .assistant-thought-activity-head {
+    display: flex;
+    align-items: center;
+    gap: 4px;
     min-width: 0;
   }
 
-  .assistant-activity-badge {
+  .assistant-thought-activity-badge {
     flex-shrink: 0;
-    min-width: 3.5rem;
-    padding: 2px 6px;
+    min-width: 2.35rem;
+    padding: 0 4px;
     border: var(--tc-border-muted);
     color: var(--tc-color-gray-3);
-    font-size: 10px;
+    font-size: 8px;
     text-align: center;
     text-transform: uppercase;
     letter-spacing: var(--tc-track-wide);
   }
 
-  .assistant-activity-card h4,
-  .assistant-activity-card p,
-  .assistant-activity-card small {
+  .assistant-thought-activity-head p,
+  .assistant-thought-activity-detail,
+  .assistant-thought-activity small {
     margin: 0;
   }
 
-  .assistant-activity-card h4 {
+  .assistant-thought-activity-head p {
     min-width: 0;
     color: var(--tc-color-cream);
-    font-size: 0.86rem;
+    font-size: 10px;
     font-weight: 500;
-    line-height: 1.3;
+    line-height: 1.25;
   }
 
-  .assistant-activity-card p {
+  .assistant-thought-activity-detail {
     color: var(--tc-color-gray-3);
-    font-size: 0.76rem;
-    line-height: 1.45;
-    overflow-wrap: anywhere;
-  }
-
-  .assistant-activity-card small {
-    color: var(--tc-color-gray-2);
     font-size: 10px;
     line-height: 1.35;
     overflow-wrap: anywhere;
   }
 
-  .assistant-activity-card.tone-pending,
-  .assistant-activity-card.tone-running {
-    border-color: color-mix(in srgb, var(--tc-color-turquoise) 42%, var(--tc-color-gray-2));
-    background: color-mix(in srgb, var(--tc-color-turquoise) 7%, var(--tc-color-black-light));
+  .assistant-thought-activity small {
+    color: var(--tc-color-gray-2);
+    font-size: 10px;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
   }
 
-  .assistant-activity-card.tone-queued {
-    border-color: color-mix(in srgb, var(--tc-color-lime) 45%, var(--tc-color-gray-2));
-    background: color-mix(in srgb, var(--tc-color-lime) 7%, var(--tc-color-black-light));
+  .assistant-thought-activity.tone-pending,
+  .assistant-thought-activity.tone-running {
+    border-left-color: color-mix(in srgb, var(--tc-color-turquoise) 42%, var(--tc-color-gray-2));
   }
 
-  .assistant-activity-card.tone-done {
-    border-color: color-mix(in srgb, var(--tc-color-cream) 28%, var(--tc-color-gray-2));
+  .assistant-thought-activity.tone-queued {
+    border-left-color: color-mix(in srgb, var(--tc-color-lime) 45%, var(--tc-color-gray-2));
   }
 
-  .assistant-activity-card.tone-error {
-    border-color: color-mix(in srgb, var(--tc-color-red) 56%, var(--tc-color-gray-2));
-    background: color-mix(in srgb, var(--tc-color-red) 8%, var(--tc-color-black-light));
+  .assistant-thought-activity.tone-done,
+  .assistant-thought-activity.tone-info {
+    border-left-color: color-mix(in srgb, var(--tc-color-cream) 28%, var(--tc-color-gray-2));
+  }
+
+  .assistant-thought-activity.tone-error {
+    border-left-color: color-mix(in srgb, var(--tc-color-red) 56%, var(--tc-color-gray-2));
   }
 
   .markdown-content :global(*) {
@@ -1224,6 +1523,19 @@
     padding-left: var(--tc-space-2);
     border-left: var(--tc-border-muted);
     color: var(--tc-color-gray-2);
+  }
+
+  @keyframes tc-thinking-pulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: translateY(0);
+    }
+
+    50% {
+      opacity: 1;
+      transform: translateY(-1px);
+    }
   }
 
   .error-text {

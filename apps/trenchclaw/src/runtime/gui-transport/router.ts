@@ -5,6 +5,7 @@ import {
   parseCreateInstanceRequest,
   parseDeleteSecretRequest,
   parseSignInRequest,
+  parseUpdateTrackerRequest,
   parseUpdateTradingSettingsRequest,
   parseUpdateWakeupSettingsRequest,
   parseUiChatRequest,
@@ -17,6 +18,7 @@ import { createInstance, listInstances, signInInstance } from "./domains/instanc
 import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
 import { getSolPrice } from "../market/sol-price";
+import { getTracker, updateTracker } from "./domains/tracker";
 import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
 import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeup-settings";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
@@ -313,6 +315,27 @@ export const createRuntimeSurfaceHandler = (context: RuntimeSurfaceContext): ((r
 
       try {
         return Response.json(await updateTradingSettings(context, payload), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/tracker")) {
+      try {
+        return Response.json(await getTracker(context), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "PUT" && matchesAppRoute(url.pathname, "/tracker")) {
+      const payload = await parseUpdateTrackerRequest(request);
+      if (!payload) {
+        return Response.json({ error: "Invalid tracker payload" }, { status: 400, headers: CORS_HEADERS });
+      }
+
+      try {
+        return Response.json(await updateTracker(context, payload), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 400, headers: CORS_HEADERS });
       }

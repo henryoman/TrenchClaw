@@ -16,6 +16,7 @@
     SettingsPanel,
     SolPriceStrip,
     SummaryPanel,
+    TrackerPanel,
     WakeupPanel,
     WalletsPanel,
     WorkspaceShell,
@@ -29,7 +30,7 @@
 
   let chat: ChatController | null = $state(null);
   let chatInitError = $state("");
-  let activeTab: "chat" | "keys" | "settings" | "wakeup" | "info" | "wallets" | "schedule" = $state("chat");
+  let activeTab: "chat" | "keys" | "settings" | "tracker" | "wakeup" | "info" | "wallets" | "schedule" = $state("chat");
   const appVersionLabel = APP_BUILD_COMMIT === "local" ? APP_BUILD_VERSION : `${APP_BUILD_VERSION} (${APP_BUILD_COMMIT})`;
 
   const ensureChatController = async (): Promise<void> => {
@@ -102,6 +103,9 @@
     {activeTab}
     onTabChange={(tab) => {
       activeTab = tab;
+      if (tab === "tracker") {
+        void runtime.loadTracker();
+      }
       if (tab === "wakeup") {
         void runtime.loadWakeupSettings();
       }
@@ -110,11 +114,12 @@
     {#if activeTab === "chat"}
       {#if chat}
         <ChatPanel
-          messages={chat.chat.messages}
+          messages={chat.state.visibleMessages}
           bind:input={chat.state.input}
           conversations={chat.state.conversations}
           activeConversationId={chat.state.activeConversationId}
-          sending={chat.isSending()}
+          sending={chat.isActiveConversationStreaming()}
+          chatStatus={chat.getActiveConversationChatStatus()}
           deletingConversations={chat.state.deletingConversations}
           chatDisabledReason={runtime.state.llmAvailable ? "" : runtime.state.llmCheckMessage}
           runtimeError={chat.state.runtimeError}
@@ -193,6 +198,20 @@
         }}
         onSaveSecret={(input) => {
           void runtime.upsertSecret(input);
+        }}
+      />
+    {:else if activeTab === "tracker"}
+      <TrackerPanel
+        filePath={runtime.state.trackerFilePath}
+        runtimePath={runtime.state.trackerRuntimePath}
+        tracker={runtime.state.tracker}
+        busy={runtime.state.trackerBusy}
+        error={runtime.state.trackerError}
+        onReload={() => {
+          void runtime.loadTracker();
+        }}
+        onSave={(tracker) => {
+          void runtime.saveTracker(tracker);
         }}
       />
     {:else if activeTab === "wakeup"}

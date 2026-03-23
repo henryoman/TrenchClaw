@@ -73,7 +73,7 @@ That is where TrenchClaw writes per-instance runtime data such as:
 - managed wallet files and indexes
 - the instance workspace
 
-In workspace development, the default mutable root is the repo-local `.runtime-state`. In packaged or overridden environments it can move to another absolute path through environment configuration such as `TRENCHCLAW_RUNTIME_STATE_ROOT`.
+In workspace development, the default mutable root is the external hidden dev runtime at `~/.trenchclaw-dev-runtime`. In packaged or overridden environments it can move to another absolute path through environment configuration such as `TRENCHCLAW_RUNTIME_STATE_ROOT`.
 
 ## What Lives Inside One Instance
 

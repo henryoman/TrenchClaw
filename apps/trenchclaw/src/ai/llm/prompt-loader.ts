@@ -87,25 +87,30 @@ const renderShellToolingSummary = (): string => {
     Bun.which("solana") ? "`solana`" : null,
     Bun.which("solana-keygen") ? "`solana-keygen`" : null,
     Bun.which("helius") ? "`helius`" : null,
+    Bun.which("dune") ? "`dune`" : null,
   ].filter((value): value is string => value !== null);
 
   return [
     "### Shell Tooling",
+    "- Every tool call uses a machine JSON envelope with `params` for the real arguments. Optional `thought`, `notes`, or `meta` fields are allowed and ignored by execution.",
     "- `workspaceListDirectory` is the default browse tool for runtime workspace files and folders.",
     "- `workspaceBash` is for actual shell or CLI work after you know the path or command you need.",
-    "- Always call `workspaceBash` with an explicit `type`, such as `\"cli\"`, `\"version\"`, `\"help\"`, `\"which\"`, `\"search_text\"`, `\"list_directory\"`, `\"http_get\"`, or `\"shell\"` with `command`.",
+    "- Always call `workspaceBash` through `params`, with an explicit `params.type` such as `\"cli\"`, `\"version\"`, `\"help\"`, `\"which\"`, `\"search_text\"`, `\"list_directory\"`, `\"http_get\"`, or `\"shell\"` with `params.command`.",
     "- If no typed runtime action covers the needed read and a bounded trusted CLI command can answer it, prefer `workspaceBash` over refusing the task.",
     "- `workspaceBash` is a policy-constrained host shell today. Network-capable commands like `curl` or `type = \"http_get\"` can work when the host has network access, but this is still not the preferred runtime for arbitrary model-driven bash or host `bun run *.ts`.",
+    "- Treat CLI tools like `solana`, `solana-keygen`, `helius`, and `dune` as things to invoke through `workspaceBash` rather than through any hidden side channel.",
+    "- If you need command syntax, auth flow, or workflow details first, retrieve the matching knowledge doc or skill, then execute the command through `workspaceBash`.",
     `- detected CLI commands on PATH: ${detectedCommands.join(", ") || "none detected"}`,
   ].join("\n");
 };
 
 const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const [filesystemPolicy, liveRuntimeContext, capabilitySnapshot] = await Promise.all([
+  const [filesystemPolicy, liveRuntimeContext, capabilitySnapshot, knowledgeSummary] = await Promise.all([
     summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
     renderLiveRuntimeContextSection(),
     getRuntimeCapabilitySnapshot(settings),
+    renderKnowledgePromptSummary(),
   ]);
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
   const vault = resolveVaultFile({ activeInstanceId });
@@ -137,7 +142,7 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     "",
     liveRuntimeContext,
     "",
-    renderKnowledgePromptSummary(),
+    knowledgeSummary,
     "",
     "Registered tools for this request are attached separately. Treat those tool definitions as the exact contract.",
   ].join("\n");

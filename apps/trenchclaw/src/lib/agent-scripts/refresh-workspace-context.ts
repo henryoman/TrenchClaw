@@ -128,6 +128,8 @@ const renderImportantWorkspacePaths = (): string =>
       "- `.runtime-state/instances/<id>/settings/ai.json`",
       "- `.runtime-state/instances/<id>/settings/settings.json`",
       "- `.runtime-state/instances/<id>/data/runtime.db`",
+      "- `.runtime-state/instances/<id>/workspace/configs/news-feeds.json`",
+      "- `.runtime-state/instances/<id>/workspace/configs/tracker.json`",
     ])
     .join("\n");
 

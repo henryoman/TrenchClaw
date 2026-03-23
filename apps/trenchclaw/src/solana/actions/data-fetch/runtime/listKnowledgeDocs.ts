@@ -19,13 +19,13 @@ const parseJsonObject = (value: unknown): unknown => {
   }
 };
 
-const listKnowledgeDocsRequestSchema = z.object({
+export const listKnowledgeDocsRequestSchema = z.object({
   tier: z.enum(["all", "core", "deep", "support", "skills"]).default("all"),
   query: z.string().trim().min(1).max(160).optional(),
   limit: z.number().int().positive().max(maxLimit).default(80),
 });
 
-const listKnowledgeDocsInputSchema = z.object({
+export const listKnowledgeDocsInputSchema = z.object({
   request: z.preprocess(parseJsonObject, listKnowledgeDocsRequestSchema).default({
     tier: "all",
     limit: 80,

@@ -691,6 +691,7 @@ describe("Runtime v1 API", () => {
       expect(payload.options.map((option) => option.id)).toEqual([
         "solana-rpc-url",
         "jupiter-api-key",
+        "dune-api-key",
         "openrouter-api-key",
         "vercel-ai-gateway-api-key",
       ]);

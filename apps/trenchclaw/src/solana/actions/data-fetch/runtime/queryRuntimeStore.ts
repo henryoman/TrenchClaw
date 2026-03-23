@@ -22,6 +22,14 @@ const listChatMessagesRequestSchema = z.object({
   limit: z.number().int().positive().max(maxLimit).default(100),
 });
 
+const getConversationHistorySliceRequestSchema = z.object({
+  type: z.literal("getConversationHistorySlice"),
+  conversationId: z.string().trim().min(1),
+  beforeMessageId: z.string().trim().min(1).optional(),
+  limit: z.number().int().positive().max(maxLimit).default(50),
+  tokenBudget: z.number().int().positive().max(20_000).default(3_000),
+});
+
 const listJobsRequestSchema = z.object({
   type: z.literal("listJobs"),
   status: z.enum(["pending", "running", "paused", "stopped", "failed"]).optional(),
@@ -80,12 +88,13 @@ const parseJsonObject = (value: unknown): unknown => {
   }
 };
 
-const queryRuntimeStoreRequestSchema = z.preprocess(
+export const queryRuntimeStoreRequestSchema = z.preprocess(
   parseJsonObject,
   z.discriminatedUnion("type", [
     listConversationsRequestSchema,
     getConversationRequestSchema,
     listChatMessagesRequestSchema,
+    getConversationHistorySliceRequestSchema,
     listJobsRequestSchema,
     getJobRequestSchema,
     getJobBySerialRequestSchema,
@@ -96,7 +105,7 @@ const queryRuntimeStoreRequestSchema = z.preprocess(
   ]),
 );
 
-const queryRuntimeStoreInputSchema = z.object({
+export const queryRuntimeStoreInputSchema = z.object({
   request: queryRuntimeStoreRequestSchema,
 });
 
@@ -141,6 +150,13 @@ export const queryRuntimeStoreAction: Action<QueryRuntimeStoreInput, unknown> = 
         data = store.getConversation(request.conversationId);
       } else if (request.type === "listChatMessages") {
         data = store.listChatMessages(request.conversationId, request.limit);
+      } else if (request.type === "getConversationHistorySlice") {
+        data = store.getConversationHistorySlice({
+          conversationId: request.conversationId,
+          beforeMessageId: request.beforeMessageId,
+          limit: request.limit,
+          tokenBudget: request.tokenBudget,
+        });
       } else if (request.type === "listJobs") {
         data = store.listJobs({
           status: request.status,

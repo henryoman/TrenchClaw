@@ -55,6 +55,39 @@ describe("createJupiterUltraAdapter", () => {
     expect(order.requestId).toBe("req-1");
     expect(order.transaction).toBe("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
   });
+
+  test("preserves a null Ultra transaction when Jupiter returns quote-only error details", async () => {
+    const adapter = createJupiterUltraAdapter({
+      apiKey: "test-key",
+      fetchImpl: (async () =>
+        new Response(
+          JSON.stringify({
+            requestId: "req-no-tx",
+            transaction: null,
+            errorCode: 2,
+            errorMessage: "Top up 0.01 SOL for gas",
+          }),
+          {
+            status: 200,
+            headers: {
+              "content-type": "application/json",
+            },
+          },
+        )) as unknown as typeof fetch,
+    });
+
+    const order = await adapter.getOrder({
+      inputMint: "So11111111111111111111111111111111111111112",
+      outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      amount: "1000000",
+      taker: "wallet-1",
+    });
+
+    expect(order.requestId).toBe("req-no-tx");
+    expect(order.transaction).toBeNull();
+    expect(order.errorCode).toBe(2);
+    expect(order.errorMessage).toBe("Top up 0.01 SOL for gas");
+  });
 });
 
 const MUTABLE_ENV_KEYS = [
@@ -103,7 +136,7 @@ afterEach(async () => {
 });
 
 describe("jupiter ultra vault config", () => {
-  test("reads the Jupiter Ultra API key from vault", async () => {
+  test("reads the shared Jupiter portal API key from vault (same as Swap API and Trigger)", async () => {
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson("vault-jupiter-key");
 
     expect(await resolveJupiterUltraApiKey()).toBe("vault-jupiter-key");

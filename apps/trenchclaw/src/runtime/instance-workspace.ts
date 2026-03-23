@@ -21,11 +21,20 @@ export const resolveInstanceWorkspaceRoot = (instanceId: string): string => {
 export const resolveInstanceWorkspaceNotesRoot = (instanceId: string): string =>
   resolveInstanceWorkspaceChildRoot(instanceId, "notes");
 
+export const resolveInstanceWorkspaceConfigsRoot = (instanceId: string): string =>
+  resolveInstanceWorkspaceChildRoot(instanceId, "configs");
+
 export const resolveInstanceWorkspaceResearchNotesRoot = (instanceId: string): string =>
   resolveInstanceWorkspaceChildRoot(instanceId, "notes", "research");
 
 export const resolveInstanceWorkspaceNewsRoot = (instanceId: string): string =>
   resolveInstanceWorkspaceChildRoot(instanceId, "news");
+
+export const resolveInstanceWorkspaceNewsFeedRegistryPath = (instanceId: string): string =>
+  path.join(resolveInstanceWorkspaceConfigsRoot(instanceId), "news-feeds.json");
+
+export const resolveInstanceWorkspaceTrackerPath = (instanceId: string): string =>
+  path.join(resolveInstanceWorkspaceConfigsRoot(instanceId), "tracker.json");
 
 export const resolveInstanceWorkspaceOutputRoot = (instanceId: string): string =>
   resolveInstanceWorkspaceChildRoot(instanceId, "output");

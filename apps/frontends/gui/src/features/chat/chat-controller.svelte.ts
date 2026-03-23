@@ -12,6 +12,7 @@ interface ChatUiState {
   activeConversationId: string | null;
   conversations: GuiConversationView[];
   deletingConversations: boolean;
+  visibleMessages: UIMessage[];
 }
 
 const toFallbackTitle = (unixMs: number): string => new Date(unixMs).toISOString();
@@ -81,10 +82,23 @@ const hasTerminalAssistantText = (messages: UIMessage[]): boolean => {
 const isUiMessagePart = (value: unknown): value is UIMessage["parts"][number] =>
   typeof value === "object" && value !== null && "type" in value && typeof value.type === "string";
 
+const isRenderableUiMessagePart = (part: UIMessage["parts"][number]): boolean => {
+  if (part.type === "text" || part.type === "reasoning") {
+    return typeof part.text === "string" && part.text.trim().length > 0;
+  }
+  return true;
+};
+
 const toUiMessageParts = (message: GuiConversationMessageView): UIMessage["parts"] => {
-  const persistedParts = Array.isArray(message.parts) ? message.parts.filter(isUiMessagePart) : [];
+  const persistedParts = Array.isArray(message.parts)
+    ? message.parts.filter(isUiMessagePart).filter(isRenderableUiMessagePart)
+    : [];
   if (persistedParts.length > 0) {
     return persistedParts;
+  }
+
+  if (!message.content.trim()) {
+    return [];
   }
 
   return [
@@ -102,13 +116,77 @@ export const createChatController = () => {
     activeConversationId: null,
     conversations: [],
     deletingConversations: false,
+    visibleMessages: [],
   });
   const draftConversationIds = new Set<string>();
+  let activeStreamConversationId = $state<string | null>(null);
+  let messageCacheByConversationId = $state<Record<string, UIMessage[]>>({});
+  let streamingMirrorIntervalId: ReturnType<typeof setInterval> | null = null;
 
   const toConversationView = (conversation: GuiConversationView): GuiConversationView => ({
     ...conversation,
     title: conversation.title?.trim() || toFallbackTitle(conversation.createdAt),
   });
+
+  const setCachedMessages = (conversationId: string, messages: UIMessage[]): void => {
+    messageCacheByConversationId = {
+      ...messageCacheByConversationId,
+      [conversationId]: messages,
+    };
+  };
+
+  const getCachedMessages = (conversationId: string): UIMessage[] => messageCacheByConversationId[conversationId] ?? [];
+
+  const clearCachedMessages = (conversationId: string): void => {
+    const { [conversationId]: _removed, ...rest } = messageCacheByConversationId;
+    messageCacheByConversationId = rest;
+  };
+
+  const isStreamingConversation = (conversationId: string | null | undefined): boolean =>
+    Boolean(conversationId && activeStreamConversationId === conversationId && isSending());
+
+  const isActiveConversationStreaming = (): boolean => isStreamingConversation(state.activeConversationId);
+
+  const getActiveConversationChatStatus = (): "submitted" | "streaming" | "ready" | "error" =>
+    isActiveConversationStreaming() ? chat.status : "ready";
+
+  const syncTransportMessagesWhenIdle = (messages: UIMessage[]): void => {
+    if (isSending()) {
+      return;
+    }
+    chat.messages = messages;
+  };
+
+  const syncStreamingConversationMessages = (): void => {
+    const streamingConversationId = activeStreamConversationId;
+    if (!streamingConversationId) {
+      return;
+    }
+
+    const liveMessages = chat.messages as UIMessage[];
+    setCachedMessages(streamingConversationId, liveMessages);
+    if (state.activeConversationId === streamingConversationId) {
+      state.visibleMessages = liveMessages;
+    }
+  };
+
+  const stopStreamingMirror = (): void => {
+    syncStreamingConversationMessages();
+    if (streamingMirrorIntervalId !== null) {
+      clearInterval(streamingMirrorIntervalId);
+      streamingMirrorIntervalId = null;
+    }
+    activeStreamConversationId = null;
+  };
+
+  const startStreamingMirror = (conversationId: string): void => {
+    stopStreamingMirror();
+    activeStreamConversationId = conversationId;
+    syncStreamingConversationMessages();
+    streamingMirrorIntervalId = setInterval(() => {
+      syncStreamingConversationMessages();
+    }, 16);
+  };
 
   const ensureActiveConversationId = (): string => {
     if (state.activeConversationId) {
@@ -128,6 +206,8 @@ export const createChatController = () => {
       ...state.conversations,
     ];
     draftConversationIds.add(conversationId);
+    setCachedMessages(conversationId, []);
+    state.visibleMessages = [];
     return conversationId;
   };
 
@@ -170,7 +250,7 @@ export const createChatController = () => {
         message: state.runtimeError,
         metadata: {
           chatStatus: chat.status,
-          conversationId: state.activeConversationId,
+          conversationId: activeStreamConversationId ?? state.activeConversationId,
         },
       }).catch(() => {
         // Best effort only; keep UI responsive even when runtime cannot accept error telemetry.
@@ -182,12 +262,21 @@ export const createChatController = () => {
 
   const refreshConversations = async (): Promise<void> => {
     const response = await runtimeApi.conversations();
-    draftConversationIds.clear();
-    state.conversations = response.conversations.map(toConversationView);
+    const persistedConversations = response.conversations.map(toConversationView);
+    const persistedConversationIds = new Set(persistedConversations.map((conversation) => conversation.id));
+    for (const conversationId of persistedConversationIds) {
+      draftConversationIds.delete(conversationId);
+    }
+
+    const draftConversations = state.conversations.filter(
+      (conversation) => draftConversationIds.has(conversation.id) && !persistedConversationIds.has(conversation.id),
+    );
+    state.conversations = [...draftConversations, ...persistedConversations];
     if (state.activeConversationId && state.conversations.some((conversation) => conversation.id === state.activeConversationId)) {
       return;
     }
     state.activeConversationId = state.conversations[0]?.id ?? null;
+    state.visibleMessages = state.activeConversationId ? getCachedMessages(state.activeConversationId) : [];
   };
 
   const selectConversation = async (conversationId: string): Promise<void> => {
@@ -197,20 +286,36 @@ export const createChatController = () => {
     }
 
     state.runtimeError = "";
+    state.activeConversationId = nextConversationId;
+
+    const cachedMessages = getCachedMessages(nextConversationId);
+    state.visibleMessages = cachedMessages;
+    syncTransportMessagesWhenIdle(cachedMessages);
+
     if (draftConversationIds.has(nextConversationId)) {
-      state.activeConversationId = nextConversationId;
-      chat.messages = [];
+      state.visibleMessages = cachedMessages;
+      return;
+    }
+
+    if (isStreamingConversation(nextConversationId)) {
+      state.visibleMessages = chat.messages;
       return;
     }
 
     const response = await runtimeApi.conversationMessages(nextConversationId);
-    state.activeConversationId = nextConversationId;
-    chat.messages = toUiMessages(response.messages);
+    const nextMessages = toUiMessages(response.messages);
+    setCachedMessages(nextConversationId, nextMessages);
+    if (state.activeConversationId !== nextConversationId || isStreamingConversation(nextConversationId)) {
+      return;
+    }
+    state.visibleMessages = nextMessages;
+    syncTransportMessagesWhenIdle(nextMessages);
   };
 
   const initialize = async (): Promise<void> => {
     await refreshConversations();
     if (!state.activeConversationId) {
+      state.visibleMessages = [];
       chat.messages = [];
       return;
     }
@@ -236,7 +341,9 @@ export const createChatController = () => {
       ...state.conversations.filter((conversation) => conversation.id !== conversationId),
     ];
     draftConversationIds.add(conversationId);
-    chat.messages = [];
+    setCachedMessages(conversationId, []);
+    state.visibleMessages = [];
+    syncTransportMessagesWhenIdle([]);
   };
 
   const deleteConversations = async (conversationIds: string[]): Promise<void> => {
@@ -263,6 +370,7 @@ export const createChatController = () => {
       for (const conversationId of normalizedConversationIds) {
         if (draftConversationIds.has(conversationId)) {
           draftConversationIds.delete(conversationId);
+          clearCachedMessages(conversationId);
           continue;
         }
         persistedConversationIds.push(conversationId);
@@ -270,6 +378,9 @@ export const createChatController = () => {
       await Promise.all(persistedConversationIds.map((conversationId) => runtimeApi.deleteConversation(conversationId)));
 
       state.conversations = state.conversations.filter((conversation) => !deletedConversationIds.has(conversation.id));
+      for (const conversationId of deletedConversationIds) {
+        clearCachedMessages(conversationId);
+      }
       state.activeConversationId = nextActiveConversationId;
 
       if (!activeConversationDeleted) {
@@ -277,7 +388,8 @@ export const createChatController = () => {
       }
 
       if (!nextActiveConversationId) {
-        chat.messages = [];
+        state.visibleMessages = [];
+        syncTransportMessagesWhenIdle([]);
         return;
       }
 
@@ -287,7 +399,8 @@ export const createChatController = () => {
       try {
         await refreshConversations();
         if (!state.activeConversationId) {
-          chat.messages = [];
+          state.visibleMessages = [];
+          syncTransportMessagesWhenIdle([]);
           return;
         }
         await selectConversation(state.activeConversationId);
@@ -315,12 +428,21 @@ export const createChatController = () => {
 
     state.input = "";
     state.runtimeError = "";
-    ensureActiveConversationId();
+    const conversationId = ensureActiveConversationId();
+    const currentMessages = getCachedMessages(conversationId);
+    state.activeConversationId = conversationId;
+    state.visibleMessages = currentMessages;
+    chat.messages = currentMessages;
+    startStreamingMirror(conversationId);
 
     try {
       await chat.sendMessage({ text: nextMessage });
       if (chat.status === "error" && !hasTerminalAssistantText(chat.messages as UIMessage[])) {
         state.runtimeError = toDisplayErrorText(chat.error);
+      }
+      setCachedMessages(conversationId, chat.messages as UIMessage[]);
+      if (state.activeConversationId === conversationId) {
+        state.visibleMessages = chat.messages as UIMessage[];
       }
       await refreshConversations();
       if (onAfterSend) {
@@ -328,6 +450,10 @@ export const createChatController = () => {
       }
     } catch (error) {
       state.runtimeError = toDisplayErrorText(error);
+    } finally {
+      if (activeStreamConversationId === conversationId) {
+        stopStreamingMirror();
+      }
     }
   };
 
@@ -335,6 +461,8 @@ export const createChatController = () => {
     chat,
     state,
     isSending,
+    isActiveConversationStreaming,
+    getActiveConversationChatStatus,
     initialize,
     createNewConversation,
     deleteConversations,

@@ -101,10 +101,48 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
     useWhen: "the user asks about saved preferences, durable notes, or instance memory facts",
     avoidWhen: "the answer should come from live wallet state or live market data",
   },
+  getConfiguredNewsFeeds: {
+    useWhen: "you need to discover which RSS or Atom feeds are configured for the active instance before choosing one by alias",
+    avoidWhen: "the user already gave an exact feed alias or exact feed URL and you can fetch directly",
+    inputAdvice: "Use `query` to search the feed registry by alias, title, description, or tags. Keep `enabledOnly = true` unless you explicitly want disabled feeds too.",
+  },
+  getWalletTracker: {
+    useWhen: "you need to discover which wallets or token mints are being tracked for the active instance before checking history, balances, or targeted market data",
+    avoidWhen: "the user already gave the exact wallet address or mint address and you can go straight to the concrete read",
+    inputAdvice: "Use `query` to search by wallet label, address, token symbol, mint, notes, or tags. Keep `includeDisabled = false` unless the user explicitly wants the inactive entries too.",
+  },
   getSwapHistory: {
     useWhen: "the user asks about recent swap activity for a wallet",
     avoidWhen: "the user is asking for current balances or market prices",
     inputAdvice: "Prefer a concrete wallet address. When the user names a managed wallet, resolve it first from the managed wallet context instead of asking for raw RPC or provider details.",
+  },
+  getLatestSolanaNews: {
+    useWhen: "the user asks for headlines from a configured RSS or Atom feed, or you already know the exact feed alias or exact feed URL to pull",
+    avoidWhen: "the user wants a broader multi-source crypto news API result and the dedicated crypto-news API tools fit better",
+    inputAdvice: "Prefer `feedAlias` when the feed is already in the instance registry. Use `getConfiguredNewsFeeds` first when you need to discover aliases. Use `feedUrl` only for an explicit one-off feed URL.",
+  },
+  getCryptoNewsLatest: {
+    useWhen: "the user asks for the latest crypto news, fresh headlines, or a broad current-news pull across crypto sources",
+    avoidWhen: "the user wants news for one exact topic, token, regulator, or keyword and search would be more specific",
+    inputAdvice: "Use `page` and `perPage` for pagination. Keep `lang = \"en\"` unless the user explicitly wants another language. Add `category` only when the user asks for a narrower news slice.",
+  },
+  searchCryptoNews: {
+    useWhen: "the user asks for news about one specific asset, protocol, keyword, exchange, ETF, regulator, or narrative",
+    avoidWhen: "the user wants a broad latest-headlines sweep rather than a focused keyword search",
+    inputAdvice: "Pass the topic under `query`. Use the exact ticker, name, or topic phrase the user cares about, such as `solana`, `bitcoin etf`, or `sec crypto`.",
+  },
+  getCryptoAssetSentiment: {
+    useWhen: "the user asks for the news API's sentiment read on one asset symbol",
+    avoidWhen: "the user wants price action, liquidity, or a broader market overview rather than API-reported sentiment",
+    inputAdvice: "Pass `asset` as a short symbol like `BTC`, `ETH`, or `SOL`.",
+  },
+  getCryptoFearGreedIndex: {
+    useWhen: "the user asks for the crypto fear and greed index or a simple sentiment gauge",
+    avoidWhen: "the user wants asset-specific news or token-specific sentiment instead of the broad market gauge",
+  },
+  getCryptoTrendingTopics: {
+    useWhen: "the user asks what topics, narratives, or themes are trending in recent crypto coverage",
+    avoidWhen: "the user wants full headlines or a focused search for one topic",
   },
   getDexscreenerLatestTokenProfiles: {
     useWhen: "the user asks what is new, newly listed, freshly discovered, or you need an initial discovery pass before ranking candidate tokens",
@@ -136,7 +174,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   getDexscreenerTokensByChain: {
     useWhen: "you already know a small set of token addresses and want batch market data for ranking, comparison, or a concrete 'what is hottest' answer",
     avoidWhen: "you still need discovery or only care about one exact pair",
-    inputAdvice: "Pass up to 30 `tokenAddresses`. When the response includes token metadata such as `baseToken.name` or `baseToken.symbol`, use that in the answer and keep raw addresses secondary.",
+    inputAdvice: "Pass up to 30 `tokenAddresses`. When the response includes token metadata such as `baseToken.name` or `baseToken.symbol`, use that in the answer and keep raw addresses secondary. For broad top-coin or 'what is moving right now' answers, prioritize short-term price performance from `priceChange.m5` and `priceChange.h1`. Use `priceChange.h24` only if the short windows are missing or the user explicitly asks for 24h context.",
   },
   getTokenLaunchTime: {
     useWhen: "the user gives one exact coin address and asks when that token launched from a liquidity-pool perspective",
@@ -156,7 +194,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   rankDexscreenerTopTokenBoostsByWhales: {
     useWhen: "the user wants a current Dexscreener hot-token set and also wants to know which candidate has the most whales, strongest holder concentration, or heaviest top-holder footprint",
     avoidWhen: "the user already gave one exact token mint and only needs that token's holder distribution",
-    inputAdvice: "Use this as the default end-to-end tool for requests like 'find the top coins right now and tell me which has the most whales'. Unless the user asked for a custom threshold, keep `whaleThresholdPercent = 1`.",
+    inputAdvice: "Use this as the default end-to-end tool for requests like 'find the top coins right now and tell me which has the most whales'. Unless the user asked for a custom threshold, keep `whaleThresholdPercent = 1`. When summarizing the ranked tokens, lead with 5m and 1h price performance if available, and treat 24h as fallback context instead of the primary move.",
   },
   createWallets: {
     useWhen: "the user explicitly asks to create managed wallets",
@@ -220,10 +258,20 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
 
 const renderOperatorDecisionRules = (): string => [
   "## Tool Selection Rules",
+  "- Every tool call uses one machine JSON envelope. Put the real arguments under `params`. Optional `thought`, `notes`, or `meta` fields are allowed and ignored by runtime execution.",
+  "- Treat the attached tool schemas as the exact contract. Ask the tool for JSON, inspect the returned JSON, then either stop or make the next smallest necessary call.",
   "- Prefer one grounded tool call over a longer tool chain whenever one tool can answer the question.",
   "- For wallet state, use wallet tools first; do not use Dexscreener, memory, or runtime store as substitutes for live balances.",
   "- For market data, use Dexscreener tools; do not use wallet-balance tools to answer price, liquidity, volume, or price-change questions.",
+  "- For configured RSS or Atom feeds, prefer `getConfiguredNewsFeeds` to discover the available aliases instead of reading large config files into the prompt.",
+  "- After feed discovery, prefer `getLatestSolanaNews` with `feedAlias` over manually copying a feed URL when the feed is already in the instance registry.",
+  "- For broad latest crypto-news requests, prefer `getCryptoNewsLatest`.",
+  "- For news about one specific asset, protocol, topic, or keyword, prefer `searchCryptoNews`.",
+  "- For 'what is trending in crypto news' requests, prefer `getCryptoTrendingTopics`.",
+  "- For fear and greed requests, prefer `getCryptoFearGreedIndex`.",
+  "- For the news API's asset sentiment read, prefer `getCryptoAssetSentiment` with a short symbol like `BTC`, `ETH`, or `SOL`.",
   "- For broad market asks like 'what is hot today', 'what meme coins are trending', or 'what is moving right now', start with `getDexscreenerTopTokenBoosts` or `getDexscreenerLatestTokenProfiles`, then use `getDexscreenerTokensByChain` if you need a concrete batch comparison.",
+  "- For broad top-coin or 'moving right now' answers, prefer short-term price performance windows first: use `priceChange.m5` and `priceChange.h1` when available, and use `priceChange.h24` only as fallback context unless the user explicitly asked for 24h performance.",
   "- For 'when did this known coin launch' requests with one exact address, prefer `getTokenLaunchTime` instead of manually stitching discovery and pool metadata together.",
   "- For 'how did this known coin perform over X time' requests with one exact address, prefer `getTokenPricePerformance` instead of manually stitching discovery, current price, and candle reads together.",
   "- For whales, top holders, largest accounts, or holder concentration on one known token, use `getTokenHolderDistribution` instead of stopping at Dexscreener discovery.",
@@ -249,6 +297,7 @@ const renderOperatorDecisionRules = (): string => [
   "- Never use a write tool just because it is available. Use it only when the user clearly requested the mutation.",
   "- If confirmation is required, pass `userConfirmationToken` only when the user explicitly confirmed the action in this conversation.",
   "- After a successful tool call, answer in normal English from the tool result and stop unless another tool is still necessary.",
+  "- When the task is open-ended, begin with the best first read and start working; do not stall by listing capabilities back to the user.",
   "- After a successful `managedTriggerOrder`, treat the order as submitted and tell the user it can be tracked with `getTriggerOrders` using `orderStatus = \"active\"`.",
   "- If a tool fails, report the exact failure and the next corrective action; do not jump to unrelated tools.",
   "## Meme Coin Routine",
@@ -257,6 +306,15 @@ const renderOperatorDecisionRules = (): string => [
   "- `getDexscreenerTopTokenBoosts`: broad hottest/trending/promoted starting set",
   "- `getDexscreenerLatestTokenProfiles`: discovery for what is new or freshly listed",
   "- `getDexscreenerTokensByChain`: batch compare known token addresses after discovery",
+].join("\n");
+
+const renderOperatorToolExecutionFlow = (): string => [
+  "## Tool Execution Flow",
+  "- Request thread order: system prompt -> live runtime context -> tool groups -> knowledge registry -> current conversation -> your next tool decision.",
+  "- The system prompt gives orientation only. The attached tool definitions and schemas are the real machine-call contract for this turn.",
+  "- For live state, prefer runtime, wallet, market, and workspace tools before docs.",
+  "- For procedures, CLI semantics, provider details, or packaged workflows, open the smallest matching knowledge doc or skill and then continue with tools.",
+  "- Keep tool chains compact: identify -> inspect -> act -> answer.",
 ].join("\n");
 
 const renderOperatorToolNotes = (
@@ -299,11 +357,12 @@ export const buildOperatorChatPrompt = async (input: {
   toolNames: string[];
   stateStore?: StateStore;
 }): Promise<string> => {
-  const [walletSummary, liveRuntimeContext] = await Promise.all([
+  const [walletSummary, liveRuntimeContext, knowledgeSummary] = await Promise.all([
     renderRuntimeWalletPromptSummary(),
     renderLiveRuntimeContextSection({
       stateStore: input.stateStore,
     }),
+    renderKnowledgePromptSummary(),
   ]);
   const toolEntries = resolveOperatorToolEntries(input.capabilitySnapshot, input.toolNames);
 
@@ -318,15 +377,16 @@ export const buildOperatorChatPrompt = async (input: {
     renderCommandMenuSection(toolEntries, "## Command Groups"),
     renderAsyncToolBehaviorSection(toolEntries),
     liveRuntimeContext,
+    renderOperatorToolExecutionFlow(),
     renderOperatorDecisionRules(),
     renderOperatorToolNotes(input.capabilitySnapshot, input.toolNames),
-    renderKnowledgePromptSummary(),
+    knowledgeSummary,
     "## Wallet Summary",
     walletSummary,
     [
       "## Fast Routing",
       "- use the smallest listed tool that can answer the request",
-      "- current conversation messages are already loaded; other runtime records require an explicit tool call",
+      "- a recent same-conversation history window may be loaded with `[History #i/N | messageId=…]` prefixes; older rows need `queryRuntimeStore` → `getConversationHistorySlice` using `beforeMessageId` from `#1` in that window; other runtime records also need explicit tool calls",
       "- for market questions, prefer Dexscreener/token tools; for wallet state, prefer wallet tools",
       "- answer with token metadata first and report queued or failed work plainly",
     ].join("\n"),

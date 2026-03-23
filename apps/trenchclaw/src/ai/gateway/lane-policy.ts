@@ -40,13 +40,13 @@ const LANE_POLICIES: Record<GatewayLane, GatewayLanePolicy> = {
     lane: "operator-chat",
     promptKind: "operator",
     maxOutputTokens: 32_768,
-    maxToolSteps: 4,
+    maxToolSteps: 12,
   },
   "workspace-agent": {
     lane: "workspace-agent",
     promptKind: "workspace",
     maxOutputTokens: 32_768,
-    maxToolSteps: 4,
+    maxToolSteps: 12,
   },
   "background-summary": {
     lane: "background-summary",

@@ -32,11 +32,13 @@ describe("workspace bash tools", () => {
     const writeTool = tools[WORKSPACE_WRITE_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
     const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
     await writeTool.execute({
-      path: "strategies/scalp.ts",
-      content: "export const strategy = 'scalp';\n",
+      params: {
+        path: "strategies/scalp.ts",
+        content: "export const strategy = 'scalp';\n",
+      },
     });
 
-    const readResult = (await readTool.execute({ path: "strategies/scalp.ts" })) as { content: string };
+    const readResult = (await readTool.execute({ params: { path: "strategies/scalp.ts" } })) as { content: string };
     expect(readResult.content).toContain("strategy = 'scalp'");
   });
 
@@ -49,20 +51,27 @@ describe("workspace bash tools", () => {
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
 
-    const pwd = (await bashTool.execute({ type: "shell", command: "pwd" })) as { exitCode: number; stdout: string };
+    const pwd = (await bashTool.execute({ params: { type: "shell", command: "pwd" } })) as {
+      exitCode: number;
+      stdout: string;
+    };
     expect(pwd.exitCode).toBe(0);
     expect(pwd.stdout.trim()).toBe(workspaceRoot);
 
     const typedList = (await bashTool.execute({
-      type: "list_directory",
-      path: ".",
-      includeHidden: false,
+      params: {
+        type: "list_directory",
+        path: ".",
+        includeHidden: false,
+      },
     })) as { exitCode: number; stdout: string };
     expect(typedList.exitCode).toBe(0);
 
     const envDetails = (await bashTool.execute({
-      type: "shell",
-      command: "printf '%s\\n%s\\n%s\\n' \"$HOME\" \"$TMPDIR\" \"$PATH\"",
+      params: {
+        type: "shell",
+        command: "printf '%s\\n%s\\n%s\\n' \"$HOME\" \"$TMPDIR\" \"$PATH\"",
+      },
     })) as { exitCode: number; stdout: string };
     const [homePath, tmpPath, pathValue] = envDetails.stdout.trim().split("\n");
     expect(envDetails.exitCode).toBe(0);
@@ -73,13 +82,15 @@ describe("workspace bash tools", () => {
     expect(resolvedPathValue.split(path.delimiter)[0]).toBe(runtimeStatePath("instances/01/tool-bin"));
 
     const typedWhich = (await bashTool.execute({
-      type: "which",
-      program: "bash",
+      params: {
+        type: "which",
+        program: "bash",
+      },
     })) as { exitCode: number; stdout: string };
     expect(typedWhich.exitCode).toBe(0);
     expect(typedWhich.stdout.trim().length).toBeGreaterThan(0);
 
-    await expect(bashTool.execute({ type: "shell", command: "sudo ls" })).rejects.toThrow();
+    await expect(bashTool.execute({ params: { type: "shell", command: "sudo ls" } })).rejects.toThrow();
   });
 
   test("creates default workspace layout and blocks mutating bash commands by default", async () => {
@@ -93,7 +104,7 @@ describe("workspace bash tools", () => {
     const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
 
     for (const directory of WORKSPACE_LAYOUT_DIRECTORIES) {
-      const listing = (await bashTool.execute({ type: "shell", command: `test -d ${directory} && echo ok` })) as {
+      const listing = (await bashTool.execute({ params: { type: "shell", command: `test -d ${directory} && echo ok` } })) as {
         exitCode: number;
         stdout: string;
       };
@@ -101,11 +112,11 @@ describe("workspace bash tools", () => {
       expect(listing.stdout.trim()).toBe("ok");
     }
 
-    await expect(bashTool.execute({ type: "shell", command: "echo hello > notes/from-bash.txt" })).rejects.toThrow(
+    await expect(bashTool.execute({ params: { type: "shell", command: "echo hello > notes/from-bash.txt" } })).rejects.toThrow(
       "Mutating shell commands are disabled",
     );
 
-    await expect(readTool.execute({ path: "notes/from-bash.txt" })).rejects.toThrow();
+    await expect(readTool.execute({ params: { path: "notes/from-bash.txt" } })).rejects.toThrow();
   });
 
   test("blocks workspace file reads outside the runtime workspace root", async () => {
@@ -117,7 +128,7 @@ describe("workspace bash tools", () => {
     });
     const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
 
-    await expect(readTool.execute({ path: "../outside.txt" })).rejects.toThrow(
+    await expect(readTool.execute({ params: { path: "../outside.txt" } })).rejects.toThrow(
       "resolves outside allowed root",
     );
   });

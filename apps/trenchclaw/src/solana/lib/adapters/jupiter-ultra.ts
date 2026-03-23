@@ -5,7 +5,7 @@ import {
   resolveRequestId,
   resolveSwapTransaction,
 } from "../ultra/parsing";
-import { loadVaultData, readVaultString } from "../../../ai/llm/vault-file";
+import { resolveJupiterApiKey } from "./jupiter";
 
 const DEFAULT_JUPITER_ULTRA_BASE_URL = "https://api.jup.ag/ultra/v1";
 
@@ -36,7 +36,7 @@ export interface JupiterUltraOrderRequest {
 
 export interface JupiterUltraOrderResponse {
   requestId: string;
-  transaction: string;
+  transaction: string | null;
   raw: unknown;
   [key: string]: unknown;
 }
@@ -170,14 +170,16 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
           throw new Error("Ultra order response is missing requestId");
         }
 
-        const transaction = resolveSwapTransaction(payload);
-        if (!transaction) {
-          throw new Error("Ultra order response is missing transaction");
-        }
+        const payloadRecord = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : null;
+        const explicitTransaction = payloadRecord?.transaction;
+        const transaction =
+          explicitTransaction == null || explicitTransaction === ""
+            ? null
+            : resolveSwapTransaction(payload);
 
-        if (payload && typeof payload === "object") {
+        if (payloadRecord) {
           return {
-            ...(payload as Record<string, unknown>),
+            ...payloadRecord,
             requestId,
             transaction,
             raw: payload,
@@ -229,17 +231,10 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
   };
 };
 
-export const getJupiterUltraApiKeyFromVault = async (): Promise<string | undefined> => {
-  const { vaultData } = await loadVaultData();
-  return readVaultString(vaultData, "integrations/jupiter/api-key");
-};
-
-export const resolveJupiterUltraApiKey = async (): Promise<string | undefined> => {
-  return getJupiterUltraApiKeyFromVault();
-};
+export { getJupiterApiKeyFromVault as getJupiterUltraApiKeyFromVault, resolveJupiterApiKey as resolveJupiterUltraApiKey } from "./jupiter";
 
 export const createJupiterUltraAdapterFromConfig = async () => {
-  const apiKey = await resolveJupiterUltraApiKey();
+  const apiKey = await resolveJupiterApiKey();
 
   if (!apiKey) {
     return undefined;

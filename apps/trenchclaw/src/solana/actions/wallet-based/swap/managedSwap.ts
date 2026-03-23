@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/runtime/types/action";
+import type { ActionResult } from "../../../../ai/runtime/types/action";
 import type { ActionContext } from "../../../../ai/runtime/types/context";
 import { loadRuntimeSettings } from "../../../../runtime/load";
 import {
@@ -60,6 +61,46 @@ const resolveManagedSwapProvider = async (
   return "standard";
 };
 
+const isUltraQuoteFailureMessage = (message: string): boolean =>
+  message.includes("Failed to get quotes");
+
+const tryStandardSwapAfterUltraQuoteFailure = async (
+  ctx: ActionContext,
+  input: ManagedSwapInput,
+  ultraResult: ActionResult<UltraSwapOutput>,
+): Promise<ActionResult<ManagedSwapOutput> | null> => {
+  if (input.provider !== "configured" || ultraResult.ok) {
+    return null;
+  }
+  const message = ultraResult.error ?? "";
+  if (!isUltraQuoteFailureMessage(message)) {
+    return null;
+  }
+
+  const settings = await loadRuntimeSettings();
+  if (!settings.trading.jupiter.standard.enabled || !settings.trading.jupiter.standard.allowExecutions) {
+    return null;
+  }
+
+  const standardResult = await executeManagedStandardSwap(ctx, input);
+  if (!standardResult.ok || !standardResult.data) {
+    return {
+      ...standardResult,
+      error: standardResult.error
+        ? `${message} (Ultra). Standard fallback: ${standardResult.error}`
+        : message,
+    };
+  }
+
+  return {
+    ...standardResult,
+    data: {
+      provider: "standard" as const,
+      ...standardResult.data,
+    },
+  };
+};
+
 export const managedSwapAction: Action<ManagedSwapInput, ManagedSwapOutput> = {
   name: "managedSwap",
   category: "wallet-based",
@@ -69,19 +110,24 @@ export const managedSwapAction: Action<ManagedSwapInput, ManagedSwapOutput> = {
     const provider = await resolveManagedSwapProvider(input.provider);
     if (provider === "ultra") {
       const result = await managedUltraSwapAction.execute(ctx, omitProvider(input));
-      if (!result.ok || !result.data) {
+      if (result.ok && result.data) {
         return {
           ...result,
-          data: undefined,
+          data: {
+            provider: "ultra" as const,
+            ...result.data,
+          },
         };
+      }
+
+      const fallback = await tryStandardSwapAfterUltraQuoteFailure(ctx, input, result);
+      if (fallback) {
+        return fallback;
       }
 
       return {
         ...result,
-        data: {
-          provider: "ultra" as const,
-          ...result.data,
-        },
+        data: undefined,
       };
     }
 

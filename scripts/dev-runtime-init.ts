@@ -16,7 +16,7 @@ const printHelp = (): void => {
       "Usage: bun run scripts/dev-runtime-init.ts [options]",
       "",
       "Options:",
-      "  --runtime-root <path>     External runtime root (default: ~/trenchclaw-dev-runtime)",
+      "  --runtime-root <path>     External runtime root (default: ~/.trenchclaw-dev-runtime)",
       "  --generated-root <path>   Generated root override (default: <runtime-root>/instances/<id>/cache/generated)",
       "  --instance <id>           Two-digit instance id (default: 01)",
       "  --instance-name <name>    Instance display name (default: default for 01, otherwise instance-<id>)",

@@ -64,6 +64,86 @@ describe("queryRuntimeStoreAction", () => {
     store.close();
   });
 
+  test("returns a cursorable older-message history slice for a conversation", async () => {
+    const dbPath = createTestDbPath();
+    dbPaths.push(dbPath);
+
+    const store = new SqliteStateStore({
+      path: dbPath,
+      walMode: true,
+      busyTimeoutMs: 500,
+    });
+    const now = Date.now();
+    store.saveConversation({
+      id: "conv-history-1",
+      sessionId: "session-history-1",
+      title: "History",
+      createdAt: now,
+      updatedAt: now,
+    });
+    store.saveChatMessage({
+      id: "msg-history-1",
+      conversationId: "conv-history-1",
+      role: "user",
+      content: "one",
+      createdAt: now,
+    });
+    store.saveChatMessage({
+      id: "msg-history-2",
+      conversationId: "conv-history-1",
+      role: "assistant",
+      content: "two",
+      createdAt: now + 1,
+    });
+    store.saveChatMessage({
+      id: "msg-history-3",
+      conversationId: "conv-history-1",
+      role: "user",
+      content: "three",
+      createdAt: now + 2,
+    });
+    store.saveChatMessage({
+      id: "msg-history-4",
+      conversationId: "conv-history-1",
+      role: "assistant",
+      content: "four",
+      createdAt: now + 3,
+    });
+
+    const ctx = createActionContext({ actor: "agent", stateStore: store });
+    const result = await queryRuntimeStoreAction.execute(ctx, {
+      request: {
+        type: "getConversationHistorySlice",
+        conversationId: "conv-history-1",
+        beforeMessageId: "msg-history-4",
+        limit: 2,
+        tokenBudget: 500,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      requestType: string;
+      result: {
+        conversationId: string;
+        messages: Array<{ id: string; content: string }>;
+        hasMoreBefore: boolean;
+        nextBeforeMessageId?: string;
+        oldestReturnedMessageId?: string;
+        newestReturnedMessageId?: string;
+      };
+    };
+    expect(payload.requestType).toBe("getConversationHistorySlice");
+    expect(payload.result.conversationId).toBe("conv-history-1");
+    expect(payload.result.messages.map((message) => message.id)).toEqual(["msg-history-2", "msg-history-3"]);
+    expect(payload.result.hasMoreBefore).toBe(true);
+    expect(payload.result.nextBeforeMessageId).toBe("msg-history-2");
+    expect(payload.result.oldestReturnedMessageId).toBe("msg-history-2");
+    expect(payload.result.newestReturnedMessageId).toBe("msg-history-3");
+
+    store.close();
+  });
+
   test("fails clearly when stateStore is missing from action context", async () => {
     const result = await queryRuntimeStoreAction.execute(createActionContext({ actor: "agent" }), {
       request: {
@@ -403,6 +483,20 @@ describe("queryRuntimeStoreAction", () => {
     expect(parsed.request.type).toBe("listUpcomingTradingJobs");
     if (parsed.request.type === "listUpcomingTradingJobs") {
       expect(parsed.request.limit).toBe(5);
+    }
+  });
+
+  test("accepts stringified conversation-history-slice request payloads", () => {
+    const parsed = queryRuntimeStoreAction.inputSchema!.parse({
+      request: "{\"type\":\"getConversationHistorySlice\",\"conversationId\":\"conv-1\",\"beforeMessageId\":\"msg-9\",\"limit\":10,\"tokenBudget\":1500}",
+    });
+
+    expect(parsed.request.type).toBe("getConversationHistorySlice");
+    if (parsed.request.type === "getConversationHistorySlice") {
+      expect(parsed.request.conversationId).toBe("conv-1");
+      expect(parsed.request.beforeMessageId).toBe("msg-9");
+      expect(parsed.request.limit).toBe(10);
+      expect(parsed.request.tokenBudget).toBe(1500);
     }
   });
 });

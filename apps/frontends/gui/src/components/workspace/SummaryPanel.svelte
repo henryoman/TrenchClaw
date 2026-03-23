@@ -2,7 +2,14 @@
   import type { GuiActivityEntry } from "@trenchclaw/types";
   import type { UIMessage } from "ai";
   import RetroPanel from "../ui/RetroPanel.svelte";
-  import { buildChatActivitySnapshot, isIdleActivityItem, type ChatStatus } from "./chat-activity";
+  import {
+    buildChatActivitySnapshot,
+    buildConsoleFeedItems,
+    isIdleActivityItem,
+    type ChatActivityItem,
+    type ChatActivityFeedItem,
+    type ChatStatus,
+  } from "./chat-activity";
 
   export let entries: GuiActivityEntry[] = [];
   export let liveMessages: UIMessage[] = [];
@@ -13,8 +20,8 @@
   const isLegacyRuntimeTransportInitialized = (entry: GuiActivityEntry): boolean =>
     entry.source === "runtime" && entry.summary === "Runtime transport initialized";
 
-  const isRuntimeInitialized = (entry: GuiActivityEntry): boolean =>
-    entry.source === "runtime" && entry.summary.toLowerCase() === "initialized";
+  const isRuntimeInitialized = (entry: ChatActivityFeedItem): boolean =>
+    entry.sourceLabel === "runtime" && entry.summary.toLowerCase() === "initialized";
 
   const formatRuntimeInitializedAt = (unixMs: number): string =>
     new Date(unixMs).toLocaleString([], {
@@ -25,7 +32,13 @@
       hour12: true,
     });
 
+  const formatLiveItem = (item: ChatActivityItem): string =>
+    item.title === "Agent" || item.title === "Response" || item.title === "Runtime error"
+      ? item.detail
+      : `${item.title}: ${item.detail}`;
+
   let filteredEntries: GuiActivityEntry[] = [];
+  let consoleEntries: ChatActivityFeedItem[] = [];
   let liveSnapshot = buildChatActivitySnapshot({
     messages: liveMessages,
     chatStatus: liveChatStatus,
@@ -35,6 +48,7 @@
   let liveItems = liveSnapshot.currentItems.filter((item) => !isIdleActivityItem(item));
 
   $: filteredEntries = entries.filter((entry) => !isLegacyRuntimeTransportInitialized(entry));
+  $: consoleEntries = buildConsoleFeedItems(filteredEntries);
   $: liveSnapshot = buildChatActivitySnapshot({
     messages: liveMessages,
     chatStatus: liveChatStatus,
@@ -45,15 +59,14 @@
 </script>
 
 <RetroPanel title="Console">
-  {#if liveItems.length === 0 && filteredEntries.length === 0}
+  {#if liveItems.length === 0 && consoleEntries.length === 0}
     <p class="empty tc-console-copy">No confirmations yet.</p>
   {:else}
     {#each liveItems as item (item.id)}
       <p class={`row row-live tone-${item.tone}`}>
         <span class="source">agent</span>
-        <small class="badge">{item.badge}</small>
         <span class="live-copy">
-          <span class="tc-console-copy copy">{item.title}: {item.detail}</span>
+          <span class="tc-console-copy copy">{formatLiveItem(item)}</span>
           {#if item.meta}
             <small class="tc-console-copy meta">{item.meta}</small>
           {/if}
@@ -61,9 +74,9 @@
       </p>
     {/each}
 
-    {#each filteredEntries as entry}
-      <p class="row">
-        <span class="source">{entry.source}</span>
+    {#each consoleEntries as entry}
+      <p class="row row-feed">
+        <span class="source">{entry.sourceLabel}</span>
         {#if isRuntimeInitialized(entry)}
           <span class="tc-console-copy copy">
             {entry.summary} at {formatRuntimeInitializedAt(entry.timestamp)}
@@ -106,18 +119,7 @@
 
   .row-live {
     align-items: start;
-  }
-
-  .badge {
-    display: inline-flex;
-    min-width: 3.2rem;
-    justify-content: center;
-    border: var(--tc-border-muted);
-    padding: 1px 4px;
-    color: var(--tc-color-gray-3);
-    font-size: 0.6rem;
-    letter-spacing: var(--tc-track-wide);
-    text-transform: uppercase;
+    grid-template-columns: auto minmax(0, 1fr);
   }
 
   .live-copy {
@@ -142,23 +144,20 @@
     overflow-wrap: anywhere;
   }
 
-  .row-live.tone-pending .badge,
-  .row-live.tone-running .badge {
-    border-color: color-mix(in srgb, var(--tc-color-turquoise) 42%, var(--tc-color-gray-2));
+  .row-feed {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  .row-live.tone-pending .source,
+  .row-live.tone-running .source {
     color: var(--tc-color-turquoise);
   }
 
-  .row-live.tone-queued .badge {
-    border-color: color-mix(in srgb, var(--tc-color-lime) 45%, var(--tc-color-gray-2));
+  .row-live.tone-queued .source {
     color: var(--tc-color-lime);
   }
 
-  .row-live.tone-done .badge {
-    color: var(--tc-color-cream);
-  }
-
-  .row-live.tone-error .badge {
-    border-color: color-mix(in srgb, var(--tc-color-red) 56%, var(--tc-color-gray-2));
+  .row-live.tone-error .source {
     color: var(--tc-color-red);
   }
 </style>

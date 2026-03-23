@@ -12,6 +12,7 @@ import {
   type UIMessageChunk,
 } from "ai";
 import { z } from "zod";
+import { createLanguageModel, resolveLlmProviderConfigFromVault } from "../ai/llm/config";
 import type { GatewayLane } from "../ai/gateway";
 import { createActionContext } from "../ai/runtime/types/context";
 import { createChatMessageId, createToolCallId } from "../ai/runtime/types/ids";
@@ -23,6 +24,21 @@ import {
   resolveWorkspaceRootDirectory,
   toToolDescription,
 } from "./chat/constants";
+import {
+  DEFAULT_CONVERSATION_HISTORY_SLICE_LIMIT,
+  DEFAULT_CONVERSATION_HISTORY_SLICE_TOKEN_BUDGET,
+  DEFAULT_CONVERSATION_HISTORY_TOKEN_BUDGET,
+  excludeCurrentConversationOverlap,
+  isReplayableUiMessage,
+  replayChatMessageState,
+  selectConversationHistoryMessages,
+  tagHistoryUiMessagesForModelContext,
+} from "./conversation-history";
+import {
+  getModelToolEnvelopeSchema,
+  MACHINE_TOOL_ENVELOPE_NOTE,
+  normalizeModelToolEnvelopeInput,
+} from "./model-tool-language";
 import {
   createDirectTextStreamResponse,
   createDirectToolResultStreamResponse,
@@ -41,9 +57,7 @@ import {
 } from "./chat/persistence";
 import {
   createToolPartFromStreamState,
-  isReasoningChunk,
   isRecoverableToolOnlyStreamError,
-  isSuppressiblePreToolChunk,
   pipeModelFullStreamToUIMessageStream,
   pipeUIMessageStream,
   uiChunkHasToolActivity,
@@ -67,6 +81,29 @@ import {
   toRuntimeChatErrorMessage,
   trimOrUndefinedValue,
 } from "./chat/utils";
+
+const OPENROUTER_FREE_MODEL_FALLBACK_IDS = [
+  "openrouter/free",
+  "nvidia/nemotron-3-nano-30b-a3b:free",
+] as const;
+
+const isOpenRouterFreeModel = (provider: string | null | undefined, modelId: string | null | undefined): boolean =>
+  provider === "openrouter" && typeof modelId === "string" && (modelId === "openrouter/free" || modelId.endsWith(":free"));
+
+const assistantMessageHasVisibleText = (message: UIMessage | undefined): boolean =>
+  Boolean(
+    message
+    && message.role === "assistant"
+    && message.parts.some((part) => part.type === "text" && part.text.trim().length > 0),
+  );
+
+const assistantMessageHasReasoning = (message: UIMessage | undefined): boolean =>
+  Boolean(
+    message
+    && message.role === "assistant"
+    && message.parts.some((part) => part.type === "reasoning" && part.text.trim().length > 0),
+  );
+
 const buildActionTools = (
   deps: RuntimeChatServiceDeps,
   enabledToolNames?: ReadonlySet<string> | null,
@@ -91,10 +128,12 @@ const buildActionTools = (
     }
 
     const capability = deps.capabilitySnapshot?.actions.find((entry) => entry.name === action.name);
+    const modelInputSchema = getModelToolEnvelopeSchema(action.name, action.inputSchema as z.ZodTypeAny);
     tools[action.name] = tool({
-      description: capability?.toolDescription ?? toToolDescription(action.name, action.category, action.subcategory),
-      inputSchema: action.inputSchema as z.ZodTypeAny,
-      execute: async (rawInput: unknown) => {
+      description: `${capability?.toolDescription ?? toToolDescription(action.name, action.category, action.subcategory)} ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+      inputSchema: modelInputSchema as z.ZodTypeAny,
+      execute: async (rawEnvelope: unknown) => {
+        const rawInput = normalizeModelToolEnvelopeInput(action.name, rawEnvelope);
         const cacheKey = `${action.name}:${serializeForToolCache(rawInput)}`;
         const cachedResult = toolResultCache.get(cacheKey);
         if (cachedResult) {
@@ -246,12 +285,30 @@ const resolveRequestedToolChoice = (
 
 const createForcedFirstStepToolConfig = (
   toolChoice: "required" | { type: "tool"; toolName: string } | undefined,
+  input?: {
+    provider?: string | null;
+    modelId?: string | null;
+  },
 ): ((input: { stepNumber: number }) => {
   toolChoice?: "auto" | "required" | { type: "tool"; toolName: string };
   activeTools?: string[];
 }) | undefined => {
   if (!toolChoice) {
     return undefined;
+  }
+
+  if (input?.provider === "openrouter") {
+    if (toolChoice === "required") {
+      return undefined;
+    }
+
+    return ({ stepNumber }) => {
+      if (stepNumber <= 1) {
+        return { activeTools: [toolChoice.toolName] };
+      }
+
+      return {};
+    };
   }
 
   return ({ stepNumber }) => {
@@ -263,6 +320,32 @@ const createForcedFirstStepToolConfig = (
 
     return { toolChoice: "auto" };
   };
+};
+
+const renderConversationHistoryPromptSection = (input: {
+  chatId: string;
+  loadedMessageCount: number;
+  estimatedTokenCount: number;
+  nextBeforeMessageId?: string;
+  preloadTokenBudget: number;
+  continuationTokenBudget: number;
+}): string => {
+  const lines = [
+    "## Conversation memory",
+    `- **Preload**: up to ${input.loadedMessageCount} prior persisted messages (~${input.estimatedTokenCount} est. tokens after tags) included by walking **newest → oldest** until the ~${input.preloadTokenBudget}-token budget, then shown **oldest → newest** for reading.`,
+    "- **Numbering**: each preloaded row starts with `[History #i/N | messageId=… | role=…]`. `i=1` is the **oldest** message in this window; `i=N` is the newest persisted message before the live tail. Messages **without** that prefix are the current request thread.",
+    "- **Older rows**: `getConversationHistorySlice` returns the next chunk **strictly before** `beforeMessageId`. Pass the `messageId` from `[History #1/…]` to continue backward when more history exists.",
+  ];
+
+  if (input.nextBeforeMessageId) {
+    lines.push(
+      `- **More history available** before \`${input.nextBeforeMessageId}\`. Example: \`queryRuntimeStore\` → \`{"request":{"type":"getConversationHistorySlice","conversationId":"${input.chatId}","beforeMessageId":"${input.nextBeforeMessageId}","tokenBudget":${input.continuationTokenBudget},"limit":${DEFAULT_CONVERSATION_HISTORY_SLICE_LIMIT}}}\` (raise \`tokenBudget\` up to runtime max for wider slices).`,
+    );
+  } else {
+    lines.push("- **Coverage**: all persisted same-conversation messages that fit the preload budget are already in the thread; no older rows remain, or the store has no further history for this chat.");
+  }
+
+  return lines.join("\n");
 };
 
 export const createRuntimeChatService = (
@@ -484,15 +567,28 @@ export const createRuntimeChatService = (
       }
 
       const model = preparedExecution.model;
-      const systemPrompt = preparedExecution.systemPrompt;
+      let systemPrompt = preparedExecution.systemPrompt;
       const enabledToolNames = new Set(preparedExecution.toolNames);
       const maxOutputTokens = preparedExecution.maxOutputTokens;
       const temperature = preparedExecution.temperature;
       const maxToolSteps = preparedExecution.maxToolSteps;
-      const toolChoice = resolveRequestedToolChoice(latestUserMessage, preparedExecution.toolNames);
-      const prepareStep = createForcedFirstStepToolConfig(toolChoice);
       const provider = preparedExecution.provider;
       const modelId = preparedExecution.modelId;
+      const toolChoice = resolveRequestedToolChoice(latestUserMessage, preparedExecution.toolNames);
+      const prepareStep = createForcedFirstStepToolConfig(toolChoice, {
+        provider,
+        modelId,
+      });
+      const isSelectedFreeOpenRouterModel = isOpenRouterFreeModel(provider, modelId);
+
+      if (toolChoice === "required" && !prepareStep && provider === "openrouter") {
+        deps.logger?.info("chat:tool_choice_downgraded", {
+          chatId,
+          provider,
+          model: modelId,
+          reason: "openrouter_required_tool_choice_unsupported",
+        });
+      }
 
       deps.logger?.info("chat:model_ready", {
         chatId,
@@ -538,11 +634,55 @@ export const createRuntimeChatService = (
         });
       }
 
+      const historyCandidateSlice = deps.stateStore.getConversationHistorySlice({
+        conversationId: chatId,
+        limit: 500,
+        tokenBudget: DEFAULT_CONVERSATION_HISTORY_TOKEN_BUDGET * 3,
+      });
+      const nonOverlappingHistoryCandidates = excludeCurrentConversationOverlap({
+        historyMessages: historyCandidateSlice.messages,
+        currentMessages: messages,
+      });
+      const selectedConversationHistory = selectConversationHistoryMessages({
+        messages: nonOverlappingHistoryCandidates,
+        limit: nonOverlappingHistoryCandidates.length,
+        tokenBudget: DEFAULT_CONVERSATION_HISTORY_TOKEN_BUDGET,
+      });
+      const historyMessages = tagHistoryUiMessagesForModelContext(
+        selectedConversationHistory.messages
+          .map((message) => replayChatMessageState(message))
+          .filter((message) => isReplayableUiMessage(message)),
+      );
+      const olderHistoryAvailable =
+        historyCandidateSlice.hasMoreBefore
+        || nonOverlappingHistoryCandidates.length > selectedConversationHistory.messages.length;
+      const nextBeforeMessageId =
+        olderHistoryAvailable
+          ? (
+              selectedConversationHistory.messages[0]?.id
+              ?? nonOverlappingHistoryCandidates[0]?.id
+              ?? historyCandidateSlice.nextBeforeMessageId
+            )
+          : undefined;
+      systemPrompt = [
+        systemPrompt,
+        renderConversationHistoryPromptSection({
+          chatId,
+          loadedMessageCount: historyMessages.length,
+          estimatedTokenCount: selectedConversationHistory.estimatedTokenCount,
+          nextBeforeMessageId,
+          preloadTokenBudget: DEFAULT_CONVERSATION_HISTORY_TOKEN_BUDGET,
+          continuationTokenBudget: DEFAULT_CONVERSATION_HISTORY_SLICE_TOKEN_BUDGET,
+        }),
+      ]
+        .filter((section) => section.trim().length > 0)
+        .join("\n\n");
+
       const validatedMessages =
-        messages.length === 0
+        historyMessages.length + messages.length === 0
           ? []
           : await validateUIMessages({
-              messages,
+              messages: [...historyMessages, ...messages],
               tools,
             });
       const modelMessages = await convertMessages(validatedMessages, {
@@ -554,6 +694,9 @@ export const createRuntimeChatService = (
         durationMs: Date.now() - prepareModelInputStartedAt,
         validatedMessageCount: validatedMessages.length,
         toolCount: Object.keys(tools).length,
+        historyMessageCount: historyMessages.length,
+        historyTokenEstimate: selectedConversationHistory.estimatedTokenCount,
+        olderHistoryAvailable,
         systemPromptChars: systemPrompt.length,
       });
 
@@ -600,36 +743,23 @@ export const createRuntimeChatService = (
                 let firstPassMessages: UIMessage[] = validatedMessages;
                 let firstResponseMessage: UIMessage | undefined;
                 let streamSawToolActivity = false;
-                let streamFlushedToolActivity = false;
                 let firstPassSawTextAfterToolActivity = false;
-                const queuedPreToolChunks: UIMessageChunk[] = [];
+                let streamSawTerminalProblem = false;
+                const bufferedTerminalProblemChunks: UIMessageChunk[] = [];
                 const observedToolCalls = new Map<string, {
                   toolName: string;
                   input?: unknown;
                   output?: unknown;
                 }>();
-                const flushQueuedPreToolChunks = (mode: "all" | "structural-only"): void => {
-                  for (const queuedChunk of queuedPreToolChunks) {
-                    if (mode === "structural-only" && isSuppressiblePreToolChunk(queuedChunk)) {
-                      continue;
-                    }
-                    writer.write(queuedChunk);
-                  }
-                  queuedPreToolChunks.length = 0;
-                };
 
                 const handleFirstPassChunk = (chunk: UIMessageChunk): void => {
-                  if (isReasoningChunk(chunk)) {
+                  if (
+                    isSelectedFreeOpenRouterModel
+                    && (chunk.type === "error" || chunk.type === "abort")
+                  ) {
+                    streamSawTerminalProblem = true;
+                    bufferedTerminalProblemChunks.push(chunk);
                     return;
-                  }
-                  if (!streamFlushedToolActivity) {
-                    if (uiChunkHasToolActivity(chunk)) {
-                      streamFlushedToolActivity = true;
-                      flushQueuedPreToolChunks("all");
-                    } else {
-                      queuedPreToolChunks.push(chunk);
-                      return;
-                    }
                   }
                   writer.write(chunk);
                 };
@@ -677,7 +807,7 @@ export const createRuntimeChatService = (
                   : pipeUIMessageStream(
                       firstResult.toUIMessageStream({
                         originalMessages: validatedMessages,
-                        sendReasoning: false,
+                        sendReasoning: true,
                         onError: (error) => toRuntimeChatErrorMessage(error),
                         onFinish: ({ messages: completedMessages, responseMessage }) => {
                           firstPassMessages = completedMessages;
@@ -699,9 +829,6 @@ export const createRuntimeChatService = (
                   if (!(streamSawToolActivity && isRecoverableToolOnlyStreamError(pipeResult.reason))) {
                     throw pipeResult.reason;
                   }
-                }
-                if (queuedPreToolChunks.length > 0) {
-                  flushQueuedPreToolChunks("all");
                 }
                 const observedToolParts = Array.from(observedToolCalls.entries()).flatMap(([toolCallId, entry]) => {
                   const parts: UIMessage["parts"] = [];
@@ -759,9 +886,95 @@ export const createRuntimeChatService = (
                 const completedAssistantMessage = firstResponseMessage ?? findLatestAssistantMessage(recoveredFirstPassMessages);
                 const completedAssistantHasToolActivity = assistantMessageHasToolActivity(completedAssistantMessage);
                 const completedAssistantHasTextAfterToolActivity = assistantMessageHasTextAfterToolActivity(completedAssistantMessage);
+                const completedAssistantHasVisibleText = assistantMessageHasVisibleText(completedAssistantMessage);
+                const completedAssistantHasReasoning = assistantMessageHasReasoning(completedAssistantMessage);
                 const firstPassHadToolActivity = streamSawToolActivity || completedAssistantHasToolActivity;
 
+                const flushBufferedTerminalProblemChunks = (): void => {
+                  for (const chunk of bufferedTerminalProblemChunks) {
+                    writer.write(chunk);
+                  }
+                  bufferedTerminalProblemChunks.length = 0;
+                };
+
+                const tryFreeModelFallback = async (reason: string): Promise<boolean> => {
+                  if (!isSelectedFreeOpenRouterModel) {
+                    return false;
+                  }
+
+                  const providerConfig = await resolveLlmProviderConfigFromVault();
+                  if (!providerConfig || providerConfig.provider !== "openrouter") {
+                    return false;
+                  }
+
+                  for (const fallbackModelId of OPENROUTER_FREE_MODEL_FALLBACK_IDS) {
+                    if (fallbackModelId === modelId) {
+                      continue;
+                    }
+
+                    try {
+                      const fallbackResult = await generateWithModel({
+                        model: createLanguageModel({
+                          provider: providerConfig.provider,
+                          apiKey: providerConfig.apiKey,
+                          baseURL: providerConfig.baseURL,
+                          model: fallbackModelId,
+                        }),
+                        system: systemPrompt,
+                        messages: modelMessages,
+                        abortSignal: input?.abortSignal,
+                        timeout: CHAT_MODEL_FALLBACK_GENERATE_TIMEOUT,
+                        ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
+                        ...(typeof temperature === "number" ? { temperature } : {}),
+                      });
+                      const fallbackText =
+                        typeof fallbackResult?.text === "string" ? fallbackResult.text.trim() : "";
+                      if (!fallbackText) {
+                        continue;
+                      }
+
+                      deps.logger?.warn("chat:free_model_fallback", {
+                        chatId,
+                        lane: preparedExecution.lane,
+                        provider,
+                        model: modelId,
+                        fallbackModel: fallbackModelId,
+                        reason,
+                      });
+                      writeAssistantTextMessage({
+                        writeChunk: (chunk) => writer.write(chunk),
+                        text: fallbackText,
+                        finishReason: "stop",
+                      });
+                      return true;
+                    } catch (error) {
+                      deps.logger?.warn("chat:free_model_fallback_failed", {
+                        chatId,
+                        lane: preparedExecution.lane,
+                        provider,
+                        model: modelId,
+                        fallbackModel: fallbackModelId,
+                        reason,
+                        error: toRuntimeChatErrorMessage(error),
+                      });
+                    }
+                  }
+
+                  return false;
+                };
+
                 if (!firstPassHadToolActivity) {
+                  if (!completedAssistantHasVisibleText && (completedAssistantHasReasoning || streamSawTerminalProblem)) {
+                    const usedFallback = await tryFreeModelFallback(
+                      streamSawTerminalProblem ? "stream_terminal_problem" : "reasoning_without_visible_text",
+                    );
+                    if (usedFallback) {
+                      return;
+                    }
+                  }
+                  if (bufferedTerminalProblemChunks.length > 0) {
+                    flushBufferedTerminalProblemChunks();
+                  }
                   return;
                 }
 
@@ -769,6 +982,9 @@ export const createRuntimeChatService = (
                   firstPassSawTextAfterToolActivity
                   || completedAssistantHasTextAfterToolActivity
                 ) {
+                  if (bufferedTerminalProblemChunks.length > 0) {
+                    flushBufferedTerminalProblemChunks();
+                  }
                   return;
                 }
 
@@ -776,6 +992,9 @@ export const createRuntimeChatService = (
                   ?? formatKnownToolOnlyCompletionText(observedToolMessage)
                   ?? formatKnownToolOnlyCompletionText(executedToolMessage);
                 if (deterministicToolOnlyText) {
+                  if (bufferedTerminalProblemChunks.length > 0) {
+                    flushBufferedTerminalProblemChunks();
+                  }
                   finalAssistantTextOverride = deterministicToolOnlyText;
                   deps.logger?.info("chat:tool_only_completion_resolved", {
                     chatId,
@@ -789,6 +1008,10 @@ export const createRuntimeChatService = (
                     finishReason: "stop",
                   });
                   return;
+                }
+
+                if (bufferedTerminalProblemChunks.length > 0) {
+                  flushBufferedTerminalProblemChunks();
                 }
 
                 deps.logger?.warn("chat:tool_only_completion", {

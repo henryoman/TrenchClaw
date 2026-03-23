@@ -100,7 +100,7 @@ describe("runtime path contract", () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(result.stdout.trim()).toBe(path.join(homeRoot, "trenchclaw-dev-runtime"));
+    expect(result.stdout.trim()).toBe(path.join(homeRoot, ".trenchclaw-dev-runtime"));
     expect(result.stdout.trim()).not.toBe(path.join(CORE_APP_ROOT, ".runtime-state"));
   });
 

@@ -69,11 +69,13 @@ describe("trigger order actions", () => {
       payer: "wallet-1",
       inputMint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
       outputMint: "So11111111111111111111111111111111111111112",
+      computeUnitPrice: "auto",
       params: {
         makingAmount: "2000000",
         takingAmount: "10000000",
       },
     });
+    expect(capturedCreateBody).not.toHaveProperty("wrapAndUnwrapSol");
     expect(result.data?.derivedTriggerPrice).toBe("0.005");
     expect(result.data?.triggerMode).toBe("exactPrice");
     expect(result.data?.signature).toBe("trigger-sig-1");
@@ -82,6 +84,66 @@ describe("trigger order actions", () => {
       user: "wallet-1",
       orderStatus: "active",
       order: "trigger-order-1",
+    });
+  });
+
+  test("sends wrapAndUnwrapSol when selling native SOL (input mint)", async () => {
+    let capturedCreateBody: Record<string, unknown> | null = null;
+
+    const result = await triggerOrderAction.execute(
+      createActionContext({
+        jupiterTrigger: {
+          async createOrder(request: Record<string, unknown>) {
+            capturedCreateBody = request;
+            return {
+              requestId: "trigger-req-sol",
+              transaction: "unsigned-trigger-tx",
+              order: "trigger-order-sol",
+              raw: {},
+            };
+          },
+          async executeOrder() {
+            return {
+              status: "Success",
+              signature: "trigger-sig-sol",
+              raw: { status: "Success", signature: "trigger-sig-sol" },
+            };
+          },
+        },
+        tokenAccounts: {
+          async getSolBalance() {
+            return 0;
+          },
+          async getTokenBalance() {
+            return 0;
+          },
+          async getDecimals(mintAddress: string) {
+            return mintAddress === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" ? 6 : 9;
+          },
+        },
+      }),
+      {
+        maker: "wallet-1",
+        payer: "wallet-1",
+        inputCoin: "SOL",
+        outputCoin: "USDC",
+        amount: "0.06",
+        amountUnit: "ui",
+        direction: "sellAbove",
+        trigger: {
+          kind: "exactPrice",
+          price: "94.21",
+        },
+        signedTransaction: "signed-trigger-tx",
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(capturedCreateBody).toMatchObject({
+      inputMint: "So11111111111111111111111111111111111111112",
+      outputMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      computeUnitPrice: "auto",
+      wrapAndUnwrapSol: true,
     });
   });
 

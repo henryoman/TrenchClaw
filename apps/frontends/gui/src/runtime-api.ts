@@ -6,6 +6,9 @@ import type {
   RuntimeApiBootstrapResponse,
   RuntimeApiSolPriceResponse,
   RuntimeApiTradingSettingsResponse,
+  RuntimeApiTrackerResponse,
+  RuntimeApiUpdateTrackerRequest,
+  RuntimeApiUpdateTrackerResponse,
   RuntimeApiUpdateTradingSettingsRequest,
   RuntimeApiUpdateTradingSettingsResponse,
   RuntimeApiWakeupSettingsResponse,
@@ -119,6 +122,13 @@ export const runtimeApi = {
     fetchJson<RuntimeApiTradingSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/trading-settings`)),
   updateTradingSettings: (input: RuntimeApiUpdateTradingSettingsRequest): Promise<RuntimeApiUpdateTradingSettingsResponse> =>
     fetchJson<RuntimeApiUpdateTradingSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/trading-settings`), {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }),
+  tracker: (): Promise<RuntimeApiTrackerResponse> => fetchJson<RuntimeApiTrackerResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/tracker`)),
+  updateTracker: (input: RuntimeApiUpdateTrackerRequest): Promise<RuntimeApiUpdateTrackerResponse> =>
+    fetchJson<RuntimeApiUpdateTrackerResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/tracker`), {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),

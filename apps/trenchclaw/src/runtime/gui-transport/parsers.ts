@@ -3,6 +3,7 @@ import type {
   RuntimeApiCreateInstanceRequest,
   RuntimeApiDeleteSecretRequest,
   RuntimeApiSignInInstanceRequest,
+  RuntimeApiUpdateTrackerRequest,
   RuntimeApiUpdateTradingSettingsRequest,
   RuntimeApiUpdateWakeupSettingsRequest,
   RuntimeApiUpdateVaultRequest,
@@ -13,6 +14,7 @@ import type { GatewayLane } from "../../ai/gateway";
 import { createChatMessageId } from "../../ai/runtime/types/ids";
 import { tradingPreferencesSchema } from "../load/trading-settings";
 import { isRecord } from "../object-utils";
+import { trackerRegistrySchema } from "../tracker-registry";
 import { wakeupSettingsSchema } from "../load/wakeup-settings";
 
 const toUserMessage = (text: string): UIMessage => ({
@@ -312,6 +314,26 @@ export const parseUpdateWakeupSettingsRequest = async (request: Request): Promis
 
     return {
       settings: parsed.data,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateTrackerRequest = async (request: Request): Promise<RuntimeApiUpdateTrackerRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.tracker)) {
+      return null;
+    }
+
+    const parsed = trackerRegistrySchema.safeParse(payload.tracker);
+    if (!parsed.success) {
+      return null;
+    }
+
+    return {
+      tracker: parsed.data,
     };
   } catch {
     return null;

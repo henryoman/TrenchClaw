@@ -9,6 +9,8 @@ import {
   resolveInstanceTradingSettingsPath,
   resolveInstanceCompatibilitySettingsPath,
 } from "./instance-paths";
+import { ensureInstanceNewsFeedRegistryExists } from "./news-feed-registry";
+import { ensureInstanceTrackerRegistryExists } from "./tracker-registry";
 import { writeInstanceTradingSettings } from "./load/trading-settings";
 import { resolveInstanceDirectoryPath } from "./instance-state";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
@@ -68,6 +70,16 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
   await ensureCompatibilitySettingsFileExists(compatibilitySettingsPath);
   if (!compatibilitySettingsExisted) {
     createdFiles.push(compatibilitySettingsPath);
+  }
+
+  const ensuredNewsFeedRegistry = await ensureInstanceNewsFeedRegistryExists(instanceId);
+  if (ensuredNewsFeedRegistry.initialized) {
+    createdFiles.push(ensuredNewsFeedRegistry.filePath);
+  }
+
+  const ensuredTrackerRegistry = await ensureInstanceTrackerRegistryExists(instanceId);
+  if (ensuredTrackerRegistry.initialized) {
+    createdFiles.push(ensuredTrackerRegistry.filePath);
   }
 
   return {
