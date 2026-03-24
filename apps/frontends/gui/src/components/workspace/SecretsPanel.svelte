@@ -46,15 +46,6 @@
   }
 
   const DEFAULT_MAINNET_RPC_ID = "solana-mainnet-beta";
-  const AI_OPTION_IDS = [
-    "openrouter-api-key",
-    "vercel-ai-gateway-api-key",
-  ];
-  const BLOCKCHAIN_OPTION_IDS = [
-    "solana-rpc-url",
-    "jupiter-api-key",
-    "dune-api-key",
-  ];
 
   let draftValues: Record<string, string> = {};
   let draftSources: Record<string, "custom" | "public"> = {};
@@ -123,11 +114,11 @@
     return "";
   };
 
-  const visibleOptionsFor = (optionIds: string[]): GuiSecretOptionView[] =>
-    optionIds.map((optionId) => optionFor(optionId)).filter((option): option is GuiSecretOptionView => Boolean(option));
+  const optionsForCategory = (category: GuiSecretCategory): GuiSecretOptionView[] =>
+    options.filter((option) => option.category === category);
 
-  const buildFields = (category: GuiSecretCategory, optionIds: string[]): VisibleSecretField[] =>
-    visibleOptionsFor(optionIds).map((option) => {
+  const buildFields = (category: GuiSecretCategory): VisibleSecretField[] =>
+    optionsForCategory(category).map((option) => {
       const source = option.supportsPublicRpc ? (draftSources[option.id] ?? initialSourceFor(option)) : "custom";
       const publicRpcId = option.supportsPublicRpc
         ? (draftPublicRpcIds[option.id] ?? initialPublicRpcIdFor(option))
@@ -253,7 +244,7 @@
   $: {
     const signature = createHydrationSignature();
     if (signature !== hydrationSignature) {
-      const visibleOptions = [...visibleOptionsFor(AI_OPTION_IDS), ...visibleOptionsFor(BLOCKCHAIN_OPTION_IDS)];
+      const visibleOptions = [...options];
       draftValues = Object.fromEntries(
         visibleOptions.map((option) => [
           option.id,
@@ -280,8 +271,8 @@
     }
   }
 
-  $: aiFields = buildFields("ai", AI_OPTION_IDS);
-  $: blockchainFields = buildFields("blockchain", BLOCKCHAIN_OPTION_IDS);
+  $: aiFields = buildFields("ai");
+  $: blockchainFields = buildFields("blockchain");
   $: statusErrorText = error.trim();
   $: llmStatusText = llmCheckMessage.trim();
 </script>

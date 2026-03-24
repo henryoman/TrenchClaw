@@ -222,7 +222,7 @@ Helius-specific / closely related action entry points:
 - RPC provider pool: `src/solana/lib/adapters/rpc-pool.ts`
 - Active instance compatibility settings: `.runtime-state/instances/01/settings/settings.json`
 - Active instance trading settings: `.runtime-state/instances/01/settings/trading.json`
-- Secret refs: `.runtime-state/instances/01/secrets/vault.json` with tracked defaults in `src/ai/config/vault.template.json`
+- Secret refs: `.runtime-state/instances/01/secrets/vault.json` with tracked seed defaults in `.runtime/instances/00/secrets/vault.json`
 
 ## Required Secret Keys / Refs
 

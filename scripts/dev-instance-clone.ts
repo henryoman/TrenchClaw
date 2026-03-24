@@ -19,7 +19,7 @@ const printHelp = (): void => {
       "Options:",
       "  --from-root <path>        Source runtime root",
       "  --to-root <path>          Target runtime root",
-      "  --from-instance <id>      Source two-digit instance id (default: 01)",
+      "  --from-instance <id>      Source two-digit instance id (default: 00)",
       "  --to-instance <id>        Target two-digit instance id (default: source id)",
       `  --parts <list>            Comma-separated parts: ${DEV_INSTANCE_CLONE_PARTS.join(", ")}`,
       "  --no-set-active           Do not rewrite target active-instance.json",

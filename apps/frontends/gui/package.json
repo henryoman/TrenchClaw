@@ -14,21 +14,21 @@
     "lint:fix": "oxlint --fix ."
   },
   "dependencies": {
-    "@ai-sdk/svelte": "^4.0.134",
+    "@ai-sdk/svelte": "^4.0.137",
     "@openrouter/ai-sdk-provider": "^2.3.3",
     "@trenchclaw/types": "workspace:*",
-    "ai": "^6.0.134",
+    "ai": "^6.0.137",
     "marked": "^17.0.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "@types/json-schema": "^7.0.15",
-    "@typescript-eslint/types": "^8.57.1",
+    "@typescript-eslint/types": "^8.57.2",
     "oxlint": "^1.56.0",
-    "svelte": "^5.54.1",
+    "svelte": "^5.55.0",
     "svelte-check": "^4.4.5",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
 }

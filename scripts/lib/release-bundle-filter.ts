@@ -66,6 +66,14 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
   ) {
     return `runtime state file should not be bundled: ${normalized}`;
   }
+  if (
+    normalized.includes("/.runtime/instances/")
+    || normalized.startsWith(".runtime/instances/")
+    || normalized.includes("/runtime/instances/")
+    || normalized.startsWith("runtime/instances/")
+  ) {
+    return `tracked runtime seed instance should not be bundled as mutable state: ${normalized}`;
+  }
   if (normalized === "core/src/ai/brain/protected/wallet-library.jsonl") {
     return `blocked file present: ${normalized}`;
   }

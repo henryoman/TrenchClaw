@@ -27,22 +27,22 @@ describe("release-bundle-filter", () => {
     expect(
       hasBlockedBundleContent(
         "core/src/ai/brain/knowledge/example.md",
-        "debug path: /Users/henryoman/project",
-        { blockedNeedles: ["/Users/henryoman"] },
+        "debug path: /Users/example/project",
+        { blockedNeedles: ["/Users/example"] },
       ),
     ).toContain("host-specific absolute path");
     expect(
       hasBlockedBundleContent(
         "core/src/ai/brain/knowledge/example.md",
         "runtime root: /home/tester/app",
-        { blockedNeedles: ["/Users/henryoman"] },
+        { blockedNeedles: ["/Users/example"] },
       ),
     ).toBeNull();
     expect(
       hasBlockedBundleContent(
         "core/src/ai/brain/knowledge/example.md",
         "safe relative path: .runtime-state/instances/01/settings/ai.json",
-        { blockedNeedles: ["/Users/henryoman"] },
+        { blockedNeedles: ["/Users/example"] },
       ),
     ).toBeNull();
   });

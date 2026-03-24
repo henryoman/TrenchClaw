@@ -41,7 +41,7 @@ TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply
 
 ## Release Notes Coupling
 
-Manual release notes live in `releases/<version>.md` when you choose drafted notes for a manual release.
+Release notes live in tracked `releases/<version>.md` files, and the release workflow rewrites the file for the version it is publishing.
 Tag output from version commands is returned as `nextTag` for release workflow use.
 
 ## Release Gate
@@ -49,7 +49,7 @@ Tag output from version commands is returned as `nextTag` for release workflow u
 The release workflow uses `workflow_dispatch` with explicit release modes.
 
 - `manual` publishes the current committed version already present in `package.json`
-- `manual` can use auto-generated GitHub notes or `releases/<version>.md`
+- the workflow always writes `releases/<version>.md` before tagging and publishing
 - `patch` is the default day-to-day release path
 - `minor` remains available when you intentionally want a wider stable step
 - existing tags are rejected before build/publish starts

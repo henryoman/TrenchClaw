@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file is for coding agents working in `/Volumes/T9/cursor/TrenchClaw`.
+This file is for coding agents working in this repository.
 
 ## Repository Shape
 
@@ -33,7 +33,7 @@ This file is for coding agents working in `/Volumes/T9/cursor/TrenchClaw`.
 - Launch release-style app: `bun run launch:release`
 - Start dev bootstrap flow: `bun run dev`
 - Initialize external dev runtime: `bun run dev:runtime:init`
-- Clone instance state into dev runtime: `bun run dev:instance:clone -- --from-root <src> --to-root ~/.trenchclaw-dev-runtime --from-instance 01 --to-instance 01 --parts wallets,db,settings`
+- Clone instance state into dev runtime: `bun run dev:instance:clone -- --from-root <src> --to-root ~/.trenchclaw-dev-runtime --from-instance 00 --to-instance 00 --parts wallets,db,settings`
 - Clean build artifacts: `bun run cleanup:build`
 
 ## Core Package Commands

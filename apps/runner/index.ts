@@ -957,12 +957,6 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE =
     process.env.TRENCHCLAW_KNOWLEDGE_MANIFEST_FILE ||
     process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE;
-  process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE =
-    process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE ||
-    path.join(LAYOUT.coreAssetRoot, "src/ai/brain/config/ai.template.json");
-  process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
-    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE ||
-    path.join(LAYOUT.coreAssetRoot, "src/ai/brain/config/vault.template.json");
 };
 
 const logOptionalToolDiagnostics = (): void => {

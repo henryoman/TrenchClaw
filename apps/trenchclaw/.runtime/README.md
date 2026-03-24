@@ -1,6 +1,6 @@
 # Runtime Contract
 
-This directory is the repo-tracked runtime contract and seed template.
+This directory is the repo-tracked runtime contract and seed instance.
 
 Contract map:
 
@@ -10,32 +10,30 @@ Contract map:
 Root model:
 
 - `.runtime/` is tracked repo content. It is not live mutable runtime state.
-- `.runtime/instances/01/` is the tracked seed instance template used by developer-runtime initialization.
+- `.runtime/instances/00/` is the tracked seed instance copied into new runtime instances.
 - `.runtime-state/instances/<id>/` is the live mutable runtime state when using the repo-local runtime root.
 - An external runtime root such as `~/.trenchclaw-dev-runtime` uses the same `instances/<id>/...` layout, just outside the repo.
-- Generated prompt-support artifacts are instance-scoped under `instances/<id>/cache/generated/`.
 - Long-form research notes belong under `instances/<id>/workspace/notes/`.
 - Raw downloaded market-data artifacts belong under `instances/<id>/workspace/output/`.
 
 Current shipping behavior:
 
-- Local dev bootstrap reads tracked seed/template content from `.runtime/`.
-- Runtime boot reads and writes mutable instance state under `.runtime-state/instances/<id>/...` or the external root selected by `TRENCHCLAW_RUNTIME_STATE_ROOT`, including generated snapshots under `cache/generated/`.
-- Runtime workspace downloads and operator-created artifacts should stay under the instance `workspace/` tree, not under `cache/generated/`.
+- Local dev bootstrap copies tracked seed content from `.runtime/`.
+- Runtime boot reads and writes mutable instance state under `.runtime-state/instances/<id>/...` or the external root selected by `TRENCHCLAW_RUNTIME_STATE_ROOT`.
+- User-controlled tab state should live in instance-local JSON files such as `settings/*.json`, `secrets/vault.json`, and `workspace/configs/*.json`.
 - Packaged releases currently do not ship `.runtime/` as the live runtime root. Mutable runtime state is created on first run under `~/.trenchclaw` by default or under `TRENCHCLAW_RUNTIME_STATE_ROOT`.
 
 Tracked seed contents:
 
-- Commit the seed/template files that define the shared contract for new runtimes.
-- The tracked seed instance is `instances/01/`.
-- Empty directory structure under the seed is materialized into developer runtimes by `bun run dev:runtime:init`; those folders are not meant to live as mutable repo state.
-- Update shared defaults by editing the seed files in `.runtime/instances/01/`.
+- Commit the seed files that define the shared contract for new runtimes.
+- The tracked seed instance is `instances/00/`.
+- The tracked seed now stays intentionally minimal. Runtime-only folders are created lazily when features need them.
+- Update shared defaults by editing the seed files in `.runtime/instances/00/`.
 Rules:
 
 - `.runtime/` is documentation and contract only.
 - Runtime code must never write into `.runtime/`.
 - Mutable runtime state lives under `.runtime-state/instances/<id>/`.
-- Generated prompt-support artifacts live under `.runtime-state/instances/<id>/cache/generated/`.
 - Raw JSON/API download artifacts belong under `.runtime-state/instances/<id>/workspace/output/`.
 - Long-form research writeups belong under `.runtime-state/instances/<id>/workspace/notes/`.
 - GeckoTerminal OHLC downloads belong under `.runtime-state/instances/<id>/workspace/output/research/market-data/geckoterminal/ohlcv/`.
@@ -46,9 +44,9 @@ Rules:
 Developer workflow notes:
 
 - `bun run dev` defaults to a persistent external runtime root at `~/.trenchclaw-dev-runtime`.
-- Generated prompt-support artifacts default to the active instance's `cache/generated/` directory inside that runtime root.
 - That external runtime root is for local development and tester state, not for committed repo data.
-- Personal vaults, keypairs, databases, logs, caches, and generated artifacts must stay outside the repo.
+- Do not point `TRENCHCLAW_RUNTIME_STATE_ROOT` at your repo root, home directory, or a broad shared folder. Use a dedicated app-specific directory only.
+- Personal vaults, keypairs, databases, logs, caches, and user state must stay outside the repo.
 - Tests should use temporary runtime roots, not the persistent developer runtime.
 - Agents and contributors should treat `.runtime/` as the source-of-truth contract and the external runtime root as mutable local state.
 
@@ -57,42 +55,42 @@ Tracked instance layout:
 ```text
 .runtime/
   instances/
-    active-instance.json
-    01/
+    00/
       WAKEUP.md
       instance.json
       settings/
         ai.json
         settings.json
         trading.json
+        wakeup.json
       secrets/
         vault.json
-      data/
-      logs/
-        live/
-        sessions/
-        summaries/
-        system/
-      cache/
-        memory/
-        generated/
-      keypairs/
       workspace/
-        strategies/
         configs/
-        typescript/
-        notes/
-        scratch/
-        output/
-        routines/
-      shell-home/
-      tmp/
-      tool-bin/
+        added-knowledge/
 ```
+
+Runtime-created on demand:
+
+- `instances/active-instance.json`
+- `instances/<id>/cache/`
+- `instances/<id>/data/`
+- `instances/<id>/keypairs/`
+- `instances/<id>/logs/`
+- `instances/<id>/shell-home/`
+- `instances/<id>/tmp/`
+- `instances/<id>/tool-bin/`
+- `instances/<id>/workspace/notes/`
+- `instances/<id>/workspace/news/`
+- `instances/<id>/workspace/output/`
+- `instances/<id>/workspace/routines/`
+- `instances/<id>/workspace/scratch/`
+- `instances/<id>/workspace/strategies/`
+- `instances/<id>/workspace/typescript/`
 
 Important distinction:
 
-- `.runtime/instances/01/` is a tracked seed instance, not an active runtime instance.
+- `.runtime/instances/00/` is a tracked seed instance, not an active runtime instance.
 - The active runtime instance lives under `.runtime-state/instances/<id>/` or the configured external runtime root.
 - Example research path: `instances/<id>/workspace/output/research/market-data/geckoterminal/ohlcv/`.
 
@@ -101,8 +99,8 @@ Important distinction:
 Working CLI form:
 
 ```bash
-TRENCHCLAW_RUNTIME_STATE_ROOT="/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/.runtime-state" \
-TRENCHCLAW_ACTIVE_INSTANCE_ID="01" \
+TRENCHCLAW_RUNTIME_STATE_ROOT="/absolute/path/to/trenchclaw-runtime" \
+TRENCHCLAW_ACTIVE_INSTANCE_ID="00" \
 bun run "src/solana/actions/execute.ts" downloadGeckoTerminalOhlcv \
   --input-json '{"poolAddress":"Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE","timeframe":"minute","aggregate":5,"limit":5}'
 ```

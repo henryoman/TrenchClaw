@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -146,7 +146,6 @@ describe("instance discovery", () => {
     expect(result.created.instance.localInstanceId).toBe("00");
     expect(await Bun.file(path.join(runtimeRoot, "instances/00/settings/trading.json")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, "instances/00/secrets/vault.json")).exists()).toBe(true);
-    expect((await stat(path.join(runtimeRoot, "instances/00/keypairs"))).isDirectory()).toBe(true);
   });
 
   test("lists and signs into a persisted instance profile", async () => {
@@ -189,7 +188,6 @@ describe("instance discovery", () => {
     expect(result.activeInstanceId).toBe("01");
     expect(await Bun.file(path.join(runtimeRoot, "instances/01/settings/trading.json")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, "instances/01/secrets/vault.json")).exists()).toBe(true);
-    expect((await stat(path.join(runtimeRoot, "instances/01/keypairs"))).isDirectory()).toBe(true);
   });
 
   test("reads vault-backed LLM config from the active instance vault without a shared fallback", async () => {

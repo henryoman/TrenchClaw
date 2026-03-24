@@ -11,7 +11,7 @@ import {
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const CORE_APP_ROOT = path.join(REPO_ROOT, "apps", "trenchclaw");
-const RUNTIME_TEMPLATE_ROOT = path.join(CORE_APP_ROOT, ".runtime");
+const RUNTIME_SEED_ROOT = path.join(CORE_APP_ROOT, ".runtime");
 const REPO_LOCAL_RUNTIME_ROOT = path.join(CORE_APP_ROOT, ".runtime-state");
 const TEMPLATE_INSTANCE_ID = "00";
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
@@ -222,8 +222,8 @@ const writeRuntimeReadme = async (runtimeRoot: string, generatedRoot: string, in
 const shouldWriteRuntimeReadme = (runtimeRoot: string): boolean =>
   path.resolve(runtimeRoot) !== path.resolve(REPO_LOCAL_RUNTIME_ROOT);
 
-const templateInstancePath = (...segments: string[]): string =>
-  path.join(RUNTIME_TEMPLATE_ROOT, "instances", TEMPLATE_INSTANCE_ID, ...segments);
+const seedInstancePath = (...segments: string[]): string =>
+  path.join(RUNTIME_SEED_ROOT, "instances", TEMPLATE_INSTANCE_ID, ...segments);
 
 const runtimeInstancePath = (runtimeRoot: string, instanceId: string, ...segments: string[]): string =>
   path.join(runtimeRoot, "instances", instanceId, ...segments);
@@ -370,14 +370,8 @@ const runtimeRootHasMaterialStateSync = (runtimeRoot: string): boolean => {
 
 const resolvePreferredDeveloperRuntimeRoot = (env: NodeJS.ProcessEnv = process.env): string => {
   const defaultRoot = resolveDefaultDeveloperRuntimeRoot(env);
-  const legacyRoot = resolveLegacyDeveloperRuntimeRoot(env);
-
   if (runtimeRootHasMaterialStateSync(defaultRoot)) {
     return defaultRoot;
-  }
-
-  if (runtimeRootHasMaterialStateSync(legacyRoot)) {
-    return legacyRoot;
   }
 
   return defaultRoot;
@@ -425,7 +419,7 @@ const migrateLegacyInstanceProfileName = async (
 };
 
 const syncTemplateInstanceMissingEntries = async (runtimeRoot: string, instanceId: string): Promise<void> => {
-  const sourceRoot = templateInstancePath();
+  const sourceRoot = seedInstancePath();
   const destinationRoot = runtimeInstancePath(runtimeRoot, instanceId);
 
   const walk = async (sourcePath: string, destinationPath: string): Promise<void> => {
@@ -472,7 +466,7 @@ const materializeDeveloperInstanceLayout = async (runtimeRoot: string, instanceI
       continue;
     }
 
-    const templateSourcePath = templateInstancePath(relativePath);
+    const templateSourcePath = seedInstancePath(relativePath);
     if (await copyFileIfMissing(templateSourcePath, destinationPath)) {
       continue;
     }
@@ -493,7 +487,7 @@ const ensureDeveloperInstanceLayout = async (
   await syncTemplateInstanceMissingEntries(runtimeRoot, instanceId);
   await materializeDeveloperInstanceLayout(runtimeRoot, instanceId);
 
-  const templateInstance = JSON.parse(await readFile(templateInstancePath("instance.json"), "utf8")) as {
+  const templateInstance = JSON.parse(await readFile(seedInstancePath("instance.json"), "utf8")) as {
     instance?: { name?: string; localInstanceId?: string };
     runtime?: Record<string, unknown>;
   };

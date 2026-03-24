@@ -12,7 +12,21 @@
     },
     {
       "path": ".runtime-state/instances",
-      "model": "write"
+      "model": "none",
+      "user": "write",
+      "system": "write"
+    },
+    {
+      "path": ".runtime-state/instances/active-instance.json",
+      "model": "read",
+      "user": "write",
+      "system": "write"
+    },
+    {
+      "path": ".runtime-state/instances/<active-instance>",
+      "model": "read",
+      "user": "write",
+      "system": "write"
     }
   ]
 }

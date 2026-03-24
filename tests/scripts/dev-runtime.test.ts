@@ -52,7 +52,7 @@ describe("developer runtime workflow", () => {
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "WAKEUP.md")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "settings", "ai.json")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "secrets", "vault.json")).exists()).toBe(true);
-    expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "cache", "generated", ".gitkeep")).exists()).toBe(true);
+    expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "cache", "generated", ".gitkeep")).exists()).toBe(false);
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "workspace", "configs", ".gitkeep")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, ".gitignore")).text()).toContain("/instances/*/secrets/vault.json");
     expect(await Bun.file(path.join(runtimeRoot, "README.md")).text()).toContain(runtimeRoot);
@@ -125,7 +125,7 @@ describe("developer runtime workflow", () => {
       instance: { name: string; localInstanceId: string };
     };
     expect(instanceJson.instance).toMatchObject({
-      name: "default",
+      name: "instance-01",
       localInstanceId: "01",
     });
   });
@@ -150,6 +150,9 @@ describe("developer runtime workflow", () => {
 
     await writeFile(path.join(sourceRoot, "instances", "01", "settings", "ai.json"), '{"model":"dev-model"}\n', "utf8");
     await writeFile(path.join(sourceRoot, "instances", "01", "secrets", "vault.json"), '{"llm":{"openrouter":{"api-key":"secret"}}}\n', "utf8");
+    await mkdir(path.join(sourceRoot, "instances", "01", "keypairs"), { recursive: true });
+    await mkdir(path.join(sourceRoot, "instances", "01", "data"), { recursive: true });
+    await mkdir(path.join(sourceRoot, "instances", "01", "workspace", "notes"), { recursive: true });
     await writeFile(path.join(sourceRoot, "instances", "01", "keypairs", "wallet-library.jsonl"), '{"walletId":"w1"}\n', "utf8");
     await writeFile(path.join(sourceRoot, "instances", "01", "data", "runtime.db"), "db-bytes\n", "utf8");
     await writeFile(path.join(sourceRoot, "instances", "01", "workspace", "notes", "memo.txt"), "workspace-note\n", "utf8");
@@ -181,7 +184,7 @@ describe("developer runtime workflow", () => {
     expect(resolved).toEqual(defaults);
   });
 
-  test("developer bootstrap prefers the populated external runtime root", async () => {
+  test("developer bootstrap keeps the hidden external runtime root even when a legacy visible root exists", async () => {
     const homeRoot = await createTempRoot("trenchclaw-home-");
     const hiddenRuntimeRoot = path.join(homeRoot, ".trenchclaw-dev-runtime");
     const legacyRuntimeRoot = path.join(homeRoot, "trenchclaw-dev-runtime");
@@ -230,9 +233,9 @@ describe("developer runtime workflow", () => {
       },
     });
 
-    expect(resolved.runtimeRoot).toBe(legacyRuntimeRoot);
-    expect(resolved.runtimeRoot).not.toBe(hiddenRuntimeRoot);
-    expect(resolved.generatedRoot).toBe(path.join(legacyRuntimeRoot, "instances", "01", "cache", "generated"));
+    expect(resolved.runtimeRoot).toBe(hiddenRuntimeRoot);
+    expect(resolved.runtimeRoot).not.toBe(legacyRuntimeRoot);
+    expect(resolved.generatedRoot).toBe(path.join(hiddenRuntimeRoot, "instances", "00", "cache", "generated"));
   });
 
   test("initialization repairs stale wallet library absolute paths into the current instance root", async () => {
@@ -273,8 +276,8 @@ describe("developer runtime workflow", () => {
         walletGroup: "practice-wallets",
         walletName: "practice001",
         address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-        keypairFilePath: "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/brain/protected/instance/i-01/keypairs/practice-wallets/practice001-0001.json",
-        walletLabelFilePath: "/Volumes/T9/cursor/TrenchClaw/apps/trenchclaw/src/ai/brain/protected/instance/i-01/keypairs/practice-wallets/practice001-0001.label.json",
+        keypairFilePath: "/tmp/trenchclaw-legacy/instance/i-01/keypairs/practice-wallets/practice001-0001.json",
+        walletLabelFilePath: "/tmp/trenchclaw-legacy/instance/i-01/keypairs/practice-wallets/practice001-0001.label.json",
         createdAt: "2026-03-11T04:14:44.060Z",
         updatedAt: "2026-03-11T04:14:44.060Z",
       })}\n`,

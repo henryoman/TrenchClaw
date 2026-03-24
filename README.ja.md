@@ -89,8 +89,8 @@ bun run release:build -- --version v0.0.0 --run-checks
 # リリースワークフローが公開するのと同じコミットログをプレビュー
 bun run release:notes -- --version v0.0.0 --output dist/release/preview.md
 
-# 任意: 手動リリースで長い下書き（releases/<version>.md）
-# ワークフローはその後に全コミットの付録を自動で付けます
+# 追跡されるリリースノートを直接更新
+bun run release:notes -- --version v0.0.0 --output releases/0.0.0.md
 ```
 
 リリース公開は GitHub Actions の `Release` ワークフロー（`workflow_dispatch`）から行います。
@@ -98,8 +98,7 @@ bun run release:notes -- --version v0.0.0 --output dist/release/preview.md
 - `release_mode=manual` は現在コミット済みのバージョンを公開します
 - `release_mode=patch` は次のパッチバージョンへ自動で上げます
 - `release_mode=minor` は次のマイナーバージョンへ自動で上げます
-- `release_notes_mode=auto`（manual のみ）は **GitHub の短い自動ノートではなく**、リポジトリ生成の全文ノート（グループ化サマリー＋各コミット全文）を公開します
-- `release_notes_mode=draft`（manual のみ）は `releases/<version>.md` を先に出し、その後に同じ自動生成コミットログを付けます
+- ワークフローは毎回 `releases/<version>.md` を自動生成または更新し、その同じファイルを GitHub Release 本文として公開します
 
 ```mermaid
 flowchart LR

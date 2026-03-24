@@ -5,16 +5,16 @@ import {
   assertRuntimeSystemWritePath,
   WriteScopeViolationError,
 } from "../../../apps/trenchclaw/src/runtime/security/write-scope";
-import { coreAppPath, generatedStatePath, runtimeStatePath } from "../../helpers/core-paths";
+import { coreAppPath, runtimeStatePath } from "../../helpers/core-paths";
 
 describe("write-scope policy", () => {
-  test("allows runtime system writes under generated root", () => {
-    const allowedPath = generatedStatePath("workspace-context.md");
+  test("allows runtime system writes under instance root", () => {
+    const allowedPath = runtimeStatePath("instances/01/logs/system/runtime.log");
     expect(() => assertRuntimeSystemWritePath(allowedPath, "append system log entry")).not.toThrow();
   });
 
   test("blocks runtime system writes outside generated or instance roots", () => {
-    const blockedPath = coreAppPath("src/ai/config/system.md");
+    const blockedPath = coreAppPath("src/ai/brain/config/prompts/system.md");
     expect(() => assertRuntimeSystemWritePath(blockedPath, "write notes file")).toThrow(WriteScopeViolationError);
   });
 

@@ -112,14 +112,14 @@ bun run dev
 bun run dev:instance:clone -- \
   --from-root /path/to/source-runtime \
   --to-root ~/.trenchclaw-dev-runtime \
-  --from-instance 01 \
-  --to-instance 01 \
+  --from-instance 00 \
+  --to-instance 00 \
   --parts wallets,db,settings
 ```
 
 Useful overrides:
 
-- `bun run dev -- --runtime-root /path/to/runtime --generated-root /path/to/runtime/instances/01/cache/generated`
+- `bun run dev -- --runtime-root /path/to/runtime --generated-root /path/to/runtime/instances/00/cache/generated`
 - `TRENCHCLAW_RUNTIME_STATE_ROOT=/path/to/runtime`
 
 The external dev runtime writes a managed `.gitignore` so secrets, keypairs, databases, logs, caches, and other personal testing state stay out of git by default.

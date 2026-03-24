@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, mkdir, readdir, rm, stat, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -272,23 +272,21 @@ describe("runtime path contract", () => {
 
     const initializedRuntimePaths = [
       path.join(runtimeRoot, "instances", "active-instance.json"),
+      path.join(runtimeRoot, "instances", "01", "WAKEUP.md"),
+      path.join(runtimeRoot, "instances", "01", "instance.json"),
+      path.join(runtimeRoot, "instances", "01", "settings", "ai.json"),
+      path.join(runtimeRoot, "instances", "01", "settings", "settings.json"),
+      path.join(runtimeRoot, "instances", "01", "settings", "trading.json"),
+      path.join(runtimeRoot, "instances", "01", "settings", "wakeup.json"),
       path.join(runtimeRoot, "instances", "01", "secrets", "vault.json"),
-      path.join(runtimeRoot, "instances", "01", "logs", "live"),
-      path.join(runtimeRoot, "instances", "01", "logs", "sessions"),
-      path.join(runtimeRoot, "instances", "01", "logs", "summaries"),
-      path.join(runtimeRoot, "instances", "01", "logs", "system"),
-      path.join(runtimeRoot, "instances", "01", "cache", "memory"),
-      path.join(runtimeRoot, "instances", "01", "workspace", "routines"),
-      path.join(runtimeRoot, "instances", "01", "shell-home"),
-      path.join(runtimeRoot, "instances", "01", "tmp"),
-      path.join(runtimeRoot, "instances", "01", "tool-bin"),
+      path.join(runtimeRoot, "instances", "01", "workspace", "configs"),
+      path.join(runtimeRoot, "instances", "01", "workspace", "configs", "tracker.json"),
+      path.join(runtimeRoot, "instances", "01", "workspace", "configs", "news-feeds.json"),
+      path.join(runtimeRoot, "instances", "01", "workspace", "added-knowledge"),
     ];
 
     for (const targetPath of initializedRuntimePaths) {
       await expect(stat(targetPath)).resolves.toBeDefined();
     }
-
-    const logsChildren = (await readdir(path.join(runtimeRoot, "instances", "01", "logs"))).toSorted();
-    expect(logsChildren).toEqual(["live", "sessions", "summaries", "system"]);
   });
 });

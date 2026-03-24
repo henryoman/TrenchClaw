@@ -12,14 +12,6 @@ on:
           - manual
           - patch
           - minor
-      release_notes_mode:
-        description: "Manual only: auto = repo-generated full commit log; draft = releases/<version>.md plus auto commit log"
-        required: true
-        type: choice
-        default: auto
-        options:
-          - auto
-          - draft
 
 permissions:
   contents: write
@@ -35,7 +27,6 @@ jobs:
       release_tag: ${{ steps.release_plan.outputs.release_tag }}
       prerelease: ${{ steps.release_plan.outputs.prerelease }}
       package_version: ${{ steps.release_plan.outputs.package_version }}
-      release_notes_mode: ${{ steps.release_plan.outputs.release_notes_mode }}
       release_notes_path: ${{ steps.release_plan.outputs.release_notes_path }}
     steps:
       - name: Checkout
@@ -55,30 +46,11 @@ jobs:
         id: release_plan
         run: |
           RELEASE_MODE="${{ github.event.inputs.release_mode }}"
-          RELEASE_NOTES_MODE="${{ github.event.inputs.release_notes_mode }}"
           case "$RELEASE_MODE" in
             manual)
               bun run release:validate -- --github-output "$GITHUB_OUTPUT"
               PACKAGE_VERSION="$(bun --print "JSON.parse(await Bun.file('package.json').text()).version")"
-              case "$RELEASE_NOTES_MODE" in
-                draft)
-                  BODY_PATH="releases/${PACKAGE_VERSION}.md"
-                  if [ ! -f "$BODY_PATH" ]; then
-                    echo "Missing drafted release notes: $BODY_PATH" >&2
-                    exit 1
-                  fi
-                  echo "release_notes_mode=draft" >> "$GITHUB_OUTPUT"
-                  echo "release_notes_path=$BODY_PATH" >> "$GITHUB_OUTPUT"
-                  ;;
-                auto)
-                  echo "release_notes_mode=auto" >> "$GITHUB_OUTPUT"
-                  echo "release_notes_path=" >> "$GITHUB_OUTPUT"
-                  ;;
-                *)
-                  echo "Unsupported manual release notes mode: $RELEASE_NOTES_MODE" >&2
-                  exit 1
-                  ;;
-              esac
+              echo "release_notes_path=releases/${PACKAGE_VERSION}.md" >> "$GITHUB_OUTPUT"
               ;;
             patch|minor)
               bun run version:next -- --strategy "$RELEASE_MODE" --github-output "$GITHUB_OUTPUT"
@@ -90,8 +62,7 @@ jobs:
               echo "release_tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
               echo "package_version=$PACKAGE_VERSION" >> "$GITHUB_OUTPUT"
               echo "prerelease=false" >> "$GITHUB_OUTPUT"
-              echo "release_notes_mode=auto" >> "$GITHUB_OUTPUT"
-              echo "release_notes_path=" >> "$GITHUB_OUTPUT"
+              echo "release_notes_path=releases/${PACKAGE_VERSION}.md" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unsupported release mode: $RELEASE_MODE" >&2
@@ -114,12 +85,23 @@ jobs:
         run: |
           TRENCHCLAW_ALLOW_VERSION_WRITE=1 bun run version:apply -- --strategy "${{ github.event.inputs.release_mode }}"
 
-      - name: Commit auto version bump
-        if: ${{ github.event.inputs.release_mode == 'patch' || github.event.inputs.release_mode == 'minor' }}
+      - name: Write repo release notes file
+        env:
+          RELEASE_NOTES_PATH: ${{ steps.release_plan.outputs.release_notes_path }}
+          RELEASE_TAG: ${{ steps.release_plan.outputs.release_tag }}
+        run: |
+          mkdir -p "$(dirname "$RELEASE_NOTES_PATH")"
+          bun run release:notes -- --version "$RELEASE_TAG" --output "$RELEASE_NOTES_PATH"
+
+      - name: Commit release metadata
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add package.json
+          git add package.json "${{ steps.release_plan.outputs.release_notes_path }}"
+          if git diff --cached --quiet; then
+            echo "No release metadata changes to commit."
+            exit 0
+          fi
           git commit -m "chore(release): ${{ steps.release_plan.outputs.release_tag }}"
           git push origin "HEAD:${{ github.ref_name }}"
 
@@ -211,42 +193,12 @@ jobs:
           merge-multiple: true
           path: dist/release
 
-      - name: Write GitHub release body (full commit log)
-        if: ${{ needs.prepare_release.outputs.release_notes_mode == 'auto' }}
-        run: |
-          mkdir -p dist/release
-          bun run release:notes -- \
-            --version "${{ needs.prepare_release.outputs.release_tag }}" \
-            --output dist/release/github-release-body.md
-
-      - name: Write GitHub release body (draft markdown + full commit log)
-        if: ${{ needs.prepare_release.outputs.release_notes_mode == 'draft' }}
-        env:
-          DRAFT_PATH: ${{ needs.prepare_release.outputs.release_notes_path }}
-        run: |
-          mkdir -p dist/release
-          bun run release:notes -- \
-            --version "${{ needs.prepare_release.outputs.release_tag }}" \
-            --template changelog-only \
-            --output dist/release/_release-changelog.md
-          {
-            cat "$DRAFT_PATH"
-            echo ""
-            echo "---"
-            echo ""
-            echo "## Auto-generated commit log"
-            echo ""
-            echo "_Grouped summary uses conventional-commit-style prefixes where present; the appendix lists every commit with full message bodies._"
-            echo ""
-            cat dist/release/_release-changelog.md
-          } > dist/release/github-release-body.md
-
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.prepare_release.outputs.release_tag }}
           name: ${{ needs.prepare_release.outputs.release_tag }}
-          body_path: dist/release/github-release-body.md
+          body_path: ${{ needs.prepare_release.outputs.release_notes_path }}
           prerelease: ${{ needs.prepare_release.outputs.prerelease }}
           files: |
             dist/release/*.tar.gz

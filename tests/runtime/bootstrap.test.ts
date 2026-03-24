@@ -470,7 +470,7 @@ wallet:
     }
   });
 
-  test("creates a blockchain alert and persists it", async () => {
+  test("blocks blockchain alert persistence outside user-controlled frontend files", async () => {
     await applyDefaultEnv();
 
     const runtime = await bootstrapRuntime();
@@ -498,26 +498,9 @@ wallet:
         },
       );
 
-      expect(result.results[0]?.ok).toBe(true);
-      expect(result.results[0]?.data).toMatchObject({
-        storageFilePath: alertsFile,
-        alert: {
-          assetSymbol: "SOL",
-          condition: {
-            type: "priceAbove",
-            threshold: 250,
-          },
-          notification: {
-            channels: ["log"],
-            cooldownMinutes: 5,
-          },
-          status: "active",
-        },
-      });
-
-      const persisted = JSON.parse(await Bun.file(alertsFile).text()) as unknown[];
-      expect(Array.isArray(persisted)).toBe(true);
-      expect(persisted).toHaveLength(1);
+      expect(result.results[0]?.ok).toBe(false);
+      expect(result.results[0]?.error ?? "").toContain("cannot write");
+      expect(await Bun.file(alertsFile).exists()).toBe(false);
     } finally {
       await runtime.stop();
       await Bun.$`rm -f ${alertsFile}`.quiet();
@@ -570,7 +553,7 @@ wallet:
     }
   });
 
-  test("recreates missing generated runtime prompt artifacts on bootstrap", async () => {
+  test("does not recreate removed generated runtime prompt artifacts on bootstrap", async () => {
     await applyDefaultEnv();
     process.env.TRENCHCLAW_BOOT_REFRESH_CONTEXT = "0";
     process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = "0";
@@ -579,8 +562,8 @@ wallet:
 
     const runtime = await bootstrapRuntime();
     try {
-      expect(await Bun.file(generatedStatePath("workspace-context.md")).exists()).toBe(true);
-      expect(await Bun.file(generatedStatePath("knowledge-index.md")).exists()).toBe(true);
+      expect(await Bun.file(generatedStatePath("workspace-context.md")).exists()).toBe(false);
+      expect(await Bun.file(generatedStatePath("knowledge-index.md")).exists()).toBe(false);
     } finally {
       await runtime.stop();
     }

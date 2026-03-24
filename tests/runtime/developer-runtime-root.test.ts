@@ -7,7 +7,6 @@ import {
   resolveDefaultWorkspaceRuntimeStateRoot,
   resolveLegacyWorkspaceRuntimeStateRoot,
   resolvePreferredWorkspaceRuntimeStateRoot,
-  resolveRepoLocalRuntimeStateRoot,
 } from "../../apps/trenchclaw/src/runtime/developer-runtime-root";
 
 const createdRoots: string[] = [];
@@ -55,23 +54,7 @@ describe("resolvePreferredWorkspaceRuntimeStateRoot", () => {
     }));
   });
 
-  test("prefers repo-local runtime state when it contains material state and the hidden root is empty", async () => {
-    const homeRoot = await createTempRoot("trenchclaw-home-");
-    const coreAppRoot = await createTempRoot("trenchclaw-core-app-");
-    const repoLocalRoot = resolveRepoLocalRuntimeStateRoot(coreAppRoot);
-    await writeMaterialVault(repoLocalRoot);
-
-    expect(resolvePreferredWorkspaceRuntimeStateRoot({
-      coreAppRoot,
-      env: {
-        ...process.env,
-        HOME: homeRoot,
-        USERPROFILE: homeRoot,
-      },
-    })).toBe(repoLocalRoot);
-  });
-
-  test("prefers the hidden external runtime root over repo-local fallback when both contain material state", async () => {
+  test("prefers the hidden external runtime root when it contains material state", async () => {
     const homeRoot = await createTempRoot("trenchclaw-home-");
     const coreAppRoot = await createTempRoot("trenchclaw-core-app-");
     const hiddenRoot = resolveDefaultWorkspaceRuntimeStateRoot({
@@ -79,9 +62,7 @@ describe("resolvePreferredWorkspaceRuntimeStateRoot", () => {
       HOME: homeRoot,
       USERPROFILE: homeRoot,
     });
-    const repoLocalRoot = resolveRepoLocalRuntimeStateRoot(coreAppRoot);
     await writeMaterialVault(hiddenRoot);
-    await writeMaterialVault(repoLocalRoot);
 
     expect(resolvePreferredWorkspaceRuntimeStateRoot({
       coreAppRoot,
@@ -93,9 +74,14 @@ describe("resolvePreferredWorkspaceRuntimeStateRoot", () => {
     })).toBe(hiddenRoot);
   });
 
-  test("falls back to the legacy external runtime root when it is the only populated candidate", async () => {
+  test("does not fall back to the legacy external runtime root when it is the only populated candidate", async () => {
     const homeRoot = await createTempRoot("trenchclaw-home-");
     const coreAppRoot = await createTempRoot("trenchclaw-core-app-");
+    const hiddenRoot = resolveDefaultWorkspaceRuntimeStateRoot({
+      ...process.env,
+      HOME: homeRoot,
+      USERPROFILE: homeRoot,
+    });
     const legacyRoot = resolveLegacyWorkspaceRuntimeStateRoot({
       ...process.env,
       HOME: homeRoot,
@@ -110,6 +96,6 @@ describe("resolvePreferredWorkspaceRuntimeStateRoot", () => {
         HOME: homeRoot,
         USERPROFILE: homeRoot,
       },
-    })).toBe(legacyRoot);
+    })).toBe(hiddenRoot);
   });
 });

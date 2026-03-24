@@ -15,10 +15,10 @@
     "preview": "bun run content:sync && bunx --bun vite preview",
     "lint": "cd .. && bunx oxlint -c .oxlintrc.json website",
     "test": "bun test ../tests/website",
-    "svelte:check": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-    "check:watch": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
-    "typecheck": "bun run content:sync && svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "svelte:check": "bun run content:sync && bunx --package @sveltejs/kit svelte-kit sync && bunx svelte-check --tsconfig ./tsconfig.json",
+    "check": "bun run content:sync && bunx --package @sveltejs/kit svelte-kit sync && bunx svelte-check --tsconfig ./tsconfig.json",
+    "check:watch": "bun run content:sync && bunx --package @sveltejs/kit svelte-kit sync && bunx svelte-check --tsconfig ./tsconfig.json --watch",
+    "typecheck": "bun run content:sync && bunx --package @sveltejs/kit svelte-kit sync && bunx svelte-check --tsconfig ./tsconfig.json",
     "ci": "bun run lint && bun run test && bun run svelte:check && bun run typecheck && bun run build"
   },
   "dependencies": {
@@ -27,14 +27,14 @@
     "@sveltejs/vite-plugin-svelte": "^7.0.0",
     "highlight.js": "^11.11.1",
     "marked": "^17.0.5",
-    "svelte": "^5.54.1"
+    "svelte": "^5.55.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
     "oxlint": "^1.56.0",
     "svelte-check": "^4.4.5",
     "tailwindcss": "^4.2.2",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.2",
     "vite": "^8.0.0"
   }
 }

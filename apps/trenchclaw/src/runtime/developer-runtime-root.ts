@@ -176,17 +176,9 @@ export const resolvePreferredWorkspaceRuntimeStateRoot = (input: {
 }): string => {
   const env = input.env ?? process.env;
   const defaultRoot = resolveDefaultWorkspaceRuntimeStateRoot(env);
-  const repoLocalRoot = resolveRepoLocalRuntimeStateRoot(input.coreAppRoot);
-  const legacyRoot = resolveLegacyWorkspaceRuntimeStateRoot(env);
 
   if (runtimeRootHasMaterialStateSync(defaultRoot)) {
     return defaultRoot;
-  }
-  if (runtimeRootHasMaterialStateSync(repoLocalRoot)) {
-    return repoLocalRoot;
-  }
-  if (runtimeRootHasMaterialStateSync(legacyRoot)) {
-    return legacyRoot;
   }
 
   return defaultRoot;

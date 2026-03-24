@@ -17,21 +17,11 @@ const directory = (children: Record<string, InstanceLayoutNode>): InstanceLayout
 });
 
 export const INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES = [
-  "strategies",
   "configs",
   "added-knowledge",
-  "typescript",
-  "notes",
-  "news",
-  "scratch",
-  "output",
-  "routines",
 ] as const;
 
 const workspaceChildren = {
-  strategies: directory({
-    ".gitkeep": file(),
-  }),
   configs: directory({
     ".gitkeep": file(),
     "news-feeds.json": file(),
@@ -40,72 +30,11 @@ const workspaceChildren = {
   "added-knowledge": directory({
     ".gitkeep": file(),
   }),
-  typescript: directory({
-    ".gitkeep": file(),
-  }),
-  notes: directory({
-    ".gitkeep": file(),
-    research: directory({
-      ".gitkeep": file(),
-    }),
-  }),
-  news: directory({
-    ".gitkeep": file(),
-  }),
-  scratch: directory({
-    ".gitkeep": file(),
-  }),
-  output: directory({
-    ".gitkeep": file(),
-    research: directory({
-      ".gitkeep": file(),
-      "market-data": directory({
-        ".gitkeep": file(),
-        geckoterminal: directory({
-          ".gitkeep": file(),
-          ohlcv: directory({
-            ".gitkeep": file(),
-          }),
-        }),
-      }),
-    }),
-  }),
-  routines: directory({
-    ".gitkeep": file(),
-  }),
 } satisfies Record<string, InstanceLayoutNode>;
 
 export const INSTANCE_LAYOUT_SCHEMA = directory({
   "WAKEUP.md": file(),
-  cache: directory({
-    generated: directory({
-      ".gitkeep": file(),
-    }),
-    memory: directory({
-      ".gitkeep": file(),
-    }),
-  }),
-  data: directory({
-    ".gitkeep": file(),
-  }),
   "instance.json": file(),
-  keypairs: directory({
-    ".gitkeep": file(),
-  }),
-  logs: directory({
-    live: directory({
-      ".gitkeep": file(),
-    }),
-    sessions: directory({
-      ".gitkeep": file(),
-    }),
-    summaries: directory({
-      ".gitkeep": file(),
-    }),
-    system: directory({
-      ".gitkeep": file(),
-    }),
-  }),
   secrets: directory({
     "vault.json": file(),
   }),
@@ -114,15 +43,6 @@ export const INSTANCE_LAYOUT_SCHEMA = directory({
     "settings.json": file(),
     "trading.json": file(),
     "wakeup.json": file(),
-  }),
-  "shell-home": directory({
-    ".gitkeep": file(),
-  }),
-  tmp: directory({
-    ".gitkeep": file(),
-  }),
-  "tool-bin": directory({
-    ".gitkeep": file(),
   }),
   workspace: directory(workspaceChildren),
 });

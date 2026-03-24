@@ -42,8 +42,6 @@ import {
 } from "./load";
 import { createRuntimeLogger, type RuntimeLogger } from "./logging/runtime-logger";
 import { createRuntimeActionThrottle } from "./trading/throttle";
-import { refreshWorkspaceContext } from "../lib/agent-scripts/refresh-workspace-context";
-import { refreshKnowledgeIndex } from "../lib/agent-scripts/refresh-knowledge-index";
 import {
   LiveLogStore,
   MemoryLogStore,
@@ -57,7 +55,6 @@ import {
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
-import { resolveInstanceKnowledgeIndexPath, resolveInstanceWorkspaceContextPath } from "./instance-paths";
 import { isRecord } from "./object-utils";
 import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./runtime-notices";
 import { migrateLegacyRuntimeState } from "./runtime-state-migration";
@@ -109,27 +106,7 @@ const runBootstrapTask = async (
   }
 };
 
-const generatedArtifactExists = async (filePath: string): Promise<boolean> => await Bun.file(filePath).exists();
-
-const runBootContextRefresh = async (logger: RuntimeLogger): Promise<void> => {
-  const activeInstanceId = resolveRequiredActiveInstanceIdSync(
-    "No active instance selected. Generated runtime context is instance-scoped.",
-  );
-  const refreshContext = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_CONTEXT", false);
-  const refreshKnowledge = envFlagEnabled("TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE", true);
-  const workspaceContextPath = resolveInstanceWorkspaceContextPath(activeInstanceId);
-  const knowledgeIndexPath = resolveInstanceKnowledgeIndexPath(activeInstanceId);
-  const missingWorkspaceContext = !(await generatedArtifactExists(workspaceContextPath));
-  const missingKnowledgeIndex = !(await generatedArtifactExists(knowledgeIndexPath));
-
-  if (refreshContext || missingWorkspaceContext) {
-    await runBootstrapTask(logger, "refresh-workspace-context", refreshWorkspaceContext);
-  }
-
-  if (refreshKnowledge || missingKnowledgeIndex) {
-    await runBootstrapTask(logger, "refresh-knowledge-index", refreshKnowledgeIndex);
-  }
-};
+const runBootContextRefresh = async (_logger: RuntimeLogger): Promise<void> => {};
 
 const toSupportedActionMap = (actions: Action<any, any>[]): Map<string, Action<any, any>> => {
   const map = new Map<string, Action<any, any>>();
