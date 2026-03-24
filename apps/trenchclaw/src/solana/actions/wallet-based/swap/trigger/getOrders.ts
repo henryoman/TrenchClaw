@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../../ai/runtime/types/action";
+import type { Action } from "../../../../../ai/contracts/types/action";
 import { managedWalletSelectorSchema } from "../../../../lib/wallet/wallet-selector";
 import { walletGroupNameSchema, walletNameSchema } from "../../../../lib/wallet/wallet-types";
 import { normalizeCoinToMint } from "../ultra/shared";

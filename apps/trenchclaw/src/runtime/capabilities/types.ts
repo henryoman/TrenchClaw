@@ -1,5 +1,5 @@
-import type { Action, ActionCategory, ActionSubcategory } from "../../ai/runtime/types/action";
-import type { RuntimeSettings } from "../load";
+import type { Action, ActionCategory, ActionSubcategory } from "../../ai/contracts/types/action";
+import type { RuntimeSettings } from "../settings";
 import type { FilesystemPolicySummary } from "../security/filesystem-manifest";
 
 export type CapabilitySideEffectLevel = "read" | "write" | "execute";

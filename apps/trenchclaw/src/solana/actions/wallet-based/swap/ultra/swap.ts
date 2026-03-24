@@ -1,7 +1,7 @@
 import { performance } from "node:perf_hooks";
 import { z } from "zod";
 
-import type { Action } from "../../../../../ai/runtime/types/action";
+import type { Action } from "../../../../../ai/contracts/types/action";
 
 import {
   createActionFailure,

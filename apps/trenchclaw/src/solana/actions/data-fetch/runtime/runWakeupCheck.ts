@@ -1,14 +1,14 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import type { JobState, StateStore } from "../../../../ai/runtime/types/state";
-import { resolveCurrentActiveInstanceIdSync } from "../../../../runtime/instance-state";
-import { persistRuntimeNotice } from "../../../../runtime/runtime-notices";
+import type { Action } from "../../../../ai/contracts/types/action";
+import type { JobState, StateStore } from "../../../../ai/contracts/types/state";
+import { resolveCurrentActiveInstanceIdSync } from "../../../../runtime/instance/state";
+import { persistRuntimeNotice } from "../../../../runtime/chat/notices";
 import {
   loadManagedWakeupSchedule,
   MANAGED_WAKEUP_ROUTINE_NAME,
   syncManagedWakeupJob,
-} from "../../../../runtime/wakeup/managed-wakeup";
+} from "../../../../runtime/scheduling/managed-wakeup";
 
 const wakeupTriggerSchema = z.enum(["scheduled", "boot", "manual"]);
 

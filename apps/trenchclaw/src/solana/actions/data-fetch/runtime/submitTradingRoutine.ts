@@ -1,6 +1,6 @@
-import type { Action, ActionStep } from "../../../../ai/runtime/types/action";
-import type { RuntimeJobEnqueueRequest } from "../../../../ai/runtime/types/context";
-import type { JobState } from "../../../../ai/runtime/types/state";
+import type { Action, ActionStep } from "../../../../ai/contracts/types/action";
+import type { RuntimeJobEnqueueRequest } from "../../../../ai/contracts/types/context";
+import type { JobState } from "../../../../ai/contracts/types/state";
 import {
   planTradingRoutineSubmission,
   tradingRoutineSpecSchema,

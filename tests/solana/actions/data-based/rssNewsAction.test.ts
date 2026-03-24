@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
-import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { getConfiguredNewsFeedsAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/api/news-feed-registry-actions";
 import {
   DEFAULT_SOLANA_NEWS_FEED_URL,

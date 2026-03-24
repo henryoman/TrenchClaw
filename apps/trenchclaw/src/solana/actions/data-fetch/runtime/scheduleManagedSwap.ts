@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import { scheduleDurationInputSchema } from "../../../../runtime/time/scheduling";
+import type { Action } from "../../../../ai/contracts/types/action";
+import { scheduleDurationInputSchema } from "../../../../runtime/scheduling/time";
 import { managedWalletSelectorSchema } from "../../../lib/wallet/wallet-selector";
 import {
   walletGroupNameSchema,

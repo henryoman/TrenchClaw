@@ -12,7 +12,7 @@ import type {
 import type {
   RuntimeJobControlRequest,
   RuntimeJobEnqueueRequest,
-} from "../../ai/runtime/types/context";
+} from "../../ai/contracts/types/context";
 import type { convertToModelMessages, generateText, streamText } from "ai";
 
 export interface RuntimeChatService {

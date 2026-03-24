@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import type { ActionResult } from "../../../../ai/runtime/types/action";
-import type { ActionContext } from "../../../../ai/runtime/types/context";
-import { loadRuntimeSettings } from "../../../../runtime/load";
+import type { Action } from "../../../../ai/contracts/types/action";
+import type { ActionResult } from "../../../../ai/contracts/types/action";
+import type { ActionContext } from "../../../../ai/contracts/types/context";
+import { loadRuntimeSettings } from "../../../../runtime/settings";
 import {
   managedUltraSwapAction,
   managedUltraSwapInputSchema,

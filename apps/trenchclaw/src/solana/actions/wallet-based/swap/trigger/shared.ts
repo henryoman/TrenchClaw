@@ -1,9 +1,9 @@
 import { createHelius } from "helius-sdk";
 import { z } from "zod";
 
-import type { ActionContext } from "../../../../../ai/runtime/types/context";
-import type { ActionResult } from "../../../../../ai/runtime/types/action";
-import type { StateStore } from "../../../../../ai/runtime/types/state";
+import type { ActionContext } from "../../../../../ai/contracts/types/context";
+import type { ActionResult } from "../../../../../ai/contracts/types/action";
+import type { StateStore } from "../../../../../ai/contracts/types/state";
 import type { JupiterTriggerAdapter } from "../../../../lib/adapters/jupiter-trigger";
 import { resolveHeliusRpcConfig } from "../../../../lib/rpc/helius";
 import { findManagedWalletEntryBySelection } from "../../../../lib/wallet/wallet-selector";

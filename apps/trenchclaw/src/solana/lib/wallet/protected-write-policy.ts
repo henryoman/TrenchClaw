@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { RuntimeActor } from "../../../ai/runtime/types/context";
+import type { RuntimeActor } from "../../../ai/contracts/types/context";
 import {
   assertModelFilesystemReadAllowed,
   assertModelFilesystemWriteAllowed,

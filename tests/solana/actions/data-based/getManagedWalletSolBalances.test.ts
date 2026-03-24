@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { createGetManagedWalletSolBalancesAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 

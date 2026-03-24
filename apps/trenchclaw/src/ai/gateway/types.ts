@@ -1,9 +1,9 @@
 import type { LanguageModel, UIMessage } from "ai";
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
-import type { RuntimeSettings } from "../../runtime/load";
-import type { ResolvedRuntimeEndpoints } from "../../runtime/load";
-import type { ActionDispatcher, ActionRegistry, RuntimeEventBus, StateStore } from "../index";
-import type { CreateActionContextConfig } from "../runtime/types/context";
+import type { RuntimeSettings } from "../../runtime/settings";
+import type { ResolvedRuntimeEndpoints } from "../../runtime/settings";
+import type { ActionDispatcher, ActionRegistry, RuntimeEventBus, StateStore } from "..";
+import type { CreateActionContextConfig } from "../contracts/types/context";
 import type { RuntimeLogger } from "../../runtime/logging/runtime-logger";
 
 export type GatewayLane = "operator-chat" | "workspace-agent" | "background-summary";
@@ -90,7 +90,7 @@ export interface GatewayContext {
   };
   logger?: RuntimeLogger;
   workspaceRootDirectory?: string;
-  createActionContext: (overrides?: CreateActionContextConfig) => ReturnType<typeof import("../runtime/types/context").createActionContext>;
+  createActionContext: (overrides?: CreateActionContextConfig) => ReturnType<typeof import("../contracts/types/context").createActionContext>;
 }
 
 export interface RuntimeGateway {

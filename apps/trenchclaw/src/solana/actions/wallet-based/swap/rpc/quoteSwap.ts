@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../../ai/runtime/types/action";
-import type { ActionContext } from "../../../../../ai/runtime/types/context";
+import type { Action } from "../../../../../ai/contracts/types/action";
+import type { ActionContext } from "../../../../../ai/contracts/types/context";
 import type { JupiterBuildRequest, JupiterSwapAdapter } from "../../../../lib/adapters/jupiter";
 import {
   createActionFailure,

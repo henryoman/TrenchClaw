@@ -1,8 +1,8 @@
 import { appendFile, mkdir, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import type { RuntimeActor } from "../../../ai/runtime/types/context";
-import { resolveCurrentActiveInstanceIdSync, resolveInstanceDirectoryPath } from "../../../runtime/instance-state";
+import type { RuntimeActor } from "../../../ai/contracts/types/context";
+import { resolveCurrentActiveInstanceIdSync, resolveInstanceDirectoryPath } from "../../../runtime/instance/state";
 import { toRuntimeContractRelativePath } from "../../../runtime/runtime-paths";
 import {
   assertWithinBrainProtectedDirectory,

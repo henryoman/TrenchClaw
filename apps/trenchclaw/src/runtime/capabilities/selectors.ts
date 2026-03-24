@@ -1,7 +1,7 @@
-import type { Action } from "../../ai/runtime/types/action";
-import type { RuntimeSettings } from "../load";
+import type { Action } from "../../ai/contracts/types/action";
+import type { RuntimeSettings } from "../settings";
 import { summarizeFilesystemPolicy } from "../security/filesystem-manifest";
-import { MACHINE_TOOL_ENVELOPE_NOTE, toModelToolExampleInput } from "../model-tool-language";
+import { MACHINE_TOOL_ENVELOPE_NOTE, toModelToolExampleInput } from "../chat/model-tool-language";
 import { runtimeActionCapabilityDefinitions } from "./action-definitions";
 import { getRuntimeComingSoonFeatures } from "./release-readiness";
 import { workspaceToolCapabilityDefinitions } from "./workspace-tool-definitions";

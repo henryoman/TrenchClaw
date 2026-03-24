@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
+import type { Action } from "../../../../ai/contracts/types/action";
 import { buildKnowledgeLookup, resolveKnowledgeRoot } from "../../../../lib/knowledge/knowledge-index";
 const maxLimit = 200;
 

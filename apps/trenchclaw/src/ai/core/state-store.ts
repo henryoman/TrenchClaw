@@ -11,8 +11,8 @@ import type {
   RuntimeSearchResult,
   RuntimeSearchScope,
   StateStore as IStateStore,
-} from "../runtime/types";
-import { createConversationHistorySlice } from "../../runtime/conversation-history";
+} from "../contracts/types";
+import { createConversationHistorySlice } from "../../runtime/chat/history";
 
 export class InMemoryStateStore implements IStateStore {
   private readonly jobs = new Map<string, JobState>();

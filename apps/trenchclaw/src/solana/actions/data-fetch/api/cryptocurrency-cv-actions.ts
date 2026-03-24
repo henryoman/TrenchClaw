@@ -3,10 +3,10 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import { ensureInstanceLayout } from "../../../../runtime/instance-layout";
-import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance-state";
-import { resolveInstanceWorkspaceNewsRoot } from "../../../../runtime/instance-workspace";
+import type { Action } from "../../../../ai/contracts/types/action";
+import { ensureInstanceLayout } from "../../../../runtime/instance/layout";
+import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance/state";
+import { resolveInstanceWorkspaceNewsRoot } from "../../../../runtime/instance/workspace";
 import { toRuntimeContractRelativePath } from "../../../../runtime/runtime-paths";
 import {
   getCryptoAssetSentiment,

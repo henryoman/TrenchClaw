@@ -6,11 +6,11 @@ import { createUIMessageStream, type UIMessage } from "ai";
 import { z } from "zod";
 
 import type { ActionDispatcher, ActionResult, LlmClient, RuntimeGateway } from "../../apps/trenchclaw/src/ai";
-import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/runtime/types";
+import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/contracts/types";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore, createActionContext, createRuntimeGateway } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
-import { createRuntimeChatService as createRuntimeChatServiceBase } from "../../apps/trenchclaw/src/runtime/chat";
-import { loadRuntimeSettings, resolvePrimaryRuntimeEndpoints } from "../../apps/trenchclaw/src/runtime/load";
+import { createRuntimeChatService as createRuntimeChatServiceBase } from "../../apps/trenchclaw/src/runtime/chat/service";
+import { loadRuntimeSettings, resolvePrimaryRuntimeEndpoints } from "../../apps/trenchclaw/src/runtime/settings";
 import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
 import { SqliteStateStore } from "../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import {

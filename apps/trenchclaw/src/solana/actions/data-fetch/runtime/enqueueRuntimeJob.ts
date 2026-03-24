@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import type { RuntimeJobEnqueueRequest } from "../../../../ai/runtime/types/context";
-import type { JobState } from "../../../../ai/runtime/types/state";
+import type { Action } from "../../../../ai/contracts/types/action";
+import type { RuntimeJobEnqueueRequest } from "../../../../ai/contracts/types/context";
+import type { JobState } from "../../../../ai/contracts/types/state";
 
 const enqueueRuntimeJobInputSchema = z.object({
   botId: z.string().trim().min(1),

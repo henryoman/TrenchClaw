@@ -4,7 +4,7 @@ import {
   createUIMessageStreamResponse,
   type UIMessage,
 } from "ai";
-import { createToolCallId, createUiTextPartId } from "../../ai/runtime/types/ids";
+import { createToolCallId, createUiTextPartId } from "../../ai/contracts/types/ids";
 import {
   WALLET_CONTENTS_INTENT_PHRASES,
   WALLET_INVENTORY_INTENT_PHRASES,

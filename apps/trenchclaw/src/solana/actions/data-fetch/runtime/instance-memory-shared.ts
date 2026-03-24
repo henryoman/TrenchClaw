@@ -1,4 +1,4 @@
-import type { InstanceFactState, InstanceMemoryBundle, InstanceProfileState } from "../../../../ai/runtime/types/state";
+import type { InstanceFactState, InstanceMemoryBundle, InstanceProfileState } from "../../../../ai/contracts/types/state";
 
 const normalizeFactKeySegment = (segment: string): string =>
   segment

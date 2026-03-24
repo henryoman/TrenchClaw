@@ -1,7 +1,7 @@
 import path from "node:path";
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
+import type { Action } from "../../../../ai/contracts/types/action";
 import { buildKnowledgeLookup, resolveKnowledgeLookupEntry, resolveKnowledgeRoot } from "../../../../lib/knowledge/knowledge-index";
 const maxLines = 500;
 

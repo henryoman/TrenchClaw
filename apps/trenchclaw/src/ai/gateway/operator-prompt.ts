@@ -1,6 +1,6 @@
-import type { StateStore } from "../../ai/runtime/types/state";
+import type { StateStore } from "../contracts/types/state";
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
-import type { RuntimeSettings } from "../../runtime/load";
+import type { RuntimeSettings } from "../../runtime/settings";
 import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
 import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
 import {
@@ -8,7 +8,7 @@ import {
   renderCommandMenuSection,
   renderModelAccessSummarySection,
 } from "../../runtime/prompt/tool-menu";
-import { renderRuntimeWalletPromptSummary } from "../../runtime/wallet-model-context";
+import { renderRuntimeWalletPromptSummary } from "../../runtime/prompt/wallet-context";
 
 const OPERATOR_KERNEL_PROMPT = [
   "You are TrenchClaw's operator chat assistant.",

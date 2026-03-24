@@ -1,5 +1,5 @@
 import type { UIMessage } from "ai";
-import { createChatMessageId } from "../../ai/runtime/types/ids";
+import { createChatMessageId } from "../../ai/contracts/types/ids";
 import type { RuntimeChatServiceDeps } from "./types";
 import { extractUiMessageText, trimOrUndefinedValue } from "./utils";
 

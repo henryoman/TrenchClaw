@@ -6,18 +6,18 @@ import { Database } from "bun:sqlite";
 import { getSqliteSchemaSnapshot, syncSqliteSchema } from "../../runtime/storage/sqlite-orm";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
 import { CORE_APP_ROOT } from "../../runtime/runtime-paths";
-import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
+import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
 import {
   resolveInstanceGeneratedRoot,
   resolveInstanceKnowledgeIndexPath,
   resolveInstanceRuntimeDbPath,
   resolveInstanceWorkspaceContextPath,
-} from "../../runtime/instance-paths";
+} from "../../runtime/instance/paths";
 
 const APP_ROOT_DIR = CORE_APP_ROOT;
 const CONTEXT_ROOT_LABEL = existsSync(join(APP_ROOT_DIR, "package.json")) ? "apps/trenchclaw" : "core";
 const SQLITE_SQL_SNAPSHOT_FILE = join(APP_ROOT_DIR, "..", "..", "docs", "storage-schema.snapshot.sql");
-const RUNTIME_TRANSPORT_ROUTER_FILE = join(APP_ROOT_DIR, "src/runtime/transport/router.ts");
+const RUNTIME_SURFACE_ROUTER_FILE = join(APP_ROOT_DIR, "src/runtime/surface/router.ts");
 const CONTEXT_DB_PATH_ENV = "TRENCHCLAW_CONTEXT_DB_PATH";
 const DEFAULT_LIVE_DB_PATH_CANDIDATES = (() => {
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
@@ -135,10 +135,10 @@ const renderImportantWorkspacePaths = (): string =>
     .join("\n");
 
 const getRuntimeTransportRoutesTable = async (): Promise<string> => {
-  if (!existsSync(RUNTIME_TRANSPORT_ROUTER_FILE)) {
+  if (!existsSync(RUNTIME_SURFACE_ROUTER_FILE)) {
     return toMarkdownTable(["routePath"], [["unavailable in this layout"]]);
   }
-  const source = await readFile(RUNTIME_TRANSPORT_ROUTER_FILE, "utf8");
+  const source = await readFile(RUNTIME_SURFACE_ROUTER_FILE, "utf8");
   const matches = source.matchAll(/pathname\s*===\s*"([^"]+)"/g);
   const routeCandidates = Array.from(matches, (match) => match[1]);
   const routes = Array.from(

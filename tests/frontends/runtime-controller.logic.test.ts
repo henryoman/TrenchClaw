@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { GuiInstanceProfileView } from "../../apps/trenchclaw/types/index";
+import type { GuiInstanceProfileView } from "../../apps/trenchclaw/types";
 import {
   applyCreateInstanceSuccess,
   buildCreateInstanceRequest,

@@ -17,8 +17,8 @@ import {
   type Instruction,
 } from "@solana/kit";
 
-import type { Action } from "../../../../../ai/runtime/types/action";
-import type { ActionContext } from "../../../../../ai/runtime/types/context";
+import type { Action } from "../../../../../ai/contracts/types/action";
+import type { ActionContext } from "../../../../../ai/contracts/types/context";
 import type {
   JupiterBuildInstruction,
   JupiterBuildRequest,

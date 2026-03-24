@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { sanitizeAgentSettings } from "../../../apps/trenchclaw/src/runtime/load/authority";
+import { sanitizeAgentSettings } from "../../../apps/trenchclaw/src/runtime/settings/authority";
 
 describe("sanitizeAgentSettings profile permissions", () => {
   const sample = {

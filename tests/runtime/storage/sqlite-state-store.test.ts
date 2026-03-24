@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import path from "node:path";
 
-import type { ActionResult } from "../../../apps/trenchclaw/src/ai/runtime/types/action";
+import type { ActionResult } from "../../../apps/trenchclaw/src/ai/contracts/types/action";
 import {
   getSqliteTableContractViolationsSnapshot,
   inspectSqliteSchema,

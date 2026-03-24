@@ -3,16 +3,16 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
+import type { Action } from "../../../../ai/contracts/types/action";
 import {
   isNormalizedNewsFeedRetryableError,
   readNormalizedNewsFeed,
   type NormalizedNewsFeedResult,
 } from "../../../../lib/news/rss";
-import { ensureInstanceLayout } from "../../../../runtime/instance-layout";
-import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance-state";
-import { resolveConfiguredNewsFeedByAlias } from "../../../../runtime/news-feed-registry";
-import { resolveInstanceWorkspaceNewsRoot } from "../../../../runtime/instance-workspace";
+import { ensureInstanceLayout } from "../../../../runtime/instance/layout";
+import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance/state";
+import { resolveConfiguredNewsFeedByAlias } from "../../../../runtime/instance/registries/news-feeds";
+import { resolveInstanceWorkspaceNewsRoot } from "../../../../runtime/instance/workspace";
 import { toRuntimeContractRelativePath } from "../../../../runtime/runtime-paths";
 
 export const DEFAULT_SOLANA_NEWS_FEED_URL = "https://cryptopotato.com/tag/solana/feed/";

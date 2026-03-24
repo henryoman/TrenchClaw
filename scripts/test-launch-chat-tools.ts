@@ -3,8 +3,8 @@
 import { mkdir, readlink, symlink, unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { RUNTIME_INSTANCE_ROOT } from "../apps/trenchclaw/src/runtime/runtime-paths.ts";
-import { resolveInstanceToolBinRoot } from "../apps/trenchclaw/src/runtime/instance-paths.ts";
+import { RUNTIME_INSTANCE_ROOT } from "../apps/trenchclaw/src/runtime/runtime-paths";
+import { resolveInstanceToolBinRoot } from "../apps/trenchclaw/src/runtime/instance/paths";
 
 const INSTANCE_ID = "01";
 const STARTUP_TIMEOUT_MS = 120_000;

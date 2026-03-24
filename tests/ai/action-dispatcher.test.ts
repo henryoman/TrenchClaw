@@ -6,7 +6,7 @@ import { ActionRegistry } from "../../apps/trenchclaw/src/ai/core/action-registr
 import { InMemoryRuntimeEventBus } from "../../apps/trenchclaw/src/ai/core/event-bus";
 import { PolicyEngine } from "../../apps/trenchclaw/src/ai/core/policy-engine";
 import { InMemoryStateStore } from "../../apps/trenchclaw/src/ai/core/state-store";
-import { createActionContext } from "../../apps/trenchclaw/src/ai/runtime/types/context";
+import { createActionContext } from "../../apps/trenchclaw/src/ai/contracts/types/context";
 
 describe("ActionDispatcher", () => {
   test("dispatchPlan resolves dependsOn by step key and interpolates previous outputs", async () => {

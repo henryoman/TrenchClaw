@@ -9,9 +9,9 @@ import type {
   RoutinePlanner,
   RuntimeEventBus,
   StateStore,
-} from "../runtime/types";
-import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
-import { resolveInstanceQueueSqlitePath } from "../../runtime/instance-paths";
+} from "../contracts/types";
+import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
+import { resolveInstanceQueueSqlitePath } from "../../runtime/instance/paths";
 import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
 import type { ActionDispatcher } from "./dispatcher";
 

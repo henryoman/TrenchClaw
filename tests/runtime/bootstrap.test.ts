@@ -4,7 +4,7 @@ import { mkdir } from "node:fs/promises";
 
 import { createActionContext } from "../../apps/trenchclaw/src/ai";
 import { bootstrapRuntime } from "../../apps/trenchclaw/src/runtime/bootstrap";
-import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
+import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { generatedStatePath, runtimeStatePath } from "../helpers/core-paths";
 
 const BASE_SETTINGS_YAML = `

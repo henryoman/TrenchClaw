@@ -23,7 +23,7 @@ const normalizeContractPath = (value: string): string => value.trim().replaceAll
 
 const isCoreAppRoot = (candidate: string): boolean =>
   (existsSync(path.join(candidate, "src/runtime/bootstrap.ts")) &&
-    existsSync(path.join(candidate, "src/runtime/load/loader.ts"))) ||
+    existsSync(path.join(candidate, "src/runtime/settings/runtime-loader.ts"))) ||
   existsSync(path.join(candidate, BRAIN_SOURCE_ROOT));
 
 export const resolveCoreAppRoot = (): string => {

@@ -1,5 +1,5 @@
 import { bootstrapRuntime, type RuntimeBootstrap } from "./bootstrap";
-import { createRuntimeApiHandler } from "./transport";
+import { createRuntimeApiHandler } from "./surface";
 
 export interface RuntimeServerInfo {
   host: string;

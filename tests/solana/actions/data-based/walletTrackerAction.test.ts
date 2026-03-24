@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
-import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
-import { writeInstanceTrackerRegistry } from "../../../../apps/trenchclaw/src/runtime/tracker-registry";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
+import { writeInstanceTrackerRegistry } from "../../../../apps/trenchclaw/src/runtime/instance/registries/tracker";
 import { getWalletTrackerAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/api/wallet-tracker-actions";
 import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../helpers/core-paths";

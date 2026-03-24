@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 
 import { getGatewayToolNamesForLane, OPERATOR_TOOL_ALLOWLIST } from "../../apps/trenchclaw/src/ai/gateway/lane-policy";
 import { getRuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
-import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
+import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { createPersistedTestInstance } from "../helpers/instance-fixtures";
 import { runtimeStatePath } from "../helpers/core-paths";
 

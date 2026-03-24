@@ -13,15 +13,15 @@ import {
 import {
   INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES,
   resolveActiveInstanceWorkspaceRootOrThrow,
-} from "./instance-workspace";
-import { resolveCurrentActiveInstanceIdSync } from "./instance-state";
+} from "./instance/workspace";
+import { resolveCurrentActiveInstanceIdSync } from "./instance/state";
 import {
   resolveInstanceShellHomeRoot,
   resolveInstanceTmpRoot,
   resolveInstanceToolBinRoot,
-} from "./instance-paths";
+} from "./instance/paths";
 import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
-import { getModelToolEnvelopeSchema, MACHINE_TOOL_ENVELOPE_NOTE } from "./model-tool-language";
+import { getModelToolEnvelopeSchema, MACHINE_TOOL_ENVELOPE_NOTE } from "./chat/model-tool-language";
 
 interface WorkspaceBashOptions {
   workspaceRootDirectory: string;

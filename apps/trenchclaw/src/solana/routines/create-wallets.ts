@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-import type { ActionStep } from "../../ai/runtime/types/action";
-import type { RoutinePlanner } from "../../ai/runtime/types/scheduler";
+import type { ActionStep } from "../../ai/contracts/types/action";
+import type { RoutinePlanner } from "../../ai/contracts/types/scheduler";
 
 const walletNameSchema = z.string().min(1);
 const walletGroupConfigSchema = z.object({

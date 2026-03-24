@@ -1,12 +1,12 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
-import { resolveInstanceCompatibilitySettingsPath } from "../../runtime/instance-paths";
+import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
+import { resolveInstanceCompatibilitySettingsPath } from "../../runtime/instance/paths";
 import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import { isRecord, parseStructuredFile } from "./shared";
 import { loadVaultData } from "./vault-file";
-import { loadInstanceTradingSettings } from "../../runtime/load/trading-settings";
+import { loadInstanceTradingSettings } from "../../runtime/settings/instance/trading";
 
 const RUNTIME_SETTINGS_FILE_ENV = "TRENCHCLAW_RUNTIME_SETTINGS_FILE";
 

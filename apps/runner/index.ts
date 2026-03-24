@@ -3,7 +3,7 @@ import path from "node:path";
 import { createInterface } from "node:readline/promises";
 
 import type { bootstrapRuntime as bootstrapRuntimeType } from "../trenchclaw/src/runtime/bootstrap";
-import type { RuntimeSettingsProfile } from "../trenchclaw/src/runtime/load";
+import type { RuntimeSettingsProfile } from "../trenchclaw/src/runtime/settings";
 import type { startRuntimeServer as startRuntimeServerType, RuntimeServerInfo } from "../trenchclaw/src/runtime/start-runtime-server";
 
 const RUNTIME_HOST = process.env.RUNTIME_HOST || "127.0.0.1";
@@ -206,8 +206,8 @@ const loadRuntimeImports = async (): Promise<{
   if (!runtimeImportsPromise) {
     runtimeImportsPromise = Promise.all([
       import("../trenchclaw/src/runtime/bootstrap"),
-      import("../trenchclaw/src/runtime/instance-layout"),
-      import("../trenchclaw/src/runtime/load"),
+      import("../trenchclaw/src/runtime/instance/layout"),
+      import("../trenchclaw/src/runtime/settings"),
       import("../trenchclaw/src/runtime/start-runtime-server"),
     ]).then(([bootstrapModule, instanceLayoutModule, loadModule, serverModule]) => ({
       bootstrapRuntime: bootstrapModule.bootstrapRuntime,

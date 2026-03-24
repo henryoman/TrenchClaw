@@ -12,15 +12,15 @@ import path from "node:path";
 import type { LanguageModel } from "ai";
 import { generateText, stepCountIs } from "ai";
 
-import { loadAiSettings } from "../apps/trenchclaw/src/ai/llm/ai-settings-file.ts";
-import { resolveLlmRuntimeBinding } from "../apps/trenchclaw/src/ai/llm/client.ts";
-import { createLanguageModel } from "../apps/trenchclaw/src/ai/llm/config.ts";
-import { RUNTIME_INSTANCE_ROOT } from "../apps/trenchclaw/src/runtime/runtime-paths.ts";
-import { resolveInstanceToolBinRoot } from "../apps/trenchclaw/src/runtime/instance-paths.ts";
+import { loadAiSettings } from "../apps/trenchclaw/src/ai/llm/ai-settings-file";
+import { resolveLlmRuntimeBinding } from "../apps/trenchclaw/src/ai/llm/client";
+import { createLanguageModel } from "../apps/trenchclaw/src/ai/llm/config";
+import { RUNTIME_INSTANCE_ROOT } from "../apps/trenchclaw/src/runtime/runtime-paths";
+import { resolveInstanceToolBinRoot } from "../apps/trenchclaw/src/runtime/instance/paths";
 import {
   WORKSPACE_BASH_TOOL_NAME,
   createWorkspaceBashTools,
-} from "../apps/trenchclaw/src/runtime/workspace-bash.ts";
+} from "../apps/trenchclaw/src/runtime/workspace-bash";
 
 const INSTANCE_ID = "01";
 

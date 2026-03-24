@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import {
   getDexscreenerLatestAdsAction,
   getDexscreenerLatestCommunityTakeoversAction,

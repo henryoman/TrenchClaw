@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { renderRuntimeWalletPromptContext } from "../../apps/trenchclaw/src/runtime/wallet-model-context";
+import { renderRuntimeWalletPromptContext } from "../../apps/trenchclaw/src/runtime/prompt/wallet-context";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");

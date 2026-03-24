@@ -1,7 +1,7 @@
 import { address } from "@solana/kit";
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
+import type { Action } from "../../../../ai/contracts/types/action";
 import { getDexscreenerTokensByChain, getDexscreenerTopTokenBoosts, type DexscreenerPairInfo, type DexscreenerTokenBoost } from "../api/dexscreener";
 import { getMultipleAccounts } from "../rpc/getMultipleAccounts";
 import { createRateLimitedSolanaRpc } from "../../../lib/rpc/client";

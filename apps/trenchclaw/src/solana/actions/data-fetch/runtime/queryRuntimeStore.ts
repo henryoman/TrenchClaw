@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import type { StateStore } from "../../../../ai/runtime/types/state";
-import { listUpcomingTradingJobs } from "../../../../runtime/trading/upcoming-schedule";
+import type { Action } from "../../../../ai/contracts/types/action";
+import type { StateStore } from "../../../../ai/contracts/types/state";
+import { listUpcomingTradingJobs } from "../../../../runtime/scheduling/upcoming-trading-jobs";
 
 const maxLimit = 200;
 

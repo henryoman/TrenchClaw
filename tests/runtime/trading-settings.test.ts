@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { loadResolvedUserSettings } from "../../apps/trenchclaw/src/ai/llm/user-settings-loader";
-import { loadRuntimeSettings, writeInstanceTradingSettings } from "../../apps/trenchclaw/src/runtime/load";
+import { loadRuntimeSettings, writeInstanceTradingSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { createPersistedTestInstance } from "../helpers/instance-fixtures";
 import { coreAppPath, runtimeStatePath } from "../helpers/core-paths";
 

@@ -1,5 +1,5 @@
 import path from "node:path";
-import { createSessionId, type SessionId } from "../../ai/runtime/types/ids";
+import { createSessionId, type SessionId } from "../../ai/contracts/types/ids";
 import {
   appendJsonLineAsync,
   ensureWritableStoragePath,

@@ -16,8 +16,8 @@ import {
   type Instruction,
 } from "@solana/kit";
 
-import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
-import type { ActionContext } from "../../../../ai/runtime/types/context";
+import type { Action, ActionResult } from "../../../../ai/contracts/types/action";
+import type { ActionContext } from "../../../../ai/contracts/types/context";
 import { createRateLimitedSolanaRpc } from "../../../lib/rpc/client";
 import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../lib/rpc/urls";
 import { managedWalletSelectorSchema, resolveManagedWalletSelection } from "../../../lib/wallet/wallet-selector";

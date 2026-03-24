@@ -3,9 +3,9 @@ import { mkdir, readFile, readdir, rm, unlink, writeFile } from "node:fs/promise
 import path from "node:path";
 
 import { resolveInstanceVaultPath } from "../ai/llm/vault-file";
-import { resolveInstanceDirectoryPath } from "./instance-state";
-import { ensureInstanceLayout } from "./instance-layout";
-import { resolveCurrentActiveInstanceIdSync } from "./instance-state";
+import { resolveInstanceDirectoryPath } from "./instance/state";
+import { ensureInstanceLayout } from "./instance/layout";
+import { resolveCurrentActiveInstanceIdSync } from "./instance/state";
 import { RUNTIME_STATE_ROOT } from "./runtime-paths";
 
 interface RuntimeResetReport {

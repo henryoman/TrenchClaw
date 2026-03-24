@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../../ai/runtime/types/action";
+import type { Action } from "../../../../../ai/contracts/types/action";
 import { managedWalletSelectorSchema, resolveManagedWalletSelection } from "../../../../lib/wallet/wallet-selector";
 import { loadManagedWalletSigner } from "../../../../lib/wallet/wallet-signer";
 import { walletGroupNameSchema, walletNameSchema } from "../../../../lib/wallet/wallet-types";

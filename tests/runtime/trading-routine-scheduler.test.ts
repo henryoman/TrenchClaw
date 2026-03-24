@@ -11,8 +11,8 @@ import {
   PolicyEngine,
   Scheduler,
 } from "../../apps/trenchclaw/src/ai";
-import { createActionContext } from "../../apps/trenchclaw/src/ai/runtime/types/context";
-import type { JobState } from "../../apps/trenchclaw/src/ai/runtime/types/state";
+import { createActionContext } from "../../apps/trenchclaw/src/ai/contracts/types/context";
+import type { JobState } from "../../apps/trenchclaw/src/ai/contracts/types/state";
 import { actionSequenceRoutine } from "../../apps/trenchclaw/src/solana/routines/action-sequence";
 import { submitTradingRoutineAction } from "../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/submitTradingRoutine";
 

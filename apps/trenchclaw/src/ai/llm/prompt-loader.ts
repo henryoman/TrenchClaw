@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
-import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
-import { loadRuntimeSettings } from "../../runtime/load";
+import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance/state";
+import { loadRuntimeSettings } from "../../runtime/settings";
 import { getRuntimeCapabilitySnapshot } from "../../runtime/capabilities/selectors";
 import {
   renderAsyncToolBehaviorSection,

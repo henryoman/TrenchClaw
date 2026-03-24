@@ -1,7 +1,7 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
-import { resolveInstanceSecretsRoot } from "../../runtime/instance-paths";
+import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance/state";
+import { resolveInstanceSecretsRoot } from "../../runtime/instance/paths";
 import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
 import { isRecord } from "./shared";
 

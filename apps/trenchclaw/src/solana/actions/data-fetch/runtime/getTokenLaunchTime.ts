@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
+import type { Action } from "../../../../ai/contracts/types/action";
 import {
   getDexscreenerTokenPairsByChain,
   type DexscreenerPairInfo,

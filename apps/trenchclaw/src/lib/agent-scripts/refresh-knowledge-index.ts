@@ -2,8 +2,8 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname } from "node:path";
 import { renderKnowledgeIndexMarkdown, resolveKnowledgeRoot } from "../knowledge/knowledge-index";
 import { assertWritePathInRoots } from "../../runtime/security/write-scope";
-import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
-import { resolveInstanceGeneratedRoot, resolveInstanceKnowledgeIndexPath } from "../../runtime/instance-paths";
+import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
+import { resolveInstanceGeneratedRoot, resolveInstanceKnowledgeIndexPath } from "../../runtime/instance/paths";
 
 export const refreshKnowledgeIndex = async (): Promise<string[]> => {
   const activeInstanceId = resolveRequiredActiveInstanceIdSync(

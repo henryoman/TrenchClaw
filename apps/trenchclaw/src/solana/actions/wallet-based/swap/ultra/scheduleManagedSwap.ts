@@ -1,14 +1,14 @@
 import { z } from "zod";
 
-import type { Action, ActionStep } from "../../../../../ai/runtime/types/action";
-import type { RuntimeJobEnqueueRequest } from "../../../../../ai/runtime/types/context";
-import type { JobState } from "../../../../../ai/runtime/types/state";
+import type { Action, ActionStep } from "../../../../../ai/contracts/types/action";
+import type { RuntimeJobEnqueueRequest } from "../../../../../ai/contracts/types/context";
+import type { JobState } from "../../../../../ai/contracts/types/state";
 import {
   deriveEvenlySpacedIntervalMs,
   resolveIntervalDurationMs,
   resolveScheduledTimeUnixMs,
   scheduleDurationInputSchema,
-} from "../../../../../runtime/time/scheduling";
+} from "../../../../../runtime/scheduling/time";
 import { managedWalletSelectorSchema } from "../../../../lib/wallet/wallet-selector";
 import { walletGroupNameSchema } from "../../../../lib/wallet/wallet-types";
 import { amountInputSchema } from "./shared";

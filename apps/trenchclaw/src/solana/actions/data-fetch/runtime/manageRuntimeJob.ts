@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import type { JobState, StateStore } from "../../../../ai/runtime/types/state";
-import type { RuntimeJobControlRequest } from "../../../../ai/runtime/types/context";
+import type { Action } from "../../../../ai/contracts/types/action";
+import type { JobState, StateStore } from "../../../../ai/contracts/types/state";
+import type { RuntimeJobControlRequest } from "../../../../ai/contracts/types/context";
 
 const manageRuntimeJobInputSchema = z
   .object({

@@ -1,6 +1,6 @@
 import { Database } from "bun:sqlite";
 
-import type { ActionResult } from "../../ai/runtime/types/action";
+import type { ActionResult } from "../../ai/contracts/types/action";
 import type {
   ChatMessageState,
   ConversationHistorySlice,
@@ -13,11 +13,11 @@ import type {
   RuntimeSearchResult,
   RuntimeSearchScope,
   StateStore,
-} from "../../ai/runtime/types/state";
+} from "../../ai/contracts/types/state";
 import {
   MAX_CONVERSATION_HISTORY_SCAN_MESSAGES,
   createConversationHistorySlice,
-} from "../conversation-history";
+} from "../chat/history";
 import {
   actionResultSchema,
   chatMessageStateSchema,

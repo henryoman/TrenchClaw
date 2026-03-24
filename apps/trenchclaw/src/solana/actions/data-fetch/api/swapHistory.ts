@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createHelius } from "helius-sdk";
 
-import type { Action } from "../../../../ai/runtime/types/action";
+import type { Action } from "../../../../ai/contracts/types/action";
 import { resolveHeliusRpcConfig } from "../../../lib/rpc/helius";
 
 const HELIUS_SWAP_HISTORY_LIMIT = 20;

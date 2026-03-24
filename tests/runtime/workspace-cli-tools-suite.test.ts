@@ -3,7 +3,7 @@ import { mkdir, readFile, rm, symlink, unlink } from "node:fs/promises";
 import path from "node:path";
 
 import { RUNTIME_INSTANCE_ROOT } from "../../apps/trenchclaw/src/runtime/runtime-paths";
-import { resolveInstanceToolBinRoot } from "../../apps/trenchclaw/src/runtime/instance-paths";
+import { resolveInstanceToolBinRoot } from "../../apps/trenchclaw/src/runtime/instance/paths";
 import {
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_LIST_DIRECTORY_TOOL_NAME,

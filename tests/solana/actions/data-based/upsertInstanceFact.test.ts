@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai/core/state-store";
 import { upsertInstanceFactAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/upsertInstanceFact";
 

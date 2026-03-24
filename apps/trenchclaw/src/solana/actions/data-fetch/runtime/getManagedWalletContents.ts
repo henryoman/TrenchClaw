@@ -3,9 +3,9 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import type { ActionContext } from "../../../../ai/runtime/types/context";
-import type { Action } from "../../../../ai/runtime/types/action";
-import type { JobState } from "../../../../ai/runtime/types/state";
+import type { ActionContext } from "../../../../ai/contracts/types/context";
+import type { Action } from "../../../../ai/contracts/types/action";
+import type { JobState } from "../../../../ai/contracts/types/state";
 import {
   applyRpcRateLimitCooldown,
   parseRetryAfterMs,

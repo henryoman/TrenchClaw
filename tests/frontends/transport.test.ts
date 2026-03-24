@@ -4,7 +4,7 @@ import path from "node:path";
 import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
-import { RuntimeTransport } from "../../apps/trenchclaw/src/runtime/transport";
+import { RuntimeTransport } from "../../apps/trenchclaw/src/runtime/surface";
 import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
 import { runtimeStatePath } from "../helpers/core-paths";
 

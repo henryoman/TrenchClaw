@@ -1,6 +1,6 @@
-import type { StateStore } from "../../ai/runtime/types/state";
+import type { StateStore } from "../../ai/contracts/types/state";
 import { getSolPrice } from "../market/sol-price";
-import { listUpcomingTradingJobs } from "../trading/upcoming-schedule";
+import { listUpcomingTradingJobs } from "../scheduling/upcoming-trading-jobs";
 
 const usdFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",

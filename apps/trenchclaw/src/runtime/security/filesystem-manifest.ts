@@ -1,12 +1,12 @@
 import path from "node:path";
-import type { RuntimeActor } from "../../ai/runtime/types/context";
+import type { RuntimeActor } from "../../ai/contracts/types/context";
 import {
   resolveCoreRelativePath,
   resolveRuntimeContractPath,
   resolveRuntimeStateRoot,
   toRuntimeContractRelativePath,
 } from "../runtime-paths";
-import { resolveCurrentActiveInstanceIdSync } from "../instance-state";
+import { resolveCurrentActiveInstanceIdSync } from "../instance/state";
 import { parseStructuredFile } from "../../ai/llm/shared";
 
 type FilesystemSubject = "model" | "user" | "system";

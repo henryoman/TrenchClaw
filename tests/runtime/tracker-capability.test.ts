@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
 import { getRuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
-import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/load";
+import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { createPersistedTestInstance } from "../helpers/instance-fixtures";
 import { runtimeStatePath } from "../helpers/core-paths";
 

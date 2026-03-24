@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { LlmClient } from "../../apps/trenchclaw/src/ai/llm/types";
-import { createRuntimeConversationId } from "../../apps/trenchclaw/src/ai/runtime/types/ids";
+import { createRuntimeConversationId } from "../../apps/trenchclaw/src/ai/contracts/types/ids";
 import { runWakeupCheckAction } from "../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/runWakeupCheck";
 import { runtimeStatePath } from "../helpers/core-paths";
 

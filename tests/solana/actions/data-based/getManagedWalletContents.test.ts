@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai";
-import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { createGetManagedWalletContentsAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getManagedWalletContents";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 

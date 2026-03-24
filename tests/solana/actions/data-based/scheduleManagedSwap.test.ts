@@ -2,9 +2,9 @@ import { describe, expect, test } from "bun:test";
 import { zodSchema } from "ai";
 
 import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai";
-import { createActionContext } from "../../../../apps/trenchclaw/src/ai/runtime/types/context";
-import type { JobState } from "../../../../apps/trenchclaw/src/ai/runtime/types/state";
-import { listUpcomingTradingJobs } from "../../../../apps/trenchclaw/src/runtime/trading/upcoming-schedule";
+import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
+import type { JobState } from "../../../../apps/trenchclaw/src/ai/contracts/types/state";
+import { listUpcomingTradingJobs } from "../../../../apps/trenchclaw/src/runtime/scheduling/upcoming-trading-jobs";
 import { scheduleManagedSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/scheduleManagedSwap";
 
 describe("scheduleManagedSwapAction", () => {

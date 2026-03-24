@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
-import { collectDoctorReport, formatDoctorReport, resolveLayout, type ResolvedLayout } from "../../apps/runner/index";
+import { collectDoctorReport, formatDoctorReport, resolveLayout, type ResolvedLayout } from "../../apps/runner";
 
 const tempRoots: string[] = [];
 

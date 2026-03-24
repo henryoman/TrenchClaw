@@ -1,8 +1,8 @@
 import path from "node:path";
 import { z } from "zod";
 
-import type { RoutinePlanner } from "../../ai/runtime/types/scheduler";
-import { resolveActiveInstanceWorkspaceRoutinesRootOrThrow } from "../../runtime/instance-workspace";
+import type { RoutinePlanner } from "../../ai/contracts/types/scheduler";
+import { resolveActiveInstanceWorkspaceRoutinesRootOrThrow } from "../../runtime/instance/workspace";
 import { createWalletsRoutine } from "./create-wallets";
 
 const retryPolicySchema = z.object({

@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import type { Action } from "../ai/runtime/types/action";
+import type { Action } from "../ai/contracts/types/action";
 import {
   ActionDispatcher,
   ActionRegistry,
@@ -39,9 +39,9 @@ import {
   resolvePrimaryRuntimeEndpoints,
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
-} from "./load";
+} from "./settings";
 import { createRuntimeLogger, type RuntimeLogger } from "./logging/runtime-logger";
-import { createRuntimeActionThrottle } from "./trading/throttle";
+import { createRuntimeActionThrottle } from "./scheduling/trading-throttle";
 import {
   LiveLogStore,
   MemoryLogStore,
@@ -53,13 +53,13 @@ import {
   setLogIoWriteObserver,
   type ActiveSessionInfo,
 } from "./storage";
-import { createRuntimeChatService, type RuntimeChatService } from "./chat";
-import { ensureInstanceLayout } from "./instance-layout";
-import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
-import { isRecord } from "./object-utils";
-import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./runtime-notices";
+import { createRuntimeChatService, type RuntimeChatService } from "./chat/service";
+import { ensureInstanceLayout } from "./instance/layout";
+import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance/state";
+import { isRecord } from "./shared/object-utils";
+import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./chat/notices";
 import { migrateLegacyRuntimeState } from "./runtime-state-migration";
-import { syncManagedWakeupJob } from "./wakeup/managed-wakeup";
+import { syncManagedWakeupJob } from "./scheduling/managed-wakeup";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set([

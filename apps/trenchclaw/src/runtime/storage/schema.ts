@@ -1,13 +1,13 @@
 import { z } from "zod";
 
-import type { ActionResult } from "../../ai/runtime/types/action";
+import type { ActionResult } from "../../ai/contracts/types/action";
 import type {
   ChatMessageState,
   ConversationState,
   InstanceFactState,
   InstanceProfileState,
   JobState,
-} from "../../ai/runtime/types/state";
+} from "../../ai/contracts/types/state";
 import {
   botIdSchema,
   confidenceSchema,

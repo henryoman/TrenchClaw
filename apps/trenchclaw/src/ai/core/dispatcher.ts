@@ -10,9 +10,9 @@ import type {
   RetryPolicy,
   RuntimeEventBus,
   StateStore,
-} from "../runtime/types";
-import type { RuntimeActionThrottleContract } from "../../runtime/trading/throttle";
-import { createIdempotencyKey } from "../runtime/types";
+} from "../contracts/types";
+import type { RuntimeActionThrottleContract } from "../../runtime/scheduling/trading-throttle";
+import { createIdempotencyKey } from "../contracts/types";
 
 const DEFAULT_RETRY_POLICY: RetryPolicy = {
   maxAttempts: 1,

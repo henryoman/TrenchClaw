@@ -1,0 +1,384 @@
+import type {
+  RuntimeApiUpdateAiSettingsRequest,
+  RuntimeApiCreateInstanceRequest,
+  RuntimeApiDeleteSecretRequest,
+  RuntimeApiSignInInstanceRequest,
+  RuntimeApiUpdateTrackerRequest,
+  RuntimeApiUpdateTradingSettingsRequest,
+  RuntimeApiUpdateWakeupSettingsRequest,
+  RuntimeApiUpdateVaultRequest,
+  RuntimeApiUpsertSecretRequest,
+} from "@trenchclaw/types";
+import { safeValidateUIMessages, type UIMessage } from "ai";
+import type { GatewayLane } from "../../ai/gateway";
+import { createChatMessageId } from "../../ai/contracts/types/ids";
+import { tradingPreferencesSchema } from "../settings/instance/trading";
+import { isRecord } from "../shared/object-utils";
+import { trackerRegistrySchema } from "../instance/registries/tracker";
+import { wakeupSettingsSchema } from "../settings/instance/wakeup";
+
+const toUserMessage = (text: string): UIMessage => ({
+  id: createChatMessageId(),
+  role: "user",
+  parts: [{ type: "text", text }],
+});
+
+const toGatewayLane = (value: unknown): GatewayLane | undefined =>
+  value === "operator-chat" || value === "workspace-agent" || value === "background-summary" ? value : undefined;
+
+export const parseUiChatRequest = async (
+  request: Request,
+): Promise<{
+  messages: UIMessage[];
+  chatId?: string;
+  conversationTitle?: string;
+  lane?: GatewayLane;
+  metadata?: Record<string, unknown>;
+} | null> => {
+  const toSafeTextParts = (value: unknown): UIMessage["parts"] => {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    const parts: UIMessage["parts"] = [];
+    for (const part of value) {
+      if (!isRecord(part) || part.type !== "text" || typeof part.text !== "string") {
+        continue;
+      }
+      const text = part.text.trim();
+      if (!text) {
+        continue;
+      }
+      parts.push({
+        type: "text",
+        text,
+      });
+    }
+    return parts;
+  };
+
+  const toUiMessage = (value: unknown): UIMessage | null => {
+    if (!isRecord(value)) {
+      return null;
+    }
+
+    const role = value.role;
+    if (role !== "system" && role !== "user" && role !== "assistant") {
+      return null;
+    }
+
+    const id = typeof value.id === "string" && value.id.trim().length > 0 ? value.id.trim() : createChatMessageId();
+    const safeParts = toSafeTextParts(value.parts);
+    if (safeParts.length > 0) {
+      return {
+        id,
+        role,
+        parts: safeParts,
+      };
+    }
+
+    if (typeof value.content === "string" && value.content.trim().length > 0) {
+      return {
+        id,
+        role,
+        parts: [{ type: "text", text: value.content.trim() }],
+      };
+    }
+
+    if (typeof value.text === "string" && value.text.trim().length > 0) {
+      return {
+        id,
+        role,
+        parts: [{ type: "text", text: value.text.trim() }],
+      };
+    }
+
+    return null;
+  };
+
+  const toUiMessages = (value: unknown): UIMessage[] | null => {
+    if (!Array.isArray(value)) {
+      return null;
+    }
+    const messages = value
+      .map((entry) => toUiMessage(entry))
+      .filter((entry): entry is UIMessage => entry !== null);
+    return messages.length > 0 ? messages : null;
+  };
+
+  const extractMessages = (value: Record<string, unknown>): UIMessage[] | null => {
+    const list = toUiMessages(value.messages);
+    if (list) {
+      return list;
+    }
+
+    if (isRecord(value.message)) {
+      const single = toUiMessage(value.message);
+      if (single) {
+        return [single];
+      }
+    }
+
+    if (typeof value.input === "string" && value.input.trim().length > 0) {
+      return [toUserMessage(value.input.trim())];
+    }
+
+    if (typeof value.prompt === "string" && value.prompt.trim().length > 0) {
+      return [toUserMessage(value.prompt.trim())];
+    }
+
+    return null;
+  };
+
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload)) {
+      return null;
+    }
+
+    const body = isRecord(payload.body) ? payload.body : payload;
+    const messages = extractMessages(body) ?? (body === payload ? null : extractMessages(payload));
+    if (!messages || messages.length === 0) {
+      return null;
+    }
+
+    const chatId =
+      (typeof body.chatId === "string" && body.chatId.trim().length > 0
+        ? body.chatId.trim()
+        : typeof body.id === "string" && body.id.trim().length > 0
+          ? body.id.trim()
+          : typeof payload.chatId === "string" && payload.chatId.trim().length > 0
+            ? payload.chatId.trim()
+            : typeof payload.id === "string" && payload.id.trim().length > 0
+              ? payload.id.trim()
+              : undefined);
+    const conversationTitle =
+      typeof body.conversationTitle === "string" && body.conversationTitle.trim().length > 0
+        ? body.conversationTitle.trim()
+        : typeof payload.conversationTitle === "string" && payload.conversationTitle.trim().length > 0
+          ? payload.conversationTitle.trim()
+          : undefined;
+    const metadata =
+      isRecord(body.metadata) ? body.metadata : isRecord(payload.metadata) ? payload.metadata : undefined;
+    const lane = toGatewayLane(body.lane) ?? toGatewayLane(payload.lane) ?? toGatewayLane(metadata?.lane);
+    const validation = await safeValidateUIMessages({
+      messages,
+    });
+    if (!validation.success) {
+      return null;
+    }
+
+    return {
+      messages: validation.data,
+      chatId,
+      conversationTitle,
+      lane,
+      metadata,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseCreateInstanceRequest = async (request: Request): Promise<RuntimeApiCreateInstanceRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.name !== "string") {
+      return null;
+    }
+    const name = payload.name.trim();
+    if (name.length === 0) {
+      return null;
+    }
+    const pin = typeof payload.userPin === "string" && payload.userPin.trim().length > 0 ? payload.userPin.trim() : undefined;
+    const safetyProfile =
+      payload.safetyProfile === "safe" || payload.safetyProfile === "dangerous" || payload.safetyProfile === "veryDangerous"
+        ? payload.safetyProfile
+        : undefined;
+
+    return {
+      name,
+      userPin: pin,
+      safetyProfile,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseSignInRequest = async (request: Request): Promise<RuntimeApiSignInInstanceRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.localInstanceId !== "string") {
+      return null;
+    }
+    const localInstanceId = payload.localInstanceId.trim();
+    if (!localInstanceId) {
+      return null;
+    }
+    const userPin = typeof payload.userPin === "string" && payload.userPin.trim().length > 0 ? payload.userPin.trim() : undefined;
+    return { localInstanceId, userPin };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateVaultRequest = async (request: Request): Promise<RuntimeApiUpdateVaultRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.content !== "string") {
+      return null;
+    }
+    return {
+      content: payload.content,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateAiSettingsRequest = async (request: Request): Promise<RuntimeApiUpdateAiSettingsRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.settings)) {
+      return null;
+    }
+
+    const { provider, model, defaultMode, temperature, maxOutputTokens } = payload.settings;
+
+    if (
+      typeof provider !== "string"
+      || (provider !== "gateway" && provider !== "openrouter")
+      || typeof model !== "string"
+      || typeof defaultMode !== "string"
+    ) {
+      return null;
+    }
+
+    if (temperature !== null && (typeof temperature !== "number" || !Number.isFinite(temperature))) {
+      return null;
+    }
+
+    if (
+      maxOutputTokens !== null
+      && (typeof maxOutputTokens !== "number" || !Number.isFinite(maxOutputTokens))
+    ) {
+      return null;
+    }
+
+    return {
+      settings: {
+        provider,
+        model,
+        defaultMode,
+        temperature,
+        maxOutputTokens,
+      },
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateTradingSettingsRequest = async (request: Request): Promise<RuntimeApiUpdateTradingSettingsRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.settings)) {
+      return null;
+    }
+
+    const parsed = tradingPreferencesSchema.safeParse(payload.settings);
+    if (!parsed.success) {
+      return null;
+    }
+
+    return {
+      settings: parsed.data,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateWakeupSettingsRequest = async (request: Request): Promise<RuntimeApiUpdateWakeupSettingsRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.settings)) {
+      return null;
+    }
+
+    const parsed = wakeupSettingsSchema.safeParse(payload.settings);
+    if (!parsed.success) {
+      return null;
+    }
+
+    return {
+      settings: parsed.data,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpdateTrackerRequest = async (request: Request): Promise<RuntimeApiUpdateTrackerRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || !isRecord(payload.tracker)) {
+      return null;
+    }
+
+    const parsed = trackerRegistrySchema.safeParse(payload.tracker);
+    if (!parsed.success) {
+      return null;
+    }
+
+    return {
+      tracker: parsed.data,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseUpsertSecretRequest = async (request: Request): Promise<RuntimeApiUpsertSecretRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.optionId !== "string" || typeof payload.value !== "string") {
+      return null;
+    }
+    const optionId = payload.optionId.trim();
+    if (!optionId) {
+      return null;
+    }
+    const source = payload.source === "public" || payload.source === "custom" ? payload.source : undefined;
+    const publicRpcId =
+      payload.publicRpcId === null || typeof payload.publicRpcId === "string" ? payload.publicRpcId : undefined;
+    const rpcProviderId =
+      payload.rpcProviderId === null || typeof payload.rpcProviderId === "string" ? payload.rpcProviderId : undefined;
+    return {
+      optionId,
+      value: payload.value,
+      source,
+      publicRpcId,
+      rpcProviderId,
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const parseDeleteSecretRequest = async (request: Request): Promise<RuntimeApiDeleteSecretRequest | null> => {
+  try {
+    const payload = await request.json();
+    if (!isRecord(payload) || typeof payload.optionId !== "string") {
+      return null;
+    }
+    const optionId = payload.optionId.trim();
+    if (!optionId) {
+      return null;
+    }
+    return { optionId };
+  } catch {
+    return null;
+  }
+};

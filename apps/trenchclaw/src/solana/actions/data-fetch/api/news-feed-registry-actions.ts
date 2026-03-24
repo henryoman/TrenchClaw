@@ -1,9 +1,9 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import { ensureInstanceLayout } from "../../../../runtime/instance-layout";
-import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance-state";
-import { readInstanceNewsFeedRegistry } from "../../../../runtime/news-feed-registry";
+import type { Action } from "../../../../ai/contracts/types/action";
+import { ensureInstanceLayout } from "../../../../runtime/instance/layout";
+import { resolveRequiredActiveInstanceIdSync } from "../../../../runtime/instance/state";
+import { readInstanceNewsFeedRegistry } from "../../../../runtime/instance/registries/news-feeds";
 
 const nonEmptyStringSchema = z.string().trim().min(1);
 

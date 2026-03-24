@@ -1,8 +1,8 @@
 import { z } from "zod";
 
-import type { Action } from "../../../../ai/runtime/types/action";
-import { createFactId, createIdempotencyKey } from "../../../../ai/runtime/types/ids";
-import type { StateStore } from "../../../../ai/runtime/types/state";
+import type { Action } from "../../../../ai/contracts/types/action";
+import { createFactId, createIdempotencyKey } from "../../../../ai/contracts/types/ids";
+import type { StateStore } from "../../../../ai/contracts/types/state";
 import { normalizeFactKey, resolveInstanceId } from "./instance-memory-shared";
 
 const profilePatchSchema = z.object({

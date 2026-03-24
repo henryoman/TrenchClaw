@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { z } from "zod";
 
 import { bootstrapRuntime } from "../../runtime/bootstrap";
-import type { RuntimeActor } from "../../ai/runtime/types/context";
+import type { RuntimeActor } from "../../ai/contracts/types/context";
 
 const runtimeActorSchema = z.enum(["user", "agent", "system"]);
 const toolCallEnvelopeSchema = z.object({

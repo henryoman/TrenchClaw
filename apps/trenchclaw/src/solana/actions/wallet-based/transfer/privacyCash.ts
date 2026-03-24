@@ -2,8 +2,8 @@ import { performance } from "node:perf_hooks";
 import { readFile } from "node:fs/promises";
 import { z } from "zod";
 
-import type { Action, ActionResult } from "../../../../ai/runtime/types/action";
-import type { ActionContext } from "../../../../ai/runtime/types/context";
+import type { Action, ActionResult } from "../../../../ai/contracts/types/action";
+import type { ActionContext } from "../../../../ai/contracts/types/context";
 import type { UltraSwapOutput } from "../swap/ultra/swap";
 import { ultraSwapAction } from "../swap/ultra/swap";
 import { resolveRequiredRpcUrl } from "../../../lib/rpc/urls";

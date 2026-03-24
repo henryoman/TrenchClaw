@@ -1,8 +1,8 @@
 import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
-import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
-import { resolveInstanceAiSettingsPath } from "../../runtime/instance-paths";
+import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
+import { resolveInstanceAiSettingsPath } from "../../runtime/instance/paths";
 import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import type { AiModelProvider } from "./model-catalog";
