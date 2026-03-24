@@ -266,10 +266,9 @@ Related env vars used by runtime routing:
 
 ## Where To Find More Helius Info
 
-- Deep reference (repo-authored): `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius.md`
+- Deep reference (repo-authored): `src/ai/brain/knowledge/deep-knowledge/helius.md`
 - Skill CLI reference: `src/ai/brain/knowledge/skills/helius/references/cli.md`
-- Agents docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-agents-llms.md`
-- Full docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-docs-llms-full.md`
-- Deep CLI guide snapshot: `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli.md`
-- Deep CLI command snapshot: `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli-commands.md`
-- CLI upstream README snapshot: `src/ai/brain/knowledge/deep-knowledge/solana/helius/helius-cli-readme.md`
+- Agents docs index snapshot (downloaded): `src/ai/brain/knowledge/deep-knowledge/helius-agents-llms.md`
+- Deep CLI guide snapshot: `src/ai/brain/knowledge/deep-knowledge/helius-cli.md`
+- Deep CLI command snapshot: `src/ai/brain/knowledge/deep-knowledge/helius-cli-commands.md`
+- CLI upstream README snapshot: `src/ai/brain/knowledge/deep-knowledge/helius-cli-readme.md`

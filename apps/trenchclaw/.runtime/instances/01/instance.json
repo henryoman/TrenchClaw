@@ -3,5 +3,13 @@
     "name": "default",
     "localInstanceId": "01",
     "userPin": null
+<<<<<<< HEAD
+=======
+  },
+  "runtime": {
+    "safetyProfile": "dangerous",
+    "createdAt": "2026-03-19T00:00:00.000Z",
+    "updatedAt": "2026-03-19T00:00:00.000Z"
+>>>>>>> c8ac8aed5c1cc3be78572cbbf88e4c94d251e93e
   }
 }

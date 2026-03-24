@@ -84,17 +84,14 @@ describe("ensureInstanceLayout", () => {
       result.first.createdDirectories.map((directoryPath) =>
         path.relative(result.first.instanceRoot, directoryPath).split(path.sep).join("/")),
     ).toEqual(result.expectedDirectoryPaths);
-    const createdFileNames = result.first.createdFiles.map((filePath) => path.basename(filePath));
-    expect(createdFileNames).toEqual(expect.arrayContaining([
-      "WAKEUP.md",
+    expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual([
       "ai.json",
-      "instance.json",
       "news-feeds.json",
       "settings.json",
       "tracker.json",
       "trading.json",
       "vault.json",
-    ]));
+    ]);
     expect(result.second.createdDirectories).toEqual([]);
     expect(result.second.createdFiles).toEqual([]);
   });

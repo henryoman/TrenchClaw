@@ -24,6 +24,7 @@ Current shipping behavior:
 - Runtime workspace downloads and operator-created artifacts should stay under the instance `workspace/` tree, not under `cache/generated/`.
 - Packaged releases currently do not ship `.runtime/` as the live runtime root. Mutable runtime state is created on first run under `~/.trenchclaw` by default or under `TRENCHCLAW_RUNTIME_STATE_ROOT`.
 
+<<<<<<< HEAD
 Tracked seed contents:
 
 - Commit the seed/template files that define the shared contract for new runtimes.
@@ -31,6 +32,8 @@ Tracked seed contents:
 - Empty directory structure under the seed is materialized into developer runtimes by `bun run dev:runtime:init`; those folders are not meant to live as mutable repo state.
 - Update shared defaults by editing the seed files in `.runtime/instances/01/`.
 
+=======
+>>>>>>> c8ac8aed5c1cc3be78572cbbf88e4c94d251e93e
 Rules:
 
 - `.runtime/` is documentation and contract only.

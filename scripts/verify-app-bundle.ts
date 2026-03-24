@@ -7,7 +7,6 @@ import {
   RELEASE_CONFIG_ASSET_PATHS,
   RELEASE_PLACEHOLDER_ASSET_PATHS,
   RELEASE_RUNTIME_ASSET_PATHS,
-  RELEASE_RUNTIME_TEMPLATE_PATHS,
 } from "./lib/release-build-plan";
 import { hasBlockedBundleContent, hasBlockedBundlePath } from "./lib/release-bundle-filter";
 
@@ -78,7 +77,6 @@ const run = async (): Promise<void> => {
     ...RELEASE_CONFIG_ASSET_PATHS.map((relativePath) => `core/${relativePath}`),
     ...RELEASE_PLACEHOLDER_ASSET_PATHS.map((relativePath) => `core/${relativePath}`),
     ...RELEASE_RUNTIME_ASSET_PATHS.map((relativePath) => `core/${relativePath}`),
-    ...RELEASE_RUNTIME_TEMPLATE_PATHS.map((relativePath) => `core/${relativePath}`),
     "build-manifest.json",
   ];
 

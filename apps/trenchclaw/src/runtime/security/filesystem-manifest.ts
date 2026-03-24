@@ -6,7 +6,10 @@ import {
   resolveRuntimeStateRoot,
   toRuntimeContractRelativePath,
 } from "../runtime-paths";
+<<<<<<< HEAD
 import { resolveCurrentActiveInstanceIdSync } from "../instance-state";
+=======
+>>>>>>> c8ac8aed5c1cc3be78572cbbf88e4c94d251e93e
 import { parseStructuredFile } from "../../ai/llm/shared";
 
 type FilesystemSubject = "model" | "user" | "system";

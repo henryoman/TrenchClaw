@@ -1,7 +1,6 @@
 import { accessSync, constants as FsConstants, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
-import { resolvePreferredWorkspaceRuntimeStateRoot } from "../trenchclaw/src/runtime/developer-runtime-root";
 
 import type { bootstrapRuntime as bootstrapRuntimeType } from "../trenchclaw/src/runtime/bootstrap";
 import type { RuntimeSettingsProfile } from "../trenchclaw/src/runtime/load";
@@ -28,6 +27,8 @@ const emphasize = (value: string): string => colorize(value, "neonTurquoise");
 const strong = (value: string): string => applyAnsi(value, "bold");
 const spotlight = (value: string): string => applyAnsi(value, "bold", "neonTurquoise");
 const DEFAULT_BOOTSTRAP_INSTANCE_ID = "00";
+const DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY = ".trenchclaw-dev-runtime";
+
 export type LayoutKind = "workspace" | "release";
 
 export interface ResolvedLayout {
@@ -117,23 +118,23 @@ const isReleaseRoot = (candidate: string): boolean =>
   existsSync(path.join(candidate, "core", "src", "ai", "brain")) &&
   existsSync(path.join(candidate, "gui", "index.html"));
 
+const resolveDefaultWorkspaceRuntimeStateRoot = (env: NodeJS.ProcessEnv): string =>
+  path.join(env.HOME || env.USERPROFILE || process.cwd(), DEFAULT_WORKSPACE_RUNTIME_STATE_DIRECTORY);
+
 const resolveDefaultRuntimeStateRoot = (env: NodeJS.ProcessEnv): string =>
   path.join(env.HOME || env.USERPROFILE || process.cwd(), ".trenchclaw");
 
 const resolveDefaultGeneratedStateRoot = (runtimeStateRoot: string): string =>
   path.join(runtimeStateRoot, "instances", DEFAULT_BOOTSTRAP_INSTANCE_ID, "cache", "generated");
 
-const resolveRuntimeStateRoot = (kind: LayoutKind, coreAssetRoot: string, env: NodeJS.ProcessEnv = process.env): string => {
+const resolveRuntimeStateRoot = (kind: LayoutKind, _coreAssetRoot: string, env: NodeJS.ProcessEnv = process.env): string => {
   const configured = env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim();
   if (configured) {
     return resolveAbsoluteConfiguredPath("TRENCHCLAW_RUNTIME_STATE_ROOT", configured);
   }
 
   if (kind === "workspace") {
-    return resolvePreferredWorkspaceRuntimeStateRoot({
-      coreAppRoot: coreAssetRoot,
-      env,
-    });
+    return resolveDefaultWorkspaceRuntimeStateRoot(env);
   }
 
   return resolveDefaultRuntimeStateRoot(env);
@@ -696,25 +697,10 @@ const canBindPort = async (host: string, port: number): Promise<boolean> => {
 const resolveRuntimeBootstrapInstanceId = (): string =>
   resolveDoctorActiveInstance(LAYOUT.runtimeStateRoot, process.env).id ?? DEFAULT_BOOTSTRAP_INSTANCE_ID;
 
-const ensureBootstrapActiveInstanceSelection = (instanceId: string): void => {
-  const activeInstancePath = path.join(LAYOUT.runtimeStateRoot, "instances", "active-instance.json");
-  if (existsSync(activeInstancePath)) {
-    return;
-  }
-
-  mkdirSync(path.dirname(activeInstancePath), { recursive: true });
-  writeFileSync(
-    activeInstancePath,
-    `${JSON.stringify({ localInstanceId: instanceId }, null, 2)}\n`,
-    "utf8",
-  );
-};
-
 const ensureRuntimeBootstrapInstance = async (): Promise<string> => {
   const instanceId = resolveRuntimeBootstrapInstanceId();
   const { ensureInstanceLayout } = await loadRuntimeImports();
   await ensureInstanceLayout(instanceId);
-  ensureBootstrapActiveInstanceSelection(instanceId);
   return instanceId;
 };
 

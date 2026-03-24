@@ -21,16 +21,6 @@ export const RELEASE_RUNTIME_ASSET_PATHS = [
   "src/runtime/gui-transport/router.ts",
 ] as const;
 
-export const RELEASE_RUNTIME_TEMPLATE_PATHS = [
-  ".runtime/README.md",
-  ".runtime/instances/01/WAKEUP.md",
-  ".runtime/instances/01/instance.json",
-  ".runtime/instances/01/settings/ai.json",
-  ".runtime/instances/01/settings/settings.json",
-  ".runtime/instances/01/settings/trading.json",
-  ".runtime/instances/01/secrets/vault.json",
-] as const;
-
 export const RELEASE_PLACEHOLDER_ASSET_PATHS = [
   "src/ai/brain/protected/keypairs/.keep",
 ] as const;
@@ -57,7 +47,6 @@ export const resolveReleasePlanSnapshot = () => ({
   targets: [...DEFAULT_RELEASE_COMPILE_TARGETS],
   configAssets: [...RELEASE_CONFIG_ASSET_PATHS],
   runtimeAssets: [...RELEASE_RUNTIME_ASSET_PATHS],
-  runtimeTemplateAssets: [...RELEASE_RUNTIME_TEMPLATE_PATHS],
   placeholderAssets: [...RELEASE_PLACEHOLDER_ASSET_PATHS],
   brainExcludePrefixes: resolveReleaseBrainExcludePrefixes(),
 });

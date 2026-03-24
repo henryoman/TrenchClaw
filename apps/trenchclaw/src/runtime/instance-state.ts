@@ -5,15 +5,12 @@ import path from "node:path";
 import type { RuntimeApiInstanceProfileView } from "@trenchclaw/types";
 
 import { assertInstanceSystemWritePath } from "./security/write-scope";
-import { resolveRuntimeStateRoot } from "./runtime-paths";
+import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
 
+const ACTIVE_INSTANCE_STATE_FILE = path.join(RUNTIME_INSTANCE_ROOT, "active-instance.json");
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
 const INSTANCE_PROFILE_FILE_NAME = "instance.json";
-
-const resolveRuntimeInstanceRoot = (): string => path.join(resolveRuntimeStateRoot(), "instances");
-
-const resolveActiveInstanceStateFile = (): string => path.join(resolveRuntimeInstanceRoot(), "active-instance.json");
 
 const normalizeInstanceId = (localInstanceId: string): string => {
   const normalized = localInstanceId.trim();
@@ -24,13 +21,13 @@ const normalizeInstanceId = (localInstanceId: string): string => {
 };
 
 const getInstanceProfileFilePath = (localInstanceId: string): string =>
-  path.join(resolveRuntimeInstanceRoot(), normalizeInstanceId(localInstanceId), INSTANCE_PROFILE_FILE_NAME);
+  path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId), INSTANCE_PROFILE_FILE_NAME);
 
 const hasStoredInstance = (localInstanceId: string): boolean => existsSync(getInstanceProfileFilePath(localInstanceId));
 
 const hasInstanceDirectory = (localInstanceId: string): boolean => {
   try {
-    return statSync(path.join(resolveRuntimeInstanceRoot(), normalizeInstanceId(localInstanceId))).isDirectory();
+    return statSync(path.join(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId))).isDirectory();
   } catch {
     return false;
   }
@@ -109,7 +106,7 @@ const parsePersistedActiveInstance = (raw: string): RuntimeApiInstanceProfileVie
 const readSingleAvailableInstanceSync = (): RuntimeApiInstanceProfileView | null => {
   try {
     const instanceIds = new Set<string>();
-    for (const entry of readdirSync(resolveRuntimeInstanceRoot(), { withFileTypes: true })) {
+    for (const entry of readdirSync(RUNTIME_INSTANCE_ROOT, { withFileTypes: true })) {
       if (entry.isDirectory() && INSTANCE_DIRECTORY_PATTERN.test(entry.name)) {
         instanceIds.add(entry.name);
       }
@@ -127,10 +124,9 @@ const readSingleAvailableInstanceSync = (): RuntimeApiInstanceProfileView | null
 };
 
 export const readPersistedActiveInstanceSync = (): RuntimeApiInstanceProfileView | null => {
-  const activeInstanceStateFile = resolveActiveInstanceStateFile();
-  if (existsSync(activeInstanceStateFile)) {
+  if (existsSync(ACTIVE_INSTANCE_STATE_FILE)) {
     try {
-      const persisted = parsePersistedActiveInstance(readFileSync(activeInstanceStateFile, "utf8"));
+      const persisted = parsePersistedActiveInstance(readFileSync(ACTIVE_INSTANCE_STATE_FILE, "utf8"));
       if (persisted) {
         process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = persisted.localInstanceId;
         return persisted;
@@ -171,21 +167,19 @@ export const resolveRequiredActiveInstanceIdSync = (
 };
 
 export const persistActiveInstance = async (instance: RuntimeApiInstanceProfileView | null): Promise<void> => {
-  const activeInstanceStateFile = resolveActiveInstanceStateFile();
-  const runtimeInstanceRoot = resolveRuntimeInstanceRoot();
-  assertInstanceSystemWritePath(activeInstanceStateFile, "persist active instance state");
-  await mkdir(runtimeInstanceRoot, { recursive: true });
+  assertInstanceSystemWritePath(ACTIVE_INSTANCE_STATE_FILE, "persist active instance state");
+  await mkdir(RUNTIME_INSTANCE_ROOT, { recursive: true });
 
   if (instance === null) {
     delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-    await rm(activeInstanceStateFile, { force: true });
+    await rm(ACTIVE_INSTANCE_STATE_FILE, { force: true });
     return;
   }
 
   const localInstanceId = normalizeInstanceId(instance.localInstanceId);
   process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = localInstanceId;
   await writeFile(
-    activeInstanceStateFile,
+    ACTIVE_INSTANCE_STATE_FILE,
     `${JSON.stringify(
       {
         localInstanceId,
@@ -198,7 +192,7 @@ export const persistActiveInstance = async (instance: RuntimeApiInstanceProfileV
 };
 
 export const resolveInstanceDirectoryPath = (localInstanceId: string): string => {
-  const instanceDirectoryPath = path.resolve(resolveRuntimeInstanceRoot(), normalizeInstanceId(localInstanceId));
+  const instanceDirectoryPath = path.resolve(RUNTIME_INSTANCE_ROOT, normalizeInstanceId(localInstanceId));
   assertInstanceSystemWritePath(instanceDirectoryPath, "resolve instance directory");
   return instanceDirectoryPath;
 };

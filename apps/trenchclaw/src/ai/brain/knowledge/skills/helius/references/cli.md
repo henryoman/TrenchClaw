@@ -97,6 +97,6 @@ The official Helius CLI docs currently describe config under `~/.helius/`, while
 ## Read Next
 
 - `references/onboarding.md` for account creation and plan flows
-- `../../deep-knowledge/solana/helius/helius-cli.md` for the full CLI guide snapshot
-- `../../deep-knowledge/solana/helius/helius-cli-commands.md` for the full command catalog
-- `../../deep-knowledge/solana/helius/helius-cli-readme.md` for upstream repo examples
+- `../../deep-knowledge/helius-cli.md` for the full CLI guide snapshot
+- `../../deep-knowledge/helius-cli-commands.md` for the full command catalog
+- `../../deep-knowledge/helius-cli-readme.md` for upstream repo examples
