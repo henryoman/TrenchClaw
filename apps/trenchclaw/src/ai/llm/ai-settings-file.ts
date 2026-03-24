@@ -18,11 +18,14 @@ const NO_ACTIVE_INSTANCE_AI_SETTINGS_MESSAGE =
 
 export const aiSettingsSchema = z.object({
   provider: z.enum(["gateway", "openrouter"]).default(DEFAULT_LLM_PROVIDER),
-  model: z.string().trim().min(1).default(DEFAULT_LLM_MODEL),
+  model: z.string().trim().optional().default(DEFAULT_LLM_MODEL),
   defaultMode: z.string().trim().min(1).default("primary"),
   temperature: z.number().min(0).max(2).nullable().default(null),
   maxOutputTokens: z.number().int().positive().max(64_000).nullable().default(null),
-});
+}).transform((settings) => ({
+  ...settings,
+  model: DEFAULT_LLM_MODEL,
+}));
 
 export type AiSettings = z.output<typeof aiSettingsSchema>;
 export type AiSettingsInput = z.input<typeof aiSettingsSchema>;

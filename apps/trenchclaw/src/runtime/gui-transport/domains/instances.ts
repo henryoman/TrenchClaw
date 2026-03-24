@@ -7,6 +7,7 @@ import type {
   RuntimeApiInstancesResponse,
   RuntimeApiSignInInstanceRequest,
   RuntimeApiSignInInstanceResponse,
+  RuntimeApiSignOutInstanceResponse,
 } from "@trenchclaw/types";
 import {
   assertInstanceSystemWritePath,
@@ -241,4 +242,22 @@ export const signInInstance = async (
   process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instance.localInstanceId;
   context.addActivity("runtime", `Instance signed in: ${instance.name} (${instance.localInstanceId})`);
   return { instance };
+};
+
+export const signOutInstance = async (
+  context: RuntimeSurfaceContext,
+): Promise<RuntimeApiSignOutInstanceResponse> => {
+  const activeInstance = context.getActiveInstance();
+  context.setActiveInstance(null);
+  context.setActiveChatId(null);
+  await persistActiveInstance(null);
+  delete process.env.TRENCHCLAW_OPERATOR_ALIAS;
+  delete process.env.TRENCHCLAW_PROFILE;
+  context.addActivity(
+    "runtime",
+    activeInstance
+      ? `Instance signed out: ${activeInstance.name} (${activeInstance.localInstanceId})`
+      : "Instance signed out",
+  );
+  return { ok: true };
 };

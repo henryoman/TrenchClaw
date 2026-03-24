@@ -14,7 +14,7 @@ import {
 } from "./parsers";
 import { getAiSettings, updateAiSettings } from "./domains/ai-settings";
 import { deleteConversation, streamChat, getConversationMessages, getConversations } from "./domains/chat";
-import { createInstance, listInstances, signInInstance } from "./domains/instances";
+import { createInstance, listInstances, signInInstance, signOutInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-panels";
 import { getSolPrice } from "../market/sol-price";
@@ -254,6 +254,14 @@ export const createRuntimeSurfaceHandler = (context: RuntimeSurfaceContext): ((r
         return Response.json(await signInInstance(context, payload), { headers: CORS_HEADERS });
       } catch (error) {
         return Response.json({ error: toErrorMessage(error) }, { status: 401, headers: CORS_HEADERS });
+      }
+    }
+
+    if (request.method === "POST" && matchesAppRoute(url.pathname, "/instances/sign-out")) {
+      try {
+        return Response.json(await signOutInstance(context), { headers: CORS_HEADERS });
+      } catch (error) {
+        return Response.json({ error: toErrorMessage(error) }, { status: 500, headers: CORS_HEADERS });
       }
     }
 

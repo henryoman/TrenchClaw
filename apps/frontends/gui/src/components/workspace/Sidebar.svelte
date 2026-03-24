@@ -5,7 +5,9 @@
     appVersion?: string;
     instanceName?: string;
     activeTab?: SidebarTab;
+    signOutBusy?: boolean;
     onTabChange: (tab: SidebarTab) => void;
+    onSignOut: () => void;
   };
 
   let {
@@ -13,7 +15,9 @@
     appVersion = "",
     instanceName = "",
     activeTab = "chat",
+    signOutBusy = false,
     onTabChange,
+    onSignOut,
   }: SidebarProps = $props();
 
   const isRuntimeOnline = (status: string): boolean => {
@@ -85,6 +89,16 @@
       }}>Schedule</button
     >
   </nav>
+  <button
+    type="button"
+    class="session-button"
+    disabled={signOutBusy}
+    onclick={() => {
+      onSignOut();
+    }}
+  >
+    {signOutBusy ? "Signing out..." : "Sign out"}
+  </button>
   <div class="status-stack">
     <div class="status-row">
       <p class="status">{isRuntimeOnline(runtimeStatus) ? "ONLINE" : "OFFLINE"}</p>
@@ -160,7 +174,6 @@
   }
 
   .status-stack {
-    margin-top: auto;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -197,6 +210,30 @@
     letter-spacing: 0.03em;
     text-transform: uppercase;
     line-height: 1;
+  }
+
+  .session-button {
+    margin-top: auto;
+    border: 0;
+    border-top: 1px solid var(--tc-color-gray-2);
+    background: transparent;
+    color: var(--tc-color-gray-1);
+    padding: 6px var(--tc-space-2);
+    font-family: inherit;
+    font-size: var(--tc-sidebar-label-size);
+    text-transform: uppercase;
+    letter-spacing: var(--tc-sidebar-letter-spacing);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .session-button:disabled {
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  .session-button:hover:enabled {
+    color: var(--tc-color-lime);
   }
 
   .brand {

@@ -19,7 +19,7 @@ Do this in order:
 2. Run `trenchclaw`.
 3. Create or sign into an **instance** (your isolated vault + settings + workspace; see [First screens](#first-screens-before-the-workspace)).
 4. Open **Keys** and save your **OpenRouter API Key**.
-5. Open **Settings** and set AI provider to **OpenRouter** and model to **GPT-5.4 Nano** (or the model your build lists).
+5. Open **Settings** and set AI provider to **OpenRouter** and model to **Step 3.5 Flash Free** (or the model your build lists).
 6. In **Keys**, click **Test AI connection** (or use `trenchclaw doctor` from a terminal).
 7. Stop there unless you need a private RPC or Jupiter Ultra swaps.
 
@@ -239,7 +239,7 @@ Optional:
 Defaults that work for most people:
 
 - AI provider: **OpenRouter**
-- Model: **GPT-5.4 Nano** (or the equivalent your UI lists)
+- Model: **Step 3.5 Flash Free** (or the equivalent your UI lists)
 - Leave default swap on **Ultra** if you trade.
 
 Leave private RPC alone in **Settings** until you saved a matching credential in **Keys**.

@@ -233,6 +233,10 @@ export interface GuiSignInInstanceResponse {
   instance: GuiInstanceProfileView;
 }
 
+export interface GuiSignOutInstanceResponse {
+  ok: true;
+}
+
 export interface GuiVaultResponse {
   filePath: string;
   content: string;
@@ -516,6 +520,7 @@ export type RuntimeApiCreateInstanceRequest = GuiCreateInstanceRequest;
 export type RuntimeApiCreateInstanceResponse = GuiCreateInstanceResponse;
 export type RuntimeApiSignInInstanceRequest = GuiSignInInstanceRequest;
 export type RuntimeApiSignInInstanceResponse = GuiSignInInstanceResponse;
+export type RuntimeApiSignOutInstanceResponse = GuiSignOutInstanceResponse;
 export type RuntimeApiVaultResponse = GuiVaultResponse;
 export type RuntimeApiUpdateVaultRequest = GuiUpdateVaultRequest;
 export type RuntimeApiUpdateVaultResponse = GuiUpdateVaultResponse;

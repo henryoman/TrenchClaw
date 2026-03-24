@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import type { RuntimeApiInstanceProfileView } from "@trenchclaw/types";
@@ -10,6 +10,7 @@ import { resolveActiveInstanceStateFile, resolveRuntimeInstanceRoot } from "./ru
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
 const INSTANCE_PROFILE_FILE_NAME = "instance.json";
+const SIGNED_OUT_STATE = { signedOut: true } as const;
 
 const normalizeInstanceId = (localInstanceId: string): string => {
   const normalized = localInstanceId.trim();
@@ -45,6 +46,13 @@ const toPersistedActiveInstanceId = (value: unknown): string | null => {
   const candidate = value as { localInstanceId?: unknown };
   return typeof candidate.localInstanceId === "string" ? candidate.localInstanceId.trim() : null;
 };
+
+const isExplicitSignedOutState = (value: unknown): boolean =>
+  value !== null
+  && typeof value === "object"
+  && !Array.isArray(value)
+  && "signedOut" in value
+  && value.signedOut === true;
 
 const readStoredInstanceProfileSync = (localInstanceId: string): RuntimeApiInstanceProfileView | null => {
   try {
@@ -89,9 +97,12 @@ const readStoredInstanceProfileSync = (localInstanceId: string): RuntimeApiInsta
   }
 };
 
-const parsePersistedActiveInstance = (raw: string): RuntimeApiInstanceProfileView | null => {
+const parsePersistedActiveInstance = (raw: string): RuntimeApiInstanceProfileView | "signed-out" | null => {
   try {
     const parsed = JSON.parse(raw) as unknown;
+    if (isExplicitSignedOutState(parsed)) {
+      return "signed-out";
+    }
     const localInstanceId = toPersistedActiveInstanceId(parsed);
     if (!localInstanceId) {
       return null;
@@ -127,6 +138,10 @@ export const readPersistedActiveInstanceSync = (): RuntimeApiInstanceProfileView
   if (existsSync(activeInstanceStateFile)) {
     try {
       const persisted = parsePersistedActiveInstance(readFileSync(activeInstanceStateFile, "utf8"));
+      if (persisted === "signed-out") {
+        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+        return null;
+      }
       if (persisted) {
         process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = persisted.localInstanceId;
         return persisted;
@@ -174,7 +189,7 @@ export const persistActiveInstance = async (instance: RuntimeApiInstanceProfileV
 
   if (instance === null) {
     delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-    await rm(activeInstanceStateFile, { force: true });
+    await writeFile(activeInstanceStateFile, `${JSON.stringify(SIGNED_OUT_STATE, null, 2)}\n`, "utf8");
     return;
   }
 

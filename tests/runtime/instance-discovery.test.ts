@@ -190,6 +190,55 @@ describe("instance discovery", () => {
     expect(await Bun.file(path.join(runtimeRoot, "instances/01/secrets/vault.json")).exists()).toBe(true);
   });
 
+  test("sign out clears the persisted active instance session", async () => {
+    const runtimeRoot = await createRuntimeRoot();
+    await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });
+
+    const result = await runScriptJson<{
+      signedOut: { ok: true };
+      activeInstanceId: string | null;
+      activeChatId: string | null;
+      persisted: null;
+    }>({
+      runtimeRoot,
+      script: `
+        const { signInInstance, signOutInstance } = await import(${JSON.stringify(INSTANCES_MODULE_URL)});
+        const { readPersistedActiveInstanceSync } = await import(${JSON.stringify(INSTANCE_STATE_MODULE_URL)});
+        let activeInstance = null;
+        let activeChatId = "chat-test";
+        const context = {
+          runtime: {},
+          getActiveInstance: () => activeInstance,
+          setActiveInstance: (instance) => {
+            activeInstance = instance;
+          },
+          getActiveChatId: () => activeChatId,
+          setActiveChatId: (chatId) => {
+            activeChatId = chatId;
+          },
+          addActivity: () => {},
+          listInstanceConversations: () => [],
+          resolveDefaultChatId: () => "chat-test",
+          getActivityEntries: () => [],
+          waitForJobResult: async () => null,
+        };
+        await signInInstance(context, { localInstanceId: "01" });
+        const signedOut = await signOutInstance(context);
+        process.stdout.write(JSON.stringify({
+          signedOut,
+          activeInstanceId: activeInstance?.localInstanceId ?? null,
+          activeChatId,
+          persisted: readPersistedActiveInstanceSync(),
+        }));
+      `,
+    });
+
+    expect(result.signedOut).toEqual({ ok: true });
+    expect(result.activeInstanceId).toBeNull();
+    expect(result.activeChatId).toBeNull();
+    expect(result.persisted).toBeNull();
+  });
+
   test("reads vault-backed LLM config from the active instance vault without a shared fallback", async () => {
     const runtimeRoot = await createRuntimeRoot();
     await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });

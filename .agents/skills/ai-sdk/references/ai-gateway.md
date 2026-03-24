@@ -23,7 +23,7 @@ The AI Gateway is the default global provider, so you can access models using a 
 import { generateText } from 'ai';
 
 const { text } = await generateText({
-  model: 'openai/gpt-5.4',
+  model: 'provider/model-id',
   prompt: 'What is love?',
 });
 ```
@@ -33,11 +33,11 @@ You can also explicitly import and use the gateway provider:
 ```ts
 // Option 1: Import from 'ai' package (included by default)
 import { gateway } from 'ai';
-model: gateway('openai/gpt-5.4');
+model: gateway('provider/model-id');
 
 // Option 2: Install and import from '@ai-sdk/gateway' package
 import { gateway } from '@ai-sdk/gateway';
-model: gateway('openai/gpt-5.4');
+model: gateway('provider/model-id');
 ```
 
 ## Find Available Models
@@ -63,4 +63,4 @@ curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '[.data[] | select(.id | 
 curl -s https://ai-gateway.vercel.sh/v1/models | jq -r '[.data[] | select(.id | startswith("xai/")) | .id] | reverse | .[]'
 ```
 
-When multiple versions of a model exist, use the one with the highest version number (e.g., prefer `gpt-5.4-nano` over `gpt-5.4-mini` over `gpt-5.3`).
+When multiple versions of a model exist, use the newest compatible version returned by the gateway instead of relying on older hard-coded examples.

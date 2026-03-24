@@ -87,10 +87,10 @@ describe("resolveLlmProviderConfigFromVault", () => {
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
-  test("prefers gateway when both supported transports are configured", async () => {
+  test("does not fall back when gateway is selected for the StepFun-only model", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "gateway",
-      model: "openai/gpt-5.4",
+      model: "some-other-model",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -108,14 +108,13 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
     const resolved = await resolveLlmProviderConfigFromVault();
 
-    expect(resolved?.provider).toBe("gateway");
-    expect(resolved?.apiKey).toBe("gateway-key");
+    expect(resolved).toBeNull();
   });
 
-  test("honors an explicit OpenRouter provider selection for a shared model", async () => {
+  test("normalizes non-StepFun models back to StepFun on OpenRouter", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "openai/gpt-5.4",
+      model: "anything-else-gets-normalized",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -134,7 +133,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("openai/gpt-5.4");
+    expect(resolved?.model).toBe("stepfun/step-3.5-flash:free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 

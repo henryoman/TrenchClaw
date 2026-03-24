@@ -6,10 +6,12 @@
   export let instanceName = "";
   export let activeTab: "chat" | "keys" | "settings" | "tracker" | "wakeup" | "info" | "wallets" | "schedule" = "chat";
   export let onTabChange: (tab: "chat" | "keys" | "settings" | "tracker" | "wakeup" | "info" | "wallets" | "schedule") => void;
+  export let signOutBusy = false;
+  export let onSignOut: () => void;
 </script>
 
 <main class="layout">
-  <Sidebar {runtimeStatus} {appVersion} {instanceName} {activeTab} {onTabChange} />
+  <Sidebar {runtimeStatus} {appVersion} {instanceName} {activeTab} {onTabChange} {signOutBusy} {onSignOut} />
   <section class="workspace">
     <slot />
   </section>

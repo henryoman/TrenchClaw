@@ -12,6 +12,128 @@ export interface EnsuredInstanceLayout {
   createdFiles: string[];
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value != null && typeof value === "object" && !Array.isArray(value);
+
+const mergeStructuredSeedDefaults = (seedValue: unknown, currentValue: unknown): unknown => {
+  if (currentValue === undefined) {
+    return seedValue;
+  }
+  if (Array.isArray(seedValue)) {
+    return currentValue;
+  }
+  if (isRecord(seedValue) && isRecord(currentValue)) {
+    const merged: Record<string, unknown> = { ...currentValue };
+    for (const [key, nestedSeedValue] of Object.entries(seedValue)) {
+      if (Object.hasOwn(currentValue, key)) {
+        merged[key] = mergeStructuredSeedDefaults(nestedSeedValue, currentValue[key]);
+        continue;
+      }
+      merged[key] = nestedSeedValue;
+    }
+    return merged;
+  }
+  return currentValue;
+};
+
+const toRecordArray = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value) ? value.filter(isRecord) : [];
+
+const mergeNamedObjectArrayDefaults = (
+  seedEntries: Record<string, unknown>[],
+  currentEntries: Record<string, unknown>[],
+  key: string,
+): Record<string, unknown>[] => {
+  const merged = [...currentEntries];
+  const knownKeys = new Set(
+    currentEntries
+      .map((entry) => entry[key])
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map((value) => value.trim()),
+  );
+
+  for (const seedEntry of seedEntries) {
+    const candidateKey = seedEntry[key];
+    if (typeof candidateKey !== "string" || candidateKey.trim().length === 0 || knownKeys.has(candidateKey.trim())) {
+      continue;
+    }
+    merged.push(seedEntry);
+    knownKeys.add(candidateKey.trim());
+  }
+
+  return merged;
+};
+
+const mergeTrackerRegistryDefaults = (seedValue: unknown, currentValue: unknown): unknown => {
+  const merged = mergeStructuredSeedDefaults(seedValue, currentValue);
+  if (!isRecord(merged) || !isRecord(seedValue) || !isRecord(currentValue)) {
+    return merged;
+  }
+
+  return {
+    ...merged,
+    trackedWallets: mergeNamedObjectArrayDefaults(
+      toRecordArray(seedValue.trackedWallets),
+      toRecordArray(currentValue.trackedWallets),
+      "address",
+    ),
+    trackedTokens: mergeNamedObjectArrayDefaults(
+      toRecordArray(seedValue.trackedTokens),
+      toRecordArray(currentValue.trackedTokens),
+      "mintAddress",
+    ),
+  };
+};
+
+const mergeNewsFeedRegistryDefaults = (seedValue: unknown, currentValue: unknown): unknown => {
+  const merged = mergeStructuredSeedDefaults(seedValue, currentValue);
+  if (!isRecord(merged) || !isRecord(seedValue) || !isRecord(currentValue)) {
+    return merged;
+  }
+
+  return {
+    ...merged,
+    feeds: mergeNamedObjectArrayDefaults(
+      toRecordArray(seedValue.feeds),
+      toRecordArray(currentValue.feeds),
+      "alias",
+    ),
+  };
+};
+
+const mergeSeedFileDefaults = async (
+  instanceRoot: string,
+  relativePath: string,
+): Promise<void> => {
+  if (path.extname(relativePath) !== ".json") {
+    return;
+  }
+
+  const destinationPath = path.join(instanceRoot, relativePath);
+  const seedPath = resolveRuntimeSeedInstancePath(relativePath);
+
+  try {
+    const [destinationRaw, seedRaw] = await Promise.all([
+      readFile(destinationPath, "utf8"),
+      readFile(seedPath, "utf8"),
+    ]);
+    const destinationValue = JSON.parse(destinationRaw) as unknown;
+    const seedValue = JSON.parse(seedRaw) as unknown;
+    const mergedValue =
+      relativePath === "workspace/configs/tracker.json"
+        ? mergeTrackerRegistryDefaults(seedValue, destinationValue)
+        : relativePath === "workspace/configs/news-feeds.json"
+          ? mergeNewsFeedRegistryDefaults(seedValue, destinationValue)
+          : mergeStructuredSeedDefaults(seedValue, destinationValue);
+    const nextRaw = `${JSON.stringify(mergedValue, null, 2)}\n`;
+    if (nextRaw !== destinationRaw) {
+      await writeFile(destinationPath, nextRaw, "utf8");
+    }
+  } catch {
+    // Keep personal files untouched if either side is unreadable. Later loaders can surface real parse errors.
+  }
+};
+
 export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredInstanceLayout> => {
   const instanceRoot = resolveInstanceDirectoryPath(instanceId);
   assertInstanceSystemWritePath(instanceRoot, "initialize instance root");
@@ -101,6 +223,7 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
     if (createdFile) {
       createdFiles.push(createdFile);
     }
+    await mergeSeedFileDefaults(instanceRoot, relativePath);
   }
 
   return {

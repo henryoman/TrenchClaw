@@ -92,7 +92,7 @@
   <h2 id="docs-quick-path-title" class="docs-index-section-title">Use OpenRouter first. Add RPC or Ultra only when you need them.</h2>
   <p class="docs-index-section-intro">
     The default path is simple: install the release, run trenchclaw, create or sign into an instance, save your
-    OpenRouter API Key, set OpenRouter plus GPT-5.4 Nano, test the AI connection, then stop there unless you
+    OpenRouter API Key, set OpenRouter plus Step 3.5 Flash Free, test the AI connection, then stop there unless you
     specifically want a private RPC or Ultra swaps.
   </p>
 </section>

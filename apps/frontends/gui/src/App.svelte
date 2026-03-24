@@ -51,6 +51,11 @@
   $effect(() => {
     if (runtime.state.phase === "app" && !chat) {
       void ensureChatController();
+      return;
+    }
+    if (runtime.state.phase !== "app" && chat) {
+      chat = null;
+      chatInitError = "";
     }
   });
 
@@ -101,6 +106,7 @@
     appVersion={appVersionLabel}
     instanceName={runtime.state.activeInstance?.name ?? ""}
     {activeTab}
+    signOutBusy={runtime.state.signOutBusy}
     onTabChange={(tab) => {
       activeTab = tab;
       if (tab === "tracker") {
@@ -109,6 +115,9 @@
       if (tab === "wakeup") {
         void runtime.loadWakeupSettings();
       }
+    }}
+    onSignOut={() => {
+      void runtime.signOut();
     }}
   >
     {#if activeTab === "chat"}

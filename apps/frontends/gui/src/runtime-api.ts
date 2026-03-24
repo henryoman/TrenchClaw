@@ -28,6 +28,7 @@ import type {
   RuntimeApiSecretsResponse,
   RuntimeApiSignInInstanceRequest,
   RuntimeApiSignInInstanceResponse,
+  RuntimeApiSignOutInstanceResponse,
   RuntimeApiWalletsResponse,
   RuntimeApiUpsertSecretRequest,
   RuntimeApiUpsertSecretResponse,
@@ -110,6 +111,10 @@ export const runtimeApi = {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(input),
+    }),
+  signOutInstance: (): Promise<RuntimeApiSignOutInstanceResponse> =>
+    fetchJson<RuntimeApiSignOutInstanceResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/instances/sign-out`), {
+      method: "POST",
     }),
   aiSettings: (): Promise<RuntimeApiAiSettingsResponse> => fetchJson<RuntimeApiAiSettingsResponse>(toRuntimeUrl(`${APP_API_BASE_PATH}/ai-settings`)),
   updateAiSettings: (input: RuntimeApiUpdateAiSettingsRequest): Promise<RuntimeApiUpdateAiSettingsResponse> =>

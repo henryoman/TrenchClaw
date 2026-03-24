@@ -62,7 +62,7 @@ Most users should ignore it and use `OpenRouter` first.
 For the recommended setup, use:
 
 - provider: `OpenRouter`
-- model: `GPT-5.4 Nano`
+- model: `Step 3.5 Flash Free`
 
 ### RPC
 
@@ -113,7 +113,7 @@ Today, that other path is just a placeholder.
 
 1. Save `OpenRouter API Key`.
 2. In `Settings`, choose `OpenRouter`.
-3. In `Settings`, choose `GPT-5.4 Nano`.
+3. In `Settings`, choose `Step 3.5 Flash Free`.
 4. Leave private RPC blank unless you want a private RPC.
 5. If you want swaps, save `Jupiter Ultra API Key`.
 6. Keep the default swap setting on `Ultra`.

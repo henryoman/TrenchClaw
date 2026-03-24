@@ -20,7 +20,7 @@ import { wrapLanguageModel, gateway } from 'ai';
 import { devToolsMiddleware } from '@ai-sdk/devtools';
 
 const model = wrapLanguageModel({
-  model: gateway('openai/gpt-5.4'),
+  model: gateway('provider/model-id'),
   middleware: devToolsMiddleware(),
 });
 ```

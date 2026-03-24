@@ -54,6 +54,7 @@ import {
   type ActiveSessionInfo,
 } from "./storage";
 import { createRuntimeChatService, type RuntimeChatService } from "./chat";
+import { ensureInstanceLayout } from "./instance-layout";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance-state";
 import { isRecord } from "./object-utils";
 import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./runtime-notices";
@@ -498,6 +499,10 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const bootedAt = Date.now();
   const profile = resolveRuntimeSettingsProfile();
   const migrationReport = await migrateLegacyRuntimeState();
+  const bootInstanceId = resolveCurrentActiveInstanceIdSync();
+  if (bootInstanceId) {
+    await ensureInstanceLayout(bootInstanceId);
+  }
   const settings = await loadRuntimeSettings(profile);
   const endpoints = resolvePrimaryRuntimeEndpoints(settings);
   const logger = createRuntimeLogger(settings);

@@ -566,6 +566,44 @@ describe("Runtime v1 API", () => {
     expect(payload.jobs.map((job) => job.status)).toEqual(["upcoming", "upcoming", "paused"]);
   });
 
+  test("POST /v1/app/instances/sign-out clears the active instance session", async () => {
+    const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+    const instanceId = "95";
+    const instancePath = await ensurePersistedInstance(instanceId);
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    try {
+      const runtime = buildRuntime();
+      const transport = new RuntimeSurfaceTransport(runtime);
+      transport.setActiveInstance({
+        fileName: "instance.json",
+        localInstanceId: instanceId,
+        name: `instance-${instanceId}`,
+        safetyProfile: "dangerous",
+        userPinRequired: false,
+        createdAt: "2026-03-19T00:00:00.000Z",
+        updatedAt: "2026-03-19T00:00:00.000Z",
+      });
+      transport.setActiveChatId(`chat-${instanceId}`);
+      const handler = transport.createApiHandler();
+
+      const response = await handler(new Request("http://localhost/v1/app/instances/sign-out", { method: "POST" }));
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ ok: true });
+      expect(transport.getActiveInstance()).toBeNull();
+      expect(transport.getActiveChatId()).toBeNull();
+      expect(await Bun.file(path.join(runtimeStatePath("instances"), "active-instance.json")).json()).toEqual({ signedOut: true });
+    } finally {
+      await rm(instancePath, { recursive: true, force: true });
+      await rm(path.join(runtimeStatePath("instances"), "active-instance.json"), { force: true });
+      if (previousActiveInstanceId === undefined) {
+        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+      } else {
+        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+      }
+    }
+  });
+
   test("GET /v1/app/llm/check reports active key metadata", async () => {
     const previous = process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE;
     const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
@@ -837,19 +875,16 @@ describe("Runtime v1 API", () => {
       expect(initialPayload.settings.provider).toBe("openrouter");
       expect(initialPayload.settings.model).toBe("stepfun/step-3.5-flash:free");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(initialPayload.options.some((option) => option.id === "stepfun/step-3.5-flash:free")).toBe(true);
+      expect(initialPayload.options.map((option) => option.id)).toEqual(["stepfun/step-3.5-flash:free"]);
       expect(initialPayload.options.find((option) => option.id === "stepfun/step-3.5-flash:free")?.providers).toEqual(["openrouter"]);
-      expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.5:free")?.providers).toEqual(["openrouter"]);
-      expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.7")?.providers).toEqual(["openrouter"]);
-      expect(initialPayload.options.find((option) => option.id === "qwen/qwen3.5-flash-02-23")?.providers).toEqual(["openrouter"]);
 
       const updateResponse = await handler(new Request("http://localhost/v1/app/ai-settings", {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           settings: {
-            provider: "gateway",
-            model: "openai/gpt-5.4",
+            provider: "openrouter",
+            model: "anything-else-gets-normalized",
             defaultMode: "primary",
             temperature: 0.4,
             maxOutputTokens: 2048,
@@ -862,12 +897,11 @@ describe("Runtime v1 API", () => {
         options: Array<{ id: string }>;
         settings: { provider: string; model: string; maxOutputTokens: number | null };
       };
-      expect(updatePayload.settings.provider).toBe("gateway");
-      expect(updatePayload.settings.model).toBe("openai/gpt-5.4");
+      expect(updatePayload.settings.provider).toBe("openrouter");
+      expect(updatePayload.settings.model).toBe("stepfun/step-3.5-flash:free");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(updatePayload.options.some((option) => option.id === "stepfun/step-3.5-flash:free")).toBe(true);
-      expect(updatePayload.options.some((option) => option.id === "xiaomi/mimo-v2-flash")).toBe(true);
+      expect(updatePayload.options.map((option) => option.id)).toEqual(["stepfun/step-3.5-flash:free"]);
     } finally {
       if (previous === undefined) {
         delete process.env.TRENCHCLAW_AI_SETTINGS_FILE;

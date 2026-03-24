@@ -12,7 +12,6 @@ import {
   type UIMessageChunk,
 } from "ai";
 import { z } from "zod";
-import { createLanguageModel, resolveLlmProviderConfigFromVault } from "../ai/llm/config";
 import type { GatewayLane } from "../ai/gateway";
 import { createActionContext } from "../ai/runtime/types/context";
 import { createChatMessageId, createToolCallId } from "../ai/runtime/types/ids";
@@ -81,11 +80,6 @@ import {
   toRuntimeChatErrorMessage,
   trimOrUndefinedValue,
 } from "./chat/utils";
-
-const OPENROUTER_FREE_MODEL_FALLBACK_IDS = [
-  "openrouter/free",
-  "nvidia/nemotron-3-nano-30b-a3b:free",
-] as const;
 
 const isOpenRouterFreeModel = (provider: string | null | undefined, modelId: string | null | undefined): boolean =>
   provider === "openrouter" && typeof modelId === "string" && (modelId === "openrouter/free" || modelId.endsWith(":free"));
@@ -897,81 +891,7 @@ export const createRuntimeChatService = (
                   bufferedTerminalProblemChunks.length = 0;
                 };
 
-                const tryFreeModelFallback = async (reason: string): Promise<boolean> => {
-                  if (!isSelectedFreeOpenRouterModel) {
-                    return false;
-                  }
-
-                  const providerConfig = await resolveLlmProviderConfigFromVault();
-                  if (!providerConfig || providerConfig.provider !== "openrouter") {
-                    return false;
-                  }
-
-                  for (const fallbackModelId of OPENROUTER_FREE_MODEL_FALLBACK_IDS) {
-                    if (fallbackModelId === modelId) {
-                      continue;
-                    }
-
-                    try {
-                      const fallbackResult = await generateWithModel({
-                        model: createLanguageModel({
-                          provider: providerConfig.provider,
-                          apiKey: providerConfig.apiKey,
-                          baseURL: providerConfig.baseURL,
-                          model: fallbackModelId,
-                        }),
-                        system: systemPrompt,
-                        messages: modelMessages,
-                        abortSignal: input?.abortSignal,
-                        timeout: CHAT_MODEL_FALLBACK_GENERATE_TIMEOUT,
-                        ...(typeof maxOutputTokens === "number" ? { maxOutputTokens } : {}),
-                        ...(typeof temperature === "number" ? { temperature } : {}),
-                      });
-                      const fallbackText =
-                        typeof fallbackResult?.text === "string" ? fallbackResult.text.trim() : "";
-                      if (!fallbackText) {
-                        continue;
-                      }
-
-                      deps.logger?.warn("chat:free_model_fallback", {
-                        chatId,
-                        lane: preparedExecution.lane,
-                        provider,
-                        model: modelId,
-                        fallbackModel: fallbackModelId,
-                        reason,
-                      });
-                      writeAssistantTextMessage({
-                        writeChunk: (chunk) => writer.write(chunk),
-                        text: fallbackText,
-                        finishReason: "stop",
-                      });
-                      return true;
-                    } catch (error) {
-                      deps.logger?.warn("chat:free_model_fallback_failed", {
-                        chatId,
-                        lane: preparedExecution.lane,
-                        provider,
-                        model: modelId,
-                        fallbackModel: fallbackModelId,
-                        reason,
-                        error: toRuntimeChatErrorMessage(error),
-                      });
-                    }
-                  }
-
-                  return false;
-                };
-
                 if (!firstPassHadToolActivity) {
-                  if (!completedAssistantHasVisibleText && (completedAssistantHasReasoning || streamSawTerminalProblem)) {
-                    const usedFallback = await tryFreeModelFallback(
-                      streamSawTerminalProblem ? "stream_terminal_problem" : "reasoning_without_visible_text",
-                    );
-                    if (usedFallback) {
-                      return;
-                    }
-                  }
                   if (bufferedTerminalProblemChunks.length > 0) {
                     flushBufferedTerminalProblemChunks();
                   }

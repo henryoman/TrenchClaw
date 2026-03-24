@@ -88,6 +88,7 @@ interface RuntimeUiState {
   tracker: GuiTrackerView | null;
   trackerBusy: boolean;
   trackerError: string;
+  signOutBusy: boolean;
 }
 
 const humanizeProfile = (profile: string): string => {
@@ -174,6 +175,7 @@ export const createRuntimeController = () => {
     tracker: null,
     trackerBusy: false,
     trackerError: "",
+    signOutBusy: false,
   });
 
   const resetWalletState = (): void => {
@@ -187,6 +189,42 @@ export const createRuntimeController = () => {
     state.trackerFilePath = "";
     state.trackerRuntimePath = "";
     state.tracker = null;
+  };
+
+  const resetInstanceScopedState = (): void => {
+    state.activeInstance = null;
+    state.runtimeSessionId = "";
+    state.queueJobs = [];
+    state.scheduleJobs = [];
+    state.activityEntries = [];
+    state.aiSettingsFilePath = "";
+    state.aiSettings = null;
+    state.aiProviderOptions = [];
+    state.aiModelOptions = [];
+    state.aiSettingsBusy = false;
+    state.aiSettingsError = "";
+    state.tradingSettingsFilePath = "";
+    state.tradingSettings = null;
+    state.tradingSettingsBusy = false;
+    state.tradingSettingsError = "";
+    state.wakeupSettings = null;
+    state.wakeupSettingsBusy = false;
+    state.wakeupSettingsError = "";
+    state.secretsOptions = [];
+    state.secretEntries = [];
+    state.publicRpcOptions = [];
+    state.rpcProviderOptions = [];
+    state.secretsBusy = false;
+    state.secretsError = "";
+    state.llmCheckBusy = false;
+    state.llmCheckMessage = "";
+    state.llmAvailable = false;
+    state.walletsBusy = false;
+    state.walletsError = "";
+    resetWalletState();
+    state.trackerBusy = false;
+    state.trackerError = "";
+    resetTrackerState();
   };
 
   const loadInstances = async (): Promise<void> => {
@@ -351,10 +389,8 @@ export const createRuntimeController = () => {
         await loadWallets();
         await loadTracker();
       } else {
-        state.activeInstance = null;
         state.signInPin = "";
-        resetWalletState();
-        resetTrackerState();
+        resetInstanceScopedState();
         await loadInstances();
         state.phase = "login";
       }
@@ -466,6 +502,27 @@ export const createRuntimeController = () => {
       state.splashError = error instanceof Error ? error.message : DEFAULT_SIGN_IN_ERROR;
     } finally {
       state.splashBusy = false;
+    }
+  };
+
+  const signOut = async (): Promise<void> => {
+    if (state.signOutBusy) {
+      return;
+    }
+
+    state.signOutBusy = true;
+    state.splashError = "";
+    try {
+      await runtimeApi.signOutInstance();
+      state.signInPin = "";
+      resetInstanceScopedState();
+      state.phase = "login";
+      await loadInstances();
+    } catch (error) {
+      state.splashError = error instanceof Error ? error.message : "Failed to sign out.";
+      console.error("Sign out failed:", error);
+    } finally {
+      state.signOutBusy = false;
     }
   };
 
@@ -704,6 +761,7 @@ export const createRuntimeController = () => {
     closeCreateModal,
     submitCreateInstance,
     submitSignIn,
+    signOut,
     loadSecrets,
     loadAiSettings,
     loadTradingSettings,
