@@ -10,10 +10,6 @@ describe("createWalletsRoutine", () => {
       routineName: "createWallets",
       status: "pending",
       config: {
-        storage: {
-          walletGroup: "core-wallets",
-          createGroupIfMissing: true,
-        },
         walletGroups: [
           {
             name: "core-wallets",

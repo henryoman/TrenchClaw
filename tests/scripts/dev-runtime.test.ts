@@ -49,7 +49,6 @@ describe("developer runtime workflow", () => {
       name: "dev-seven",
       localInstanceId: "07",
     });
-    expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "WAKEUP.md")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "settings", "ai.json")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "secrets", "vault.json")).exists()).toBe(true);
     expect(await Bun.file(path.join(runtimeRoot, "instances", "07", "cache", "generated", ".gitkeep")).exists()).toBe(false);

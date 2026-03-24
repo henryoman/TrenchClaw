@@ -1,6 +1,4 @@
 import { loadVaultData, readVaultString } from "../../../ai/llm/vault-file";
-import { HELIUS_GATEWAY_HTTP_URL } from "./urls";
-
 const HELIUS_API_KEY_QUERY_PARAM = "api-key";
 const HELIUS_HOST_SUFFIX = "helius-rpc.com";
 const HELIUS_PLACEHOLDER_API_KEY = "YOUR_API_KEY";
@@ -51,13 +49,10 @@ const injectHeliusApiKey = (value: string, apiKey: string | null): string => {
   return parsed.toString();
 };
 
-const buildGatewayHeliusRpcUrl = (apiKey: string): string =>
-  HELIUS_GATEWAY_HTTP_URL.replace(HELIUS_PLACEHOLDER_API_KEY, encodeURIComponent(apiKey));
-
 export interface ResolvedHeliusRpcConfig {
   apiKey: string | null;
   rpcUrl: string | null;
-  source: "context-rpc" | "default-rpc" | "legacy-helius" | "api-key-only" | null;
+  source: "context-rpc" | "default-rpc" | null;
   selected: boolean;
 }
 
@@ -76,22 +71,16 @@ export const resolveHeliusRpcConfig = async (input?: {
   const defaultProviderId = readVaultString(vaultData, "rpc/default/provider-id");
   const defaultRpcUrl = readVaultString(vaultData, "rpc/default/http-url");
   const defaultApiKey = readVaultString(vaultData, "rpc/default/api-key");
-  const legacyHeliusRpcUrl = readVaultString(vaultData, "rpc/helius/http-url");
-  const legacyHeliusApiKey = readVaultString(vaultData, "rpc/helius/api-key");
-  const legacyHeliusConfigured = Boolean(legacyHeliusRpcUrl || legacyHeliusApiKey);
 
   const apiKey =
     readHeliusApiKeyFromUrl(contextRpcUrl)
     ?? defaultApiKey
-    ?? legacyHeliusApiKey
-    ?? readHeliusApiKeyFromUrl(defaultRpcUrl)
-    ?? readHeliusApiKeyFromUrl(legacyHeliusRpcUrl);
+    ?? readHeliusApiKeyFromUrl(defaultRpcUrl);
 
   const selected =
     contextIsHelius
     || defaultProviderId === "helius"
-    || isHeliusRpcUrl(defaultRpcUrl)
-    || (!defaultProviderId && !defaultRpcUrl && legacyHeliusConfigured);
+    || isHeliusRpcUrl(defaultRpcUrl);
 
   if (input?.requireSelectedProvider && !selected) {
     return {
@@ -116,24 +105,6 @@ export const resolveHeliusRpcConfig = async (input?: {
       apiKey,
       rpcUrl: injectHeliusApiKey(defaultRpcUrl, apiKey),
       source: "default-rpc",
-      selected,
-    };
-  }
-
-  if (legacyHeliusRpcUrl) {
-    return {
-      apiKey,
-      rpcUrl: injectHeliusApiKey(legacyHeliusRpcUrl, apiKey),
-      source: "legacy-helius",
-      selected,
-    };
-  }
-
-  if (apiKey && !input?.requireSelectedProvider) {
-    return {
-      apiKey,
-      rpcUrl: buildGatewayHeliusRpcUrl(apiKey),
-      source: "api-key-only",
       selected,
     };
   }

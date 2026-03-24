@@ -827,7 +827,7 @@ describe("Runtime v1 API", () => {
             defaultSwapProvider: "standard",
             defaultSwapMode: "ExactOut",
             defaultAmountUnit: "percent",
-            scheduleActionName: "scheduleManagedTriggerOrder",
+            scheduleActionName: "scheduleManagedUltraSwap",
             quickBuyPresets: [],
             customPresets: [],
           },

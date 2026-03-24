@@ -421,12 +421,12 @@ wallet:
         {
           actionName: "createWallets",
           input: {
-            count: 1,
-            walletName: "blocked001",
-            storage: {
-              walletGroup: "core-wallets",
-              createGroupIfMissing: true,
-            },
+            groups: [
+              {
+                walletGroup: "core-wallets",
+                walletNames: ["blocked001"],
+              },
+            ],
           },
         },
       );

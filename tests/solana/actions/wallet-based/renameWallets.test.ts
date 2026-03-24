@@ -40,12 +40,12 @@ describe("renameWalletsAction", () => {
     createdPaths.add(instanceRoot);
 
     const createResult = await createWalletsAction.execute({} as never, {
-      count: 1,
-      walletName: "one",
-      storage: {
-        walletGroup,
-        createGroupIfMissing: true,
-      },
+      groups: [
+        {
+          walletGroup,
+          walletNames: ["one"],
+        },
+      ],
     });
 
     expect(createResult.ok).toBe(true);
@@ -121,21 +121,21 @@ describe("renameWalletsAction", () => {
     createdPaths.add(instanceRoot);
 
     await createWalletsAction.execute({} as never, {
-      count: 1,
-      walletName: "one",
-      storage: {
-        walletGroup,
-        createGroupIfMissing: true,
-      },
+      groups: [
+        {
+          walletGroup,
+          walletNames: ["one"],
+        },
+      ],
     });
 
     await createWalletsAction.execute({} as never, {
-      count: 1,
-      walletName: "two",
-      storage: {
-        walletGroup,
-        createGroupIfMissing: true,
-      },
+      groups: [
+        {
+          walletGroup,
+          walletNames: ["two"],
+        },
+      ],
     });
 
     const renameResult = await renameWalletsAction.execute({} as never, {

@@ -58,7 +58,6 @@ import { ensureInstanceLayout } from "./instance/layout";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance/state";
 import { isRecord } from "./shared/object-utils";
 import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./chat/notices";
-import { migrateLegacyRuntimeState } from "./runtime-state-migration";
 import { syncManagedWakeupJob } from "./scheduling/managed-wakeup";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
@@ -498,7 +497,6 @@ export interface RuntimeBootstrap {
 export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const bootedAt = Date.now();
   const profile = resolveRuntimeSettingsProfile();
-  const migrationReport = await migrateLegacyRuntimeState();
   const bootInstanceId = resolveCurrentActiveInstanceIdSync();
   if (bootInstanceId) {
     await ensureInstanceLayout(bootInstanceId);
@@ -521,9 +519,6 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
     logger.debug("storage:fs_write", details);
   });
   await runBootContextRefresh(logger);
-  if (migrationReport) {
-    logger.info("storage:migration", { ...migrationReport });
-  }
   const eventBus = new InMemoryRuntimeEventBus();
   const sqliteStore = settings.storage.sqlite.enabled
     ? new SqliteStateStore({

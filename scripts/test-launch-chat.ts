@@ -152,7 +152,7 @@ const main = async (): Promise<void> => {
         body: JSON.stringify({
           chatId: `launch-smoke-${crypto.randomUUID()}`,
           conversationTitle: "launch smoke",
-          messages: [{ role: "user", parts: [{ type: "text", text: "Say hello." }] }],
+          messages: [{ role: "user", parts: [{ type: "text", text: "show me our wallet balances" }] }],
         }),
         signal: controller.signal,
       });
@@ -204,8 +204,11 @@ const main = async (): Promise<void> => {
     if (/runtime error:/i.test(streamedText)) {
       throw new Error(`Chat stream returned runtime error text instead of model output: ${streamedText}`);
     }
+    if (!/managed wallet|wallet/i.test(streamedText)) {
+      throw new Error(`Launch smoke expected a wallet-oriented assistant response, received: ${streamedText}`);
+    }
 
-    console.log("[launch-smoke] chat stream returned assistant text output.");
+    console.log("[launch-smoke] wallet balance chat stream returned assistant text output.");
   } finally {
     await stopProcess(proc);
     await Promise.allSettled([stdoutTask, stderrTask]);

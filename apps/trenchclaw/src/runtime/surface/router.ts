@@ -24,9 +24,8 @@ import { getWakeupSettings, updateWakeupSettings } from "./domains/settings/wake
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault/secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
-const LEGACY_APP_API_BASE_PATH = "/api/gui";
 const RUNTIME_APP_API_BASE_PATH = "/v1/app";
-const APP_API_BASE_PATHS = [RUNTIME_APP_API_BASE_PATH, LEGACY_APP_API_BASE_PATH] as const;
+const APP_API_BASE_PATHS = [RUNTIME_APP_API_BASE_PATH] as const;
 
 const toErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const toErrorPayloadV1 = (code: string, message: string, details?: unknown): { error: { code: string; message: string; details?: unknown } } => ({

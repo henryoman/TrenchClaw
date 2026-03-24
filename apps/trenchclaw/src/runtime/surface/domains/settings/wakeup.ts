@@ -9,16 +9,15 @@ import {
   type WakeupSettings,
   writeInstanceWakeupSettings,
 } from "../../../settings/instance/wakeup";
-import { resolveCurrentActiveInstanceIdSync } from "../../../instance/state";
 import { syncManagedWakeupJob } from "../../../scheduling/managed-wakeup";
-import type { RuntimeTransportContext } from "../../contracts";
+import { requireSurfaceInstanceId, resolveSurfaceInstanceId, type RuntimeTransportContext } from "../../contracts";
 
 const cloneWakeupSettings = (settings: WakeupSettings): WakeupSettings => ({
   ...settings,
 });
 
 export const getWakeupSettings = async (context: RuntimeTransportContext): Promise<RuntimeApiWakeupSettingsResponse> => {
-  const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
+  const activeInstanceId = resolveSurfaceInstanceId(context);
   const payload = await loadInstanceWakeupSettings({ instanceId: activeInstanceId });
   const settings = instanceWakeupSettingsSchema.parse(payload.resolvedSettings).wakeup;
 
@@ -34,10 +33,10 @@ export const updateWakeupSettings = async (
   context: RuntimeTransportContext,
   payload: RuntimeApiUpdateWakeupSettingsRequest,
 ): Promise<RuntimeApiUpdateWakeupSettingsResponse> => {
-  const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
-  if (!activeInstanceId) {
-    throw new Error("No active instance selected. Wakeup settings are instance-scoped.");
-  }
+  const activeInstanceId = requireSurfaceInstanceId(
+    context,
+    "No active instance selected. Wakeup settings are instance-scoped.",
+  );
 
   const savedAtUnixMs = Date.now();
   const filePath = await writeInstanceWakeupSettings(activeInstanceId, {

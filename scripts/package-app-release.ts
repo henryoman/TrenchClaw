@@ -5,7 +5,7 @@ import { cp, mkdtemp, mkdir, readFile, readdir, rm, stat, writeFile } from "node
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_RELEASE_COMPILE_TARGETS } from "./lib/release-build-plan";
+import { RELEASE_COMPILE_WORKSPACE_PATHS, resolveReleaseCompileTargets } from "./lib/release-build-plan";
 import { hasBlockedBundleContent, hasBlockedBundlePath } from "./lib/release-bundle-filter";
 import { normalizeTarget, resolveHostPlatformTarget, shouldSmokeCompileTargetOnHost } from "./lib/release-platform";
 
@@ -78,7 +78,7 @@ const parseArgs = (argv: string[]): CliArgs => {
     version: version.trim(),
     bundleRoot,
     outputRoot,
-    targets: targets.length > 0 ? targets : [...DEFAULT_RELEASE_COMPILE_TARGETS],
+    targets: targets.length > 0 ? targets : resolveReleaseCompileTargets(),
   };
 };
 
@@ -126,9 +126,17 @@ const runCapture = async (command: string[], cwd = REPO_ROOT): Promise<string> =
   return stdout.trim();
 };
 
-const resolveVersion = async (requestedVersion: string): Promise<string> => {
+const resolveVersion = async (requestedVersion: string, bundleRoot: string): Promise<string> => {
   if (requestedVersion.length > 0) {
     return requestedVersion;
+  }
+  const bundleManifestPath = path.join(bundleRoot, "build-manifest.json");
+  const bundleManifestText = await Bun.file(bundleManifestPath).text().catch(() => "");
+  if (bundleManifestText) {
+    const bundleManifest = JSON.parse(bundleManifestText) as { version?: unknown };
+    if (typeof bundleManifest.version === "string" && bundleManifest.version.trim().length > 0) {
+      return bundleManifest.version.trim();
+    }
   }
   const packageJson = Bun.file(path.join(REPO_ROOT, "package.json"));
   const packageJsonText = await packageJson.text();
@@ -183,25 +191,30 @@ const resolveCompileWorkspaceParent = (): string =>
     ? "/tmp/trenchclaw-release-compile"
     : path.join(os.tmpdir(), "trenchclaw-release-compile");
 
+const copyWorkspacePath = async (workspaceRoot: string, relativePath: string): Promise<void> => {
+  const source = path.join(REPO_ROOT, relativePath);
+  const sourceStat = await stat(source).catch(() => null);
+  if (!sourceStat) {
+    return;
+  }
+
+  const target = path.join(workspaceRoot, relativePath);
+  await mkdir(path.dirname(target), { recursive: true });
+  if (sourceStat.isDirectory()) {
+    await cp(source, target, { recursive: true });
+    return;
+  }
+  if (sourceStat.isFile()) {
+    await cp(source, target);
+  }
+};
+
 const createCompileWorkspace = async (): Promise<string> => {
   const workspaceParent = resolveCompileWorkspaceParent();
   await mkdir(workspaceParent, { recursive: true });
   const workspaceRoot = await mkdtemp(path.join(workspaceParent, "repo-"));
-  const trackedFiles = (await runCapture(["git", "ls-files", "-z"]))
-    .split("\u0000")
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.length > 0);
-
-  for (const relativePath of trackedFiles) {
-    const source = path.join(REPO_ROOT, relativePath);
-    const sourceStat = await stat(source).catch(() => null);
-    if (!sourceStat?.isFile()) {
-      continue;
-    }
-
-    const target = path.join(workspaceRoot, relativePath);
-    await mkdir(path.dirname(target), { recursive: true });
-    await cp(source, target);
+  for (const relativePath of RELEASE_COMPILE_WORKSPACE_PATHS) {
+    await copyWorkspacePath(workspaceRoot, relativePath);
   }
 
   await run(["bun", "install", "--frozen-lockfile"], workspaceRoot);
@@ -340,7 +353,7 @@ const shouldSkipSmokeTest = (): boolean => {
 
 const main = async (): Promise<void> => {
   const args = parseArgs(process.argv.slice(2));
-  const version = await resolveVersion(args.version);
+  const version = await resolveVersion(args.version, args.bundleRoot);
   const commit = await runCapture(["git", "rev-parse", "--short", "HEAD"]);
   const hostTarget = resolveHostPlatformTarget();
   const skipSmokeTest = shouldSkipSmokeTest();

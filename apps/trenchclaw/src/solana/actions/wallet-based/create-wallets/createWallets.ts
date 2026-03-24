@@ -1,5 +1,5 @@
 import { createKeyPairFromPrivateKeyBytes, getAddressFromPublicKey } from "@solana/kit";
-import { readdir } from "node:fs/promises";
+import { mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 
@@ -17,7 +17,6 @@ import {
   resolveWalletLabelFilePath,
 } from "../../../lib/wallet/wallet-manager";
 import {
-  DEFAULT_WALLET_GROUP,
   type ManagedWalletLibraryEntry,
   toWalletId,
   walletGroupNameSchema,
@@ -107,57 +106,6 @@ const createWalletsBatchInputSchema = z
     "Create wallets in one or more flat wallet groups. This is the preferred JSON shape for the model. Wallet files are created directly inside each group directory with no nested folders.",
   );
 
-const legacyCreateWalletsInputSchema = z.object({
-  count: z.number().int().positive().max(MAX_WALLETS_PER_GROUP).default(1),
-  walletName: walletSegmentSchema.optional(),
-  walletNames: z.array(walletSegmentSchema).min(1).max(MAX_WALLETS_PER_GROUP).optional(),
-  storage: z
-    .object({
-      walletGroup: walletGroupNameSchema.default(DEFAULT_WALLET_GROUP),
-      createGroupIfMissing: z.boolean().default(true),
-    })
-    .default({
-      walletGroup: DEFAULT_WALLET_GROUP,
-      createGroupIfMissing: true,
-    }),
-})
-  .strict()
-  .superRefine((value, ctx) => {
-  if (value.walletName && value.count !== 1) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "walletName can only be used when count is 1",
-      path: ["walletName"],
-    });
-  }
-
-  if (value.walletNames && value.count !== value.walletNames.length) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `walletNames length (${value.walletNames.length}) must match count (${value.count})`,
-      path: ["walletNames"],
-    });
-  }
-
-  if (value.walletNames) {
-    const seen = new Set<string>();
-    for (const walletName of value.walletNames) {
-      if (seen.has(walletName)) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `walletNames contains duplicate value "${walletName}"`,
-          path: ["walletNames"],
-        });
-        break;
-      }
-      seen.add(walletName);
-    }
-  }
-});
-
-const createWalletsExecutionInputSchema = z.union([createWalletsBatchInputSchema, legacyCreateWalletsInputSchema]);
-
-type LegacyCreateWalletsInput = z.output<typeof legacyCreateWalletsInputSchema>;
 type NormalizedCreateWalletsInput = z.output<typeof createWalletsBatchInputSchema>;
 
 interface CreatedWallet {
@@ -197,38 +145,15 @@ interface PlannedWalletGroup {
 
 const toDefaultWalletName = (index: number): string => String(index).padStart(3, "0");
 
-const normalizeLegacyWalletNames = (input: LegacyCreateWalletsInput): string[] => {
-  if (input.walletNames) {
-    return input.walletNames;
-  }
-
-  if (input.walletName) {
-    return [input.walletName];
-  }
-
-  return Array.from({ length: input.count }, (_, index) => toDefaultWalletName(index));
-};
-
 const normalizeCreateWalletsInput = (rawInput: unknown): NormalizedCreateWalletsInput => {
-  const parsed = createWalletsExecutionInputSchema.parse(rawInput);
-  if ("groups" in parsed) {
-    return {
-      groups: parsed.groups.map((group) => ({
-        walletGroup: group.walletGroup,
-        walletNames:
-          group.walletNames
-          ?? Array.from({ length: group.count ?? 1 }, (_, index) => toDefaultWalletName(index)),
-      })),
-    };
-  }
-
+  const parsed = createWalletsBatchInputSchema.parse(rawInput);
   return {
-    groups: [
-      {
-        walletGroup: parsed.storage.walletGroup,
-        walletNames: normalizeLegacyWalletNames(parsed),
-      },
-    ],
+    groups: parsed.groups.map((group) => ({
+      walletGroup: group.walletGroup,
+      walletNames:
+        group.walletNames
+        ?? Array.from({ length: group.count ?? 1 }, (_, index) => toDefaultWalletName(index)),
+    })),
   };
 };
 
@@ -290,7 +215,7 @@ const planWalletGroup = async (
   const outputDirectory = resolveWalletGroupDirectoryPath(groupInput.walletGroup);
   assertWithinBrainProtectedDirectory(outputDirectory);
   await assertProtectedWriteAllowed({ actor, targetPath: outputDirectory, operation: "create wallets" });
-  await Bun.$`mkdir -p ${outputDirectory}`.quiet();
+  await mkdir(outputDirectory, { recursive: true });
 
   const walletNames = groupInput.walletNames ?? [];
   if (walletNames.length > MAX_WALLETS_PER_GROUP) {
@@ -377,7 +302,7 @@ export const createWalletsAction: Action<unknown, CreateWalletsOutput> = {
         operation: "append wallet library",
       });
 
-      await Bun.$`mkdir -p ${path.dirname(walletLibraryFilePath)}`.quiet();
+      await mkdir(path.dirname(walletLibraryFilePath), { recursive: true });
       const groupPlans = await Promise.all(input.groups.map((groupInput) => planWalletGroup(actor, groupInput)));
       groupDirectories.push(
         ...groupPlans.map((groupPlan) => ({

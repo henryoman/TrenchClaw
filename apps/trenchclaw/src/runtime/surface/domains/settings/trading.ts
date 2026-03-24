@@ -10,8 +10,7 @@ import {
   type TradingPreferences,
   writeInstanceTradingSettings,
 } from "../../../settings/instance/trading";
-import { resolveCurrentActiveInstanceIdSync } from "../../../instance/state";
-import type { RuntimeTransportContext } from "../../contracts";
+import { requireSurfaceInstanceId, resolveSurfaceInstanceId, type RuntimeTransportContext } from "../../contracts";
 
 const cloneTradingPreferences = (settings: TradingPreferences): TradingPreferences => ({
   ...settings,
@@ -20,7 +19,7 @@ const cloneTradingPreferences = (settings: TradingPreferences): TradingPreferenc
 });
 
 export const getTradingSettings = async (context: RuntimeTransportContext): Promise<RuntimeApiTradingSettingsResponse> => {
-  const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
+  const activeInstanceId = resolveSurfaceInstanceId(context);
   const payload = await loadInstanceTradingSettings({ instanceId: activeInstanceId });
   const parsed = instanceTradingSettingsSchema.safeParse(payload.resolvedSettings);
   const preferences = parsed.success ? parsed.data.trading.preferences : DEFAULT_TRADING_PREFERENCES;
@@ -37,10 +36,10 @@ export const updateTradingSettings = async (
   context: RuntimeTransportContext,
   payload: RuntimeApiUpdateTradingSettingsRequest,
 ): Promise<RuntimeApiUpdateTradingSettingsResponse> => {
-  const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
-  if (!activeInstanceId) {
-    throw new Error("No active instance selected. Trading settings are instance-scoped.");
-  }
+  const activeInstanceId = requireSurfaceInstanceId(
+    context,
+    "No active instance selected. Trading settings are instance-scoped.",
+  );
 
   const filePath = await writeInstanceTradingSettings(activeInstanceId, {
     configVersion: 1,

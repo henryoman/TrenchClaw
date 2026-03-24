@@ -1,11 +1,8 @@
 import type { StateStore } from "../contracts/types/state";
 import type { RuntimeCapabilitySnapshot } from "../../runtime/capabilities";
 import type { RuntimeSettings } from "../../runtime/settings";
-import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
-import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
+import { loadRuntimePromptSections } from "../../runtime/prompt/composer";
 import {
-  renderAsyncToolBehaviorSection,
-  renderCommandMenuSection,
   renderModelAccessSummarySection,
 } from "../../runtime/prompt/tool-menu";
 import { renderRuntimeWalletPromptSummary } from "../../runtime/prompt/wallet-context";
@@ -199,6 +196,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   createWallets: {
     useWhen: "the user explicitly asks to create managed wallets",
     avoidWhen: "the user only wants to inspect existing wallets or balances",
+    inputAdvice: "Use the guarded batch JSON shape: `groups: [{ walletGroup, count }]` or `groups: [{ walletGroup, walletNames: [..] }]`. Do not use `workspaceBash` or direct file writes for wallet creation.",
   },
   renameWallets: {
     useWhen: "the user explicitly asks to rename managed wallets",
@@ -207,12 +205,12 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   transfer: {
     useWhen: "the user explicitly wants to move SOL or SPL tokens and you know the source wallet, destination address, asset, amount, and confirmation token if policy requires it",
     avoidWhen: "any of those transfer details are missing or the user has not clearly confirmed the action",
-    inputAdvice: "Use `wallet` for the managed wallet selector, plus `destination`, `amount`, optional `mintAddress`, and `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
+    inputAdvice: "Use `wallet` for the managed wallet selector, plus `destination`, `amount`, optional `mintAddress`, and `userConfirmationToken` when required.",
   },
   closeTokenAccount: {
     useWhen: "the user explicitly wants to reclaim rent from an empty token account after the balance has already been moved out",
     avoidWhen: "the token account still holds tokens or the user did not ask for cleanup",
-    inputAdvice: "Use `wallet` for the managed wallet selector, and either `mintAddress` or `tokenAccountAddress`, plus `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
+    inputAdvice: "Use `wallet` for the managed wallet selector, and either `mintAddress` or `tokenAccountAddress`, plus `userConfirmationToken` when required.",
   },
   getTriggerOrders: {
     useWhen: "the user asks what trigger orders are currently open, wants prior trigger-order history, or needs to identify exact order ids before cancelling or replacing them",
@@ -232,7 +230,7 @@ const OPERATOR_TOOL_GUIDANCE: Record<string, {
   managedUltraSwap: {
     useWhen: "the user explicitly wants to swap through Jupiter Ultra using a managed wallet and you know the wallet selector, inputCoin, outputCoin, amount, and confirmation token if policy requires it",
     avoidWhen: "the user did not explicitly request a swap, the managed wallet is unknown, or the confirmation token is missing when policy requires it",
-    inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required. Use `walletGroup`/`walletName` only as a fallback.",
+    inputAdvice: "Use `wallet` for the managed wallet selector, plus `inputCoin`, `outputCoin`, `amount`, optional `amountUnit`, and `userConfirmationToken` when required.",
   },
   scheduleManagedUltraSwap: {
     useWhen: "the user explicitly wants the Ultra-only scheduling surface for a later swap or managed Ultra DCA plan",
@@ -357,14 +355,15 @@ export const buildOperatorChatPrompt = async (input: {
   toolNames: string[];
   stateStore?: StateStore;
 }): Promise<string> => {
-  const [walletSummary, liveRuntimeContext, knowledgeSummary] = await Promise.all([
-    renderRuntimeWalletPromptSummary(),
-    renderLiveRuntimeContextSection({
-      stateStore: input.stateStore,
-    }),
-    renderKnowledgePromptSummary(),
-  ]);
   const toolEntries = resolveOperatorToolEntries(input.capabilitySnapshot, input.toolNames);
+  const [walletSummary, promptSections] = await Promise.all([
+    renderRuntimeWalletPromptSummary(),
+    loadRuntimePromptSections({
+      toolEntries,
+      stateStore: input.stateStore,
+      commandMenuTitle: "## Command Groups",
+    }),
+  ]);
 
   return [
     OPERATOR_KERNEL_PROMPT,
@@ -374,13 +373,13 @@ export const buildOperatorChatPrompt = async (input: {
       toolNames: input.toolNames,
     }),
     renderModelAccessSummarySection(toolEntries),
-    renderCommandMenuSection(toolEntries, "## Command Groups"),
-    renderAsyncToolBehaviorSection(toolEntries),
-    liveRuntimeContext,
+    promptSections.commandMenuSection,
+    promptSections.asyncToolBehaviorSection,
+    promptSections.liveRuntimeContext,
     renderOperatorToolExecutionFlow(),
     renderOperatorDecisionRules(),
     renderOperatorToolNotes(input.capabilitySnapshot, input.toolNames),
-    knowledgeSummary,
+    promptSections.knowledgeSummary,
     "## Wallet Summary",
     walletSummary,
     [

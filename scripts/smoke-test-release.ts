@@ -104,6 +104,11 @@ const main = async (): Promise<void> => {
     path.join(runtimeStateRoot, "instances", "00", "settings", "ai.json"),
     path.join(runtimeStateRoot, "instances", "00", "settings", "settings.json"),
     path.join(runtimeStateRoot, "instances", "00", "settings", "trading.json"),
+    path.join(runtimeStateRoot, "instances", "00", "keypairs", "wallet-library.jsonl"),
+    path.join(runtimeStateRoot, "instances", "00", "keypairs", "smoke-wallets", "000.json"),
+    path.join(runtimeStateRoot, "instances", "00", "keypairs", "smoke-wallets", "001.json"),
+    path.join(runtimeStateRoot, "instances", "00", "keypairs", "smoke-wallets", "000.label.json"),
+    path.join(runtimeStateRoot, "instances", "00", "keypairs", "smoke-wallets", "001.label.json"),
   ];
   for (const filePath of requiredGeneratedFiles) {
     const fileStat = await stat(filePath).catch(() => null);

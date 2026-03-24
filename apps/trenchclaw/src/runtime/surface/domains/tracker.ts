@@ -4,14 +4,13 @@ import type {
   RuntimeApiUpdateTrackerRequest,
   RuntimeApiUpdateTrackerResponse,
 } from "@trenchclaw/types";
-import { resolveCurrentActiveInstanceIdSync } from "../../instance/state";
 import {
   DEFAULT_TRACKER_REGISTRY,
   readInstanceTrackerRegistry,
   type TrackerRegistry,
   writeInstanceTrackerRegistry,
 } from "../../instance/registries/tracker";
-import type { RuntimeTransportContext } from "../contracts";
+import { requireSurfaceInstanceId, resolveSurfaceInstanceId, type RuntimeTransportContext } from "../contracts";
 
 const cloneTracker = (tracker: TrackerRegistry): RuntimeApiTrackerView => ({
   version: tracker.version,
@@ -52,7 +51,7 @@ const cloneDefaultTracker = (): RuntimeApiTrackerView => ({
 });
 
 export const getTracker = async (context: RuntimeTransportContext): Promise<RuntimeApiTrackerResponse> => {
-  const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
+  const activeInstanceId = resolveSurfaceInstanceId(context);
   if (!activeInstanceId) {
     return {
       instanceId: null,
@@ -78,10 +77,10 @@ export const updateTracker = async (
   context: RuntimeTransportContext,
   payload: RuntimeApiUpdateTrackerRequest,
 ): Promise<RuntimeApiUpdateTrackerResponse> => {
-  const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
-  if (!activeInstanceId) {
-    throw new Error("No active instance selected. Tracker is instance-scoped.");
-  }
+  const activeInstanceId = requireSurfaceInstanceId(
+    context,
+    "No active instance selected. Tracker is instance-scoped.",
+  );
 
   const result = await writeInstanceTrackerRegistry(activeInstanceId, payload.tracker);
 

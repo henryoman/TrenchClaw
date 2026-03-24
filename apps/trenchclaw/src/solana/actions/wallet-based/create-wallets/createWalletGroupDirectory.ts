@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { z } from "zod";
 
 import type { Action } from "../../../../ai/contracts/types/action";
@@ -47,7 +48,7 @@ export const createWalletGroupDirectoryAction: Action<
         operation: "create wallet group directory",
       });
 
-      await Bun.$`mkdir -p ${directoryPath}`.quiet();
+      await mkdir(directoryPath, { recursive: true });
 
       return {
         ok: true,

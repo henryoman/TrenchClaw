@@ -1,10 +1,10 @@
-import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
 import { resolveInstanceAiSettingsPath } from "../../runtime/instance/paths";
 import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
+import { ensureSeededJsonDocument, writeJsonDocument } from "../../runtime/settings/instance/io";
 import type { AiModelProvider } from "./model-catalog";
 import { parseStructuredFile } from "./shared";
 
@@ -77,38 +77,17 @@ export const ensureAiSettingsFileExists = async (input?: {
   seedPath?: string;
 }): Promise<{ created: boolean; filePath: string }> => {
   const { filePath, seedPath } = await resolveAiSettingsPaths(input);
-  const targetPath = path.resolve(filePath);
-
-  try {
-    const existing = await stat(targetPath);
-    if (!existing.isFile()) {
-      throw new Error(`AI settings path exists but is not a file: "${targetPath}"`);
-    }
-    return { created: false, filePath: targetPath };
-  } catch (error) {
-    if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  assertAiSettingsWritePath(targetPath);
-  await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
-  const resolvedSeedPath = path.resolve(seedPath);
-  const content = await readFile(resolvedSeedPath, "utf8").catch((error) => {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      throw new Error(`Runtime seed is missing AI settings file: "${resolvedSeedPath}"`);
-    }
-    throw error;
+  const ensured = await ensureSeededJsonDocument({
+    filePath,
+    seedPath,
+    parseDocument: parseAiSettingsValue,
+    assertWritePath: assertAiSettingsWritePath,
+    missingSeedDescription: "Runtime seed is missing AI settings file",
   });
-  const parsed = parseAiSettingsValue(JSON.parse(content));
-  await writeFile(targetPath, `${JSON.stringify(parsed, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-  try {
-    await chmod(targetPath, 0o600);
-  } catch {
-    // Best-effort only.
-  }
-
-  return { created: true, filePath: targetPath };
+  return {
+    created: ensured.created,
+    filePath: ensured.filePath,
+  };
 };
 
 export const loadAiSettings = async (): Promise<{ filePath: string; settings: AiSettings }> => {
@@ -122,17 +101,15 @@ export const loadAiSettings = async (): Promise<{ filePath: string; settings: Ai
 
 export const writeAiSettings = async (input: AiSettingsInput): Promise<{ filePath: string; settings: AiSettings }> => {
   const { filePath } = await resolveAiSettingsPaths();
-  const targetPath = path.resolve(filePath);
-  if (!process.env[AI_SETTINGS_FILE_ENV]?.trim()) {
-    assertInstanceSystemWritePath(targetPath, "write AI settings file");
-  }
-  await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
   const settings = normalizeAiSettingsInput(input);
-  await writeFile(targetPath, `${JSON.stringify(settings, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
-  try {
-    await chmod(targetPath, 0o600);
-  } catch {
-    // Best-effort only.
-  }
-  return { filePath: targetPath, settings };
+  const savedPath = await writeJsonDocument({
+    filePath: path.resolve(filePath),
+    document: settings,
+    assertWritePath: process.env[AI_SETTINGS_FILE_ENV]?.trim()
+      ? undefined
+      : (targetPath) => {
+          assertInstanceSystemWritePath(targetPath, "write AI settings file");
+        },
+  });
+  return { filePath: savedPath, settings };
 };

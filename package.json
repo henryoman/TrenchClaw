@@ -56,7 +56,7 @@
     "context:refresh": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run context:refresh --filter=@trenchclaw/core",
     "cleanup:runtime": "bun run --cwd apps/trenchclaw cleanup:runtime",
     "cleanup:build": "bun run scripts/clean-build-artifacts.ts",
-    "ship:verify": "bun run app:clean && bun run app:build && bun run build:all && bun run test && bun run test:launch-chat",
+    "ship:verify": "bun run app:clean && bun run scripts/release-build.ts --run-checks",
     "release:notes": "bun run scripts/generate-release-notes.ts",
     "release:validate": "bun run scripts/validate-release-version.ts",
     "release:build": "bun run scripts/release-build.ts",

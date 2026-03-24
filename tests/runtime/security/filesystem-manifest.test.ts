@@ -154,4 +154,36 @@ rules:
       }),
     ).rejects.toBeInstanceOf(FilesystemPermissionDeniedError);
   });
+
+  test("default manifest allows agent writes under active-instance keypairs only", async () => {
+    resetFilesystemManifestCacheForTests();
+    const runtimeRoot = `/tmp/trenchclaw-fs-policy-${crypto.randomUUID()}`;
+    process.env.TRENCHCLAW_RUNTIME_STATE_ROOT = runtimeRoot;
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+    delete process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE;
+    await mkdir(path.join(runtimeRoot, "instances", "01", "keypairs"), { recursive: true });
+    await writeFile(
+      path.join(runtimeRoot, "instances", "01", "instance.json"),
+      `${JSON.stringify({ instance: { name: "default", localInstanceId: "01" } }, null, 2)}\n`,
+      "utf8",
+    );
+
+    await expect(
+      assertFilesystemAccessAllowed({
+        actor: "agent",
+        targetPath: path.join(runtimeRoot, "instances", "01", "keypairs", "smoke-wallets", "000.json"),
+        operation: "write",
+        reason: "write managed wallet keypair",
+      }),
+    ).resolves.toBeUndefined();
+
+    await expect(
+      assertFilesystemAccessAllowed({
+        actor: "agent",
+        targetPath: path.join(runtimeRoot, "instances", "01", "instance.json"),
+        operation: "write",
+        reason: "overwrite instance profile",
+      }),
+    ).rejects.toBeInstanceOf(FilesystemPermissionDeniedError);
+  });
 });

@@ -1,22 +1,10 @@
-import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance/state";
 import { resolveInstanceSecretsRoot } from "../../runtime/instance/paths";
 import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
+import { ensureSeededJsonDocument, serializeJsonDocument, writeJsonDocument } from "../../runtime/settings/instance/io";
 import { isRecord } from "./shared";
-
-const isBlankValue = (value: unknown): boolean => {
-  if (typeof value === "string") {
-    return value.trim().length === 0;
-  }
-  if (Array.isArray(value)) {
-    return value.every((entry) => isBlankValue(entry));
-  }
-  if (isRecord(value)) {
-    return Object.values(value).every((entry) => isBlankValue(entry));
-  }
-  return value == null;
-};
 
 const deleteByPath = (root: Record<string, unknown>, segments: readonly string[]): boolean => {
   if (segments.length === 0) {
@@ -86,6 +74,32 @@ export const getByPath = (root: unknown, segments: string[]): unknown => {
   return current;
 };
 
+export const setByPath = (root: Record<string, unknown>, segments: readonly string[], value: unknown): void => {
+  if (segments.length === 0) {
+    return;
+  }
+  let current = root;
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const segment = segments[index];
+    if (!segment) {
+      continue;
+    }
+    const next = current[segment];
+    if (!isRecord(next)) {
+      const replacement: Record<string, unknown> = {};
+      current[segment] = replacement;
+      current = replacement;
+      continue;
+    }
+    current = next;
+  }
+  const leafKey = segments[segments.length - 1];
+  if (!leafKey) {
+    return;
+  }
+  current[leafKey] = value;
+};
+
 export const readVaultString = (root: unknown, refPath: string): string | undefined => {
   const value = getByPath(root, toPathSegments(refPath));
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
@@ -127,35 +141,18 @@ export const ensureVaultFileExists = async (input: {
   vaultPath: string;
   seedPath?: string;
 }): Promise<{ created: boolean }> => {
-  const targetPath = path.resolve(input.vaultPath);
-  try {
-    const existing = await stat(targetPath);
-    if (!existing.isFile()) {
-      throw new Error(`Vault path exists but is not a file: "${targetPath}"`);
-    }
-    return { created: false };
-  } catch (error) {
-    if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
-      throw error;
-    }
-  }
-
-  await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
-  const resolvedSeedPath = path.resolve(input.seedPath ?? resolveRuntimeSeedInstancePath("secrets", "vault.json"));
-  const content = await readFile(resolvedSeedPath, "utf8").catch((error) => {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-      throw new Error(`Runtime seed is missing vault file: "${resolvedSeedPath}"`);
-    }
-    throw error;
+  const result = await ensureSeededJsonDocument({
+    filePath: path.resolve(input.vaultPath),
+    seedPath: path.resolve(input.seedPath ?? resolveRuntimeSeedInstancePath("secrets", "vault.json")),
+    parseDocument: (rawSettings) => {
+      if (rawSettings === null || typeof rawSettings !== "object" || Array.isArray(rawSettings)) {
+        throw new Error("Vault JSON must be an object at the root.");
+      }
+      return rawSettings as Record<string, unknown>;
+    },
+    missingSeedDescription: "Runtime seed is missing vault file",
   });
-  await writeFile(targetPath, content, { encoding: "utf8", mode: 0o600 });
-  try {
-    await chmod(targetPath, 0o600);
-  } catch {
-    // Best-effort only (for platforms/filesystems without POSIX permission support).
-  }
-
-  return { created: true };
+  return { created: result.created };
 };
 
 export const parseVaultJsonText = (value: string): Record<string, unknown> => {
@@ -164,6 +161,18 @@ export const parseVaultJsonText = (value: string): Record<string, unknown> => {
     throw new Error("Vault JSON must be an object at the root.");
   }
   return parsed as Record<string, unknown>;
+};
+
+export const serializeVaultData = (vaultData: Record<string, unknown>): string => serializeJsonDocument(vaultData);
+
+export const writeVaultData = async (input: {
+  vaultPath: string;
+  vaultData: Record<string, unknown>;
+}): Promise<string> => {
+  return writeJsonDocument({
+    filePath: input.vaultPath,
+    document: input.vaultData,
+  });
 };
 
 export const resolveRequiredVaultFile = (input?: {
@@ -196,7 +205,7 @@ export const loadVaultData = async (input?: {
     };
   }
 
-  const ensured = await ensureVaultFileExists({
+  await ensureVaultFileExists({
     vaultPath: resolved.vaultPath,
     seedPath: resolved.seedPath,
   });

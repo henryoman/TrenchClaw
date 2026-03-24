@@ -199,6 +199,7 @@ let runtimeImportsPromise: Promise<{
 
 const loadRuntimeImports = async (): Promise<{
   bootstrapRuntime: typeof bootstrapRuntimeType;
+  createActionContext: typeof import("../trenchclaw/src/ai/contracts/types/context").createActionContext;
   ensureInstanceLayout: (instanceId: string) => Promise<unknown>;
   resolveRuntimeSettingsProfile: () => RuntimeSettingsProfile;
   startRuntimeServer: typeof startRuntimeServerType;
@@ -206,11 +207,13 @@ const loadRuntimeImports = async (): Promise<{
   if (!runtimeImportsPromise) {
     runtimeImportsPromise = Promise.all([
       import("../trenchclaw/src/runtime/bootstrap"),
+      import("../trenchclaw/src/ai/contracts/types/context"),
       import("../trenchclaw/src/runtime/instance/layout"),
       import("../trenchclaw/src/runtime/settings"),
       import("../trenchclaw/src/runtime/start-runtime-server"),
-    ]).then(([bootstrapModule, instanceLayoutModule, loadModule, serverModule]) => ({
+    ]).then(([bootstrapModule, contextModule, instanceLayoutModule, loadModule, serverModule]) => ({
       bootstrapRuntime: bootstrapModule.bootstrapRuntime,
+      createActionContext: contextModule.createActionContext,
       ensureInstanceLayout: instanceLayoutModule.ensureInstanceLayout,
       resolveRuntimeSettingsProfile: loadModule.resolveRuntimeSettingsProfile,
       startRuntimeServer: serverModule.startRuntimeServer,
@@ -806,6 +809,145 @@ const waitForGuiLaunchConfirmation = async (guiUrl: string): Promise<GuiLaunchDe
   }
 };
 
+const collectSseDataFrames = (payload: string): string[] =>
+  payload
+    .split(/\r?\n/u)
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trim())
+    .filter((line) => line.length > 0 && line !== "[DONE]");
+
+const readAssistantTextFromChatStream = async (runtimeBaseUrl: string, prompt: string): Promise<string> => {
+  const response = await fetch(new URL("/v1/chat/stream", runtimeBaseUrl), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      chatId: `runner-smoke-${crypto.randomUUID()}`,
+      conversationTitle: "runner smoke",
+      messages: [{ role: "user", parts: [{ type: "text", text: prompt }] }],
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Runner smoke chat failed for "${prompt}": ${response.status}`);
+  }
+  const bodyText = await response.text();
+  const frames = collectSseDataFrames(bodyText);
+  const assistantText = frames
+    .map((frame) => {
+      try {
+        const parsed = JSON.parse(frame) as { type?: string; delta?: string; text?: string };
+        if (parsed.type === "text-delta" && typeof parsed.delta === "string") {
+          return parsed.delta;
+        }
+        if (parsed.type === "text-start" && typeof parsed.text === "string") {
+          return parsed.text;
+        }
+      } catch {
+        // Ignore metadata-only frames.
+      }
+      return "";
+    })
+    .join("")
+    .trim();
+  if (!assistantText) {
+    throw new Error(`Runner smoke chat produced no assistant text for "${prompt}"`);
+  }
+  return assistantText;
+};
+
+const runRunnerSmokeChecks = async (input: {
+  runtime: Awaited<ReturnType<typeof bootstrapRuntimeType>>;
+  runtimeBaseUrl: string;
+  guiUrl: string;
+  createActionContext: typeof import("../trenchclaw/src/ai/contracts/types/context").createActionContext;
+}): Promise<void> => {
+  const [runtimeHealth, guiResponse] = await Promise.all([
+    fetch(new URL("/health", input.runtimeBaseUrl)),
+    fetch(input.guiUrl),
+  ]);
+  if (!runtimeHealth.ok) {
+    throw new Error(`Runtime smoke test failed: GET /health returned ${runtimeHealth.status}`);
+  }
+  if (!guiResponse.ok) {
+    throw new Error(`GUI smoke test failed: GET / returned ${guiResponse.status}`);
+  }
+
+  const actorContext = input.createActionContext({ actor: "agent" });
+  const invalidWalletCreate = await input.runtime.dispatcher.dispatchStep(actorContext, {
+    actionName: "createWallets",
+    input: {
+      count: 1,
+      walletName: "legacy-shape-should-fail",
+    },
+  });
+  if (invalidWalletCreate.results[0]?.ok !== false) {
+    throw new Error("Runner smoke expected createWallets to reject the removed legacy wallet input shape.");
+  }
+
+  const emptyWalletBalanceText = await readAssistantTextFromChatStream(input.runtimeBaseUrl, "show me our wallet balances");
+  if (!/no managed wallet contents were found|no managed wallets were found/i.test(emptyWalletBalanceText)) {
+    throw new Error(`Runner smoke empty-wallet balance response was unexpected: ${emptyWalletBalanceText}`);
+  }
+
+  const createWalletsResult = await input.runtime.dispatcher.dispatchStep(actorContext, {
+    actionName: "createWallets",
+    input: {
+      groups: [
+        {
+          walletGroup: "smoke-wallets",
+          count: 2,
+        },
+      ],
+    },
+  });
+  const createWalletsOutput = createWalletsResult.results[0];
+  if (!createWalletsOutput?.ok) {
+    throw new Error(`Runner smoke failed to create wallets: ${createWalletsOutput?.error ?? "unknown error"}`);
+  }
+  const createdWallets = Array.isArray(createWalletsOutput.data?.wallets) ? createWalletsOutput.data.wallets : [];
+  if (createdWallets.length !== 2) {
+    throw new Error(`Runner smoke expected 2 created wallets, received ${createdWallets.length}`);
+  }
+  const createdWalletIds = createdWallets.map((wallet) => String(wallet?.walletId ?? "")).toSorted();
+  if (createdWalletIds.join(",") !== "smoke-wallets.000,smoke-wallets.001") {
+    throw new Error(`Runner smoke expected managed wallet ids smoke-wallets.000 and smoke-wallets.001, received ${createdWalletIds.join(", ") || "(none)"}`);
+  }
+  const createdFileNames = Array.isArray(createWalletsOutput.data?.files)
+    ? createWalletsOutput.data.files.map((filePath) => path.basename(String(filePath))).toSorted()
+    : [];
+  if (createdFileNames.join(",") !== "000.json,001.json") {
+    throw new Error(`Runner smoke expected wallet files 000.json and 001.json, received ${createdFileNames.join(", ") || "(none)"}`);
+  }
+  const walletLibraryFilePath = String(createWalletsOutput.data?.walletLibraryFilePath ?? "");
+  if (!walletLibraryFilePath) {
+    throw new Error("Runner smoke expected createWallets to return a wallet library file path.");
+  }
+  const walletLibraryEntries = (await Bun.file(walletLibraryFilePath).text())
+    .trim()
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as { walletId?: string; walletLabelFilePath?: string });
+  const walletLibraryIds = walletLibraryEntries.map((entry) => String(entry.walletId ?? "")).toSorted();
+  if (walletLibraryIds.join(",") !== "smoke-wallets.000,smoke-wallets.001") {
+    throw new Error(`Runner smoke wallet library entries were unexpected: ${walletLibraryIds.join(", ") || "(none)"}`);
+  }
+  for (const entry of walletLibraryEntries) {
+    const walletLabelFilePath = String(entry.walletLabelFilePath ?? "");
+    if (!walletLabelFilePath) {
+      throw new Error(`Runner smoke wallet library entry is missing a wallet label file path: ${JSON.stringify(entry)}`);
+    }
+    const walletLabel = await Bun.file(walletLabelFilePath).json() as {
+      walletId?: string;
+      walletFileName?: string;
+    };
+    if (!createdWalletIds.includes(String(walletLabel.walletId ?? ""))) {
+      throw new Error(`Runner smoke wallet label entry was unexpected: ${JSON.stringify(walletLabel)}`);
+    }
+    if (!createdFileNames.includes(String(walletLabel.walletFileName ?? ""))) {
+      throw new Error(`Runner smoke wallet label file name was unexpected: ${JSON.stringify(walletLabel)}`);
+    }
+  }
+};
+
 const contentTypeByExt = new Map<string, string>([
   [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
@@ -1011,7 +1153,7 @@ const main = async (): Promise<void> => {
   console.log(`${RUNNER_LOG_PREFIX} gui target: ${guiUrl}`);
   logOptionalToolDiagnostics();
 
-  const { bootstrapRuntime, startRuntimeServer } = await loadRuntimeImports();
+  const { bootstrapRuntime, createActionContext, startRuntimeServer } = await loadRuntimeImports();
   const runtime = await bootstrapRuntime();
   const runtimeServerInfo: RuntimeServerInfo = startRuntimeServer(runtime);
   let guiServer: Bun.Server<unknown> | null = createStaticServer({
@@ -1056,16 +1198,12 @@ const main = async (): Promise<void> => {
 
   console.log(`${RUNNER_LOG_PREFIX} GUI serving from ${guiUrl}`);
   if (process.env.TRENCHCLAW_RUNNER_SMOKE_TEST === "1") {
-    const [runtimeHealth, guiResponse] = await Promise.all([
-      fetch(new URL("/health", runtimeServerInfo.url)),
-      fetch(guiUrl),
-    ]);
-    if (!runtimeHealth.ok) {
-      throw new Error(`Runtime smoke test failed: GET /health returned ${runtimeHealth.status}`);
-    }
-    if (!guiResponse.ok) {
-      throw new Error(`GUI smoke test failed: GET / returned ${guiResponse.status}`);
-    }
+    await runRunnerSmokeChecks({
+      runtime,
+      runtimeBaseUrl: runtimeServerInfo.url,
+      guiUrl,
+      createActionContext,
+    });
     console.log(`${RUNNER_LOG_PREFIX} smoke test passed.`);
     shutdown(0);
     await shutdownDone;

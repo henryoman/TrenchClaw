@@ -178,83 +178,6 @@ export const ensureCompatibilitySettingsFileExists = async (
   await writeFile(targetPath, content, { encoding: "utf8", mode: 0o600 });
 };
 
-const applyResolvedRpcFallbacks = (
-  settings: unknown,
-  vaultData: unknown,
-): unknown => {
-  if (!isRecord(settings)) {
-    return settings;
-  }
-
-  const defaultHttpUrl = readVaultStringByPath(vaultData, "rpc/default/http-url");
-  const defaultWsUrl =
-    defaultHttpUrl
-      ? defaultHttpUrl.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:")
-      : undefined;
-  if (!defaultHttpUrl) {
-    return settings;
-  }
-
-  if (!isRecord(settings.rpc) || !isRecord(settings.rpc.providers)) {
-    return {
-      ...settings,
-      rpc: {
-        primaryRpc: "primary",
-        providers: {
-          primary: {
-            endpointRef: defaultHttpUrl,
-            ...(defaultWsUrl ? { wsEndpointRef: defaultWsUrl } : {}),
-          },
-        },
-      },
-    };
-  }
-
-  const rpcSettings = settings.rpc as Record<string, unknown>;
-  const providers = rpcSettings.providers as Record<string, unknown>;
-  const primaryRpc = typeof rpcSettings.primaryRpc === "string" && rpcSettings.primaryRpc.trim().length > 0
-    ? rpcSettings.primaryRpc.trim()
-    : null;
-  if (!primaryRpc || !isRecord(providers[primaryRpc])) {
-    return settings;
-  }
-
-  const provider = providers[primaryRpc] as Record<string, unknown>;
-  const requestedEndpointRef =
-    typeof provider.endpointRef === "string" && provider.endpointRef.trim().length > 0
-      ? provider.endpointRef.trim()
-      : undefined;
-  const requestedWsEndpointRef =
-    typeof provider.wsEndpointRef === "string" && provider.wsEndpointRef.trim().length > 0
-      ? provider.wsEndpointRef.trim()
-      : undefined;
-  const endpointRef =
-    !requestedEndpointRef || isUnresolvedVaultRef(requestedEndpointRef)
-      ? defaultHttpUrl
-      : requestedEndpointRef;
-  const wsEndpointRef =
-    !requestedWsEndpointRef || isUnresolvedVaultRef(requestedWsEndpointRef)
-      ? endpointRef
-        ? endpointRef.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:")
-        : undefined
-      : requestedWsEndpointRef;
-
-  return {
-    ...settings,
-    rpc: {
-      ...rpcSettings,
-      providers: {
-        ...providers,
-        [primaryRpc]: {
-          ...provider,
-          ...(endpointRef ? { endpointRef } : {}),
-          ...(wsEndpointRef ? { wsEndpointRef } : {}),
-        },
-      },
-    },
-  };
-};
-
 const loadOptionalStructuredSettingsLayer = async (filePath: string | null): Promise<unknown> => {
   if (!filePath) {
     return {};
@@ -287,17 +210,13 @@ export const loadResolvedUserSettings = async (): Promise<ResolvedUserSettingsPa
     path.dirname(compatibilitySettingsPath),
     preferredContext,
   );
-  const resolvedCompatibilitySettings = applyResolvedRpcFallbacks(
-    resolvedPreferredCompatibilitySettings,
-    vaultPayload.vaultData,
-  );
   const instanceTradingSettings = await loadInstanceTradingSettings();
   const rawSettings = {
     compatibility: rawCompatibilitySettings,
     instanceTrading: instanceTradingSettings.rawSettings,
   };
   const resolvedSettings = deepMerge(
-    resolvedCompatibilitySettings,
+    resolvedPreferredCompatibilitySettings,
     instanceTradingSettings.resolvedSettings,
   );
 

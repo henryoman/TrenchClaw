@@ -182,14 +182,14 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     kind: "action",
     action: createWalletGroupDirectoryAction,
     description: "Create one flat wallet group directory under the protected keypairs root.",
-    purpose: "Prepare a single-level wallet container before creating wallets.",
+    purpose: "Prepare a single-level wallet container before the guarded wallet batch builder runs.",
     tags: ["wallets", "filesystem", "setup"],
     exampleInput: {
       walletGroup: "ops-market-makers",
     },
     includeInCatalog: () => true,
     enabledBySettings: ({ settings }) => settings.wallet.dangerously.allowCreatingWallets,
-    chatExposed: true,
+    chatExposed: false,
   },
   {
     kind: "action",
@@ -754,7 +754,7 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     kind: "action",
     action: getManagedWalletSolBalancesAction,
     description: "Fetch SOL balances for managed wallets in the active or requested instance.",
-    purpose: "Answer wallet balance questions directly using managed wallet metadata, including label-file fallback when the wallet library file is missing.",
+    purpose: "Answer wallet balance questions directly using managed wallet metadata from the canonical wallet library.",
     tags: ["wallets", "balances", "sol", "read"],
     exampleInput: {
       walletGroup: "core-wallets",

@@ -2,14 +2,8 @@ import { fileURLToPath } from "node:url";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance/state";
 import { loadRuntimeSettings } from "../../runtime/settings";
 import { getRuntimeCapabilitySnapshot } from "../../runtime/capabilities/selectors";
-import {
-  renderAsyncToolBehaviorSection,
-  renderCommandMenuSection,
-  renderWorkspaceDirectoryMapSection,
-} from "../../runtime/prompt/tool-menu";
+import { loadRuntimePromptSections } from "../../runtime/prompt/composer";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
-import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-context";
-import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
 import { resolveVaultFile } from "./vault-file";
 
 const SYSTEM_PROMPT_FILE = "../brain/config/prompts/system.md";
@@ -106,12 +100,14 @@ const renderShellToolingSummary = (): string => {
 
 const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const [filesystemPolicy, liveRuntimeContext, capabilitySnapshot, knowledgeSummary] = await Promise.all([
+  const [filesystemPolicy, capabilitySnapshot] = await Promise.all([
     summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
-    renderLiveRuntimeContextSection(),
     getRuntimeCapabilitySnapshot(settings),
-    renderKnowledgePromptSummary(),
   ]);
+  const promptSections = await loadRuntimePromptSections({
+    toolEntries: capabilitySnapshot.modelTools,
+    includeWorkspaceDirectoryMap: true,
+  });
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();
   const vault = resolveVaultFile({ activeInstanceId });
   const confirmationEnabled = settings.trading.confirmations.requireUserConfirmationForDangerousActions;
@@ -134,15 +130,15 @@ const renderLiveRuntimeRules = async (): Promise<string> => {
     "",
     renderShellToolingSummary(),
     "",
-    renderCommandMenuSection(capabilitySnapshot.modelTools),
+    promptSections.commandMenuSection,
     "",
-    renderWorkspaceDirectoryMapSection(),
+    promptSections.workspaceDirectoryMapSection,
     "",
-    renderAsyncToolBehaviorSection(capabilitySnapshot.modelTools),
+    promptSections.asyncToolBehaviorSection,
     "",
-    liveRuntimeContext,
+    promptSections.liveRuntimeContext,
     "",
-    knowledgeSummary,
+    promptSections.knowledgeSummary,
     "",
     "Registered tools for this request are attached separately. Treat those tool definitions as the exact contract.",
   ].join("\n");

@@ -117,7 +117,7 @@ describe("trading settings layering", () => {
           defaultSwapProvider: "standard",
           defaultSwapMode: "ExactOut",
           defaultAmountUnit: "percent",
-          scheduleActionName: "scheduleManagedTriggerOrder",
+          scheduleActionName: "scheduleManagedUltraSwap",
           quickBuyPresets: [
             {
               id: "quick-1",
@@ -222,7 +222,7 @@ describe("trading settings layering", () => {
     expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("wss://vault-helius-rpc.example");
   });
 
-  test("falls back to rpc.default when the selected provider has no configured endpoint", async () => {
+  test("keeps runtime defaults when the selected provider has no configured endpoint", async () => {
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeBaseSettings();
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "98";
     const instanceDirectory = await createPersistedTestInstance(process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID);
@@ -254,7 +254,7 @@ describe("trading settings layering", () => {
 
     const settings = await loadRuntimeSettings("dangerous");
 
-    expect(settings.network.rpc.endpoints[0]?.url).toBe("https://api.mainnet-beta.solana.com");
-    expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("wss://api.mainnet-beta.solana.com");
+    expect(settings.network.rpc.endpoints[0]?.url).toBe("http://127.0.0.1:8899");
+    expect(settings.network.rpc.endpoints[0]?.wsUrl).toBe("ws://127.0.0.1:8900");
   });
 });

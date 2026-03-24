@@ -51,12 +51,12 @@ describe("createWalletsAction", () => {
     createdPaths.add(instanceRoot);
 
     const result = await createWalletsAction.execute({} as never, {
-      count: 1,
-      walletName: "one",
-      storage: {
-        walletGroup,
-        createGroupIfMissing: true,
-      },
+      groups: [
+        {
+          walletGroup,
+          walletNames: ["one"],
+        },
+      ],
     });
 
     expect(result.ok).toBe(true);
@@ -122,12 +122,12 @@ describe("createWalletsAction", () => {
     createdPaths.add(instanceRoot);
 
     const result = await createWalletsAction.execute({} as never, {
-      count: 1,
-      walletName: "one",
-      storage: {
-        walletGroup,
-        createGroupIfMissing: true,
-      },
+      groups: [
+        {
+          walletGroup,
+          walletNames: ["one"],
+        },
+      ],
     });
 
     expect(result.ok).toBe(true);
@@ -179,11 +179,12 @@ describe("createWalletsAction", () => {
     const instanceRoot = await createPersistedTestInstance(TEST_INSTANCE_ID);
     createdPaths.add(instanceRoot);
     const result = await createWalletsAction.execute({} as never, {
-      count: 1,
-      storage: {
-        walletGroup: "../uploaded-wallets",
-        createGroupIfMissing: true,
-      },
+      groups: [
+        {
+          walletGroup: "../uploaded-wallets",
+          count: 1,
+        },
+      ],
     });
 
     expect(result.ok).toBe(false);
@@ -215,7 +216,7 @@ describe("createWalletsAction", () => {
     expect(result.error).toContain("100");
   });
 
-  test("uses existing wallet group directory when createGroupIfMissing is false", async () => {
+  test("creates wallets inside an existing wallet group directory", async () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = TEST_INSTANCE_ID;
     const walletGroup = `existing-wallets-${crypto.randomUUID()}`;
     const walletLibraryFile = runtimeStatePath("instances", TEST_INSTANCE_ID, `test-wallet-library-${crypto.randomUUID()}.jsonl`);
@@ -226,11 +227,12 @@ describe("createWalletsAction", () => {
     createdPaths.add(instanceRoot);
 
     const result = await createWalletsAction.execute({} as never, {
-      count: 1,
-      storage: {
-        walletGroup,
-        createGroupIfMissing: false,
-      },
+      groups: [
+        {
+          walletGroup,
+          count: 1,
+        },
+      ],
     });
 
     expect(result.ok).toBe(true);

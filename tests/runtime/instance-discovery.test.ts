@@ -7,10 +7,10 @@ import { pathToFileURL } from "node:url";
 const WORKSPACE_ROOT = path.resolve(import.meta.dir, "../..");
 const CORE_APP_ROOT = path.join(WORKSPACE_ROOT, "apps/trenchclaw");
 const INSTANCES_MODULE_URL = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/runtime/transport/domains/instances.ts"),
+  path.join(CORE_APP_ROOT, "src/runtime/surface/domains/instances.ts"),
 ).href;
 const INSTANCE_STATE_MODULE_URL = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/runtime/instance-state.ts"),
+  path.join(CORE_APP_ROOT, "src/runtime/instance/state.ts"),
 ).href;
 const SHELL_COMMAND = process.platform === "win32"
   ? ["cmd.exe", "/d", "/s", "/c", "bun -e \"%TRENCHCLAW_TEST_SCRIPT%\""]

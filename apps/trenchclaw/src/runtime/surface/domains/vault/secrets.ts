@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import type {
   RuntimeApiDeleteSecretRequest,
   RuntimeApiDeleteSecretResponse,
@@ -13,14 +13,17 @@ import type {
 } from "@trenchclaw/types";
 import {
   ensureVaultFileExists,
+  getByPath,
   parseVaultJsonText,
   resolveRequiredVaultFile,
   sanitizeVaultData,
+  serializeVaultData,
+  setByPath,
+  writeVaultData,
 } from "../../../../ai/llm/vault-file";
-import { isRecord } from "../../../shared/object-utils";
 import { assertInstanceSystemWritePath } from "../../../security/write-scope";
 import { PUBLIC_RPC_OPTIONS, RPC_PROVIDER_OPTIONS, SECRET_OPTIONS } from "../../constants";
-import type { RuntimeTransportContext } from "../../contracts";
+import { resolveSurfaceInstanceId, type RuntimeTransportContext } from "../../contracts";
 
 interface SecretOptionInternal extends RuntimeApiSecretOptionView {
   pathSegments: string[];
@@ -38,43 +41,6 @@ const DEFAULT_RPC_PROVIDER_ID = RPC_PROVIDER_OPTIONS[0]?.id ?? "helius";
 
 const trimString = (value: unknown): string =>
   typeof value === "string" ? value.trim() : "";
-
-const getByPath = (root: unknown, pathSegments: string[]): unknown => {
-  let current = root;
-  for (const segment of pathSegments) {
-    if (!isRecord(current)) {
-      return undefined;
-    }
-    current = current[segment];
-  }
-  return current;
-};
-
-const setByPath = (root: Record<string, unknown>, pathSegments: string[], value: unknown): void => {
-  if (pathSegments.length === 0) {
-    return;
-  }
-  let current: Record<string, unknown> = root;
-  for (let index = 0; index < pathSegments.length - 1; index += 1) {
-    const key = pathSegments[index];
-    if (!key) {
-      continue;
-    }
-    const next = current[key];
-    if (!isRecord(next)) {
-      const replacement: Record<string, unknown> = {};
-      current[key] = replacement;
-      current = replacement;
-      continue;
-    }
-    current = next;
-  }
-  const leafKey = pathSegments[pathSegments.length - 1];
-  if (!leafKey) {
-    return;
-  }
-  current[leafKey] = value;
-};
 
 const resolveWebsocketUrl = (httpUrl: string): string =>
   httpUrl.replace(/^https:/i, "wss:").replace(/^http:/i, "ws:");
@@ -201,7 +167,7 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
 
 const resolveManagedVaultTarget = async (context?: RuntimeTransportContext) => {
   const resolved = resolveRequiredVaultFile({
-    activeInstanceId: context?.getActiveInstance()?.localInstanceId ?? undefined,
+    activeInstanceId: context ? resolveSurfaceInstanceId(context) : undefined,
   });
   if (!resolved.explicitVaultPath) {
     assertInstanceSystemWritePath(resolved.vaultPath, "access instance vault");
@@ -213,15 +179,16 @@ const resolveManagedVaultTarget = async (context?: RuntimeTransportContext) => {
   return resolved;
 };
 
-const serializeVaultData = (vaultData: Record<string, unknown>): string => `${JSON.stringify(vaultData, null, 2)}\n`;
-
 const loadManagedVaultData = async (context?: RuntimeTransportContext) => {
   const target = await resolveManagedVaultTarget(context);
   const content = await readFile(target.vaultPath, "utf8");
   const vaultData = parseVaultJsonText(content);
   const { changed } = sanitizeVaultData(vaultData);
   if (changed) {
-    await writeFile(target.vaultPath, serializeVaultData(vaultData), { encoding: "utf8", mode: 0o600 });
+    await writeVaultData({
+      vaultPath: target.vaultPath,
+      vaultData,
+    });
   }
   return {
     target,
@@ -244,8 +211,10 @@ export const updateVault = async (
   const target = await resolveManagedVaultTarget(context);
   const parsed = parseVaultJsonText(payload.content);
   sanitizeVaultData(parsed);
-  const serialized = serializeVaultData(parsed);
-  await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
+  await writeVaultData({
+    vaultPath: target.vaultPath,
+    vaultData: parsed,
+  });
   context.addActivity("runtime", "Vault updated");
   return {
     filePath: target.vaultPath,
@@ -306,8 +275,10 @@ export const upsertSecret = async (
     setByPath(vaultData, option.pathSegments, trimmedValue);
   }
 
-  const serialized = serializeVaultData(vaultData);
-  await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
+  await writeVaultData({
+    vaultPath: target.vaultPath,
+    vaultData,
+  });
 
   const entry = toSecretEntry(vaultData, option);
   context.addActivity("runtime", `Secret updated: ${entry.label}`);
@@ -349,8 +320,10 @@ export const deleteSecret = async (
     }
   }
 
-  const serialized = serializeVaultData(vaultData);
-  await writeFile(target.vaultPath, serialized, { encoding: "utf8", mode: 0o600 });
+  await writeVaultData({
+    vaultPath: target.vaultPath,
+    vaultData,
+  });
   context.addActivity("runtime", `Secret cleared: ${option.label}`);
   return {
     filePath: target.vaultPath,

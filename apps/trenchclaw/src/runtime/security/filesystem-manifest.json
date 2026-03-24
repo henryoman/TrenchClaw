@@ -27,6 +27,12 @@
       "model": "read",
       "user": "write",
       "system": "write"
+    },
+    {
+      "path": ".runtime-state/instances/<active-instance>/keypairs",
+      "model": "write",
+      "user": "write",
+      "system": "write"
     }
   ]
 }

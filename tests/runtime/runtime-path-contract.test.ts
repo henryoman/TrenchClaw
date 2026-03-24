@@ -211,7 +211,6 @@ describe("runtime path contract", () => {
 
     const initializedRuntimePaths = [
       path.join(runtimeRoot, "instances", "active-instance.json"),
-      path.join(runtimeRoot, "instances", "01", "WAKEUP.md"),
       path.join(runtimeRoot, "instances", "01", "instance.json"),
       path.join(runtimeRoot, "instances", "01", "settings", "ai.json"),
       path.join(runtimeRoot, "instances", "01", "settings", "settings.json"),

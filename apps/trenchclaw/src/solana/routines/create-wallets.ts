@@ -16,30 +16,32 @@ const renameConfigSchema = z.object({
   toWalletName: walletNameSchema,
 });
 
+const createWalletGroupBatchSchema = z.object({
+  walletGroup: z.string().min(1),
+  count: z.number().int().positive().optional(),
+  walletNames: z.array(walletNameSchema).min(1).optional(),
+});
+
 const createWalletsRoutineConfigSchema = z.object({
+  groups: z.array(createWalletGroupBatchSchema).optional(),
   walletGroups: z.array(walletGroupConfigSchema).optional(),
   renames: z.array(renameConfigSchema).optional(),
-  storage: z
-    .object({
-      walletGroup: z.string().min(1).optional(),
-      createGroupIfMissing: z.boolean().optional(),
-    })
-    .optional(),
 })
   .catchall(z.unknown());
 
 export const createWalletsRoutine: RoutinePlanner = async (_ctx, job) => {
   const config = createWalletsRoutineConfigSchema.parse(job.config);
+  const groups = config.groups
+    ?? config.walletGroups?.map((walletGroup) => {
+      const walletNames = walletGroup.wallets?.map((wallet) => wallet.name);
+      return {
+        walletGroup: walletGroup.name,
+        ...(walletNames ? { walletNames } : { count: walletGroup.count ?? 1 }),
+      };
+    });
 
-  if (!config.walletGroups || config.walletGroups.length === 0) {
-    return [
-      {
-        key: "create-wallets",
-        actionName: "createWallets",
-        input: config,
-        idempotencyKey: `${job.id}:create-wallets`,
-      },
-    ];
+  if (!groups || groups.length === 0) {
+    throw new Error("createWallets routine requires groups or walletGroups");
   }
 
   const steps: ActionStep[] = [
@@ -47,13 +49,7 @@ export const createWalletsRoutine: RoutinePlanner = async (_ctx, job) => {
       key: "create-wallets:batch",
       actionName: "createWallets",
       input: {
-        groups: config.walletGroups.map((walletGroup) => {
-          const walletNames = walletGroup.wallets?.map((wallet) => wallet.name);
-          return {
-            walletGroup: walletGroup.name,
-            ...(walletNames ? { walletNames } : { count: walletGroup.count ?? 1 }),
-          };
-        }),
+        groups,
       },
       idempotencyKey: `${job.id}:create-wallets:batch`,
     },

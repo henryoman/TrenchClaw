@@ -4,7 +4,7 @@ import { resolveInstanceTradingSettingsPath } from "../../instance/paths";
 import { loadInstanceSettingsDocument, writeInstanceSettingsDocument } from "./io";
 
 const LEGACY_TRIGGER_SCHEDULE_ACTION = "scheduleManagedTriggerOrder";
-const SUPPORTED_SCHEDULE_ACTION = "scheduleManagedUltraSwap";
+const SUPPORTED_SCHEDULE_ACTION = "scheduleManagedUltraSwap" as const;
 const TRADING_SETTINGS_WARNINGS = new Set<string>();
 
 const warnTradingSettingsOnce = (message: string): void => {
@@ -15,14 +15,13 @@ const warnTradingSettingsOnce = (message: string): void => {
   console.warn(message);
 };
 
-const normalizeScheduleActionName = (value: string): string => {
+const normalizeScheduleActionName = (value: string): typeof SUPPORTED_SCHEDULE_ACTION => {
   if (value === LEGACY_TRIGGER_SCHEDULE_ACTION) {
     warnTradingSettingsOnce(
       `Ignoring deprecated trading.preferences.scheduleActionName="${LEGACY_TRIGGER_SCHEDULE_ACTION}" and using "${SUPPORTED_SCHEDULE_ACTION}" instead.`,
     );
-    return SUPPORTED_SCHEDULE_ACTION;
   }
-  return value;
+  return SUPPORTED_SCHEDULE_ACTION;
 };
 
 const createDefaultTradingPreferences = () => ({
@@ -61,7 +60,12 @@ export const tradingPreferencesSchema = z.object({
   defaultSwapProvider: tradingSwapProviderSchema.default("ultra"),
   defaultSwapMode: tradingSwapModeSchema.default("ExactIn"),
   defaultAmountUnit: tradingPresetAmountUnitSchema.default("ui"),
-  scheduleActionName: z.string().trim().min(1).default(SUPPORTED_SCHEDULE_ACTION).transform(normalizeScheduleActionName),
+  scheduleActionName: z
+    .string()
+    .trim()
+    .min(1)
+    .default(SUPPORTED_SCHEDULE_ACTION)
+    .transform((value) => normalizeScheduleActionName(value)),
   quickBuyPresets: z.array(tradingPresetSchema).default([]),
   customPresets: z.array(tradingPresetSchema).default([]),
 }).default(createDefaultTradingPreferences);

@@ -8,6 +8,7 @@ import {
   RELEASE_CONFIG_ASSET_PATHS,
   RELEASE_PLACEHOLDER_ASSET_PATHS,
   RELEASE_RUNTIME_ASSET_PATHS,
+  RELEASE_RUNTIME_SEED_ASSET_PATHS,
   resolveReleaseBrainExcludePrefixes,
   resolveReleasePlanSnapshot,
 } from "./lib/release-build-plan";
@@ -258,6 +259,16 @@ const copyReleaseRuntimeAssets = async (coreOutputRoot: string): Promise<void> =
   }
 };
 
+const copyReleaseRuntimeSeedAssets = async (coreOutputRoot: string): Promise<void> => {
+  for (const relativePath of RELEASE_RUNTIME_SEED_ASSET_PATHS) {
+    await copyRelativeFile({
+      sourceRoot: path.join(REPO_ROOT, "apps/trenchclaw"),
+      targetRoot: coreOutputRoot,
+      relativePath,
+    });
+  }
+};
+
 const ensurePlaceholderFile = async (filePath: string, contents = ""): Promise<void> => {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, contents, "utf8");
@@ -321,6 +332,7 @@ const main = async (): Promise<void> => {
   await copyReleaseBrainAssets(coreOutputRoot);
   await copyReleaseConfigAssets(coreOutputRoot);
   await copyReleaseRuntimeAssets(coreOutputRoot);
+  await copyReleaseRuntimeSeedAssets(coreOutputRoot);
   for (const relativePath of RELEASE_PLACEHOLDER_ASSET_PATHS) {
     await ensurePlaceholderFile(path.join(coreOutputRoot, relativePath));
   }

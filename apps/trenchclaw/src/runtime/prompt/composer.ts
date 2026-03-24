@@ -1,0 +1,39 @@
+import type { StateStore } from "../../ai/contracts/types/state";
+import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
+import type { RuntimeCapabilitySnapshot } from "../capabilities";
+import { renderLiveRuntimeContextSection } from "./live-context";
+import {
+  renderAsyncToolBehaviorSection,
+  renderCommandMenuSection,
+  renderWorkspaceDirectoryMapSection,
+} from "./tool-menu";
+
+export type PromptToolEntry = RuntimeCapabilitySnapshot["modelTools"][number];
+
+export interface RuntimePromptSections {
+  commandMenuSection: string;
+  asyncToolBehaviorSection: string;
+  workspaceDirectoryMapSection: string;
+  liveRuntimeContext: string;
+  knowledgeSummary: string;
+}
+
+export const loadRuntimePromptSections = async (input: {
+  toolEntries: PromptToolEntry[];
+  stateStore?: StateStore;
+  commandMenuTitle?: string;
+  includeWorkspaceDirectoryMap?: boolean;
+}): Promise<RuntimePromptSections> => {
+  const [liveRuntimeContext, knowledgeSummary] = await Promise.all([
+    renderLiveRuntimeContextSection({ stateStore: input.stateStore }),
+    renderKnowledgePromptSummary(),
+  ]);
+
+  return {
+    commandMenuSection: renderCommandMenuSection(input.toolEntries, input.commandMenuTitle),
+    asyncToolBehaviorSection: renderAsyncToolBehaviorSection(input.toolEntries),
+    workspaceDirectoryMapSection: input.includeWorkspaceDirectoryMap ? renderWorkspaceDirectoryMapSection() : "",
+    liveRuntimeContext,
+    knowledgeSummary,
+  };
+};

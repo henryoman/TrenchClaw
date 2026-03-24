@@ -4,7 +4,7 @@ import "./styles/responsive.css";
 import "./app.css";
 /* oxlint-enable import/no-unassigned-import */
 import { mount } from "svelte";
-import App from "./App";
+import App from "./App.svelte";
 
 const target = document.getElementById("app");
 

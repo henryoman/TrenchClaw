@@ -3,6 +3,9 @@ import os from "node:os";
 
 const toPosixPath = (value: string): string => value.split(path.sep).join("/");
 
+const isSkillReferenceDoc = (relativeToBrain: string): boolean =>
+  relativeToBrain.startsWith("knowledge/skills/") && relativeToBrain.includes("/references/");
+
 export const shouldBundleBrainFile = (
   trackedFile: string,
   options?: { excludedPrefixes?: string[] },
@@ -38,6 +41,12 @@ export const shouldBundleBrainFile = (
   if (relativeToBrain.startsWith("knowledge/skills/") && fileName.endsWith(".sh")) {
     return false;
   }
+  if (relativeToBrain.startsWith("knowledge/deep-knowledge/")) {
+    return false;
+  }
+  if (isSkillReferenceDoc(relativeToBrain)) {
+    return false;
+  }
 
   if (relativeToBrain.startsWith("protected/keypairs/")) {
     return fileName === ".keep" || fileName === ".gitkeep";
@@ -56,6 +65,7 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
   const normalized = toPosixPath(relativeBundlePath);
   const lower = normalized.toLowerCase();
   const fileName = path.posix.basename(normalized).toLowerCase();
+  const isTrackedRuntimeSeedPath = normalized.startsWith("core/.runtime/instances/00/");
 
   if (
     fileName === "active-instance.json"
@@ -67,10 +77,13 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
     return `runtime state file should not be bundled: ${normalized}`;
   }
   if (
-    normalized.includes("/.runtime/instances/")
-    || normalized.startsWith(".runtime/instances/")
-    || normalized.includes("/runtime/instances/")
-    || normalized.startsWith("runtime/instances/")
+    !isTrackedRuntimeSeedPath
+    && (
+      normalized.includes("/.runtime/instances/")
+      || normalized.startsWith(".runtime/instances/")
+      || normalized.includes("/runtime/instances/")
+      || normalized.startsWith("runtime/instances/")
+    )
   ) {
     return `tracked runtime seed instance should not be bundled as mutable state: ${normalized}`;
   }
@@ -103,6 +116,15 @@ export const hasBlockedBundlePath = (relativeBundlePath: string): string | null 
   }
   if (normalized.startsWith("core/src/ai/brain/knowledge/skills/") && fileName.endsWith(".sh")) {
     return `skill installer scripts should not be bundled: ${normalized}`;
+  }
+  if (normalized.startsWith("core/src/ai/brain/knowledge/deep-knowledge/")) {
+    return `deep vendor knowledge should not be bundled in beta release assets: ${normalized}`;
+  }
+  if (
+    normalized.startsWith("core/src/ai/brain/knowledge/skills/")
+    && normalized.includes("/references/")
+  ) {
+    return `skill reference docs should not be bundled in beta release assets: ${normalized}`;
   }
   if (
     normalized.includes("/tests/")
