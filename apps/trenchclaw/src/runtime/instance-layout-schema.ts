@@ -33,7 +33,6 @@ const workspaceChildren = {
 } satisfies Record<string, InstanceLayoutNode>;
 
 export const INSTANCE_LAYOUT_SCHEMA = directory({
-  "WAKEUP.md": file(),
   "instance.json": file(),
   secrets: directory({
     "vault.json": file(),

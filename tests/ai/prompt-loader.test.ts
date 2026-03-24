@@ -7,7 +7,6 @@ import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/ma
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const ENV_KEYS = [
-  "TRENCHCLAW_PROMPT_MANIFEST_FILE",
   "TRENCHCLAW_AGENT_MODE",
   "TRENCHCLAW_KNOWLEDGE_INDEX_FILE",
   "TRENCHCLAW_KNOWLEDGE_DIR",

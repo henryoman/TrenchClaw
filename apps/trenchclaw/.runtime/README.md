@@ -5,7 +5,6 @@ This directory is the repo-tracked runtime contract and seed instance.
 Contract map:
 
 - `README.md` defines the runtime roots, layout, and repo boundaries.
-- `instances/<id>/WAKEUP.md` defines runtime boot, restart, crash-recovery, and resume semantics for that instance.
 
 Root model:
 
@@ -29,6 +28,7 @@ Tracked seed contents:
 - The tracked seed instance is `instances/00/`.
 - The tracked seed now stays intentionally minimal. Runtime-only folders are created lazily when features need them.
 - Update shared defaults by editing the seed files in `.runtime/instances/00/`.
+- Shared model prompts live under `src/ai/brain/config/prompts/`.
 Rules:
 
 - `.runtime/` is documentation and contract only.
@@ -56,7 +56,6 @@ Tracked instance layout:
 .runtime/
   instances/
     00/
-      WAKEUP.md
       instance.json
       settings/
         ai.json
