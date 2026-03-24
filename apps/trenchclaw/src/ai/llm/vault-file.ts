@@ -5,14 +5,6 @@ import { resolveInstanceSecretsRoot } from "../../runtime/instance-paths";
 import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
 import { isRecord } from "./shared";
 
-const LEGACY_RPC_PROVIDER_PATHS = [
-  ["rpc", "helius"],
-  ["rpc", "quicknode"],
-  ["rpc", "solana-vibestation"],
-  ["rpc", "chainstack"],
-  ["rpc", "temporal"],
-] as const;
-
 const isBlankValue = (value: unknown): boolean => {
   if (typeof value === "string") {
     return value.trim().length === 0;
@@ -65,16 +57,7 @@ const deleteByPath = (root: Record<string, unknown>, segments: readonly string[]
 };
 
 export const sanitizeVaultData = (vaultData: Record<string, unknown>): { changed: boolean } => {
-  let changed = deleteByPath(vaultData, ["wallet", "ultra-signer"]);
-
-  for (const pathSegments of LEGACY_RPC_PROVIDER_PATHS) {
-    const candidate = getByPath(vaultData, [...pathSegments]);
-    if (candidate !== undefined && isBlankValue(candidate)) {
-      changed = deleteByPath(vaultData, [...pathSegments]) || changed;
-    }
-  }
-
-  return { changed };
+  return { changed: deleteByPath(vaultData, ["wallet", "ultra-signer"]) };
 };
 
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";

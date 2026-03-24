@@ -19,7 +19,6 @@ const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
 const GITIGNORE_MARKER_START = "# >>> trenchclaw dev runtime >>>";
 const GITIGNORE_MARKER_END = "# <<< trenchclaw dev runtime <<<";
 const DEFAULT_INSTANCE_NAME = "default";
-const LEGACY_AUTO_INSTANCE_NAME_PATTERN = /^dev[- ](\d{2})$/u;
 const IGNORED_VAULT_STRING_VALUES = new Set(["custom"]);
 const WALLET_LIBRARY_FILE_NAME = "wallet-library.jsonl";
 const WALLET_LABEL_FILE_SUFFIX = ".label.json";
@@ -89,9 +88,6 @@ const resolveHomeDirectory = (env: NodeJS.ProcessEnv = process.env): string =>
 
 const resolveDefaultDeveloperRuntimeRoot = (env: NodeJS.ProcessEnv = process.env): string =>
   path.join(resolveHomeDirectory(env), ".trenchclaw-dev-runtime");
-
-const resolveLegacyDeveloperRuntimeRoot = (env: NodeJS.ProcessEnv = process.env): string =>
-  path.join(resolveHomeDirectory(env), "trenchclaw-dev-runtime");
 
 const normalizeInstanceId = (value: string | undefined, fallback = TEMPLATE_INSTANCE_ID): string => {
   const candidate = (value ?? fallback).trim();
@@ -380,44 +376,6 @@ const resolvePreferredDeveloperRuntimeRoot = (env: NodeJS.ProcessEnv = process.e
 const toDefaultInstanceName = (instanceId: string): string =>
   instanceId === TEMPLATE_INSTANCE_ID ? DEFAULT_INSTANCE_NAME : `instance-${instanceId}`;
 
-const isLegacyAutoInstanceName = (value: string, instanceId: string): boolean => {
-  const match = LEGACY_AUTO_INSTANCE_NAME_PATTERN.exec(value.trim());
-  return match?.[1] === instanceId;
-};
-
-const migrateLegacyInstanceProfileName = async (
-  instanceProfilePath: string,
-  instanceId: string,
-  instanceName: string,
-): Promise<void> => {
-  if (!(await fileExists(instanceProfilePath))) {
-    return;
-  }
-
-  try {
-    const parsed = JSON.parse(await readFile(instanceProfilePath, "utf8")) as {
-      instance?: { name?: unknown; localInstanceId?: unknown };
-    } & Record<string, unknown>;
-    const storedName = typeof parsed.instance?.name === "string" ? parsed.instance.name.trim() : "";
-    const storedInstanceId = typeof parsed.instance?.localInstanceId === "string" ? parsed.instance.localInstanceId.trim() : "";
-
-    if (!storedName || storedInstanceId !== instanceId || !isLegacyAutoInstanceName(storedName, instanceId)) {
-      return;
-    }
-
-    await writeJson(instanceProfilePath, {
-      ...parsed,
-      instance: {
-        ...(parsed.instance ?? {}),
-        name: instanceName,
-        localInstanceId: instanceId,
-      },
-    });
-  } catch {
-    // Preserve invalid custom files as-is; init only migrates the known legacy auto-name shape.
-  }
-};
-
 const syncTemplateInstanceMissingEntries = async (runtimeRoot: string, instanceId: string): Promise<void> => {
   const sourceRoot = seedInstancePath();
   const destinationRoot = runtimeInstancePath(runtimeRoot, instanceId);
@@ -501,7 +459,6 @@ const ensureDeveloperInstanceLayout = async (
     },
   };
   await writeJsonIfMissing(instanceProfilePath, nextInstance);
-  await migrateLegacyInstanceProfileName(instanceProfilePath, instanceId, instanceName);
 
   return instanceRoot;
 };
@@ -552,29 +509,6 @@ export const resolveDeveloperBootstrapRoots = (input: {
   };
 };
 
-const maybeAdoptLegacyDeveloperRuntimeRoot = async (
-  runtimeRoot: string,
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<void> => {
-  if (path.resolve(runtimeRoot) !== path.resolve(resolveDefaultDeveloperRuntimeRoot(env))) {
-    return;
-  }
-  if (await directoryExists(runtimeRoot)) {
-    return;
-  }
-  const legacyRuntimeRoot = resolveLegacyDeveloperRuntimeRoot(env);
-  if (!(await directoryExists(legacyRuntimeRoot))) {
-    return;
-  }
-
-  await ensureDirectory(path.dirname(runtimeRoot));
-  await cp(legacyRuntimeRoot, runtimeRoot, {
-    recursive: true,
-    force: false,
-    errorOnExist: false,
-  });
-};
-
 const createBackupSnapshot = async (runtimeRoot: string, destinationPath: string): Promise<void> => {
   const targetStats = await stat(destinationPath).catch(() => null);
   if (!targetStats) {
@@ -586,77 +520,6 @@ const createBackupSnapshot = async (runtimeRoot: string, destinationPath: string
   const backupPath = path.join(runtimeBackupsRoot(runtimeRoot), timestamp, relativePath);
   await ensureDirectory(path.dirname(backupPath));
   await cp(destinationPath, backupPath, { recursive: true });
-};
-
-const repairDeveloperInstanceWalletLibrary = async (runtimeRoot: string, instanceId: string): Promise<void> => {
-  const keypairsRoot = runtimeInstancePath(runtimeRoot, instanceId, "keypairs");
-  const walletLibraryPath = path.join(keypairsRoot, WALLET_LIBRARY_FILE_NAME);
-  if (!(await fileExists(walletLibraryPath))) {
-    return;
-  }
-
-  const lines = (await readFile(walletLibraryPath, "utf8")).split(/\r?\n/u);
-  let changed = false;
-  const repairedLines: string[] = [];
-  for (const line of lines) {
-    const normalized = line.trim();
-    if (!normalized) {
-      repairedLines.push(line);
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(normalized) as {
-        walletGroup?: unknown;
-        keypairFilePath?: unknown;
-        walletLabelFilePath?: unknown;
-      } & Record<string, unknown>;
-
-      const walletGroup = typeof parsed.walletGroup === "string" ? parsed.walletGroup.trim() : "";
-      const keypairFileName = typeof parsed.keypairFilePath === "string" ? path.basename(parsed.keypairFilePath) : "";
-      const walletLabelFileName = typeof parsed.walletLabelFilePath === "string"
-        ? path.basename(parsed.walletLabelFilePath)
-        : keypairFileName.replace(/\.json$/u, WALLET_LABEL_FILE_SUFFIX);
-
-      if (!walletGroup || !keypairFileName) {
-        repairedLines.push(line);
-        continue;
-      }
-
-      const repairedKeypairPath = path.join(keypairsRoot, walletGroup, keypairFileName);
-      const repairedLabelPath = path.join(keypairsRoot, walletGroup, walletLabelFileName);
-      if (!(await fileExists(repairedKeypairPath))) {
-        repairedLines.push(line);
-        continue;
-      }
-
-      const currentKeypairPath = typeof parsed.keypairFilePath === "string" ? path.resolve(parsed.keypairFilePath) : "";
-      const currentLabelPath = typeof parsed.walletLabelFilePath === "string" ? path.resolve(parsed.walletLabelFilePath) : "";
-      const nextKeypairPath = path.resolve(repairedKeypairPath);
-      const nextLabelPath = path.resolve(repairedLabelPath);
-
-      if (currentKeypairPath === nextKeypairPath && currentLabelPath === nextLabelPath) {
-        repairedLines.push(JSON.stringify(parsed));
-        continue;
-      }
-
-      changed = true;
-      repairedLines.push(JSON.stringify({
-        ...parsed,
-        keypairFilePath: nextKeypairPath,
-        walletLabelFilePath: nextLabelPath,
-      }));
-    } catch {
-      repairedLines.push(line);
-    }
-  }
-
-  if (!changed) {
-    return;
-  }
-
-  await createBackupSnapshot(runtimeRoot, walletLibraryPath);
-  await writeFile(walletLibraryPath, `${repairedLines.filter((line) => line.trim().length > 0).join("\n")}\n`, "utf8");
 };
 
 export const initializeDeveloperRuntime = async (input: DeveloperRuntimeInitInput = {}): Promise<DeveloperRuntimeInitResult> => {
@@ -671,10 +534,8 @@ export const initializeDeveloperRuntime = async (input: DeveloperRuntimeInitInpu
   );
   const instanceName = input.instanceName?.trim() || toDefaultInstanceName(instanceId);
 
-  await maybeAdoptLegacyDeveloperRuntimeRoot(runtimeRoot, input.env ?? process.env);
   await Promise.all([ensureDirectory(runtimeRoot), ensureDirectory(path.join(runtimeRoot, "instances")), ensureDirectory(generatedRoot)]);
   const instanceRoot = await ensureDeveloperInstanceLayout(runtimeRoot, instanceId, instanceName);
-  await repairDeveloperInstanceWalletLibrary(runtimeRoot, instanceId);
   await writeJson(path.join(runtimeRoot, "instances", "active-instance.json"), { localInstanceId: instanceId });
   if (shouldWriteRuntimeReadme(runtimeRoot)) {
     await writeRuntimeReadme(runtimeRoot, generatedRoot, instanceId);
@@ -765,8 +626,6 @@ export const cloneDeveloperInstance = async (input: CloneDeveloperInstanceInput)
         break;
     }
   }
-
-  await repairDeveloperInstanceWalletLibrary(toRoot, toInstanceId);
 
   return {
     fromRoot,

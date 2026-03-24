@@ -150,36 +150,6 @@ describe("runtime path contract", () => {
     expect(payload.filePath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "ai.json"));
   });
 
-  test("does not fall back to legacy runtime ai settings when an active instance is set", async () => {
-    const runtimeRoot = await makeTempDirectory();
-    await createPersistedInstance(runtimeRoot, "01");
-    const result = await runModuleEval(
-      `
-        await Bun.$\`mkdir -p ${JSON.stringify(path.join(runtimeRoot, "runtime"))}\`.quiet();
-        await Bun.write(${JSON.stringify(path.join(runtimeRoot, "runtime", "ai.json"))}, JSON.stringify({
-          provider: "gateway",
-          model: "legacy-model",
-          defaultMode: "primary",
-          temperature: null,
-          maxOutputTokens: null,
-        }, null, 2) + "\\n");
-        const mod = await import(${JSON.stringify(AI_SETTINGS_MODULE)});
-        const payload = await mod.ensureAiSettingsFileExists();
-        const contents = JSON.parse(await Bun.file(payload.filePath).text());
-        console.log(JSON.stringify({ filePath: payload.filePath, model: contents.model }));
-      `,
-      {
-        TRENCHCLAW_ACTIVE_INSTANCE_ID: "01",
-        TRENCHCLAW_RUNTIME_STATE_ROOT: runtimeRoot,
-      },
-    );
-
-    expect(result.exitCode).toBe(0);
-    const payload = JSON.parse(result.stdout) as { filePath: string; model: string };
-    expect(payload.filePath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "ai.json"));
-    expect(payload.model).toBe("stepfun/step-3.5-flash:free");
-  });
-
   test("resolves compatibility settings under the configured runtime root", async () => {
     const runtimeRoot = await makeTempDirectory();
     await createPersistedInstance(runtimeRoot, "01");
@@ -198,37 +168,6 @@ describe("runtime path contract", () => {
     expect(result.exitCode).toBe(0);
     const payload = JSON.parse(result.stdout) as { compatibilitySettingsPath: string };
     expect(payload.compatibilitySettingsPath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "settings.json"));
-  });
-
-  test("does not fall back to legacy runtime compatibility settings when an active instance is set", async () => {
-    const runtimeRoot = await makeTempDirectory();
-    await createPersistedInstance(runtimeRoot, "01");
-    const result = await runModuleEval(
-      `
-        await Bun.$\`mkdir -p ${JSON.stringify(path.join(runtimeRoot, "runtime"))}\`.quiet();
-        await Bun.write(${JSON.stringify(path.join(runtimeRoot, "runtime", "settings.json"))}, JSON.stringify({
-          rpc: { primaryRpc: "legacy" }
-        }, null, 2) + "\\n");
-        const mod = await import(${JSON.stringify(USER_SETTINGS_MODULE)});
-        const payload = await mod.loadResolvedUserSettings();
-        console.log(JSON.stringify({
-          compatibilitySettingsPath: payload.compatibilitySettingsPath,
-          rawCompatibility: payload.rawSettings.compatibility ?? null,
-        }));
-      `,
-      {
-        TRENCHCLAW_ACTIVE_INSTANCE_ID: "01",
-        TRENCHCLAW_RUNTIME_STATE_ROOT: runtimeRoot,
-      },
-    );
-
-    expect(result.exitCode).toBe(0);
-    const payload = JSON.parse(result.stdout) as {
-      compatibilitySettingsPath: string;
-      rawCompatibility: Record<string, unknown>;
-    };
-    expect(payload.compatibilitySettingsPath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "settings.json"));
-    expect(payload.rawCompatibility).toEqual({});
   });
 
   test("resolves relative queue paths under the configured runtime root", async () => {

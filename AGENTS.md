@@ -82,7 +82,7 @@ Run from repo root unless noted.
 
 - Single top-level test file: `bun test tests/runtime/chat-service.test.ts`
 - Another example: `bun test tests/website/smoke.test.ts`
-- Multiple explicit files: `bun test tests/runtime/chat-service.test.ts tests/frontends/gui-transport.test.ts`
+- Multiple explicit files: `bun test tests/runtime/chat-service.test.ts tests/frontends/transport.test.ts`
 - From `website/`, website tests use relative paths like: `bun test ../tests/website`
 
 ## Running One Test or Describe Block

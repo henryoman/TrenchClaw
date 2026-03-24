@@ -292,9 +292,6 @@ function resolveStepKey(step: ActionStep, index: number): string {
   if (step.key) {
     return step.key;
   }
-  if (step.refKey) {
-    return step.refKey;
-  }
   if (step.idempotencyKey) {
     return step.idempotencyKey;
   }

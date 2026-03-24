@@ -4,7 +4,7 @@ import path from "node:path";
 import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
-import { RuntimeSurfaceTransport } from "../../apps/trenchclaw/src/runtime/runtime-surface";
+import { RuntimeTransport } from "../../apps/trenchclaw/src/runtime/transport";
 import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
 import { runtimeStatePath } from "../helpers/core-paths";
 
@@ -123,7 +123,7 @@ describe("Runtime v1 API", () => {
         });
       },
     });
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const request = new Request("http://localhost/v1/chat/stream", {
@@ -146,7 +146,7 @@ describe("Runtime v1 API", () => {
 
   test("POST /v1/chat/stream rejects invalid payloads with standardized envelope", async () => {
     const runtime = buildRuntime();
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const response = await handler(
@@ -174,7 +174,7 @@ describe("Runtime v1 API", () => {
         });
       },
     });
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const response = await handler(
@@ -211,7 +211,7 @@ describe("Runtime v1 API", () => {
 
   test("GET /v1/health and /v1/runtime are available", async () => {
     const runtime = buildRuntime();
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const healthResponse = await handler(new Request("http://localhost/v1/health", { method: "GET" }));
@@ -228,7 +228,7 @@ describe("Runtime v1 API", () => {
 
   test("GET /v1/app/events streams runtime snapshots over SSE", async () => {
     const runtime = buildRuntime();
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const abortController = new AbortController();
@@ -272,7 +272,7 @@ describe("Runtime v1 API", () => {
 
   test("GET /v1/app/events pushes live activity updates after addActivity", async () => {
     const runtime = buildRuntime();
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const abortController = new AbortController();
@@ -322,7 +322,7 @@ describe("Runtime v1 API", () => {
 
   test("runtime event bus entries are mirrored into GUI activity", async () => {
     const runtime = buildRuntime();
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
 
     runtime.eventBus.emit("action:start", {
       actionName: "getManagedWalletContents",
@@ -381,7 +381,7 @@ describe("Runtime v1 API", () => {
         });
       },
     });
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const response = await handler(new Request("http://localhost/v1/chat/stream", {
@@ -435,7 +435,7 @@ describe("Runtime v1 API", () => {
 
     try {
       const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
+      const transport = new RuntimeTransport(runtime);
       const handler = transport.createApiHandler();
 
       const firstResponse = await handler(new Request("http://localhost/v1/app/sol-price", { method: "GET" }));
@@ -474,7 +474,7 @@ describe("Runtime v1 API", () => {
       updatedAt: now,
       nextRunAt: now + 60_000,
     });
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
 
     const response = await handler(new Request("http://localhost/v1/app/schedule", { method: "GET" }));
@@ -549,7 +549,7 @@ describe("Runtime v1 API", () => {
       nextRunAt: now + 60_000,
     });
 
-    const transport = new RuntimeSurfaceTransport(runtime);
+    const transport = new RuntimeTransport(runtime);
     const handler = transport.createApiHandler();
     const response = await handler(new Request("http://localhost/v1/app/schedule", { method: "GET" }));
 
@@ -574,7 +574,7 @@ describe("Runtime v1 API", () => {
 
     try {
       const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
+      const transport = new RuntimeTransport(runtime);
       transport.setActiveInstance({
         fileName: "instance.json",
         localInstanceId: instanceId,
@@ -613,7 +613,7 @@ describe("Runtime v1 API", () => {
     process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = "1";
     try {
       const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
+      const transport = new RuntimeTransport(runtime);
       const handler = transport.createApiHandler();
 
       const response = await handler(new Request("http://localhost/v1/app/llm/check", { method: "GET" }));
@@ -644,133 +644,6 @@ describe("Runtime v1 API", () => {
       } else {
         process.env.TRENCHCLAW_LLM_CHECK_SKIP_PROBE = previous;
       }
-    }
-  });
-
-  test("GET /v1/app/secrets prunes legacy vault defaults while keeping intentional extra RPC providers", async () => {
-    const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-    const instanceId = "97";
-    const instancesRoot = runtimeStatePath("instances");
-    const instancePath = path.join(instancesRoot, instanceId);
-    const vaultPath = path.join(instancePath, "secrets", "vault.json");
-    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
-
-    try {
-      await rm(instancePath, { recursive: true, force: true });
-      await mkdir(path.dirname(vaultPath), { recursive: true });
-      await writeFile(vaultPath, `${JSON.stringify({
-        rpc: {
-          default: {
-            "http-url": "https://api.mainnet-beta.solana.com",
-            source: "public",
-            "public-id": "solana-mainnet-beta",
-          },
-          helius: {
-            "http-url": "https://kept-custom-rpc.example",
-            "ws-url": "wss://kept-custom-rpc.example",
-            "api-key": "custom-helius-key",
-          },
-          quicknode: {
-            "http-url": "",
-            "ws-url": "",
-            "api-key": "",
-          },
-        },
-        llm: {
-          openrouter: {
-            "api-key": "",
-          },
-          gateway: {
-            "api-key": "",
-          },
-        },
-        integrations: {
-          dexscreener: {
-            "api-key": "",
-          },
-          jupiter: {
-            "api-key": "",
-          },
-        },
-        wallet: {
-          "ultra-signer": {
-            "private-key": "remove-me",
-            "private-key-encoding": "base64",
-          },
-        },
-      }, null, 2)}\n`);
-
-      const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
-      transport.setActiveInstance({
-        fileName: "instance.json",
-        localInstanceId: instanceId,
-        name: "test-instance",
-        safetyProfile: "dangerous",
-        userPinRequired: false,
-        createdAt: "2026-03-12T00:00:00.000Z",
-        updatedAt: "2026-03-12T00:00:00.000Z",
-      });
-      const handler = transport.createApiHandler();
-
-      const response = await handler(new Request("http://localhost/v1/app/secrets", { method: "GET" }));
-      expect(response.status).toBe(200);
-
-      const payload = (await response.json()) as {
-        options: Array<{ id: string }>;
-        entries: Array<{
-          optionId: string;
-          value: string;
-          source: string;
-          rpcProviderId: string | null;
-        }>;
-        rpcProviderOptions: Array<{ id: string }>;
-      };
-      expect(payload.options.map((option) => option.id)).toEqual([
-        "solana-rpc-url",
-        "jupiter-api-key",
-        "dune-api-key",
-        "openrouter-api-key",
-        "vercel-ai-gateway-api-key",
-      ]);
-      expect(payload.rpcProviderOptions.map((option) => option.id)).toEqual([
-        "helius",
-        "quicknode",
-        "shyft",
-        "chainstack",
-      ]);
-      expect(payload.entries.find((entry) => entry.optionId === "solana-rpc-url")).toMatchObject({
-        optionId: "solana-rpc-url",
-        value: "custom-helius-key",
-        source: "public",
-        rpcProviderId: "helius",
-      });
-      expect(payload.entries.find((entry) => entry.optionId === "jupiter-api-key")).toMatchObject({
-        optionId: "jupiter-api-key",
-        value: "",
-        source: "custom",
-        rpcProviderId: null,
-      });
-      expect(payload.entries.some((entry) => entry.optionId === "ultra-signer-private-key")).toBe(false);
-
-      const storedVault = JSON.parse(await readFile(vaultPath, "utf8")) as {
-        rpc?: { helius?: unknown; quicknode?: unknown };
-        wallet?: { "ultra-signer"?: unknown };
-      };
-      expect(storedVault.wallet?.["ultra-signer"]).toBeUndefined();
-      expect(storedVault.rpc?.quicknode).toBeUndefined();
-      expect(storedVault.rpc?.helius).toEqual({
-        "http-url": "https://kept-custom-rpc.example",
-        "ws-url": "wss://kept-custom-rpc.example",
-        "api-key": "custom-helius-key",
-      });
-    } finally {
-      if (previousActiveInstanceId === undefined) {
-        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-      } else {
-        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
-      }
-      await rm(instancePath, { recursive: true, force: true });
     }
   });
 
@@ -812,7 +685,7 @@ describe("Runtime v1 API", () => {
       }, null, 2)}\n`);
 
       const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
+      const transport = new RuntimeTransport(runtime);
       transport.setActiveInstance({
         fileName: "instance.json",
         localInstanceId: instanceId,
@@ -860,7 +733,7 @@ describe("Runtime v1 API", () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = target;
     try {
       const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
+      const transport = new RuntimeTransport(runtime);
       const handler = transport.createApiHandler();
 
       const initialResponse = await handler(new Request("http://localhost/v1/app/ai-settings", { method: "GET" }));
@@ -922,7 +795,7 @@ describe("Runtime v1 API", () => {
       await rm(instanceDirectory, { recursive: true, force: true });
 
       const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
+      const transport = new RuntimeTransport(runtime);
       transport.setActiveInstance({
         fileName: "instance.json",
         localInstanceId: instanceId,
@@ -998,7 +871,7 @@ describe("Runtime v1 API", () => {
       await rm(instanceDirectory, { recursive: true, force: true });
 
       const runtime = buildRuntime();
-      const transport = new RuntimeSurfaceTransport(runtime);
+      const transport = new RuntimeTransport(runtime);
       transport.setActiveInstance({
         fileName: "instance.json",
         localInstanceId: instanceId,

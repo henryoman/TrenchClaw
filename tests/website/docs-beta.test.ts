@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 
-import { legacyDocSlugMap } from '../../website/src/lib/docs/aliases';
 import { getDocRouteEntrySlugs, primaryDocSlugs, referenceDocSlugs } from '../../website/src/lib/docs/structure';
 
 const repoRoot = path.resolve(import.meta.dir, '..', '..');
@@ -26,14 +25,7 @@ describe('beta docs structure', () => {
 });
 
 describe('beta docs routing', () => {
-  test('resolves legacy slugs to canonical beta guides', () => {
-    for (const [legacySlug, canonicalSlug] of Object.entries(legacyDocSlugMap)) {
-      expect(primaryDocSlugs).toContain(canonicalSlug as (typeof primaryDocSlugs)[number]);
-      expect(legacySlug).not.toBe(canonicalSlug);
-    }
-  });
-
-  test('route source uses redirect support and canonical prerender entries', async () => {
+  test('route source uses canonical prerender entries', async () => {
     const routeSource = await readFile(path.join(websiteRoot, 'src', 'routes', 'docs', '[slug]', '+page.ts'), 'utf8');
 
     expect(getDocRouteEntrySlugs()).toEqual([
@@ -41,7 +33,6 @@ describe('beta docs routing', () => {
       'keys-and-settings',
       'architecture',
     ]);
-    expect(routeSource).toContain('throw redirect(307, resolved.location);');
     expect(routeSource).toContain('getDocRouteEntries()');
   });
 });

@@ -3,9 +3,9 @@ import type {
 } from "@trenchclaw/types";
 import type { RuntimeEvent, RuntimeEventName } from "../../ai";
 import type { RuntimeBootstrap } from "../bootstrap";
-import type { RuntimeSurfaceContext } from "./contracts";
-import { createRuntimeSurfaceHandler as createRuntimeSurfaceRequestHandler } from "./router";
-import { RuntimeSurfaceSessionState } from "./session-state";
+import type { RuntimeTransportContext } from "./contracts";
+import { createRuntimeTransportRequestHandler } from "./router";
+import { RuntimeTransportSessionState } from "./session-state";
 import { streamChat } from "./domains/chat";
 import type { UIMessage } from "ai";
 const MAX_ACTIVITY_PREVIEW_CHARS = 120;
@@ -31,12 +31,12 @@ const summarizeEndpoint = (value: string): string => {
 const summarizeSignature = (value: string): string =>
   value.length > 14 ? `${value.slice(0, 6)}...${value.slice(-6)}` : value;
 
-export class RuntimeSurfaceTransport implements RuntimeSurfaceContext {
+export class RuntimeTransport implements RuntimeTransportContext {
   private readonly unsubscribers: Array<() => void> = [];
-  private readonly session: RuntimeSurfaceSessionState;
+  private readonly session: RuntimeTransportSessionState;
 
   constructor(public readonly runtime: RuntimeBootstrap) {
-    this.session = new RuntimeSurfaceSessionState(runtime);
+    this.session = new RuntimeTransportSessionState(runtime);
     this.attachRuntimeActivitySubscriptions();
   }
 
@@ -50,7 +50,7 @@ export class RuntimeSurfaceTransport implements RuntimeSurfaceContext {
     return this.session.getActiveInstance();
   }
 
-  setActiveInstance(instance: ReturnType<RuntimeSurfaceSessionState["getActiveInstance"]>): void {
+  setActiveInstance(instance: ReturnType<RuntimeTransportSessionState["getActiveInstance"]>): void {
     this.session.setActiveInstance(instance);
   }
 
@@ -176,17 +176,15 @@ export class RuntimeSurfaceTransport implements RuntimeSurfaceContext {
   }
 
   createApiHandler(): (request: Request) => Promise<Response> {
-    return createRuntimeSurfaceRequestHandler(this);
+    return createRuntimeTransportRequestHandler(this);
   }
 }
 
-export const RuntimeGuiTransport = RuntimeSurfaceTransport;
-
-export const createRuntimeSurfaceHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
-  const transport = new RuntimeSurfaceTransport(runtime);
+export const createRuntimeTransportHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
+  const transport = new RuntimeTransport(runtime);
   return transport.createApiHandler();
 };
 
 export const createRuntimeApiHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
-  return createRuntimeSurfaceHandler(runtime);
+  return createRuntimeTransportHandler(runtime);
 };

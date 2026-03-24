@@ -383,10 +383,8 @@ const hasHeliusVaultConfig = (vaultData: Record<string, unknown> | null): boolea
   }
   const providerId = readStringPath(vaultData, ["rpc", "default", "provider-id"]);
   const defaultHttpUrl = readStringPath(vaultData, ["rpc", "default", "http-url"]);
-  const legacyApiKey = readStringPath(vaultData, ["rpc", "helius", "api-key"]);
   return providerId === "helius"
-    || Boolean(defaultHttpUrl && defaultHttpUrl.includes("helius-rpc.com"))
-    || Boolean(legacyApiKey);
+    || Boolean(defaultHttpUrl && defaultHttpUrl.includes("helius-rpc.com"));
 };
 
 const hasAiKey = (vaultData: Record<string, unknown> | null): boolean =>
@@ -519,7 +517,7 @@ export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorRe
         ? "Helius-backed reads cannot be checked until an instance vault exists."
         : heliusReady
           ? "Helius-backed RPC credentials are configured for the active instance."
-          : "No Helius-backed RPC credential or legacy Helius API key found in the active instance vault.",
+          : "No Helius-backed RPC credential found in the active instance vault.",
       fixHint: !activeInstance.id || heliusReady ? undefined : "Set a Helius private RPC credential in the secrets panel if you want Helius-enriched reads or swap history.",
     },
     {

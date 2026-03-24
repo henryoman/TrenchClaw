@@ -107,7 +107,6 @@ describe("renderRuntimeWalletPromptContext", () => {
 
     expect(prompt).toContain("WALLET_LIBRARY_STATUS=missing");
     expect(prompt).toContain("no managed wallets are configured right now");
-    expect(prompt).not.toContain("WALLET_DISCOVERY_FALLBACK");
     expect(prompt).not.toContain("fixture-wallets");
     expect(prompt).not.toContain("11111111111111111111111111111111");
     expect(prompt).not.toContain("Stake11111111111111111111111111111111111111");

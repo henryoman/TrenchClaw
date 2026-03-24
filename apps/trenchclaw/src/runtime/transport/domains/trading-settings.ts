@@ -11,7 +11,7 @@ import {
   writeInstanceTradingSettings,
 } from "../../load/trading-settings";
 import { resolveCurrentActiveInstanceIdSync } from "../../instance-state";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
 const cloneTradingPreferences = (settings: TradingPreferences): TradingPreferences => ({
   ...settings,
@@ -19,7 +19,7 @@ const cloneTradingPreferences = (settings: TradingPreferences): TradingPreferenc
   customPresets: [...settings.customPresets],
 });
 
-export const getTradingSettings = async (context: RuntimeSurfaceContext): Promise<RuntimeApiTradingSettingsResponse> => {
+export const getTradingSettings = async (context: RuntimeTransportContext): Promise<RuntimeApiTradingSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   const payload = await loadInstanceTradingSettings({ instanceId: activeInstanceId });
   const parsed = instanceTradingSettingsSchema.safeParse(payload.resolvedSettings);
@@ -34,7 +34,7 @@ export const getTradingSettings = async (context: RuntimeSurfaceContext): Promis
 };
 
 export const updateTradingSettings = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiUpdateTradingSettingsRequest,
 ): Promise<RuntimeApiUpdateTradingSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();

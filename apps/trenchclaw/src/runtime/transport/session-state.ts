@@ -10,7 +10,7 @@ import { MAX_ACTIVITY_ITEMS } from "./constants";
 
 const createMessageId = (): string => createChatMessageId("activity");
 
-export class RuntimeSurfaceSessionState {
+export class RuntimeTransportSessionState {
   private readonly activity: RuntimeApiActivityEntry[] = [];
   private readonly activityListeners = new Set<() => void>();
   private activeInstance: RuntimeApiInstanceProfileView | null = null;

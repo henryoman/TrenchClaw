@@ -5,7 +5,6 @@ import path from "node:path";
 
 import {
   resolveDefaultWorkspaceRuntimeStateRoot,
-  resolveLegacyWorkspaceRuntimeStateRoot,
   resolvePreferredWorkspaceRuntimeStateRoot,
 } from "../../apps/trenchclaw/src/runtime/developer-runtime-root";
 
@@ -74,28 +73,4 @@ describe("resolvePreferredWorkspaceRuntimeStateRoot", () => {
     })).toBe(hiddenRoot);
   });
 
-  test("does not fall back to the legacy external runtime root when it is the only populated candidate", async () => {
-    const homeRoot = await createTempRoot("trenchclaw-home-");
-    const coreAppRoot = await createTempRoot("trenchclaw-core-app-");
-    const hiddenRoot = resolveDefaultWorkspaceRuntimeStateRoot({
-      ...process.env,
-      HOME: homeRoot,
-      USERPROFILE: homeRoot,
-    });
-    const legacyRoot = resolveLegacyWorkspaceRuntimeStateRoot({
-      ...process.env,
-      HOME: homeRoot,
-      USERPROFILE: homeRoot,
-    });
-    await writeMaterialVault(legacyRoot);
-
-    expect(resolvePreferredWorkspaceRuntimeStateRoot({
-      coreAppRoot,
-      env: {
-        ...process.env,
-        HOME: homeRoot,
-        USERPROFILE: homeRoot,
-      },
-    })).toBe(hiddenRoot);
-  });
 });

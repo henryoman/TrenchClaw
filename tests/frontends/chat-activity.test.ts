@@ -4,6 +4,45 @@ import type { UIMessage } from "ai";
 import { buildChatActivitySnapshot } from "../../apps/frontends/gui/src/components/workspace/chat-activity";
 
 describe("buildChatActivitySnapshot", () => {
+  test("renders command tool activity as command plus compact status", () => {
+    const messages: UIMessage[] = [
+      {
+        id: "user-1",
+        role: "user",
+        parts: [{ type: "text", text: "list files" }],
+      },
+      {
+        id: "assistant-1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-workspaceBash",
+            toolCallId: "tool-1",
+            toolName: "workspaceBash",
+            state: "output-error",
+            input: { type: "shell", command: "ls -la" },
+            errorText: "{\"error\":\"Command failed\",\"details\":{\"exitCode\":2}}",
+          },
+        ] as UIMessage["parts"],
+      },
+    ];
+
+    const snapshot = buildChatActivitySnapshot({
+      messages,
+      chatStatus: "ready",
+      runtimeEntries: [],
+    });
+
+    expect(snapshot.currentItems).toHaveLength(1);
+    expect(snapshot.currentItems[0]).toMatchObject({
+      badge: "ERR",
+      title: "ls -la",
+      detail: "Error",
+      compact: true,
+    });
+    expect(snapshot.currentItems[0]?.meta).toBeUndefined();
+  });
+
   test("surfaces queued tool work clearly for the current run", () => {
     const messages: UIMessage[] = [
       {

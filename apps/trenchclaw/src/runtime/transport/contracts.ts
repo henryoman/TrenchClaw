@@ -5,7 +5,7 @@ import type {
 } from "@trenchclaw/types";
 import type { RuntimeBootstrap } from "../bootstrap";
 
-export interface RuntimeSurfaceContext {
+export interface RuntimeTransportContext {
   readonly runtime: RuntimeBootstrap;
   getActiveInstance(): RuntimeApiInstanceProfileView | null;
   setActiveInstance(instance: RuntimeApiInstanceProfileView | null): void;
@@ -19,4 +19,4 @@ export interface RuntimeSurfaceContext {
   waitForJobResult(jobId: string, waitMs: number): Promise<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>>;
 }
 
-export type RuntimeGuiDomainContext = RuntimeSurfaceContext;
+export type RuntimeTransportDomainContext = RuntimeTransportContext;

@@ -65,24 +65,4 @@ describe("createWalletsRoutine", () => {
     });
   });
 
-  test("preserves legacy single-step behavior when groups are omitted", async () => {
-    const steps = await createWalletsRoutine({} as never, {
-      id: "job-legacy",
-      botId: "bot-legacy",
-      routineName: "createWallets",
-      status: "pending",
-      config: {
-        count: 2,
-      },
-      cyclesCompleted: 0,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    expect(steps).toHaveLength(1);
-    expect(steps[0]?.actionName).toBe("createWallets");
-
-    const input = steps[0]?.input as { count?: number };
-    expect(input.count).toBe(2);
-  });
 });

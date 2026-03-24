@@ -1,5 +1,5 @@
 import { CORS_HEADERS } from "./constants";
-import type { RuntimeSurfaceContext } from "./contracts";
+import type { RuntimeTransportContext } from "./contracts";
 import {
   parseUpdateAiSettingsRequest,
   parseCreateInstanceRequest,
@@ -24,9 +24,9 @@ import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeup-settin
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
-const LEGACY_GUI_API_BASE_PATH = "/api/gui";
+const LEGACY_APP_API_BASE_PATH = "/api/gui";
 const RUNTIME_APP_API_BASE_PATH = "/v1/app";
-const APP_API_BASE_PATHS = [RUNTIME_APP_API_BASE_PATH, LEGACY_GUI_API_BASE_PATH] as const;
+const APP_API_BASE_PATHS = [RUNTIME_APP_API_BASE_PATH, LEGACY_APP_API_BASE_PATH] as const;
 
 const toErrorMessage = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 const toErrorPayloadV1 = (code: string, message: string, details?: unknown): { error: { code: string; message: string; details?: unknown } } => ({
@@ -80,7 +80,7 @@ const extractConversationRoute = (
   return null;
 };
 
-export const createRuntimeSurfaceHandler = (context: RuntimeSurfaceContext): ((request: Request) => Promise<Response>) => {
+export const createRuntimeTransportRequestHandler = (context: RuntimeTransportContext): ((request: Request) => Promise<Response>) => {
   return async (request: Request) => {
     const verboseApiLogs = process.env.TRENCHCLAW_API_LOGS === "1";
     const url = new URL(request.url);
@@ -442,4 +442,4 @@ export const createRuntimeSurfaceHandler = (context: RuntimeSurfaceContext): ((r
   };
 };
 
-export const createGuiApiHandler = createRuntimeSurfaceHandler;
+export const createAppHandler = createRuntimeTransportRequestHandler;

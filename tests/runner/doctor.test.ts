@@ -36,7 +36,7 @@ afterEach(async () => {
 });
 
 describe("collectDoctorReport", () => {
-  test("uses the external developer runtime root instead of the repo-local fallback in workspace mode", () => {
+  test("uses the external developer runtime root in workspace mode", () => {
     const homeRoot = path.join("/tmp", `trenchclaw-home-${crypto.randomUUID()}`);
     const layout = resolveLayout({
       ...process.env,

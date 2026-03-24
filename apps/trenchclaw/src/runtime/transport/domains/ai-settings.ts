@@ -7,7 +7,7 @@ import type {
 } from "@trenchclaw/types";
 import { listAiModelCatalog, listAiProviderOptions } from "../../../ai/llm/model-catalog";
 import { ensureAiSettingsFileExists, loadAiSettings, normalizeAiSettingsInput, writeAiSettings } from "../../../ai/llm/ai-settings-file";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
 const AI_MODEL_OPTIONS: RuntimeApiAiModelOptionView[] = listAiModelCatalog().map((entry) => ({
   id: entry.id,
@@ -32,7 +32,7 @@ export const getAiSettings = async (): Promise<RuntimeApiAiSettingsResponse> => 
 };
 
 export const updateAiSettings = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiUpdateAiSettingsRequest,
 ): Promise<RuntimeApiUpdateAiSettingsResponse> => {
   await ensureAiSettingsFileExists();

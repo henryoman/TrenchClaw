@@ -74,48 +74,4 @@ describe("instance memory actions", () => {
     expect(payload.result.factMap["facts/trading/timeframe"]).toBe("intraday");
   });
 
-  test("uses active instance id fallback for profile reads and writes", async () => {
-    const previous = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "11";
-
-    try {
-      const stateStore = new InMemoryStateStore();
-      const ctx = createActionContext({ actor: "agent", stateStore });
-
-      const updateResult = await mutateInstanceMemoryAction.execute(ctx, {
-        request: {
-          type: "updateProfile",
-          patch: {
-            summary: "Trades fast and likes momentum names",
-          },
-        },
-      });
-
-      expect(updateResult.ok).toBe(true);
-
-      const readResult = await queryInstanceMemoryAction.execute(ctx, {
-        request: {
-          type: "getProfile",
-        },
-      });
-
-      expect(readResult.ok).toBe(true);
-      const payload = readResult.data as {
-        requestType: string;
-        instanceId: string;
-        result: {
-          summary?: string;
-        } | null;
-      };
-      expect(payload.requestType).toBe("getProfile");
-      expect(payload.instanceId).toBe("11");
-      expect(payload.result?.summary).toBe("Trades fast and likes momentum names");
-    } finally {
-      if (previous === undefined) {
-        delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
-      } else {
-        process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previous;
-      }
-    }
-  });
 });

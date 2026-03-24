@@ -11,13 +11,13 @@ import {
 } from "../../load/wakeup-settings";
 import { resolveCurrentActiveInstanceIdSync } from "../../instance-state";
 import { syncManagedWakeupJob } from "../../wakeup/managed-wakeup";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
 const cloneWakeupSettings = (settings: WakeupSettings): WakeupSettings => ({
   ...settings,
 });
 
-export const getWakeupSettings = async (context: RuntimeSurfaceContext): Promise<RuntimeApiWakeupSettingsResponse> => {
+export const getWakeupSettings = async (context: RuntimeTransportContext): Promise<RuntimeApiWakeupSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   const payload = await loadInstanceWakeupSettings({ instanceId: activeInstanceId });
   const settings = instanceWakeupSettingsSchema.parse(payload.resolvedSettings).wakeup;
@@ -31,7 +31,7 @@ export const getWakeupSettings = async (context: RuntimeSurfaceContext): Promise
 };
 
 export const updateWakeupSettings = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiUpdateWakeupSettingsRequest,
 ): Promise<RuntimeApiUpdateWakeupSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();

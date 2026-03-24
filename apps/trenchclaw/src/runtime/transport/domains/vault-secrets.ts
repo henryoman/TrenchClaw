@@ -20,7 +20,7 @@ import {
 import { isRecord } from "../../object-utils";
 import { assertInstanceSystemWritePath } from "../../security/write-scope";
 import { PUBLIC_RPC_OPTIONS, RPC_PROVIDER_OPTIONS, SECRET_OPTIONS } from "../constants";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
 interface SecretOptionInternal extends RuntimeApiSecretOptionView {
   pathSegments: string[];
@@ -115,17 +115,6 @@ const inferRpcProviderId = (vaultData: Record<string, unknown>): string => {
     return storedProviderId;
   }
 
-  for (const provider of RPC_PROVIDER_OPTIONS) {
-    const legacyProviderValue = getByPath(vaultData, ["rpc", provider.id]);
-    if (isRecord(legacyProviderValue)) {
-      const legacyApiKey = trimString(legacyProviderValue["api-key"]);
-      const legacyHttpUrl = trimString(legacyProviderValue["http-url"]);
-      if (legacyApiKey || legacyHttpUrl) {
-        return provider.id;
-      }
-    }
-  }
-
   const activeHttpUrl = trimString(getByPath(vaultData, ["rpc", "default", "http-url"]));
   if (activeHttpUrl.includes("helius-rpc.com")) {
     return "helius";
@@ -147,18 +136,6 @@ const resolveStoredRpcCredential = (vaultData: Record<string, unknown>, provider
   const storedCredential = trimString(getByPath(vaultData, ["rpc", "default", "api-key"]));
   if (storedCredential) {
     return storedCredential;
-  }
-
-  const legacyProviderValue = getByPath(vaultData, ["rpc", providerId]);
-  if (isRecord(legacyProviderValue)) {
-    const legacyApiKey = trimString(legacyProviderValue["api-key"]);
-    if (legacyApiKey) {
-      return legacyApiKey;
-    }
-    const legacyHttpUrl = trimString(legacyProviderValue["http-url"]);
-    if (legacyHttpUrl) {
-      return legacyHttpUrl;
-    }
   }
 
   const activeHttpUrl = trimString(getByPath(vaultData, ["rpc", "default", "http-url"]));
@@ -222,7 +199,7 @@ const toSecretEntry = (vaultData: Record<string, unknown>, option: SecretOptionI
   };
 };
 
-const resolveManagedVaultTarget = async (context?: RuntimeSurfaceContext) => {
+const resolveManagedVaultTarget = async (context?: RuntimeTransportContext) => {
   const resolved = resolveRequiredVaultFile({
     activeInstanceId: context?.getActiveInstance()?.localInstanceId ?? undefined,
   });
@@ -238,7 +215,7 @@ const resolveManagedVaultTarget = async (context?: RuntimeSurfaceContext) => {
 
 const serializeVaultData = (vaultData: Record<string, unknown>): string => `${JSON.stringify(vaultData, null, 2)}\n`;
 
-const loadManagedVaultData = async (context?: RuntimeSurfaceContext) => {
+const loadManagedVaultData = async (context?: RuntimeTransportContext) => {
   const target = await resolveManagedVaultTarget(context);
   const content = await readFile(target.vaultPath, "utf8");
   const vaultData = parseVaultJsonText(content);
@@ -252,7 +229,7 @@ const loadManagedVaultData = async (context?: RuntimeSurfaceContext) => {
   };
 };
 
-export const getVault = async (context: RuntimeSurfaceContext): Promise<RuntimeApiVaultResponse> => {
+export const getVault = async (context: RuntimeTransportContext): Promise<RuntimeApiVaultResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);
   return {
     filePath: target.vaultPath,
@@ -261,7 +238,7 @@ export const getVault = async (context: RuntimeSurfaceContext): Promise<RuntimeA
 };
 
 export const updateVault = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiUpdateVaultRequest,
 ): Promise<RuntimeApiUpdateVaultResponse> => {
   const target = await resolveManagedVaultTarget(context);
@@ -276,7 +253,7 @@ export const updateVault = async (
   };
 };
 
-export const getSecrets = async (context: RuntimeSurfaceContext): Promise<RuntimeApiSecretsResponse> => {
+export const getSecrets = async (context: RuntimeTransportContext): Promise<RuntimeApiSecretsResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);
   const entries = SECRET_OPTIONS_INTERNAL.map((option) => toSecretEntry(vaultData, option));
   return {
@@ -289,7 +266,7 @@ export const getSecrets = async (context: RuntimeSurfaceContext): Promise<Runtim
 };
 
 export const upsertSecret = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiUpsertSecretRequest,
 ): Promise<RuntimeApiUpsertSecretResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);
@@ -342,7 +319,7 @@ export const upsertSecret = async (
 };
 
 export const deleteSecret = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiDeleteSecretRequest,
 ): Promise<RuntimeApiDeleteSecretResponse> => {
   const { target, vaultData } = await loadManagedVaultData(context);

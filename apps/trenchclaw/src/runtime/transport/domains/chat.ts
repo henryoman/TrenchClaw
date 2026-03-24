@@ -6,14 +6,14 @@ import type {
 import type { GatewayLane } from "../../../ai/gateway";
 import type { UIMessage } from "ai";
 import { CORS_HEADERS } from "../constants";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
 const countToolUiParts = (parts: unknown): number =>
   Array.isArray(parts)
     ? parts.filter((part) => part && typeof part === "object" && "type" in part && typeof part.type === "string" && part.type.startsWith("tool-")).length
     : 0;
 
-const buildAssistantResponseActivitySummary = (context: RuntimeSurfaceContext, chatId: string): string => {
+const buildAssistantResponseActivitySummary = (context: RuntimeTransportContext, chatId: string): string => {
   const messages = context.runtime.stateStore.listChatMessages(chatId, 500);
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
@@ -37,7 +37,7 @@ const buildAssistantResponseActivitySummary = (context: RuntimeSurfaceContext, c
 };
 
 export const streamChat = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   messages: UIMessage[],
   input?: { chatId?: string; conversationTitle?: string; lane?: GatewayLane; abortSignal?: AbortSignal },
 ): Promise<Response> => {
@@ -84,12 +84,12 @@ export const streamChat = async (
   });
 };
 
-export const getConversations = (context: RuntimeSurfaceContext, limit = 100): RuntimeApiConversationsResponse => ({
+export const getConversations = (context: RuntimeTransportContext, limit = 100): RuntimeApiConversationsResponse => ({
   conversations: context.listInstanceConversations(limit),
 });
 
 export const getConversationMessages = (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   conversationId: string,
   limit = 500,
 ): RuntimeApiConversationMessagesResponse => {
@@ -126,7 +126,7 @@ export const getConversationMessages = (
 };
 
 export const deleteConversation = (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   conversationId: string,
 ): RuntimeApiDeleteConversationResponse => {
   const normalizedConversationId = conversationId.trim();

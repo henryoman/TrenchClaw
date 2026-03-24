@@ -11,6 +11,7 @@ export interface ChatActivityItem {
   title: string;
   detail: string;
   meta?: string;
+  compact?: boolean;
 }
 
 export interface ChatActivityFeedItem {
@@ -123,7 +124,61 @@ const isThrottleText = (value: string): boolean =>
   || /throttl/iu.test(value)
   || /cooldown/iu.test(value);
 
+const resolveCommandSummary = (value: unknown): string | undefined => {
+  const payload = isRecord(value) && isRecord(value.params) ? value.params : value;
+  if (!isRecord(payload)) {
+    return undefined;
+  }
+
+  if (typeof payload.command === "string") {
+    const command = normalizeDisplayText(payload.command);
+    return command ? truncateText(command, MAX_INPUT_PREVIEW) : undefined;
+  }
+
+  if (typeof payload.type === "string") {
+    const mode = payload.type.trim();
+    const program = typeof payload.program === "string" ? payload.program.trim() : "";
+    const args = Array.isArray(payload.args)
+      ? payload.args.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0)
+      : [];
+
+    if ((mode === "cli" || mode === "version" || mode === "help" || mode === "which") && program) {
+      if (mode === "version") {
+        return truncateText(`${program} --version`, MAX_INPUT_PREVIEW);
+      }
+      if (mode === "help") {
+        const subcommand = typeof payload.subcommand === "string" ? payload.subcommand.trim() : "";
+        return truncateText([program, ...(subcommand ? [subcommand] : []), "--help"].join(" "), MAX_INPUT_PREVIEW);
+      }
+      if (mode === "which") {
+        return truncateText(`command -v ${program}`, MAX_INPUT_PREVIEW);
+      }
+      return truncateText([program, ...args].join(" "), MAX_INPUT_PREVIEW);
+    }
+
+    if (mode === "search_text" && typeof payload.query === "string") {
+      return truncateText(`rg ${normalizeDisplayText(payload.query)}`, MAX_INPUT_PREVIEW);
+    }
+
+    if (mode === "list_directory") {
+      const targetPath = typeof payload.path === "string" && payload.path.trim().length > 0 ? payload.path.trim() : ".";
+      return truncateText(`ls ${targetPath}`, MAX_INPUT_PREVIEW);
+    }
+
+    if (mode === "http_get" && typeof payload.url === "string") {
+      return truncateText(`curl ${payload.url.trim()}`, MAX_INPUT_PREVIEW);
+    }
+  }
+
+  return undefined;
+};
+
 const summarizeInput = (value: unknown): string | undefined => {
+  const commandSummary = resolveCommandSummary(value);
+  if (commandSummary) {
+    return commandSummary;
+  }
+
   if (!isRecord(value)) {
     if (typeof value === "string") {
       const text = normalizeDisplayText(value);
@@ -181,15 +236,18 @@ const collectToolPartsSinceLatestUser = (messages: UIMessage[]): ToolPart[] => {
 
 const toCurrentActivityItem = (part: ToolPart): ChatActivityItem => {
   const title = humanizeToolName(resolveToolPartName(part));
-  const meta = summarizeInput(part.input);
+  const commandSummary = resolveCommandSummary(part.input);
+  const meta = commandSummary ? undefined : summarizeInput(part.input);
+  const displayTitle = commandSummary ?? title;
 
   if (part.state === "input-streaming") {
     return {
       id: part.toolCallId,
       tone: "pending",
       badge: "PREP",
-      title,
-      detail: "Preparing tool input.",
+      title: displayTitle,
+      detail: commandSummary ? "Preparing" : "Preparing tool input.",
+      ...(commandSummary ? { compact: true } : {}),
       ...(meta ? { meta } : {}),
     };
   }
@@ -199,8 +257,9 @@ const toCurrentActivityItem = (part: ToolPart): ChatActivityItem => {
       id: part.toolCallId,
       tone: "running",
       badge: "RUN",
-      title,
-      detail: "Tool call is in flight.",
+      title: displayTitle,
+      detail: commandSummary ? "Running" : "Tool call is in flight.",
+      ...(commandSummary ? { compact: true } : {}),
       ...(meta ? { meta } : {}),
     };
   }
@@ -211,10 +270,13 @@ const toCurrentActivityItem = (part: ToolPart): ChatActivityItem => {
       id: part.toolCallId,
       tone: "error",
       badge: isThrottleText(errorText) ? "RATE" : "ERR",
-      title,
-      detail: isThrottleText(errorText)
-        ? "RPC rate limit or throttle hit."
-        : errorText || "Tool call failed.",
+      title: displayTitle,
+      detail: commandSummary
+        ? "Error"
+        : isThrottleText(errorText)
+          ? "RPC rate limit or throttle hit."
+          : errorText || "Tool call failed.",
+      ...(commandSummary ? { compact: true } : {}),
       ...(meta ? { meta } : {}),
     };
   }
@@ -225,8 +287,9 @@ const toCurrentActivityItem = (part: ToolPart): ChatActivityItem => {
       id: part.toolCallId,
       tone: "queued",
       badge: "QUEUE",
-      title,
-      detail: queuedDetail,
+      title: displayTitle,
+      detail: commandSummary ? "Queued" : queuedDetail,
+      ...(commandSummary ? { compact: true } : {}),
       ...(meta ? { meta } : {}),
     };
   }
@@ -235,8 +298,9 @@ const toCurrentActivityItem = (part: ToolPart): ChatActivityItem => {
     id: part.toolCallId,
     tone: "done",
     badge: "DONE",
-    title,
-    detail: "Tool result received.",
+    title: displayTitle,
+    detail: commandSummary ? "Done" : "Tool result received.",
+    ...(commandSummary ? { compact: true } : {}),
     ...(meta ? { meta } : {}),
   };
 };

@@ -9,9 +9,9 @@ import type {
 import type { RuntimeEventName } from "../../../ai/runtime/types/events";
 import { ACTIVE_JOB_STATUSES, GUI_QUEUE_INCLUDE_HISTORY } from "../constants";
 import { CORS_HEADERS } from "../constants";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
-export const mapJobToView = (job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number]): RuntimeApiQueueJobView => ({
+export const mapJobToView = (job: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number]): RuntimeApiQueueJobView => ({
   id: job.id,
   serialNumber: job.serialNumber ?? null,
   botId: job.botId,
@@ -24,16 +24,16 @@ export const mapJobToView = (job: ReturnType<RuntimeSurfaceContext["runtime"]["s
 });
 
 const hasUpcomingRun = (
-  job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
+  job: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number],
   now = Date.now(),
 ): boolean => typeof job.nextRunAt === "number" && job.nextRunAt > now;
 
-const isScheduledJob = (job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean =>
+const isScheduledJob = (job: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number]): boolean =>
   ACTIVE_JOB_STATUSES.has(job.status)
   && (job.status === "paused" || hasUpcomingRun(job));
 
 const mapJobToScheduleView = (
-  job: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
+  job: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number],
 ): RuntimeApiScheduleJobView => ({
   id: job.id,
   serialNumber: job.serialNumber ?? null,
@@ -46,8 +46,8 @@ const mapJobToScheduleView = (
 });
 
 const compareQueueJobsChronologically = (
-  a: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
-  b: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
+  a: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number],
+  b: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number],
 ): number => {
   const effectiveTimeA = typeof a.nextRunAt === "number" ? a.nextRunAt : a.createdAt;
   const effectiveTimeB = typeof b.nextRunAt === "number" ? b.nextRunAt : b.createdAt;
@@ -68,8 +68,8 @@ const compareQueueJobsChronologically = (
 };
 
 const compareScheduleJobsChronologically = (
-  a: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
-  b: ReturnType<RuntimeSurfaceContext["runtime"]["stateStore"]["listJobs"]>[number],
+  a: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number],
+  b: ReturnType<RuntimeTransportContext["runtime"]["stateStore"]["listJobs"]>[number],
 ): number => {
   const nextRunA = typeof a.nextRunAt === "number" ? a.nextRunAt : Number.MAX_SAFE_INTEGER;
   const nextRunB = typeof b.nextRunAt === "number" ? b.nextRunAt : Number.MAX_SAFE_INTEGER;
@@ -89,7 +89,7 @@ const compareScheduleJobsChronologically = (
   return a.id.localeCompare(b.id);
 };
 
-export const getBootstrap = async (context: RuntimeSurfaceContext): Promise<RuntimeApiBootstrapResponse> => {
+export const getBootstrap = async (context: RuntimeTransportContext): Promise<RuntimeApiBootstrapResponse> => {
   const runtimeDescription = context.runtime.describe();
   return {
     profile: context.runtime.settings.profile,
@@ -99,7 +99,7 @@ export const getBootstrap = async (context: RuntimeSurfaceContext): Promise<Runt
   };
 };
 
-export const getQueue = (context: RuntimeSurfaceContext): RuntimeApiQueueResponse => {
+export const getQueue = (context: RuntimeTransportContext): RuntimeApiQueueResponse => {
   const jobs = context.runtime.stateStore
     .listJobs()
     .filter((job) => GUI_QUEUE_INCLUDE_HISTORY || ACTIVE_JOB_STATUSES.has(job.status))
@@ -108,7 +108,7 @@ export const getQueue = (context: RuntimeSurfaceContext): RuntimeApiQueueRespons
   return { jobs };
 };
 
-export const getSchedule = (context: RuntimeSurfaceContext): RuntimeApiScheduleResponse => {
+export const getSchedule = (context: RuntimeTransportContext): RuntimeApiScheduleResponse => {
   const jobs = context.runtime.stateStore
     .listJobs()
     .filter((job) => isScheduledJob(job))
@@ -117,7 +117,7 @@ export const getSchedule = (context: RuntimeSurfaceContext): RuntimeApiScheduleR
   return { jobs };
 };
 
-export const getActivity = (context: RuntimeSurfaceContext, limit = 100): RuntimeApiActivityResponse => {
+export const getActivity = (context: RuntimeTransportContext, limit = 100): RuntimeApiActivityResponse => {
   const normalizedLimit = Math.max(1, Math.trunc(limit));
   return {
     entries: context.getActivityEntries(normalizedLimit),
@@ -134,7 +134,7 @@ const EVENT_STREAM_HEADERS: HeadersInit = {
 const SSE_RETRY_MS = 2000;
 const HEARTBEAT_INTERVAL_MS = 15_000;
 
-export const streamRuntimeEvents = (context: RuntimeSurfaceContext, signal?: AbortSignal): Response => {
+export const streamRuntimeEvents = (context: RuntimeTransportContext, signal?: AbortSignal): Response => {
   const encoder = new TextEncoder();
   const eventTypes: RuntimeEventName[] = ["queue:enqueue", "queue:dequeue", "queue:complete"];
 

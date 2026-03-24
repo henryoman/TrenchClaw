@@ -29,9 +29,6 @@ export const resolveHomeDirectory = (env: NodeJS.ProcessEnv = process.env): stri
 export const resolveDefaultWorkspaceRuntimeStateRoot = (env: NodeJS.ProcessEnv = process.env): string =>
   path.join(resolveHomeDirectory(env), ".trenchclaw-dev-runtime");
 
-export const resolveLegacyWorkspaceRuntimeStateRoot = (env: NodeJS.ProcessEnv = process.env): string =>
-  path.join(resolveHomeDirectory(env), "trenchclaw-dev-runtime");
-
 export const resolveRepoLocalRuntimeStateRoot = (coreAppRoot: string): string =>
   path.join(path.resolve(coreAppRoot), ".runtime-state");
 

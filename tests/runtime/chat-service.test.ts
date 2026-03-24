@@ -3078,7 +3078,7 @@ describe("RuntimeChatService", () => {
           chunkMs?: number;
         }
       | undefined;
-    let capturedFallbackGenerateTimeout:
+    let capturedSecondPassGenerateTimeout:
       | {
           totalMs?: number;
           stepMs?: number;
@@ -3159,7 +3159,7 @@ describe("RuntimeChatService", () => {
           };
         }) => {
           generateInvocationCount += 1;
-          capturedFallbackGenerateTimeout = args.timeout;
+          capturedSecondPassGenerateTimeout = args.timeout;
           return {
             text: "Top volume meme coin today is BONK.",
             finishReason: "stop",
@@ -3189,7 +3189,7 @@ describe("RuntimeChatService", () => {
       stepMs: 600_000,
       chunkMs: 300_000,
     });
-    expect(capturedFallbackGenerateTimeout).toEqual({
+    expect(capturedSecondPassGenerateTimeout).toEqual({
       totalMs: 300_000,
       stepMs: 300_000,
     });

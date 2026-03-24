@@ -20,7 +20,6 @@ export const resolvePathFromModule = (
 export const resolvePreferredPath = async (input: {
   preferredPath: string;
   envValues?: Array<string | undefined>;
-  legacyPaths?: string[];
 }): Promise<string> => {
   const configuredPath = input.envValues
     ?.map((value) => value?.trim())
@@ -34,20 +33,6 @@ export const resolvePreferredPath = async (input: {
     return preferredPath;
   }
 
-  const legacyPaths = await Promise.all(
-    (input.legacyPaths ?? []).map(async (legacyPath) => {
-      const resolvedLegacyPath = path.resolve(legacyPath);
-      return {
-        legacyPath: resolvedLegacyPath,
-        exists: await Bun.file(resolvedLegacyPath).exists(),
-      };
-    }),
-  );
-  const matchingLegacyPath = legacyPaths.find((candidate) => candidate.exists)?.legacyPath;
-  if (matchingLegacyPath) {
-    return matchingLegacyPath;
-  }
-
   return preferredPath;
 };
 
@@ -55,13 +40,10 @@ export const resolvePreferredPathFromModule = async (input: {
   moduleUrl: string;
   preferredRelativePath: string;
   envValues?: Array<string | undefined>;
-  legacyRelativePaths?: string[];
 }): Promise<string> => {
   return resolvePreferredPath({
     preferredPath: fileURLToPath(new URL(input.preferredRelativePath, input.moduleUrl)),
     envValues: input.envValues,
-    legacyPaths: (input.legacyRelativePaths ?? []).map((legacyRelativePath) =>
-      fileURLToPath(new URL(legacyRelativePath, input.moduleUrl))),
   });
 };
 

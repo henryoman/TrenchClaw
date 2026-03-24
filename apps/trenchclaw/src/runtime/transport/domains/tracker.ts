@@ -11,7 +11,7 @@ import {
   type TrackerRegistry,
   writeInstanceTrackerRegistry,
 } from "../../tracker-registry";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
 const cloneTracker = (tracker: TrackerRegistry): RuntimeApiTrackerView => ({
   version: tracker.version,
@@ -51,7 +51,7 @@ const cloneDefaultTracker = (): RuntimeApiTrackerView => ({
   })),
 });
 
-export const getTracker = async (context: RuntimeSurfaceContext): Promise<RuntimeApiTrackerResponse> => {
+export const getTracker = async (context: RuntimeTransportContext): Promise<RuntimeApiTrackerResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   if (!activeInstanceId) {
     return {
@@ -75,7 +75,7 @@ export const getTracker = async (context: RuntimeSurfaceContext): Promise<Runtim
 };
 
 export const updateTracker = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiUpdateTrackerRequest,
 ): Promise<RuntimeApiUpdateTrackerResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();

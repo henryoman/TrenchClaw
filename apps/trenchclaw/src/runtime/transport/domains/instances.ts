@@ -16,7 +16,7 @@ import { ensureInstanceLayout } from "../../instance-layout";
 import { isRecord } from "../../object-utils";
 import { persistActiveInstance } from "../../instance-state";
 import { INSTANCE_DIRECTORY } from "../constants";
-import type { RuntimeSurfaceContext } from "../contracts";
+import type { RuntimeTransportContext } from "../contracts";
 
 type RuntimeSafetyProfile = "safe" | "dangerous" | "veryDangerous";
 
@@ -175,7 +175,7 @@ export const listInstances = async (): Promise<RuntimeApiInstancesResponse> => {
 };
 
 export const createInstance = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiCreateInstanceRequest,
 ): Promise<RuntimeApiCreateInstanceResponse> => {
   assertInstanceSystemWritePath(INSTANCE_DIRECTORY, "initialize instance profile directory");
@@ -217,7 +217,7 @@ export const createInstance = async (
 };
 
 export const signInInstance = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
   payload: RuntimeApiSignInInstanceRequest,
 ): Promise<RuntimeApiSignInInstanceResponse> => {
   const instances = await readInstanceFiles();
@@ -245,7 +245,7 @@ export const signInInstance = async (
 };
 
 export const signOutInstance = async (
-  context: RuntimeSurfaceContext,
+  context: RuntimeTransportContext,
 ): Promise<RuntimeApiSignOutInstanceResponse> => {
   const activeInstance = context.getActiveInstance();
   context.setActiveInstance(null);

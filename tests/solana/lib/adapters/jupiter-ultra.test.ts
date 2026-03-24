@@ -149,7 +149,7 @@ describe("jupiter ultra vault config", () => {
   test("ignores env variables and stays vault-only", async () => {
     process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson("");
     process.env.JUPITER_ULTRA_API_KEY = "env-jupiter-key";
-    process.env.JUPITER_API_KEY = "legacy-env-jupiter-key";
+    process.env.JUPITER_API_KEY = "env-jupiter-key-2";
 
     expect(await resolveJupiterUltraApiKey()).toBeUndefined();
     expect(await createJupiterUltraAdapterFromConfig()).toBeUndefined();

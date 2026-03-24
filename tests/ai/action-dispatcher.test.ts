@@ -71,41 +71,6 @@ describe("ActionDispatcher", () => {
     expect(result.results[1]?.data).toEqual({ inherited: "hello" });
   });
 
-  test("accepts legacy refKey while preferring canonical key", async () => {
-    const registry = new ActionRegistry();
-    const stateStore = new InMemoryStateStore();
-    const dispatcher = new ActionDispatcher({
-      registry,
-      policyEngine: new PolicyEngine(),
-      stateStore,
-      eventBus: new InMemoryRuntimeEventBus(),
-    });
-
-    registry.register({
-      name: "legacyAction",
-      category: "data-based",
-      execute: async () => ({
-        ok: true,
-        retryable: false,
-        data: { ok: true },
-        durationMs: 1,
-        timestamp: Date.now(),
-        idempotencyKey: crypto.randomUUID(),
-      }),
-    });
-
-    const result = await dispatcher.dispatchPlan(createActionContext({ actor: "agent", stateStore }), [
-      {
-        refKey: "legacy_step",
-        actionName: "legacyAction",
-        input: {},
-      },
-    ]);
-
-    expect(result.results).toHaveLength(1);
-    expect(result.results[0]?.ok).toBe(true);
-  });
-
   test("returns an unsupported_action result when a step targets an unregistered action", async () => {
     const stateStore = new InMemoryStateStore();
     const dispatcher = new ActionDispatcher({

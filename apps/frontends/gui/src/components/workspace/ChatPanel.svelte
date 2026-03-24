@@ -689,13 +689,20 @@
                             {/if}
                           {:else}
                             <article class={`assistant-thought-activity tone-${entry.item.tone}`}>
-                              <div class="assistant-thought-activity-head">
-                                <span class="assistant-thought-activity-badge">{entry.item.badge}</span>
-                                <p>{entry.item.title}</p>
-                              </div>
-                              <span class="assistant-thought-activity-detail">{entry.item.detail}</span>
-                              {#if entry.item.meta}
-                                <small>{entry.item.meta}</small>
+                              {#if entry.item.compact}
+                                <div class="assistant-thought-activity-compact">
+                                  <p>{entry.item.title}</p>
+                                  <small>{entry.item.detail}</small>
+                                </div>
+                              {:else}
+                                <div class="assistant-thought-activity-head">
+                                  <span class="assistant-thought-activity-badge">{entry.item.badge}</span>
+                                  <p>{entry.item.title}</p>
+                                </div>
+                                <span class="assistant-thought-activity-detail">{entry.item.detail}</span>
+                                {#if entry.item.meta}
+                                  <small>{entry.item.meta}</small>
+                                {/if}
                               {/if}
                             </article>
                           {/if}
@@ -1406,6 +1413,14 @@
     min-width: 0;
   }
 
+  .assistant-thought-activity-compact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+  }
+
   .assistant-thought-activity-badge {
     flex-shrink: 0;
     min-width: 2.35rem;
@@ -1419,17 +1434,20 @@
   }
 
   .assistant-thought-activity-head p,
+  .assistant-thought-activity-compact p,
   .assistant-thought-activity-detail,
   .assistant-thought-activity small {
     margin: 0;
   }
 
-  .assistant-thought-activity-head p {
+  .assistant-thought-activity-head p,
+  .assistant-thought-activity-compact p {
     min-width: 0;
     color: var(--tc-color-cream);
     font-size: 10px;
     font-weight: 500;
     line-height: 1.25;
+    overflow-wrap: anywhere;
   }
 
   .assistant-thought-activity-detail {
@@ -1444,6 +1462,13 @@
     font-size: 10px;
     line-height: 1.3;
     overflow-wrap: anywhere;
+  }
+
+  .assistant-thought-activity-compact small {
+    flex-shrink: 0;
+    color: var(--tc-color-gray-3);
+    text-transform: uppercase;
+    letter-spacing: var(--tc-track-wide);
   }
 
   .assistant-thought-activity.tone-pending,

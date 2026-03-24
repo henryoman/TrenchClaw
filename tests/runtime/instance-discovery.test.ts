@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 const WORKSPACE_ROOT = path.resolve(import.meta.dir, "../..");
 const CORE_APP_ROOT = path.join(WORKSPACE_ROOT, "apps/trenchclaw");
 const INSTANCES_MODULE_URL = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/runtime/gui-transport/domains/instances.ts"),
+  path.join(CORE_APP_ROOT, "src/runtime/transport/domains/instances.ts"),
 ).href;
 const INSTANCE_STATE_MODULE_URL = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/runtime/instance-state.ts"),
@@ -239,7 +239,7 @@ describe("instance discovery", () => {
     expect(result.persisted).toBeNull();
   });
 
-  test("reads vault-backed LLM config from the active instance vault without a shared fallback", async () => {
+  test("reads vault-backed LLM config from the active instance vault", async () => {
     const runtimeRoot = await createRuntimeRoot();
     await createPersistedInstance(runtimeRoot, { localInstanceId: "01", name: "test" });
     await writeFile(
