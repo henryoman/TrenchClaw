@@ -15,7 +15,7 @@ export const RELEASE_CONFIG_ASSET_PATHS = [
 ] as const;
 
 export const RELEASE_RUNTIME_ASSET_PATHS = [
-  "src/runtime/gui-transport/router.ts",
+  "src/runtime/transport/router.ts",
 ] as const;
 
 export const RELEASE_PLACEHOLDER_ASSET_PATHS = [
