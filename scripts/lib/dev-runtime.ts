@@ -12,9 +12,8 @@ import {
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const CORE_APP_ROOT = path.join(REPO_ROOT, "apps", "trenchclaw");
 const RUNTIME_TEMPLATE_ROOT = path.join(CORE_APP_ROOT, ".runtime");
-const VAULT_TEMPLATE_PATH = path.join(CORE_APP_ROOT, "src", "ai", "config", "vault.template.json");
 const REPO_LOCAL_RUNTIME_ROOT = path.join(CORE_APP_ROOT, ".runtime-state");
-const TEMPLATE_INSTANCE_ID = "01";
+const TEMPLATE_INSTANCE_ID = "00";
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;
 const GITIGNORE_MARKER_START = "# >>> trenchclaw dev runtime >>>";
@@ -475,11 +474,6 @@ const materializeDeveloperInstanceLayout = async (runtimeRoot: string, instanceI
 
     const templateSourcePath = templateInstancePath(relativePath);
     if (await copyFileIfMissing(templateSourcePath, destinationPath)) {
-      continue;
-    }
-
-    if (relativePath === path.join("secrets", "vault.json")) {
-      await copyFileIfMissing(VAULT_TEMPLATE_PATH, destinationPath);
       continue;
     }
 

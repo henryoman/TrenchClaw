@@ -19,6 +19,7 @@ const directory = (children: Record<string, InstanceLayoutNode>): InstanceLayout
 export const INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES = [
   "strategies",
   "configs",
+  "added-knowledge",
   "typescript",
   "notes",
   "news",
@@ -32,6 +33,11 @@ const workspaceChildren = {
     ".gitkeep": file(),
   }),
   configs: directory({
+    ".gitkeep": file(),
+    "news-feeds.json": file(),
+    "tracker.json": file(),
+  }),
+  "added-knowledge": directory({
     ".gitkeep": file(),
   }),
   typescript: directory({
@@ -107,6 +113,7 @@ export const INSTANCE_LAYOUT_SCHEMA = directory({
     "ai.json": file(),
     "settings.json": file(),
     "trading.json": file(),
+    "wakeup.json": file(),
   }),
   "shell-home": directory({
     ".gitkeep": file(),

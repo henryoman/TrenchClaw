@@ -25,8 +25,6 @@ export const getAiSettings = async (): Promise<RuntimeApiAiSettingsResponse> => 
   const payload = await loadAiSettings();
   return {
     filePath: payload.filePath,
-    templatePath: payload.templatePath,
-    initializedFromTemplate: payload.initializedFromTemplate,
     settings: payload.settings,
     providerOptions: AI_PROVIDER_OPTIONS,
     options: AI_MODEL_OPTIONS,

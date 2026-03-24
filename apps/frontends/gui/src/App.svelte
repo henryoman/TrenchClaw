@@ -170,7 +170,6 @@
     {:else if activeTab === "settings"}
       <SettingsPanel
         aiSettingsFilePath={runtime.state.aiSettingsFilePath}
-        aiSettingsTemplatePath={runtime.state.aiSettingsTemplatePath}
         aiSettings={runtime.state.aiSettings}
         aiProviderOptions={runtime.state.aiProviderOptions}
         aiModelOptions={runtime.state.aiModelOptions}
@@ -218,7 +217,6 @@
       <WakeupPanel
         wakeupSettings={runtime.state.wakeupSettings}
         scheduleJobs={runtime.state.scheduleJobs}
-        defaultPrompt={runtime.state.wakeupSettingsDefaultPrompt}
         busy={runtime.state.wakeupSettingsBusy}
         error={runtime.state.wakeupSettingsError}
         onReload={() => {

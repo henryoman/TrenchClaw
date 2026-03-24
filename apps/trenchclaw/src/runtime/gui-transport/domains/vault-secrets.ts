@@ -229,14 +229,11 @@ const resolveManagedVaultTarget = async (context?: RuntimeSurfaceContext) => {
   if (!resolved.explicitVaultPath) {
     assertInstanceSystemWritePath(resolved.vaultPath, "access instance vault");
   }
-  const ensured = await ensureVaultFileExists({
+  await ensureVaultFileExists({
     vaultPath: resolved.vaultPath,
-    templatePath: resolved.templatePath,
+    seedPath: resolved.seedPath,
   });
-  return {
-    ...resolved,
-    initializedFromTemplate: ensured.initializedFromTemplate,
-  };
+  return resolved;
 };
 
 const serializeVaultData = (vaultData: Record<string, unknown>): string => `${JSON.stringify(vaultData, null, 2)}\n`;
@@ -259,8 +256,6 @@ export const getVault = async (context: RuntimeSurfaceContext): Promise<RuntimeA
   const { target, vaultData } = await loadManagedVaultData(context);
   return {
     filePath: target.vaultPath,
-    templatePath: target.templatePath,
-    initializedFromTemplate: target.initializedFromTemplate,
     content: serializeVaultData(vaultData),
   };
 };
@@ -286,8 +281,6 @@ export const getSecrets = async (context: RuntimeSurfaceContext): Promise<Runtim
   const entries = SECRET_OPTIONS_INTERNAL.map((option) => toSecretEntry(vaultData, option));
   return {
     filePath: target.vaultPath,
-    templatePath: target.templatePath,
-    initializedFromTemplate: target.initializedFromTemplate,
     options: SECRET_OPTIONS,
     entries,
     publicRpcOptions: PUBLIC_RPC_OPTIONS,

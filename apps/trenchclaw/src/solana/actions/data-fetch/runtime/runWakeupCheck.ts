@@ -56,16 +56,6 @@ const buildWakeupSnapshot = (stateStore: StateStore, instanceId: string): Record
   const pausedJobs = jobs.filter((job) => job.status === "paused").length;
   const failedJobs = jobs.filter((job) => job.status === "failed").length;
   const stoppedJobs = jobs.filter((job) => job.status === "stopped").length;
-  const recentConversations = stateStore
-    .listConversations(5)
-    .filter((conversation) => !conversation.sessionId || conversation.sessionId === instanceId)
-    .map((conversation) => ({
-      id: conversation.id,
-      title: conversation.title ?? null,
-      summary: conversation.summary ?? null,
-      updatedAt: conversation.updatedAt,
-    }));
-
   return {
     instanceId,
     generatedAt: new Date().toISOString(),
@@ -77,7 +67,6 @@ const buildWakeupSnapshot = (stateStore: StateStore, instanceId: string): Record
       stopped: stoppedJobs,
     },
     recentJobs: relevantJobs,
-    recentConversations,
   };
 };
 
@@ -86,6 +75,7 @@ const buildWakeupSystemPrompt = (): string =>
     "You are TrenchClaw's wakeup monitor.",
     "Wakeups can be triggered by a schedule, by boot-time recovery, or by a manual operator request.",
     "This is an internal monitoring pass, not implied permission to trade, mutate state, or invent a user request.",
+    "Stay strictly scoped to the active instance. Do not infer, summarize, or reference other instances.",
     "Follow the operator instruction exactly and stay strictly grounded in the runtime snapshot.",
     "Surface only concrete changes, failures, risks, or follow-up items that matter to the operator. Ignore routine noise.",
     "If there is nothing worth surfacing, return exactly NO_NOTICE.",

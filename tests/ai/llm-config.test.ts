@@ -53,7 +53,7 @@ describe("resolveLlmProviderConfigFromEnv", () => {
   test("ignores provider env overrides", () => {
     process.env.TRENCHCLAW_AI_PROVIDER = "gateway";
     process.env.TRENCHCLAW_AI_API_KEY = "gateway-key";
-    process.env.TRENCHCLAW_AI_MODEL = "openai/gpt-5.4-nano";
+    process.env.TRENCHCLAW_AI_MODEL = "stepfun/step-3.5-flash:free";
 
     const resolved = resolveLlmProviderConfigFromEnv();
 
@@ -65,7 +65,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
   test("uses the configured model from ai.json and the OpenRouter key from vault.json", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "openai/gpt-5.4-nano",
+      model: "stepfun/step-3.5-flash:free",
       defaultMode: "primary",
       temperature: 0.2,
       maxOutputTokens: 2048,
@@ -82,7 +82,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
     expect(resolved).not.toBeNull();
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("openai/gpt-5.4-nano");
+    expect(resolved?.model).toBe("stepfun/step-3.5-flash:free");
     expect(resolved?.baseURL).toBe("https://openrouter.ai/api/v1");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
@@ -141,7 +141,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
   test("uses OpenRouter when the selected model is OpenRouter-only", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "openai/gpt-5.4-nano",
+      model: "stepfun/step-3.5-flash:free",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -160,7 +160,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("openai/gpt-5.4-nano");
+    expect(resolved?.model).toBe("stepfun/step-3.5-flash:free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 });

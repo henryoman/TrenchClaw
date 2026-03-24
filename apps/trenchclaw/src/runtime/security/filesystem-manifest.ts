@@ -6,10 +6,7 @@ import {
   resolveRuntimeStateRoot,
   toRuntimeContractRelativePath,
 } from "../runtime-paths";
-<<<<<<< HEAD
 import { resolveCurrentActiveInstanceIdSync } from "../instance-state";
-=======
->>>>>>> c8ac8aed5c1cc3be78572cbbf88e4c94d251e93e
 import { parseStructuredFile } from "../../ai/llm/shared";
 
 type FilesystemSubject = "model" | "user" | "system";
@@ -58,7 +55,7 @@ export interface FilesystemPolicySummary {
   blockedPaths: string[];
 }
 
-const MANIFEST_PATH_FROM_MODULE = resolveCoreRelativePath("src/ai/config/filesystem-manifest.json");
+const MANIFEST_PATH_FROM_MODULE = resolveCoreRelativePath("src/runtime/security/filesystem-manifest.json");
 
 const DEFAULT_MANIFEST_CANDIDATE_PATHS = [
   MANIFEST_PATH_FROM_MODULE,
@@ -179,11 +176,26 @@ const parseManifest = (raw: unknown): FilesystemManifest => {
 };
 
 let cachedManifestPath: string | null = null;
+let cachedManifestContextKey: string | null = null;
 let cachedManifest: FilesystemManifest | null = null;
+
+const resolveManifestContextKey = (): string =>
+  JSON.stringify({
+    runtimeStateRoot: process.env.TRENCHCLAW_RUNTIME_STATE_ROOT?.trim() ?? "",
+    activeInstanceId:
+      resolveCurrentActiveInstanceIdSync()
+      ?? process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim()
+      ?? "",
+  });
 
 const loadManifest = async (): Promise<FilesystemManifest> => {
   const manifestPath = await resolveManifestPath();
-  if (cachedManifest && cachedManifestPath === manifestPath) {
+  const manifestContextKey = resolveManifestContextKey();
+  if (
+    cachedManifest
+    && cachedManifestPath === manifestPath
+    && cachedManifestContextKey === manifestContextKey
+  ) {
     return cachedManifest;
   }
 
@@ -194,6 +206,7 @@ const loadManifest = async (): Promise<FilesystemManifest> => {
 
   const parsed = parseManifest(await parseStructuredFile(manifestPath));
   cachedManifestPath = manifestPath;
+  cachedManifestContextKey = manifestContextKey;
   cachedManifest = parsed;
   return parsed;
 };
@@ -314,5 +327,6 @@ export const summarizeFilesystemPolicy = async (input: {
 
 export const resetFilesystemManifestCacheForTests = (): void => {
   cachedManifestPath = null;
+  cachedManifestContextKey = null;
   cachedManifest = null;
 };

@@ -835,10 +835,10 @@ describe("Runtime v1 API", () => {
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
       expect(initialPayload.settings.provider).toBe("openrouter");
-      expect(initialPayload.settings.model).toBe("openai/gpt-5.4-nano");
+      expect(initialPayload.settings.model).toBe("stepfun/step-3.5-flash:free");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(initialPayload.options.some((option) => option.id === "openai/gpt-5.4-nano")).toBe(true);
-      expect(initialPayload.options.find((option) => option.id === "openai/gpt-5.4-nano")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.some((option) => option.id === "stepfun/step-3.5-flash:free")).toBe(true);
+      expect(initialPayload.options.find((option) => option.id === "stepfun/step-3.5-flash:free")?.providers).toEqual(["openrouter"]);
       expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.5:free")?.providers).toEqual(["openrouter"]);
       expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.7")?.providers).toEqual(["openrouter"]);
       expect(initialPayload.options.find((option) => option.id === "qwen/qwen3.5-flash-02-23")?.providers).toEqual(["openrouter"]);
@@ -866,7 +866,7 @@ describe("Runtime v1 API", () => {
       expect(updatePayload.settings.model).toBe("openai/gpt-5.4");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(updatePayload.options.some((option) => option.id === "openai/gpt-5.4-nano")).toBe(true);
+      expect(updatePayload.options.some((option) => option.id === "stepfun/step-3.5-flash:free")).toBe(true);
       expect(updatePayload.options.some((option) => option.id === "xiaomi/mimo-v2-flash")).toBe(true);
     } finally {
       if (previous === undefined) {

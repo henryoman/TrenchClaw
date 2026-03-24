@@ -3,12 +3,7 @@ import { z } from "zod";
 import { resolveInstanceWakeupSettingsPath } from "../instance-paths";
 import { loadInstanceSettingsDocument, writeInstanceSettingsDocument } from "./instance-settings-io";
 
-export const DEFAULT_WAKEUP_PROMPT = [
-  "IF there are pending runtime jobs or wake-up issues that need operator attention, summarize the situation clearly.",
-  "IF a job looks unsafe to resume, explain why it should stay paused.",
-  "IF startup health checks fail, report the blocking reason.",
-  "IF nothing needs attention, do nothing.",
-].join("\n");
+export const DEFAULT_WAKEUP_PROMPT = "";
 
 const createDefaultWakeupSettings = () => ({
   intervalMinutes: 0,

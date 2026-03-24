@@ -14,7 +14,6 @@
   type WakeupPanelProps = {
     wakeupSettings?: GuiWakeupSettingsView | null;
     scheduleJobs?: GuiScheduleJobView[];
-    defaultPrompt?: string;
     busy?: boolean;
     error?: string;
     onReload?: () => void;
@@ -24,7 +23,6 @@
   let {
     wakeupSettings = null,
     scheduleJobs = [],
-    defaultPrompt = "",
     busy = false,
     error = "",
     onReload = () => {},
@@ -57,7 +55,6 @@
   const createHydrationSignature = (): string =>
     JSON.stringify({
       wakeupSettings,
-      defaultPrompt,
     });
 
   const normalizeInterval = (value: string): number => {
@@ -89,14 +86,6 @@
     onReload();
   };
 
-  const useDefaultPrompt = (): void => {
-    draft = {
-      ...draft,
-      prompt: defaultPrompt,
-    };
-    dirty = true;
-  };
-
   const save = (): void => {
     const wakeupsEnabled = draft.intervalMinutes > 0;
     const normalizedEnabledInterval = normalizeEnabledInterval(String(enabledIntervalMinutes));
@@ -121,10 +110,7 @@
 
     draft = wakeupSettings
       ? { ...wakeupSettings }
-      : {
-          ...DEFAULT_WAKEUP_SETTINGS,
-          prompt: defaultPrompt || DEFAULT_WAKEUP_SETTINGS.prompt,
-        };
+      : { ...DEFAULT_WAKEUP_SETTINGS };
     enabledIntervalMinutes = draft.intervalMinutes > 0 ? draft.intervalMinutes : DEFAULT_ENABLED_INTERVAL_MINUTES;
     enabledIntervalInput = String(enabledIntervalMinutes);
     hydrationSignature = signature;
@@ -265,7 +251,6 @@
 
     <div class="actions">
       <RetroButton variant="secondary" disabled={busy} on:click={reload}>Reload</RetroButton>
-      <RetroButton variant="secondary" disabled={busy} on:click={useDefaultPrompt}>Use Default</RetroButton>
       <RetroButton disabled={busy || !dirty} on:click={save}>{busy ? "Saving..." : "Save"}</RetroButton>
     </div>
   </div>

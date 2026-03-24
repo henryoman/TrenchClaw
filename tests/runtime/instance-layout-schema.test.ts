@@ -53,11 +53,12 @@ const listPaths = (root: string): { directories: string[]; files: string[] } => 
 };
 
 describe("instance layout schema", () => {
-  test("matches the tracked runtime seed instance exactly", () => {
-    const trackedSeedRoot = coreAppPath(".runtime", "instances", "01");
+  test("matches the tracked runtime seed contract", () => {
+    const trackedSeedRoot = coreAppPath(".runtime", "instances", "00");
     const tracked = listPaths(trackedSeedRoot);
 
     expect(tracked.directories).toEqual(INSTANCE_LAYOUT_DIRECTORY_PATHS);
     expect(tracked.files.filter((relativePath) => !isVolatileRuntimeFile(relativePath))).toEqual(INSTANCE_LAYOUT_FILE_PATHS);
+    expect(INSTANCE_LAYOUT_FILE_PATHS).toContain("secrets/vault.json");
   });
 });

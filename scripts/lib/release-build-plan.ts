@@ -5,16 +5,13 @@ export const DEFAULT_RELEASE_COMPILE_TARGETS = [
 ] as const;
 
 export const RELEASE_CONFIG_ASSET_PATHS = [
-  "src/ai/config/ai.template.json",
-  "src/ai/config/filesystem-manifest.json",
-  "src/ai/config/payload-manifest.json",
-  "src/ai/config/system.md",
-  "src/ai/config/vault.template.json",
-  "src/ai/config/agent-modes/primary.md",
-  "src/ai/config/agent-modes/summarize.md",
-  "src/ai/config/safety-modes/safe.json",
-  "src/ai/config/safety-modes/dangerous.json",
-  "src/ai/config/safety-modes/veryDangerous.json",
+  "src/ai/brain/config/prompts/system.md",
+  "src/ai/brain/config/prompts/primary.md",
+  "src/ai/brain/config/prompts/summarize.md",
+  "src/ai/brain/config/safety-modes/safe.json",
+  "src/ai/brain/config/safety-modes/dangerous.json",
+  "src/ai/brain/config/safety-modes/veryDangerous.json",
+  "src/runtime/security/filesystem-manifest.json",
 ] as const;
 
 export const RELEASE_RUNTIME_ASSET_PATHS = [

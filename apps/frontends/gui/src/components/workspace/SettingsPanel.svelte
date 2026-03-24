@@ -16,7 +16,6 @@
   import RetroStatusMessage from "../ui/RetroStatusMessage.svelte";
 
   export let aiSettingsFilePath = "";
-  export let aiSettingsTemplatePath = "";
   export let aiSettings: GuiAiSettingsView | null = null;
   export let aiProviderOptions: GuiAiProviderOptionView[] = [];
   export let aiModelOptions: GuiAiModelOptionView[] = [];
@@ -47,7 +46,7 @@
     { id: "gateway", label: "Vercel AI Gateway", description: "Use Vercel AI Gateway and show Gateway-supported models." },
   ];
   const DEFAULT_AI_PROVIDER: GuiAiSettingsView["provider"] = "openrouter";
-  const DEFAULT_AI_MODEL = "openai/gpt-5.4-nano";
+  const DEFAULT_AI_MODEL = "stepfun/step-3.5-flash:free";
   const SOLANA_RPC_OPTION_ID = "solana-rpc-url";
   const PROVIDER_KEY_OPTION_BY_ID: Record<GuiAiSettingsView["provider"], string> = {
     gateway: "vercel-ai-gateway-api-key",
@@ -105,7 +104,6 @@
     JSON.stringify({
       aiSettings,
       aiSettingsFilePath,
-      aiSettingsTemplatePath,
     });
 
   const createTradingSettingsHydrationSignature = (): string =>

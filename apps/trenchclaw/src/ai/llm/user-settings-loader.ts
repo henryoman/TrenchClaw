@@ -1,7 +1,8 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceCompatibilitySettingsPath } from "../../runtime/instance-paths";
+import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import { isRecord, parseStructuredFile } from "./shared";
 import { loadVaultData } from "./vault-file";
@@ -167,7 +168,14 @@ export const ensureCompatibilitySettingsFileExists = async (
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
-  await writeFile(targetPath, "{}\n", { encoding: "utf8", mode: 0o600 });
+  const seedPath = resolveRuntimeSeedInstancePath("settings", "settings.json");
+  const content = await readFile(seedPath, "utf8").catch((error) => {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      throw new Error(`Runtime seed is missing compatibility settings file: "${seedPath}"`);
+    }
+    throw error;
+  });
+  await writeFile(targetPath, content, { encoding: "utf8", mode: 0o600 });
 };
 
 const applyResolvedRpcFallbacks = (

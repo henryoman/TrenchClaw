@@ -1,20 +1,36 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { createBlockchainAlertAction } from "../../../../../apps/trenchclaw/src/solana/actions/data-fetch/alerts/createBlockchainAlert";
 import { createActionContext } from "../../../../../apps/trenchclaw/src/ai";
+import { createPersistedTestInstance } from "../../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../../helpers/core-paths";
 
 const createdFiles: string[] = [];
+const createdDirectories = new Set<string>();
+const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
 
 afterEach(async () => {
+  if (previousActiveInstanceId === undefined) {
+    delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+  } else {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+  }
   for (const filePath of createdFiles.splice(0)) {
     await Bun.$`rm -f ${filePath}`.quiet();
   }
+
+  for (const directoryPath of createdDirectories) {
+    await rm(directoryPath, { recursive: true, force: true });
+  }
+  createdDirectories.clear();
 });
 
 describe("createBlockchainAlertAction", () => {
   test("creates and stores an alert rule", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+    createdDirectories.add(await createPersistedTestInstance("01", { markActive: true }));
     const storageFilePath = path.resolve(
       runtimeStatePath("instances/01/workspace/strategies/.tests"),
       `alerts-${crypto.randomUUID()}.json`,
@@ -51,6 +67,8 @@ describe("createBlockchainAlertAction", () => {
   });
 
   test("blocks writes outside manifest-allowed paths", async () => {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+    createdDirectories.add(await createPersistedTestInstance("01", { markActive: true }));
     const result = await createBlockchainAlertAction.execute(
       createActionContext({ actor: "agent" }),
       {

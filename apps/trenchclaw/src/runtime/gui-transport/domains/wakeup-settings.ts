@@ -4,8 +4,6 @@ import type {
   RuntimeApiWakeupSettingsResponse,
 } from "@trenchclaw/types";
 import {
-  DEFAULT_WAKEUP_PROMPT,
-  DEFAULT_WAKEUP_SETTINGS,
   instanceWakeupSettingsSchema,
   loadInstanceWakeupSettings,
   type WakeupSettings,
@@ -22,14 +20,12 @@ const cloneWakeupSettings = (settings: WakeupSettings): WakeupSettings => ({
 export const getWakeupSettings = async (context: RuntimeSurfaceContext): Promise<RuntimeApiWakeupSettingsResponse> => {
   const activeInstanceId = context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();
   const payload = await loadInstanceWakeupSettings({ instanceId: activeInstanceId });
-  const parsed = instanceWakeupSettingsSchema.safeParse(payload.resolvedSettings);
-  const settings = parsed.success ? parsed.data.wakeup : DEFAULT_WAKEUP_SETTINGS;
+  const settings = instanceWakeupSettingsSchema.parse(payload.resolvedSettings).wakeup;
 
   return {
     instanceId: payload.instanceId,
     filePath: payload.filePath,
     exists: payload.exists,
-    defaultPrompt: DEFAULT_WAKEUP_PROMPT,
     settings: cloneWakeupSettings(settings),
   };
 };
@@ -65,7 +61,6 @@ export const updateWakeupSettings = async (
     instanceId: activeInstanceId,
     filePath,
     savedAt: new Date(savedAtUnixMs).toISOString(),
-    defaultPrompt: DEFAULT_WAKEUP_PROMPT,
     settings: cloneWakeupSettings(payload.settings as WakeupSettings),
   };
 };

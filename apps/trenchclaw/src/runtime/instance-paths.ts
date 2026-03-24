@@ -54,6 +54,9 @@ export const resolveInstanceWorkspaceContextPath = (instanceId: string): string 
 export const resolveInstanceKnowledgeIndexPath = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "cache", "generated", "knowledge-index.md");
 
+export const resolveInstanceAddedKnowledgeRoot = (instanceId: string): string =>
+  resolveInstanceChildPath(instanceId, "workspace", "added-knowledge");
+
 export const resolveInstanceMemoryLongTermFilePath = (instanceId: string): string =>
   resolveInstanceChildPath(instanceId, "cache", "memory", "MEMORY.md");
 

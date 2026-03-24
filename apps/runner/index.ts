@@ -910,10 +910,6 @@ const ensureRuntimeStateLayout = (): void => {
 
   const placeholders: Array<{ source: string; target: string }> = [
     {
-      source: path.join(LAYOUT.coreAssetRoot, "src/ai/config/vault.template.json"),
-      target: path.join(LAYOUT.runtimeStateRoot, "runtime/vault.template.json"),
-    },
-    {
       source: path.join(LAYOUT.coreAssetRoot, "src/ai/brain/protected/keypairs/.keep"),
       target: path.join(LAYOUT.runtimeStateRoot, "protected/keypairs/.keep"),
     },
@@ -949,13 +945,10 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
   process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE = process.env.TRENCHCLAW_BOOT_REFRESH_KNOWLEDGE ?? "0";
   process.env.TRENCHCLAW_SETTINGS_BASE_FILE =
     process.env.TRENCHCLAW_SETTINGS_BASE_FILE ||
-    path.join(LAYOUT.coreAssetRoot, "src/ai/config/safety-modes", toSettingsFileName(profile));
+    path.join(LAYOUT.coreAssetRoot, "src/ai/brain/config/safety-modes", toSettingsFileName(profile));
   process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE =
     process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE ||
-    path.join(LAYOUT.coreAssetRoot, "src/ai/config/filesystem-manifest.json");
-  process.env.TRENCHCLAW_PROMPT_MANIFEST_FILE =
-    process.env.TRENCHCLAW_PROMPT_MANIFEST_FILE ||
-    path.join(LAYOUT.coreAssetRoot, "src/ai/config/payload-manifest.json");
+    path.join(LAYOUT.coreAssetRoot, "src/runtime/security/filesystem-manifest.json");
   process.env.TRENCHCLAW_KNOWLEDGE_DIR =
     process.env.TRENCHCLAW_KNOWLEDGE_DIR || path.join(bundledBrainRoot, "knowledge");
   process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE =
@@ -966,9 +959,10 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE;
   process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE =
     process.env.TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE ||
-    path.join(LAYOUT.coreAssetRoot, "src/ai/config/ai.template.json");
+    path.join(LAYOUT.coreAssetRoot, "src/ai/brain/config/ai.template.json");
   process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE =
-    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE || path.join(LAYOUT.runtimeStateRoot, "runtime/vault.template.json");
+    process.env.TRENCHCLAW_VAULT_TEMPLATE_FILE ||
+    path.join(LAYOUT.coreAssetRoot, "src/ai/brain/config/vault.template.json");
 };
 
 const logOptionalToolDiagnostics = (): void => {

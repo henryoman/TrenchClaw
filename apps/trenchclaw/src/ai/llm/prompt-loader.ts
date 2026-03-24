@@ -12,8 +12,8 @@ import { renderLiveRuntimeContextSection } from "../../runtime/prompt/live-conte
 import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
 import { resolveVaultFile } from "./vault-file";
 
-const SYSTEM_PROMPT_FILE = "../config/system.md";
-const PRIMARY_MODE_PROMPT_FILE = "../config/agent-modes/primary.md";
+const SYSTEM_PROMPT_FILE = "../brain/config/prompts/system.md";
+const PRIMARY_MODE_PROMPT_FILE = "../brain/config/prompts/primary.md";
 const AGENT_MODE_ENV = "TRENCHCLAW_AGENT_MODE";
 const SUPPORTED_MODE = "primary";
 

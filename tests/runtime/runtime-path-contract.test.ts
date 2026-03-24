@@ -20,7 +20,7 @@ const USER_SETTINGS_MODULE = pathToFileURL(
 const SCHEDULER_MODULE = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/ai/core/scheduler.ts"),
 ).href;
-const RUNTIME_TEMPLATE_ROOT = path.join(CORE_APP_ROOT, ".runtime");
+const RUNTIME_SEED_ROOT = path.join(CORE_APP_ROOT, ".runtime");
 
 const createdDirectories = new Set<string>();
 const SHELL_COMMAND = process.platform === "win32"
@@ -177,7 +177,7 @@ describe("runtime path contract", () => {
     expect(result.exitCode).toBe(0);
     const payload = JSON.parse(result.stdout) as { filePath: string; model: string };
     expect(payload.filePath).toBe(path.join(runtimeRoot, "instances", "01", "settings", "ai.json"));
-    expect(payload.model).toBe("openai/gpt-5.4-nano");
+    expect(payload.model).toBe("stepfun/step-3.5-flash:free");
   });
 
   test("resolves compatibility settings under the configured runtime root", async () => {
@@ -249,13 +249,13 @@ describe("runtime path contract", () => {
     expect(result.stdout.trim()).toBe(path.join(runtimeRoot, "instances", "01", "cache", "custom.sqlite"));
   });
 
-  test("ships a tracked runtime template contract", async () => {
+  test("ships a tracked runtime seed contract", async () => {
     const seedRequiredPaths = [
-      path.join(RUNTIME_TEMPLATE_ROOT, "README.md"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "instance.json"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "ai.json"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "settings.json"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "trading.json"),
+      path.join(RUNTIME_SEED_ROOT, "README.md"),
+      path.join(RUNTIME_SEED_ROOT, "instances", "00", "instance.json"),
+      path.join(RUNTIME_SEED_ROOT, "instances", "00", "settings", "ai.json"),
+      path.join(RUNTIME_SEED_ROOT, "instances", "00", "settings", "settings.json"),
+      path.join(RUNTIME_SEED_ROOT, "instances", "00", "settings", "trading.json"),
     ];
 
     for (const targetPath of seedRequiredPaths) {

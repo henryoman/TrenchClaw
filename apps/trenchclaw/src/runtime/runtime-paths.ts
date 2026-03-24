@@ -76,8 +76,15 @@ export const resolveRuntimeStateRoot = (): string => {
   return resolveAbsoluteEnvPath("TRENCHCLAW_RUNTIME_STATE_ROOT", configuredRoot);
 };
 export const RUNTIME_STATE_ROOT = resolveRuntimeStateRoot();
+export const resolveRuntimeInstanceRoot = (): string => path.join(resolveRuntimeStateRoot(), "instances");
+export const resolveActiveInstanceStateFile = (): string => path.join(resolveRuntimeInstanceRoot(), "active-instance.json");
 export const RUNTIME_INSTANCE_ROOT = path.join(RUNTIME_STATE_ROOT, "instances");
-export const RUNTIME_TEMPLATE_ROOT = path.join(CORE_APP_ROOT, ".runtime");
+export const RUNTIME_SEED_ROOT = path.join(CORE_APP_ROOT, ".runtime");
+export const RUNTIME_SEED_INSTANCE_ID = "00";
+export const resolveRuntimeSeedInstanceRoot = (): string =>
+  path.join(RUNTIME_SEED_ROOT, "instances", RUNTIME_SEED_INSTANCE_ID);
+export const resolveRuntimeSeedInstancePath = (...segments: string[]): string =>
+  path.join(resolveRuntimeSeedInstanceRoot(), ...segments);
 
 export const resolveCoreRelativePath = (targetPath: string): string =>
   path.isAbsolute(targetPath) ? path.resolve(targetPath) : path.resolve(CORE_APP_ROOT, targetPath);

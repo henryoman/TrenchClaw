@@ -2,36 +2,8 @@ import { chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceSecretsRoot } from "../../runtime/instance-paths";
-import { isRecord, resolvePathFromModule } from "./shared";
-
-export const DEFAULT_VAULT_JSON = {
-  rpc: {
-    default: {
-      "http-url": "",
-      source: "custom",
-      "public-id": "",
-      "provider-id": "",
-      "api-key": "",
-      "ws-url": "",
-    },
-  },
-  llm: {
-    openrouter: {
-      "api-key": "",
-    },
-    gateway: {
-      "api-key": "",
-    },
-  },
-  integrations: {
-    dexscreener: {
-      "api-key": "",
-    },
-    jupiter: {
-      "api-key": "",
-    },
-  },
-} as const;
+import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
+import { isRecord } from "./shared";
 
 const LEGACY_RPC_PROVIDER_PATHS = [
   ["rpc", "helius"],
@@ -105,7 +77,6 @@ export const sanitizeVaultData = (vaultData: Record<string, unknown>): { changed
   return { changed };
 };
 
-const DEFAULT_VAULT_TEMPLATE_FILE = "../config/vault.template.json";
 const VAULT_FILE_ENV = "TRENCHCLAW_VAULT_FILE";
 const VAULT_TEMPLATE_FILE_ENV = "TRENCHCLAW_VAULT_TEMPLATE_FILE";
 const INSTANCE_VAULT_FILE_NAME = "vault.json";
@@ -114,7 +85,7 @@ const NO_ACTIVE_INSTANCE_VAULT_MESSAGE =
 
 export interface ResolvedVaultFile {
   vaultPath: string | null;
-  templatePath: string;
+  seedPath: string;
   activeInstanceId: string | null;
   explicitVaultPath: string | null;
 }
@@ -145,16 +116,14 @@ export const resolveVaultFile = (input?: {
 }): ResolvedVaultFile => {
   const explicitVaultPath = process.env[VAULT_FILE_ENV]?.trim() || null;
   const activeInstanceId = input?.activeInstanceId ?? resolveCurrentActiveInstanceIdSync();
-  const templatePath = resolvePathFromModule(
-    import.meta.url,
-    DEFAULT_VAULT_TEMPLATE_FILE,
-    process.env[VAULT_TEMPLATE_FILE_ENV],
+  const seedPath = path.resolve(
+    process.env[VAULT_TEMPLATE_FILE_ENV] ?? resolveRuntimeSeedInstancePath("secrets", "vault.json"),
   );
 
   if (explicitVaultPath) {
     return {
       vaultPath: explicitVaultPath,
-      templatePath,
+      seedPath,
       activeInstanceId,
       explicitVaultPath,
     };
@@ -162,7 +131,7 @@ export const resolveVaultFile = (input?: {
 
   return {
     vaultPath: activeInstanceId ? resolveInstanceVaultPath(activeInstanceId) : null,
-    templatePath,
+    seedPath,
     activeInstanceId,
     explicitVaultPath: null,
   };
@@ -173,15 +142,15 @@ const parseVaultFile = async (filePath: string): Promise<Record<string, unknown>
 
 export const ensureVaultFileExists = async (input: {
   vaultPath: string;
-  templatePath?: string;
-}): Promise<{ initializedFromTemplate: boolean }> => {
+  seedPath?: string;
+}): Promise<{ created: boolean }> => {
   const targetPath = path.resolve(input.vaultPath);
   try {
     const existing = await stat(targetPath);
     if (!existing.isFile()) {
       throw new Error(`Vault path exists but is not a file: "${targetPath}"`);
     }
-    return { initializedFromTemplate: false };
+    return { created: false };
   } catch (error) {
     if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
       throw error;
@@ -189,19 +158,13 @@ export const ensureVaultFileExists = async (input: {
   }
 
   await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
-  const templatePath = input.templatePath ? path.resolve(input.templatePath) : undefined;
-
-  let content = `${JSON.stringify(DEFAULT_VAULT_JSON, null, 2)}\n`;
-  if (templatePath) {
-    try {
-      content = await readFile(templatePath, "utf8");
-    } catch (error) {
-      if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
-        throw error;
-      }
+  const resolvedSeedPath = path.resolve(input.seedPath ?? resolveRuntimeSeedInstancePath("secrets", "vault.json"));
+  const content = await readFile(resolvedSeedPath, "utf8").catch((error) => {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      throw new Error(`Runtime seed is missing vault file: "${resolvedSeedPath}"`);
     }
-  }
-
+    throw error;
+  });
   await writeFile(targetPath, content, { encoding: "utf8", mode: 0o600 });
   try {
     await chmod(targetPath, 0o600);
@@ -209,7 +172,7 @@ export const ensureVaultFileExists = async (input: {
     // Best-effort only (for platforms/filesystems without POSIX permission support).
   }
 
-  return { initializedFromTemplate: true };
+  return { created: true };
 };
 
 export const parseVaultJsonText = (value: string): Record<string, unknown> => {
@@ -222,7 +185,7 @@ export const parseVaultJsonText = (value: string): Record<string, unknown> => {
 
 export const resolveRequiredVaultFile = (input?: {
   activeInstanceId?: string | null;
-}): { vaultPath: string; templatePath: string; activeInstanceId: string | null; explicitVaultPath: string | null } => {
+}): { vaultPath: string; seedPath: string; activeInstanceId: string | null; explicitVaultPath: string | null } => {
   const resolved = resolveVaultFile(input);
   if (resolved.vaultPath) {
     return {
@@ -237,29 +200,27 @@ export const loadVaultData = async (input?: {
   activeInstanceId?: string | null;
 }): Promise<{
   vaultPath: string | null;
-  templatePath: string;
+  seedPath: string;
   activeInstanceId: string | null;
   explicitVaultPath: string | null;
-  initializedFromTemplate: boolean;
   vaultData: Record<string, unknown>;
 }> => {
   const resolved = resolveVaultFile(input);
   if (!resolved.vaultPath) {
     return {
       ...resolved,
-      initializedFromTemplate: false,
       vaultData: {},
     };
   }
 
   const ensured = await ensureVaultFileExists({
     vaultPath: resolved.vaultPath,
-    templatePath: resolved.templatePath,
+    seedPath: resolved.seedPath,
   });
 
   return {
     ...resolved,
-    initializedFromTemplate: ensured.initializedFromTemplate,
+    seedPath: resolved.seedPath,
     vaultData: await parseVaultFile(resolved.vaultPath),
   };
 };

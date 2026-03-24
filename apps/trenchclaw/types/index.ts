@@ -235,8 +235,6 @@ export interface GuiSignInInstanceResponse {
 
 export interface GuiVaultResponse {
   filePath: string;
-  templatePath: string;
-  initializedFromTemplate: boolean;
   content: string;
 }
 
@@ -271,8 +269,6 @@ export interface GuiAiModelOptionView {
 
 export interface GuiAiSettingsResponse {
   filePath: string;
-  templatePath: string;
-  initializedFromTemplate: boolean;
   settings: GuiAiSettingsView;
   providerOptions: GuiAiProviderOptionView[];
   options: GuiAiModelOptionView[];
@@ -341,7 +337,6 @@ export interface GuiWakeupSettingsResponse {
   instanceId: string | null;
   filePath: string | null;
   exists: boolean;
-  defaultPrompt: string;
   settings: GuiWakeupSettingsView;
 }
 
@@ -353,7 +348,6 @@ export interface GuiUpdateWakeupSettingsResponse {
   instanceId: string;
   filePath: string;
   savedAt: string;
-  defaultPrompt: string;
   settings: GuiWakeupSettingsView;
 }
 
@@ -395,8 +389,6 @@ export interface GuiPublicRpcOptionView {
 
 export interface GuiSecretsResponse {
   filePath: string;
-  templatePath: string;
-  initializedFromTemplate: boolean;
   options: GuiSecretOptionView[];
   entries: GuiSecretEntryView[];
   publicRpcOptions: GuiPublicRpcOptionView[];

@@ -1,10 +1,10 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 
 import { z } from "zod";
 
 import { resolveInstanceWorkspaceNewsFeedRegistryPath } from "./instance-workspace";
-import { toRuntimeContractRelativePath } from "./runtime-paths";
+import { resolveRuntimeSeedInstancePath, toRuntimeContractRelativePath } from "./runtime-paths";
 
 const nonEmptyStringSchema = z.string().trim().min(1);
 
@@ -77,7 +77,11 @@ export const ensureInstanceNewsFeedRegistryExists = async (instanceId: string): 
   }
 
   await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(`${filePath}`, `${JSON.stringify(createDefaultConfiguredNewsFeedRegistry(), null, 2)}\n`, "utf8");
+  const seedPath = resolveRuntimeSeedInstancePath("workspace", "configs", "news-feeds.json");
+  if (!(await Bun.file(seedPath).exists())) {
+    throw new Error(`Runtime seed is missing news feed registry file: "${seedPath}"`);
+  }
+  await copyFile(seedPath, filePath);
 
   return {
     filePath,

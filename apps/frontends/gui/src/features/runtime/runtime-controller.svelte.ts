@@ -56,7 +56,6 @@ interface RuntimeUiState {
   scheduleJobs: GuiScheduleJobView[];
   activityEntries: GuiActivityEntry[];
   aiSettingsFilePath: string;
-  aiSettingsTemplatePath: string;
   aiSettings: GuiAiSettingsView | null;
   aiProviderOptions: GuiAiProviderOptionView[];
   aiModelOptions: GuiAiModelOptionView[];
@@ -66,7 +65,6 @@ interface RuntimeUiState {
   tradingSettings: GuiTradingSettingsView | null;
   tradingSettingsBusy: boolean;
   tradingSettingsError: string;
-  wakeupSettingsDefaultPrompt: string;
   wakeupSettings: GuiWakeupSettingsView | null;
   wakeupSettingsBusy: boolean;
   wakeupSettingsError: string;
@@ -144,7 +142,6 @@ export const createRuntimeController = () => {
     scheduleJobs: [],
     activityEntries: [],
     aiSettingsFilePath: "",
-    aiSettingsTemplatePath: "",
     aiSettings: null,
     aiProviderOptions: [],
     aiModelOptions: [],
@@ -154,7 +151,6 @@ export const createRuntimeController = () => {
     tradingSettings: null,
     tradingSettingsBusy: false,
     tradingSettingsError: "",
-    wakeupSettingsDefaultPrompt: "",
     wakeupSettings: null,
     wakeupSettingsBusy: false,
     wakeupSettingsError: "",
@@ -495,7 +491,6 @@ export const createRuntimeController = () => {
     try {
       const payload = await runtimeApi.aiSettings();
       state.aiSettingsFilePath = payload.filePath;
-      state.aiSettingsTemplatePath = payload.templatePath;
       state.aiSettings = payload.settings;
       state.aiProviderOptions = payload.providerOptions;
       state.aiModelOptions = payload.options;
@@ -559,7 +554,6 @@ export const createRuntimeController = () => {
     state.wakeupSettingsError = "";
     try {
       const payload = await runtimeApi.wakeupSettings();
-      state.wakeupSettingsDefaultPrompt = payload.defaultPrompt;
       state.wakeupSettings = payload.settings;
     } catch (error) {
       state.wakeupSettings = null;
@@ -574,7 +568,6 @@ export const createRuntimeController = () => {
     state.wakeupSettingsError = "";
     try {
       const result = await runtimeApi.updateWakeupSettings({ settings });
-      state.wakeupSettingsDefaultPrompt = result.defaultPrompt;
       state.wakeupSettings = result.settings;
       await refreshRuntimePanels();
     } catch (error) {

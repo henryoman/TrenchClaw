@@ -36,7 +36,7 @@ const createWakeupSettingsFile = async (input: {
 
 const createLlm = (text: string): LlmClient => ({
   provider: "openrouter",
-  model: "openai/gpt-5.4-nano",
+  model: "stepfun/step-3.5-flash:free",
   defaultSystemPrompt: "test",
   generate: async () => ({
     text,
@@ -175,7 +175,7 @@ describe("runWakeupCheckAction", () => {
     const calls: Array<{ system?: string; prompt: string; mode?: string }> = [];
     const llm: LlmClient = {
       provider: "openrouter",
-      model: "openai/gpt-5.4-nano",
+      model: "stepfun/step-3.5-flash:free",
       defaultSystemPrompt: "test",
       generate: async (input) => {
         calls.push({
@@ -213,6 +213,7 @@ describe("runWakeupCheckAction", () => {
     expect(calls[0]?.mode).toBe("runtime-wakeup");
     expect(calls[0]?.system).toContain("Wakeups can be triggered by a schedule, by boot-time recovery, or by a manual operator request.");
     expect(calls[0]?.system).toContain("This is an internal monitoring pass, not implied permission to trade, mutate state, or invent a user request.");
+    expect(calls[0]?.system).toContain("Stay strictly scoped to the active instance.");
     expect(calls[0]?.system).toContain("Surface only concrete changes, failures, risks, or follow-up items that matter to the operator. Ignore routine noise.");
     expect(calls[0]?.prompt).toContain("Wakeup trigger: manual");
   });

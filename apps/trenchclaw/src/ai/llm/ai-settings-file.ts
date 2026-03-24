@@ -3,14 +3,14 @@ import path from "node:path";
 import { z } from "zod";
 import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance-state";
 import { resolveInstanceAiSettingsPath } from "../../runtime/instance-paths";
+import { resolveRuntimeSeedInstancePath } from "../../runtime/runtime-paths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/write-scope";
 import type { AiModelProvider } from "./model-catalog";
-import { parseStructuredFile, resolvePathFromModule } from "./shared";
+import { parseStructuredFile } from "./shared";
 
-export const DEFAULT_LLM_MODEL = "openai/gpt-5.4-nano";
+export const DEFAULT_LLM_MODEL = "stepfun/step-3.5-flash:free";
 export const DEFAULT_LLM_PROVIDER: AiModelProvider = "openrouter";
 
-const DEFAULT_AI_SETTINGS_TEMPLATE_FILE = "../config/ai.template.json";
 const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";
 const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
 const NO_ACTIVE_INSTANCE_AI_SETTINGS_MESSAGE =
@@ -29,8 +29,6 @@ export type AiSettingsInput = z.input<typeof aiSettingsSchema>;
 
 export const normalizeAiSettingsInput = (input: AiSettingsInput): AiSettings => aiSettingsSchema.parse(input);
 
-export const DEFAULT_AI_SETTINGS: AiSettings = normalizeAiSettingsInput({});
-
 const resolveAiSettingsFilePath = (): string => {
   const configuredPath = process.env[AI_SETTINGS_FILE_ENV]?.trim();
   if (configuredPath) {
@@ -42,17 +40,17 @@ const resolveAiSettingsFilePath = (): string => {
 
 export const resolveAiSettingsPaths = async (input?: {
   filePath?: string;
-  templatePath?: string;
+  seedPath?: string;
 }): Promise<{
   filePath: string;
-  templatePath: string;
+  seedPath: string;
 }> => ({
   filePath: path.resolve(input?.filePath ?? resolveAiSettingsFilePath()),
-  templatePath: path.resolve(input?.templatePath ?? resolvePathFromModule(
-    import.meta.url,
-    DEFAULT_AI_SETTINGS_TEMPLATE_FILE,
-    process.env[AI_SETTINGS_TEMPLATE_FILE_ENV],
-  )),
+  seedPath: path.resolve(
+    input?.seedPath
+      ?? process.env[AI_SETTINGS_TEMPLATE_FILE_ENV]
+      ?? resolveRuntimeSeedInstancePath("settings", "ai.json"),
+  ),
 });
 
 const parseAiSettingsValue = (value: unknown): AiSettings => {
@@ -73,9 +71,9 @@ const assertAiSettingsWritePath = (targetPath: string): void => {
 
 export const ensureAiSettingsFileExists = async (input?: {
   filePath?: string;
-  templatePath?: string;
-}): Promise<{ initializedFromTemplate: boolean; filePath: string; templatePath: string }> => {
-  const { filePath, templatePath } = await resolveAiSettingsPaths(input);
+  seedPath?: string;
+}): Promise<{ created: boolean; filePath: string }> => {
+  const { filePath, seedPath } = await resolveAiSettingsPaths(input);
   const targetPath = path.resolve(filePath);
 
   try {
@@ -83,7 +81,7 @@ export const ensureAiSettingsFileExists = async (input?: {
     if (!existing.isFile()) {
       throw new Error(`AI settings path exists but is not a file: "${targetPath}"`);
     }
-    return { initializedFromTemplate: false, filePath: targetPath, templatePath: path.resolve(templatePath) };
+    return { created: false, filePath: targetPath };
   } catch (error) {
     if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
       throw error;
@@ -92,16 +90,13 @@ export const ensureAiSettingsFileExists = async (input?: {
 
   assertAiSettingsWritePath(targetPath);
   await mkdir(path.dirname(targetPath), { recursive: true, mode: 0o700 });
-
-  let content = `${JSON.stringify(DEFAULT_AI_SETTINGS, null, 2)}\n`;
-  try {
-    content = await readFile(path.resolve(templatePath), "utf8");
-  } catch (error) {
-    if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
-      throw error;
+  const resolvedSeedPath = path.resolve(seedPath);
+  const content = await readFile(resolvedSeedPath, "utf8").catch((error) => {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+      throw new Error(`Runtime seed is missing AI settings file: "${resolvedSeedPath}"`);
     }
-  }
-
+    throw error;
+  });
   const parsed = parseAiSettingsValue(JSON.parse(content));
   await writeFile(targetPath, `${JSON.stringify(parsed, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
   try {
@@ -110,14 +105,14 @@ export const ensureAiSettingsFileExists = async (input?: {
     // Best-effort only.
   }
 
-  return { initializedFromTemplate: true, filePath: targetPath, templatePath: path.resolve(templatePath) };
+  return { created: true, filePath: targetPath };
 };
 
-export const loadAiSettings = async (): Promise<{ filePath: string; templatePath: string; initializedFromTemplate: boolean; settings: AiSettings }> => {
+export const loadAiSettings = async (): Promise<{ filePath: string; settings: AiSettings }> => {
   const ensured = await ensureAiSettingsFileExists();
   const raw = await parseStructuredFile(ensured.filePath);
   return {
-    ...ensured,
+    filePath: ensured.filePath,
     settings: parseAiSettingsValue(raw),
   };
 };

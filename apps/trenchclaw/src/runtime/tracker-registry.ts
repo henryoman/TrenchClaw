@@ -1,11 +1,11 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { z } from "zod";
 
 import { base58AddressSchema } from "../solana/lib/wallet/wallet-types";
 import { resolveInstanceWorkspaceTrackerPath } from "./instance-workspace";
-import { toRuntimeContractRelativePath } from "./runtime-paths";
+import { resolveRuntimeSeedInstancePath, toRuntimeContractRelativePath } from "./runtime-paths";
 
 const shortTextSchema = z.string().trim().max(160).default("");
 const nonEmptyStringSchema = z.string().trim().min(1);
@@ -130,7 +130,11 @@ export const ensureInstanceTrackerRegistryExists = async (instanceId: string): P
   }
 
   await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(createDefaultTrackerRegistry(), null, 2)}\n`, "utf8");
+  const seedPath = resolveRuntimeSeedInstancePath("workspace", "configs", "tracker.json");
+  if (!(await Bun.file(seedPath).exists())) {
+    throw new Error(`Runtime seed is missing tracker registry file: "${seedPath}"`);
+  }
+  await copyFile(seedPath, filePath);
 
   return {
     filePath,

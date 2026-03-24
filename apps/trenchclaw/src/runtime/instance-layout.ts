@@ -1,20 +1,10 @@
-import { mkdir, stat } from "node:fs/promises";
+import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { ensureAiSettingsFileExists } from "../ai/llm/ai-settings-file";
-import { ensureCompatibilitySettingsFileExists } from "../ai/llm/user-settings-loader";
-import { ensureVaultFileExists, resolveInstanceVaultPath } from "../ai/llm/vault-file";
-import {
-  resolveInstanceAiSettingsPath,
-  resolveInstanceTradingSettingsPath,
-  resolveInstanceCompatibilitySettingsPath,
-} from "./instance-paths";
-import { ensureInstanceNewsFeedRegistryExists } from "./news-feed-registry";
-import { ensureInstanceTrackerRegistryExists } from "./tracker-registry";
-import { writeInstanceTradingSettings } from "./load/trading-settings";
 import { resolveInstanceDirectoryPath } from "./instance-state";
+import { INSTANCE_LAYOUT_DIRECTORY_PATHS, INSTANCE_LAYOUT_FILE_PATHS } from "./instance-layout-schema";
+import { RUNTIME_SEED_INSTANCE_ID, resolveRuntimeSeedInstancePath } from "./runtime-paths";
 import { assertInstanceSystemWritePath } from "./security/write-scope";
-import { INSTANCE_LAYOUT_DIRECTORY_PATHS } from "./instance-layout-schema";
 
 export interface EnsuredInstanceLayout {
   instanceRoot: string;
@@ -45,41 +35,72 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
     }),
   )).filter((directoryPath): directoryPath is string => directoryPath != null);
 
+  const fileExists = async (filePath: string): Promise<boolean> => {
+    try {
+      return (await stat(filePath)).isFile();
+    } catch {
+      return false;
+    }
+  };
+
+  const copySeedFileIfMissing = async (relativePath: string): Promise<string | null> => {
+    const destinationPath = path.join(instanceRoot, relativePath);
+    assertInstanceSystemWritePath(destinationPath, `initialize instance file ${relativePath}`);
+    if (await fileExists(destinationPath)) {
+      return null;
+    }
+
+    await mkdir(path.dirname(destinationPath), { recursive: true });
+    const seedPath = resolveRuntimeSeedInstancePath(relativePath);
+    if (await fileExists(seedPath)) {
+      if (relativePath === "instance.json") {
+        const templateInstance = JSON.parse(await readFile(seedPath, "utf8")) as {
+          instance?: { name?: unknown; localInstanceId?: unknown; userPin?: unknown };
+          runtime?: Record<string, unknown>;
+        };
+        const defaultName =
+          typeof templateInstance.instance?.name === "string" && templateInstance.instance.name.trim().length > 0
+            ? (instanceId === RUNTIME_SEED_INSTANCE_ID ? templateInstance.instance.name.trim() : `instance-${instanceId}`)
+            : instanceId === RUNTIME_SEED_INSTANCE_ID
+              ? "default"
+              : `instance-${instanceId}`;
+        await writeFile(
+          destinationPath,
+          `${JSON.stringify(
+            {
+              ...templateInstance,
+              instance: {
+                ...(templateInstance.instance ?? {}),
+                name: defaultName,
+                localInstanceId: instanceId,
+              },
+            },
+            null,
+            2,
+          )}\n`,
+          "utf8",
+        );
+        return destinationPath;
+      }
+
+      await copyFile(seedPath, destinationPath);
+      return destinationPath;
+    }
+
+    if (path.basename(relativePath) === ".gitkeep") {
+      await writeFile(destinationPath, "", "utf8");
+      return destinationPath;
+    }
+
+    throw new Error(`Runtime seed is missing required file "${relativePath}" at "${seedPath}".`);
+  };
+
   const createdFiles: string[] = [];
-  const vaultPath = resolveInstanceVaultPath(instanceId);
-  assertInstanceSystemWritePath(vaultPath, "initialize instance vault");
-  const ensuredVault = await ensureVaultFileExists({ vaultPath });
-  if (ensuredVault.initializedFromTemplate) {
-    createdFiles.push(vaultPath);
-  }
-
-  const tradingSettingsPath = resolveInstanceTradingSettingsPath(instanceId);
-  if (!(await Bun.file(tradingSettingsPath).exists())) {
-    createdFiles.push(await writeInstanceTradingSettings(instanceId, {}));
-  }
-
-  const aiSettingsPath = resolveInstanceAiSettingsPath(instanceId);
-  const ensuredAiSettings = await ensureAiSettingsFileExists({ filePath: aiSettingsPath });
-  if (ensuredAiSettings.initializedFromTemplate) {
-    createdFiles.push(aiSettingsPath);
-  }
-
-  const compatibilitySettingsPath = resolveInstanceCompatibilitySettingsPath(instanceId);
-  const compatibilitySettingsFile = Bun.file(compatibilitySettingsPath);
-  const compatibilitySettingsExisted = await compatibilitySettingsFile.exists();
-  await ensureCompatibilitySettingsFileExists(compatibilitySettingsPath);
-  if (!compatibilitySettingsExisted) {
-    createdFiles.push(compatibilitySettingsPath);
-  }
-
-  const ensuredNewsFeedRegistry = await ensureInstanceNewsFeedRegistryExists(instanceId);
-  if (ensuredNewsFeedRegistry.initialized) {
-    createdFiles.push(ensuredNewsFeedRegistry.filePath);
-  }
-
-  const ensuredTrackerRegistry = await ensureInstanceTrackerRegistryExists(instanceId);
-  if (ensuredTrackerRegistry.initialized) {
-    createdFiles.push(ensuredTrackerRegistry.filePath);
+  for (const relativePath of INSTANCE_LAYOUT_FILE_PATHS) {
+    const createdFile = await copySeedFileIfMissing(relativePath);
+    if (createdFile) {
+      createdFiles.push(createdFile);
+    }
   }
 
   return {

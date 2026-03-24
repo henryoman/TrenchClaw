@@ -17,9 +17,9 @@ import { parseStructuredFile } from "../../ai/llm/shared";
 export type RuntimeSettingsProfile = "safe" | "dangerous" | "veryDangerous";
 
 const SETTINGS_FILE_BY_PROFILE: Record<RuntimeSettingsProfile, string> = {
-  safe: "src/ai/config/safety-modes/safe.json",
-  dangerous: "src/ai/config/safety-modes/dangerous.json",
-  veryDangerous: "src/ai/config/safety-modes/veryDangerous.json",
+  safe: "src/ai/brain/config/safety-modes/safe.json",
+  dangerous: "src/ai/brain/config/safety-modes/dangerous.json",
+  veryDangerous: "src/ai/brain/config/safety-modes/veryDangerous.json",
 };
 
 const SETTINGS_PROFILE_ENV_KEY = "TRENCHCLAW_PROFILE";
