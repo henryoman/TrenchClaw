@@ -4,6 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { initializeDeveloperRuntime } from "../../scripts/lib/dev-runtime";
+
 const WORKSPACE_ROOT = path.resolve(import.meta.dir, "../..");
 const CORE_APP_ROOT = path.join(WORKSPACE_ROOT, "apps/trenchclaw");
 const RUNTIME_PATHS_MODULE = pathToFileURL(
@@ -248,30 +250,45 @@ describe("runtime path contract", () => {
   });
 
   test("ships a tracked runtime template contract", async () => {
-    const requiredPaths = [
+    const seedRequiredPaths = [
       path.join(RUNTIME_TEMPLATE_ROOT, "README.md"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "active-instance.json"),
       path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "instance.json"),
       path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "ai.json"),
       path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "settings.json"),
       path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "settings", "trading.json"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "secrets", "vault.json"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "live"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "sessions"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "summaries"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs", "system"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "cache", "memory"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "workspace", "routines"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "shell-home"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "tmp"),
-      path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "tool-bin"),
     ];
 
-    for (const targetPath of requiredPaths) {
+    for (const targetPath of seedRequiredPaths) {
       await expect(stat(targetPath)).resolves.toBeDefined();
     }
 
-    const logsChildren = (await readdir(path.join(RUNTIME_TEMPLATE_ROOT, "instances", "01", "logs"))).toSorted();
+    const runtimeRoot = await makeTempDirectory();
+    const generatedRoot = path.join(runtimeRoot, "instances", "01", "cache", "generated");
+    await initializeDeveloperRuntime({
+      runtimeRoot,
+      generatedRoot,
+      instanceId: "01",
+    });
+
+    const initializedRuntimePaths = [
+      path.join(runtimeRoot, "instances", "active-instance.json"),
+      path.join(runtimeRoot, "instances", "01", "secrets", "vault.json"),
+      path.join(runtimeRoot, "instances", "01", "logs", "live"),
+      path.join(runtimeRoot, "instances", "01", "logs", "sessions"),
+      path.join(runtimeRoot, "instances", "01", "logs", "summaries"),
+      path.join(runtimeRoot, "instances", "01", "logs", "system"),
+      path.join(runtimeRoot, "instances", "01", "cache", "memory"),
+      path.join(runtimeRoot, "instances", "01", "workspace", "routines"),
+      path.join(runtimeRoot, "instances", "01", "shell-home"),
+      path.join(runtimeRoot, "instances", "01", "tmp"),
+      path.join(runtimeRoot, "instances", "01", "tool-bin"),
+    ];
+
+    for (const targetPath of initializedRuntimePaths) {
+      await expect(stat(targetPath)).resolves.toBeDefined();
+    }
+
+    const logsChildren = (await readdir(path.join(runtimeRoot, "instances", "01", "logs"))).toSorted();
     expect(logsChildren).toEqual(["live", "sessions", "summaries", "system"]);
   });
 });

@@ -1,0 +1,7 @@
+{
+  "provider": "openrouter",
+  "model": "stepfun/step-3.5-flash:free",
+  "defaultMode": "primary",
+  "temperature": null,
+  "maxOutputTokens": null
+}

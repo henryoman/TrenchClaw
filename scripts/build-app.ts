@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { cp, mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -8,6 +8,7 @@ import {
   RELEASE_CONFIG_ASSET_PATHS,
   RELEASE_PLACEHOLDER_ASSET_PATHS,
   RELEASE_RUNTIME_ASSET_PATHS,
+  RELEASE_RUNTIME_TEMPLATE_PATHS,
   resolveReleaseBrainExcludePrefixes,
   resolveReleasePlanSnapshot,
 } from "./lib/release-build-plan";
@@ -258,6 +259,24 @@ const copyReleaseRuntimeAssets = async (coreOutputRoot: string): Promise<void> =
   }
 };
 
+const copyReleaseRuntimeTemplateAssets = async (coreOutputRoot: string): Promise<void> => {
+  const templateRoot = path.join(REPO_ROOT, "apps/trenchclaw", ".runtime");
+  const targetRoot = path.join(coreOutputRoot, ".runtime");
+  const templateRootStat = await stat(templateRoot).catch(() => null);
+  if (!templateRootStat?.isDirectory()) {
+    throw new Error(`Runtime template root missing: ${templateRoot}`);
+  }
+
+  await cp(templateRoot, targetRoot, { recursive: true });
+
+  for (const relativePath of RELEASE_RUNTIME_TEMPLATE_PATHS) {
+    const targetPath = path.join(coreOutputRoot, relativePath);
+    if (!(await Bun.file(targetPath).exists())) {
+      throw new Error(`Runtime template asset missing after copy: ${targetPath}`);
+    }
+  }
+};
+
 const ensurePlaceholderFile = async (filePath: string, contents = ""): Promise<void> => {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, contents, "utf8");
@@ -321,6 +340,7 @@ const main = async (): Promise<void> => {
   await copyReleaseBrainAssets(coreOutputRoot);
   await copyReleaseConfigAssets(coreOutputRoot);
   await copyReleaseRuntimeAssets(coreOutputRoot);
+  await copyReleaseRuntimeTemplateAssets(coreOutputRoot);
   for (const relativePath of RELEASE_PLACEHOLDER_ASSET_PATHS) {
     await ensurePlaceholderFile(path.join(coreOutputRoot, relativePath));
   }

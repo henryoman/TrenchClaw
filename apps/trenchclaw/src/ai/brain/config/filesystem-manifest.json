@@ -11,11 +11,7 @@
       "model": "read"
     },
     {
-      "path": ".runtime-state/instances/<active-instance>/workspace",
-      "model": "write"
-    },
-    {
-      "path": ".runtime-state/instances/<active-instance>/cache/generated",
+      "path": ".runtime-state/instances",
       "model": "write"
     }
   ]

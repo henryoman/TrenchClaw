@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "defaults": {
+    "mode": "primary",
+    "includeKnowledgeManifest": true,
+    "includeKnowledgeDirectoryTreeFallback": false,
+    "includeWorkspaceDirectoryTree": false
+  },
+  "modes": {
+    "primary": {
+      "title": "Primary Runtime Rules",
+      "sections": [
+        {
+          "kind": "file",
+          "title": "System Kernel",
+          "path": "prompts/system.md"
+        },
+        {
+          "kind": "file",
+          "title": "Primary Mode",
+          "path": "prompts/primary.md"
+        },
+        {
+          "kind": "generated",
+          "title": "Live Runtime Rules",
+          "source": "liveRuntimeRules"
+        }
+      ]
+    }
+  }
+}

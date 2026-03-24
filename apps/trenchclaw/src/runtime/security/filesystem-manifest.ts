@@ -3,8 +3,10 @@ import type { RuntimeActor } from "../../ai/runtime/types/context";
 import {
   resolveCoreRelativePath,
   resolveRuntimeContractPath,
+  resolveRuntimeStateRoot,
   toRuntimeContractRelativePath,
 } from "../runtime-paths";
+import { resolveCurrentActiveInstanceIdSync } from "../instance-state";
 import { parseStructuredFile } from "../../ai/llm/shared";
 
 type FilesystemSubject = "model" | "user" | "system";
@@ -59,6 +61,8 @@ const DEFAULT_MANIFEST_CANDIDATE_PATHS = [
   MANIFEST_PATH_FROM_MODULE,
 ];
 const MANIFEST_PATH_ENV = "TRENCHCLAW_FILESYSTEM_MANIFEST_FILE";
+const ACTIVE_INSTANCE_TOKEN = "<active-instance>";
+const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 
 const normalizePermission = (value: unknown, fallback: FilesystemPermission): FilesystemPermission => {
   if (value === "none" || value === "read" || value === "write") {
@@ -107,6 +111,39 @@ const canPerform = (permission: FilesystemPermission, operation: FilesystemOpera
   return false;
 };
 
+const resolveManifestRulePath = (rawPath: string): string => {
+  const trimmed = rawPath.trim();
+  if (!trimmed) {
+    throw new Error("Filesystem manifest rule path must be a non-empty string");
+  }
+
+  if (!trimmed.includes(ACTIVE_INSTANCE_TOKEN)) {
+    return resolveRuntimeContractPath(trimmed);
+  }
+
+  const activeInstanceId = resolveCurrentActiveInstanceIdSync()
+    ?? (() => {
+      const candidate = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID?.trim();
+      return candidate && INSTANCE_ID_PATTERN.test(candidate) ? candidate : null;
+    })();
+  if (!activeInstanceId) {
+    throw new Error(
+      `Filesystem manifest rule path "${trimmed}" requires an active instance, but none is selected.`,
+    );
+  }
+
+  const replacedPath = trimmed.replaceAll(ACTIVE_INSTANCE_TOKEN, activeInstanceId);
+  if (replacedPath === ".runtime-state") {
+    return resolveRuntimeStateRoot();
+  }
+  if (replacedPath.startsWith(".runtime-state/")) {
+    const relativePath = replacedPath.slice(".runtime-state/".length);
+    return path.join(resolveRuntimeStateRoot(), relativePath);
+  }
+
+  return resolveRuntimeContractPath(replacedPath);
+};
+
 const parseManifest = (raw: unknown): FilesystemManifest => {
   const input = (raw ?? {}) as FilesystemManifestInput;
   if (input.version !== 1) {
@@ -124,7 +161,7 @@ const parseManifest = (raw: unknown): FilesystemManifest => {
       throw new Error("Filesystem manifest rule path must be a non-empty string");
     }
     return {
-      absolutePath: resolveRuntimeContractPath(rule.path.trim()),
+      absolutePath: resolveManifestRulePath(rule.path),
       model: normalizePermission(rule.model, defaults.model),
       user: normalizePermission(rule.user, defaults.user),
       system: normalizePermission(rule.system, defaults.system),
