@@ -249,21 +249,21 @@ describe("developer runtime workflow", () => {
       instanceName: "default",
     });
 
-    await mkdir(path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets"), { recursive: true });
+    await mkdir(path.join(runtimeRoot, "instances", "01", "keypairs", "fixture-wallets"), { recursive: true });
     await writeFile(
-      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.json"),
+      path.join(runtimeRoot, "instances", "01", "keypairs", "fixture-wallets", "fixture001-0001.json"),
       "[1,2,3]\n",
       "utf8",
     );
     await writeFile(
-      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.label.json"),
+      path.join(runtimeRoot, "instances", "01", "keypairs", "fixture-wallets", "fixture001-0001.label.json"),
       `${JSON.stringify({
         version: 1,
-        walletId: "practice-wallets.practice001",
-        walletGroup: "practice-wallets",
-        walletName: "practice001",
-        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-        walletFileName: "practice001-0001.json",
+        walletId: "fixture-wallets.fixture001",
+        walletGroup: "fixture-wallets",
+        walletName: "fixture001",
+        address: "11111111111111111111111111111111",
+        walletFileName: "fixture001-0001.json",
         createdAt: "2026-03-11T04:14:44.060Z",
         updatedAt: "2026-03-11T04:14:44.060Z",
       }, null, 2)}\n`,
@@ -272,12 +272,12 @@ describe("developer runtime workflow", () => {
     await writeFile(
       path.join(runtimeRoot, "instances", "01", "keypairs", "wallet-library.jsonl"),
       `${JSON.stringify({
-        walletId: "practice-wallets.practice001",
-        walletGroup: "practice-wallets",
-        walletName: "practice001",
-        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-        keypairFilePath: "/tmp/trenchclaw-legacy/instance/i-01/keypairs/practice-wallets/practice001-0001.json",
-        walletLabelFilePath: "/tmp/trenchclaw-legacy/instance/i-01/keypairs/practice-wallets/practice001-0001.label.json",
+        walletId: "fixture-wallets.fixture001",
+        walletGroup: "fixture-wallets",
+        walletName: "fixture001",
+        address: "11111111111111111111111111111111",
+        keypairFilePath: "/tmp/trenchclaw-legacy/instance/i-01/keypairs/fixture-wallets/fixture001-0001.json",
+        walletLabelFilePath: "/tmp/trenchclaw-legacy/instance/i-01/keypairs/fixture-wallets/fixture001-0001.label.json",
         createdAt: "2026-03-11T04:14:44.060Z",
         updatedAt: "2026-03-11T04:14:44.060Z",
       })}\n`,
@@ -300,10 +300,10 @@ describe("developer runtime workflow", () => {
     };
 
     expect(repaired.keypairFilePath).toBe(
-      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.json"),
+      path.join(runtimeRoot, "instances", "01", "keypairs", "fixture-wallets", "fixture001-0001.json"),
     );
     expect(repaired.walletLabelFilePath).toBe(
-      path.join(runtimeRoot, "instances", "01", "keypairs", "practice-wallets", "practice001-0001.label.json"),
+      path.join(runtimeRoot, "instances", "01", "keypairs", "fixture-wallets", "fixture001-0001.label.json"),
     );
     expect((await readdir(path.join(runtimeRoot, ".backups"))).length).toBeGreaterThan(0);
   });

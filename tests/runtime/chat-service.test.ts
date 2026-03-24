@@ -2282,12 +2282,12 @@ describe("RuntimeChatService", () => {
     await writeFile(
       path.join(keypairsDirectory, "wallet-library.jsonl"),
       `${JSON.stringify({
-        walletId: "practice-wallets.practice001",
-        walletGroup: "practice-wallets",
-        walletName: "practice001",
-        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-        keypairFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/wallet_000.json"),
-        walletLabelFilePath: path.join(instanceDirectory, "keypairs/practice-wallets/wallet_000.label.json"),
+        walletId: "fixture-wallets.fixture001",
+        walletGroup: "fixture-wallets",
+        walletName: "fixture001",
+        address: "11111111111111111111111111111111",
+        keypairFilePath: path.join(instanceDirectory, "keypairs/fixture-wallets/wallet_000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/fixture-wallets/wallet_000.label.json"),
       })}\n`,
       "utf8",
     );
@@ -2334,7 +2334,7 @@ describe("RuntimeChatService", () => {
     expect(capturedSystemPrompt).toContain("## Wallet Summary");
     expect(capturedSystemPrompt).toContain(`- active instance wallet scope: ${instanceId}`);
     expect(capturedSystemPrompt).toContain("managed wallet count: 1");
-    expect(capturedSystemPrompt).toContain("practice-wallets/practice001=DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
+    expect(capturedSystemPrompt).toContain("fixture-wallets/fixture001=11111111111111111111111111111111");
   });
 
   test("states missing managed wallet libraries directly in the wallet summary", async () => {

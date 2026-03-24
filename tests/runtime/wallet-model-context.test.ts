@@ -33,7 +33,7 @@ describe("renderRuntimeWalletPromptContext", () => {
         walletId: "core-wallets.maker-1",
         walletGroup: "core-wallets",
         walletName: "maker-1",
-        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+        address: "11111111111111111111111111111111",
         keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/000.json"),
         walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/000.label.json"),
       })}\n`,
@@ -73,11 +73,11 @@ describe("renderRuntimeWalletPromptContext", () => {
       path.join(walletGroupDirectory, "000.label.json"),
       `${JSON.stringify({
         version: 1,
-        walletId: "practice-wallets.practice001",
-        walletGroup: "practice-wallets",
-        walletName: "practice001",
+        walletId: "fixture-wallets.fixture001",
+        walletGroup: "fixture-wallets",
+        walletName: "fixture001",
         walletFileName: "000.json",
-        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+        address: "11111111111111111111111111111111",
         createdAt: "2026-03-12T00:00:00.000Z",
         updatedAt: "2026-03-12T00:00:00.000Z",
       })}\n`,
@@ -88,11 +88,11 @@ describe("renderRuntimeWalletPromptContext", () => {
       path.join(walletGroupDirectory, "001.label.json"),
       `${JSON.stringify({
         version: 1,
-        walletId: "practice-wallets.practice002",
-        walletGroup: "practice-wallets",
-        walletName: "practice002",
+        walletId: "fixture-wallets.fixture002",
+        walletGroup: "fixture-wallets",
+        walletName: "fixture002",
         walletFileName: "001.json",
-        address: "2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq",
+        address: "Stake11111111111111111111111111111111111111",
         createdAt: "2026-03-12T00:00:00.000Z",
         updatedAt: "2026-03-12T00:00:00.000Z",
       })}\n`,
@@ -108,8 +108,8 @@ describe("renderRuntimeWalletPromptContext", () => {
     expect(prompt).toContain("WALLET_LIBRARY_STATUS=missing");
     expect(prompt).toContain("no managed wallets are configured right now");
     expect(prompt).not.toContain("WALLET_DISCOVERY_FALLBACK");
-    expect(prompt).not.toContain("practice-wallets");
-    expect(prompt).not.toContain("DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5");
-    expect(prompt).not.toContain("2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq");
+    expect(prompt).not.toContain("fixture-wallets");
+    expect(prompt).not.toContain("11111111111111111111111111111111");
+    expect(prompt).not.toContain("Stake11111111111111111111111111111111111111");
   });
 });

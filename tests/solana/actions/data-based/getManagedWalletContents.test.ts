@@ -37,11 +37,11 @@ describe("getManagedWalletContentsAction", () => {
       path.join(walletGroupDirectory, "000.label.json"),
       `${JSON.stringify({
         version: 1,
-        walletId: "practice-wallets.practice001",
-        walletGroup: "practice-wallets",
-        walletName: "practice001",
+        walletId: "fixture-wallets.fixture001",
+        walletGroup: "fixture-wallets",
+        walletName: "fixture001",
         walletFileName: "000.json",
-        address: "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
+        address: "11111111111111111111111111111111",
         createdAt: "2026-03-12T00:00:00.000Z",
         updatedAt: "2026-03-12T00:00:00.000Z",
       })}\n`,
@@ -52,11 +52,11 @@ describe("getManagedWalletContentsAction", () => {
       path.join(walletGroupDirectory, "001.label.json"),
       `${JSON.stringify({
         version: 1,
-        walletId: "practice-wallets.practice002",
-        walletGroup: "practice-wallets",
-        walletName: "practice002",
+        walletId: "fixture-wallets.fixture002",
+        walletGroup: "fixture-wallets",
+        walletName: "fixture002",
         walletFileName: "001.json",
-        address: "2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq",
+        address: "Stake11111111111111111111111111111111111111",
         createdAt: "2026-03-12T00:00:00.000Z",
         updatedAt: "2026-03-12T00:00:00.000Z",
       })}\n`,
@@ -67,11 +67,11 @@ describe("getManagedWalletContentsAction", () => {
     const action = createGetManagedWalletContentsAction({
       loadWalletContents: async ({ address }) => ({
         lamports:
-          address === "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5"
+          address === "11111111111111111111111111111111"
             ? 1_500_000_000n
             : 250_000_000n,
         tokenBalances:
-          address === "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5"
+          address === "11111111111111111111111111111111"
             ? [
                 {
                   mintAddress: "So11111111111111111111111111111111111111112",
@@ -110,7 +110,7 @@ describe("getManagedWalletContentsAction", () => {
     });
 
     const result = await action.execute(createActionContext({ actor: "agent" }), {
-      walletGroup: "practice-wallets",
+      walletGroup: "fixture-wallets",
       includeZeroBalances: false,
     });
 
@@ -230,8 +230,8 @@ describe("getManagedWalletContentsAction", () => {
           address: [
             "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
             "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
-            "DhUmVgNRRerCSzMBYseakf1hvVCqhKjd6XGgQzxSsAB5",
-            "2npaXAjxDnQSht8nPMAdw27HbnYQfS4GZMfEmMuMXFXq",
+            "11111111111111111111111111111111",
+            "Stake11111111111111111111111111111111111111",
             "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF",
           ][index]!,
           keypairFilePath: path.join(instanceDirectory, `keypairs/core-wallets/wallet_${String(index).padStart(3, "0")}.json`),

@@ -744,7 +744,7 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     purpose: "Answer managed-wallet holdings questions directly, preferring Helius DAS metadata when Helius is the active private RPC and queueing heavier scans when inline reads would be less reliable.",
     tags: ["wallets", "balances", "tokens", "read"],
     exampleInput: {
-      walletGroup: "practice-wallets",
+      walletGroup: "core-wallets",
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,
@@ -757,7 +757,7 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
     purpose: "Answer wallet balance questions directly using managed wallet metadata, including label-file fallback when the wallet library file is missing.",
     tags: ["wallets", "balances", "sol", "read"],
     exampleInput: {
-      walletGroup: "practice-wallets",
+      walletGroup: "core-wallets",
     },
     includeInCatalog: () => true,
     enabledBySettings: () => true,
