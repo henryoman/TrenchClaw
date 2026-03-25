@@ -5,12 +5,44 @@ import {
   type UIMessage,
 } from "ai";
 import { createToolCallId, createUiTextPartId } from "../../ai/contracts/types/ids";
-import {
-  WALLET_CONTENTS_INTENT_PHRASES,
-  WALLET_INVENTORY_INTENT_PHRASES,
-} from "./constants";
 import { createResponseMessageId, hasAnyIntentPhrase, hasWalletMutationIntent, isRecord, normalizeIntentText, isToolLikePart } from "./utils";
 import { withChatHeaders } from "./persistence";
+
+const WALLET_INVENTORY_INTENT_PHRASES = [
+  "what wallets do we have",
+  "which wallets do we have",
+  "list wallets",
+  "show wallets",
+  "wallet addresses",
+  "wallet address",
+  "wallet names",
+  "wallet name",
+] as const;
+
+const WALLET_CONTENTS_INTENT_PHRASES = [
+  "what do we have",
+  "what is in",
+  "whats in",
+  "what s in",
+  "contents",
+  "content",
+  "hold",
+  "holds",
+  "holding",
+  "holdings",
+  "balance",
+  "balances",
+  "token",
+  "tokens",
+  "coin",
+  "coins",
+  "asset",
+  "assets",
+  "how much",
+  "right now",
+  "wallet update",
+  "wallet status",
+] as const;
 
 export const shouldUseWalletInventoryFastPath = (userMessage: string): boolean => {
   const normalized = normalizeIntentText(userMessage);
@@ -161,7 +193,7 @@ export const formatWalletContentsFastPathText = (data: unknown): string | null =
 };
 
 export const formatWalletContentsRateLimitText = (toolName: string, error: string): string | null => {
-  if (toolName !== "getManagedWalletContents") {
+  if (toolName !== "getManagedWalletContents" && toolName !== "getWalletContents") {
     return null;
   }
 
@@ -173,7 +205,7 @@ export const formatWalletContentsRateLimitText = (toolName: string, error: strin
   ) {
     return [
       "The wallet inventory read hit provider throttling before a safe fallback completed.",
-      "`getManagedWalletContents` received a rate-limit response while reading managed-wallet balances.",
+      `\`${toolName}\` received a rate-limit response while reading managed-wallet balances.`,
       "Retry after the cooldown, or let the runtime queue the heavier scan path instead of forcing it inline.",
     ].join("\n");
   }
@@ -309,7 +341,7 @@ export const formatKnownToolOnlyCompletionText = (message: UIMessage | undefined
         ?? `The request failed while running ${toolName}: ${output.error}`;
     }
 
-    if (toolName === "getManagedWalletContents") {
+    if (toolName === "getManagedWalletContents" || toolName === "getWalletContents") {
       const walletContentsOutput =
         isRecord(output) && output.ok === true && "data" in output
           ? output.data

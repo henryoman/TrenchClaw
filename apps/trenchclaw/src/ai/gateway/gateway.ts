@@ -34,7 +34,9 @@ export const createRuntimeGateway = (
     const lane = request.lane ?? "operator-chat";
     const lanePolicy = getGatewayLanePolicy(lane);
 
-    const toolNames = listToolNames(lane);
+    const toolNames = context.capabilitySnapshot
+      ? getGatewayToolNamesForLane(context.capabilitySnapshot, lane, request.userMessage)
+      : listToolNames(lane);
     const systemPrompt = lanePolicy.promptKind === "operator"
       ? await buildOperatorChatPrompt({
         settings: context.settings,

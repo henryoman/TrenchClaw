@@ -56,7 +56,10 @@ const HELIUS_FUNGIBLE_INTERFACES = new Set(["FungibleAsset", "FungibleToken"]);
 const DEFAULT_RPC_RATE_LIMIT_COOLDOWN_MS = 2_000;
 const INLINE_HELIUS_DAS_WALLET_LIMIT = 2;
 const INLINE_RPC_WALLET_LIMIT = 4;
+const INLINE_SIMPLE_WALLET_LIMIT = 24;
 const WALLET_INVENTORY_SCAN_ROUTINE_NAME = "walletInventoryScan";
+const WALLET_CONTENTS_SCAN_ROUTINE_NAME = "walletContentsScan";
+const WALLET_BALANCE_CACHE_TTL_MS = 15_000;
 
 const getManagedWalletContentsInputSchema = z.object({
   instanceId: z.string().trim().min(1).max(64).optional(),
@@ -68,8 +71,20 @@ const getManagedWalletContentsInputSchema = z.object({
 });
 
 type GetManagedWalletContentsInput = z.output<typeof getManagedWalletContentsInputSchema>;
+const getWalletContentsInputSchema = z.object({
+  instanceId: z.string().trim().min(1).max(64).optional(),
+  wallets: managedWalletSelectorListSchema.optional(),
+  includeZeroBalances: z.boolean().default(false),
+});
+
+type GetWalletContentsInput = z.output<typeof getWalletContentsInputSchema>;
 type TokenProgramLabel = "spl-token" | "token-2022";
 type ManagedWalletContentsDataSource = "helius-das" | "rpc-batch" | "rpc-sequential";
+
+interface WalletContentWarning {
+  code: string;
+  message: string;
+}
 
 export interface ManagedWalletTokenBalance {
   mintAddress: string;
@@ -109,6 +124,7 @@ interface ManagedWalletAggregatedTokenBalance extends ManagedWalletTokenBalance 
 
 interface ManagedWalletContentsOutput {
   instanceId: string;
+  snapshotAt: number;
   walletCount: number;
   discoveredVia: "wallet-library";
   walletLibraryFilePath: string;
@@ -116,6 +132,7 @@ interface ManagedWalletContentsOutput {
   includeZeroBalances: boolean;
   dataSource: ManagedWalletContentsDataSource;
   partial: boolean;
+  warnings: WalletContentWarning[];
   wallets: ManagedWalletContentsWallet[];
   walletErrors: ManagedWalletContentsWalletError[];
   totalBalanceLamports: string;
@@ -153,6 +170,13 @@ interface GetManagedWalletContentsDeps {
     includeZeroBalances: boolean;
   }) => Promise<LoadWalletContentsResult>;
 }
+
+interface WalletBalanceCacheEntry {
+  expiresAt: number;
+  wallet: ManagedWalletContentsWallet;
+}
+
+const walletBalanceCache = new Map<string, WalletBalanceCacheEntry>();
 
 interface ParsedTokenAccountBalance {
   mintAddress: string;
@@ -355,11 +379,12 @@ const createQueuedWalletContentsPayload = (
 const resolveReusableWalletScanJob = (
   ctx: ActionContext,
   requestKey: string,
+  routineName = WALLET_INVENTORY_SCAN_ROUTINE_NAME,
 ): WalletScanReuseResult | null => {
   const jobs = ctx.stateStore
     ?.listJobs()
     .filter((job) =>
-      job.routineName === WALLET_INVENTORY_SCAN_ROUTINE_NAME
+      job.routineName === routineName
       && isRecord(job.config)
       && job.config.requestKey === requestKey)
     .toSorted((left, right) => right.createdAt - left.createdAt);
@@ -437,6 +462,66 @@ const isOfficialSolanaPublicRpcUrl = (value: string): boolean => {
   } catch {
     return false;
   }
+};
+
+const normalizeRpcCacheKeySegment = (value: string | undefined): string => {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return "no-rpc";
+  }
+  try {
+    const parsed = new URL(trimmed);
+    parsed.hash = "";
+    return parsed.toString();
+  } catch {
+    return trimmed;
+  }
+};
+
+const cloneWalletTokenBalance = (tokenBalance: ManagedWalletTokenBalance): ManagedWalletTokenBalance => ({
+  ...tokenBalance,
+  tokenAccountAddresses: [...tokenBalance.tokenAccountAddresses],
+});
+
+const cloneWalletContentsWallet = (wallet: ManagedWalletContentsWallet): ManagedWalletContentsWallet => ({
+  ...wallet,
+  tokenBalances: wallet.tokenBalances.map(cloneWalletTokenBalance),
+});
+
+const buildWalletBalanceCacheKey = (input: {
+  rpcUrl?: string;
+  walletAddress: string;
+  includeZeroBalances: boolean;
+}): string => `${normalizeRpcCacheKeySegment(input.rpcUrl)}:${input.walletAddress}:${input.includeZeroBalances ? "with-zeroes" : "non-zero"}`;
+
+const getCachedWalletBalance = (input: {
+  rpcUrl?: string;
+  walletAddress: string;
+  includeZeroBalances: boolean;
+}): ManagedWalletContentsWallet | null => {
+  const cacheKey = buildWalletBalanceCacheKey(input);
+  const cached = walletBalanceCache.get(cacheKey);
+  if (!cached) {
+    return null;
+  }
+  if (cached.expiresAt <= Date.now()) {
+    walletBalanceCache.delete(cacheKey);
+    return null;
+  }
+  return cloneWalletContentsWallet(cached.wallet);
+};
+
+const setCachedWalletBalance = (input: {
+  rpcUrl?: string;
+  walletAddress: string;
+  includeZeroBalances: boolean;
+  wallet: ManagedWalletContentsWallet;
+}): void => {
+  const cacheKey = buildWalletBalanceCacheKey(input);
+  walletBalanceCache.set(cacheKey, {
+    expiresAt: Date.now() + WALLET_BALANCE_CACHE_TTL_MS,
+    wallet: cloneWalletContentsWallet(input.wallet),
+  });
 };
 
 const toFiniteNumberOrNull = (value: unknown): number | null => {
@@ -675,11 +760,14 @@ const toWalletReadError = (
   retryable: isRetryableRpcError(error),
 });
 
-const postRpcBatch = async (
+const postRpcBatchDetailed = async (
   rpcUrl: string,
   requests: JsonRpcBatchRequest[],
   options: RpcRequestSchedulingOptions = {},
-): Promise<Map<string, unknown>> => {
+): Promise<{
+  results: Map<string, unknown>;
+  errors: Map<string, unknown>;
+}> => {
   const scheduling = resolveRpcSchedulingOptions(rpcUrl, requests, options);
   let response: Response;
   try {
@@ -731,6 +819,7 @@ const postRpcBatch = async (
   }
 
   const results = new Map<string, unknown>();
+  const errors = new Map<string, unknown>();
   for (const entry of payload) {
     if (!isRecord(entry)) {
       continue;
@@ -747,15 +836,37 @@ const postRpcBatch = async (
           scheduling,
         );
       }
-      throw new Error(`RPC ${requestId} failed: ${formatRpcError(entry.error)}`);
+      errors.set(requestId, entry.error);
+      continue;
     }
     if (!("result" in entry)) {
-      throw new Error(`RPC ${requestId} returned no result`);
+      errors.set(requestId, new Error(`RPC ${requestId} returned no result`));
+      continue;
     }
     results.set(requestId, entry.result);
   }
 
-  return results;
+  return {
+    results,
+    errors,
+  };
+};
+
+const postRpcBatch = async (
+  rpcUrl: string,
+  requests: JsonRpcBatchRequest[],
+  options: RpcRequestSchedulingOptions = {},
+): Promise<Map<string, unknown>> => {
+  const detailed = await postRpcBatchDetailed(rpcUrl, requests, options);
+  const firstError = detailed.errors.entries().next();
+  if (!firstError.done) {
+    const [requestId, error] = firstError.value;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(`RPC ${requestId} failed: ${formatRpcError(error)}`);
+  }
+  return detailed.results;
 };
 
 const postRpcSingle = async (
@@ -789,14 +900,62 @@ const buildWalletResult = (input: {
   pricedTokenTotalUsd: sumTokenValuesUsd(input.tokenBalances),
 });
 
+const getWalletRpcRequestIds = (entry: ManagedWalletLibraryEntry): {
+  balanceRequestId: string;
+  splRequestId: string;
+  token2022RequestId: string;
+} => ({
+  balanceRequestId: `${entry.address}:balance`,
+  splRequestId: `${entry.address}:spl`,
+  token2022RequestId: `${entry.address}:token2022`,
+});
+
+const buildWalletRpcRequests = (entry: ManagedWalletLibraryEntry): JsonRpcBatchRequest[] => {
+  const { balanceRequestId, splRequestId, token2022RequestId } = getWalletRpcRequestIds(entry);
+  return [
+    {
+      jsonrpc: "2.0",
+      id: balanceRequestId,
+      method: "getBalance",
+      params: [entry.address],
+    },
+    {
+      jsonrpc: "2.0",
+      id: splRequestId,
+      method: "getTokenAccountsByOwner",
+      params: [
+        entry.address,
+        {
+          programId: TOKEN_PROGRAM_ID,
+        },
+        {
+          encoding: "jsonParsed",
+        },
+      ],
+    },
+    {
+      jsonrpc: "2.0",
+      id: token2022RequestId,
+      method: "getTokenAccountsByOwner",
+      params: [
+        entry.address,
+        {
+          programId: TOKEN_2022_PROGRAM_ID,
+        },
+        {
+          encoding: "jsonParsed",
+        },
+      ],
+    },
+  ];
+};
+
 const parseWalletRpcBatchResult = (input: {
   entry: ManagedWalletLibraryEntry;
   rpcResults: Map<string, unknown>;
   includeZeroBalances: boolean;
 }): ManagedWalletContentsWallet => {
-  const balanceRequestId = `${input.entry.address}:balance`;
-  const splRequestId = `${input.entry.address}:spl`;
-  const token2022RequestId = `${input.entry.address}:token2022`;
+  const { balanceRequestId, splRequestId, token2022RequestId } = getWalletRpcRequestIds(input.entry);
   const lamports = parseLamports(getRpcBatchResult(input.rpcResults, balanceRequestId), balanceRequestId);
   const parsedTokenBalances = [
     ...parseTokenAccountEntries(getRpcBatchResult(input.rpcResults, splRequestId)).map((tokenAccountEntry) =>
@@ -813,56 +972,29 @@ const parseWalletRpcBatchResult = (input: {
   });
 };
 
+interface WalletBatchRpcLoadOutcome {
+  wallets: ManagedWalletContentsWallet[];
+  failedEntries: ManagedWalletLibraryEntry[];
+}
+
 const loadWalletContentsBatchFromRpc = async (input: {
   rpcUrl?: string;
   entries: ManagedWalletLibraryEntry[];
   includeZeroBalances: boolean;
   lane?: RpcRequestLane;
-}): Promise<ManagedWalletContentsWallet[]> => {
+}): Promise<WalletBatchRpcLoadOutcome> => {
   if (input.entries.length === 0) {
-    return [];
+    return {
+      wallets: [],
+      failedEntries: [],
+    };
   }
 
   const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
-  const requests = input.entries.flatMap((entry): JsonRpcBatchRequest[] => [
-    {
-      jsonrpc: "2.0",
-      id: `${entry.address}:balance`,
-      method: "getBalance",
-      params: [entry.address],
-    },
-    {
-      jsonrpc: "2.0",
-      id: `${entry.address}:spl`,
-      method: "getTokenAccountsByOwner",
-      params: [
-        entry.address,
-        {
-          programId: TOKEN_PROGRAM_ID,
-        },
-        {
-          encoding: "jsonParsed",
-        },
-      ],
-    },
-    {
-      jsonrpc: "2.0",
-      id: `${entry.address}:token2022`,
-      method: "getTokenAccountsByOwner",
-      params: [
-        entry.address,
-        {
-          programId: TOKEN_2022_PROGRAM_ID,
-        },
-        {
-          encoding: "jsonParsed",
-        },
-      ],
-    },
-  ]);
+  const requests = input.entries.flatMap((entry) => buildWalletRpcRequests(entry));
 
-  const rpcResults = await withRpcRetries(
-    () => postRpcBatch(rpcUrl, requests, {
+  const { results, errors } = await withRpcRetries(
+    () => postRpcBatchDetailed(rpcUrl, requests, {
       providerHint: isOfficialSolanaPublicRpcUrl(rpcUrl) ? "solana-rpc" : "helius-rpc",
       methodFamily: "wallet-batch",
       lane: input.lane,
@@ -872,12 +1004,34 @@ const loadWalletContentsBatchFromRpc = async (input: {
     },
   );
 
-  return input.entries.map((entry) =>
-    parseWalletRpcBatchResult({
-      entry,
-      rpcResults,
-      includeZeroBalances: input.includeZeroBalances,
-    }));
+  const wallets: ManagedWalletContentsWallet[] = [];
+  const failedEntries: ManagedWalletLibraryEntry[] = [];
+  for (const entry of input.entries) {
+    const { balanceRequestId, splRequestId, token2022RequestId } = getWalletRpcRequestIds(entry);
+    const walletFailed =
+      errors.has(balanceRequestId)
+      || errors.has(splRequestId)
+      || errors.has(token2022RequestId)
+      || !results.has(balanceRequestId)
+      || !results.has(splRequestId)
+      || !results.has(token2022RequestId);
+    if (walletFailed) {
+      failedEntries.push(entry);
+      continue;
+    }
+    wallets.push(
+      parseWalletRpcBatchResult({
+        entry,
+        rpcResults: results,
+        includeZeroBalances: input.includeZeroBalances,
+      }),
+    );
+  }
+
+  return {
+    wallets,
+    failedEntries,
+  };
 };
 
 const loadWalletContentsSequentiallyFromRpc = async (input: {
@@ -1383,8 +1537,23 @@ const loadWalletContentsFromRpc = async (input: {
   const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
   const isPublicRpc = isOfficialSolanaPublicRpcUrl(rpcUrl);
   const walletBatchLimit = isPublicRpc ? PUBLIC_MAINNET_RPC_BATCH_WALLET_LIMIT : DEFAULT_RPC_BATCH_WALLET_LIMIT;
-  const entryChunks = chunkEntries(input.entries, walletBatchLimit);
-  const wallets: ManagedWalletContentsWallet[] = [];
+  const cachedWallets = new Map<string, ManagedWalletContentsWallet>();
+  const uncachedEntries: ManagedWalletLibraryEntry[] = [];
+  for (const entry of input.entries) {
+    const cachedWallet = getCachedWalletBalance({
+      rpcUrl,
+      walletAddress: entry.address,
+      includeZeroBalances: input.includeZeroBalances,
+    });
+    if (cachedWallet) {
+      cachedWallets.set(entry.walletId, cachedWallet);
+      continue;
+    }
+    uncachedEntries.push(entry);
+  }
+
+  const entryChunks = chunkEntries(uncachedEntries, walletBatchLimit);
+  const fetchedWallets = new Map<string, ManagedWalletContentsWallet>();
   const walletErrors: ManagedWalletContentsWalletError[] = [];
   let usedSequentialFallback = false;
 
@@ -1398,7 +1567,23 @@ const loadWalletContentsFromRpc = async (input: {
         includeZeroBalances: input.includeZeroBalances,
         lane: input.lane,
       });
-      wallets.push(...chunkWallets);
+      for (const wallet of chunkWallets.wallets) {
+        fetchedWallets.set(wallet.walletId, wallet);
+      }
+      if (chunkWallets.failedEntries.length > 0) {
+        // eslint-disable-next-line no-await-in-loop
+        const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
+          entries: chunkWallets.failedEntries,
+          rpcUrl,
+          includeZeroBalances: input.includeZeroBalances,
+          lane: input.lane,
+        });
+        usedSequentialFallback = true;
+        for (const wallet of sequentialOutcome.wallets) {
+          fetchedWallets.set(wallet.walletId, wallet);
+        }
+        walletErrors.push(...sequentialOutcome.walletErrors);
+      }
     } catch (error) {
       if (!isRetryableRpcError(error)) {
         throw error;
@@ -1412,10 +1597,26 @@ const loadWalletContentsFromRpc = async (input: {
         lane: input.lane,
       });
       usedSequentialFallback = true;
-      wallets.push(...sequentialOutcome.wallets);
+      for (const wallet of sequentialOutcome.wallets) {
+        fetchedWallets.set(wallet.walletId, wallet);
+      }
       walletErrors.push(...sequentialOutcome.walletErrors);
     }
   }
+
+  for (const wallet of fetchedWallets.values()) {
+    setCachedWalletBalance({
+      rpcUrl,
+      walletAddress: wallet.address,
+      includeZeroBalances: input.includeZeroBalances,
+      wallet,
+    });
+  }
+
+  const wallets = input.entries
+    .map((entry) => fetchedWallets.get(entry.walletId) ?? cachedWallets.get(entry.walletId))
+    .filter((wallet): wallet is ManagedWalletContentsWallet => wallet !== undefined)
+    .map(cloneWalletContentsWallet);
 
   return {
     wallets,
@@ -1431,6 +1632,7 @@ const buildManagedWalletContentsPayload = (input: {
   includeZeroBalances: boolean;
   dataSource: ManagedWalletContentsDataSource;
   loadOutcome: ManagedWalletContentsLoadOutcome;
+  warnings?: WalletContentWarning[];
 }): ManagedWalletContentsOutput => {
   const wallets = input.loadOutcome.wallets;
   const totalBalanceLamports = wallets.reduce((sum, wallet) => sum + BigInt(wallet.balanceLamports), 0n);
@@ -1438,6 +1640,7 @@ const buildManagedWalletContentsPayload = (input: {
 
   return {
     instanceId: input.instanceId,
+    snapshotAt: Date.now(),
     walletCount: wallets.length,
     discoveredVia: "wallet-library",
     walletLibraryFilePath: input.walletLibraryFilePath,
@@ -1445,6 +1648,7 @@ const buildManagedWalletContentsPayload = (input: {
     includeZeroBalances: input.includeZeroBalances,
     dataSource: input.dataSource,
     partial: input.loadOutcome.walletErrors.length > 0,
+    warnings: input.warnings ?? [],
     wallets,
     walletErrors: input.loadOutcome.walletErrors,
     totalBalanceLamports: totalBalanceLamports.toString(),
@@ -1456,6 +1660,210 @@ const buildManagedWalletContentsPayload = (input: {
     ),
     tokenTotals: aggregatedTokenTotals,
   };
+};
+
+const buildWalletContentWarnings = (input: {
+  usedSequentialFallback: boolean;
+  walletErrors: ManagedWalletContentsWalletError[];
+}): WalletContentWarning[] => {
+  const warnings: WalletContentWarning[] = [];
+  if (input.usedSequentialFallback) {
+    warnings.push({
+      code: "RPC_SEQUENTIAL_FALLBACK",
+      message: "Some wallet reads fell back to sequential RPC requests after batch throttling or timeout.",
+    });
+  }
+  if (input.walletErrors.length > 0) {
+    warnings.push({
+      code: "PARTIAL_WALLET_RESULTS",
+      message: `Wallet contents were only partially available for ${input.walletErrors.length} wallet${input.walletErrors.length === 1 ? "" : "s"}.`,
+    });
+  }
+  return warnings;
+};
+
+const classifySimpleWalletContentsRead = (input: {
+  ctx: ActionContext;
+  walletCount: number;
+  hasCustomLoader: boolean;
+}): "inline" | "queued" => {
+  if (input.walletCount === 0 || input.hasCustomLoader || input.ctx.jobMeta || !input.ctx.enqueueJob || !input.ctx.stateStore) {
+    return "inline";
+  }
+  return input.walletCount > INLINE_SIMPLE_WALLET_LIMIT ? "queued" : "inline";
+};
+
+const loadPreferredRpcUrl = async (input: {
+  instanceId: string;
+  ctx: ActionContext;
+  hasCustomLoader: boolean;
+}): Promise<string | undefined> => {
+  if (input.hasCustomLoader) {
+    return input.ctx.rpcUrl;
+  }
+
+  const heliusConfig = await resolveHeliusRpcConfig({
+    activeInstanceId: input.instanceId,
+    rpcUrl: input.ctx.rpcUrl,
+  });
+  return heliusConfig.rpcUrl ?? input.ctx.rpcUrl;
+};
+
+const executeWalletContentsRpcOnly = async (input: {
+  ctx: ActionContext;
+  actionInput: GetWalletContentsInput;
+  deps: GetManagedWalletContentsDeps;
+}): Promise<ReturnType<Action<GetWalletContentsInput, ManagedWalletContentsActionData>["execute"]>> => {
+  const startedAt = Date.now();
+  const idempotencyKey = crypto.randomUUID();
+  const instanceId = resolveInstanceId(input.actionInput.instanceId);
+
+  if (!instanceId) {
+    return {
+      ok: false,
+      retryable: false,
+      error: "instanceId is required (input.instanceId or TRENCHCLAW_ACTIVE_INSTANCE_ID)",
+      code: "INSTANCE_ID_REQUIRED",
+      durationMs: Date.now() - startedAt,
+      timestamp: Date.now(),
+      idempotencyKey,
+    };
+  }
+
+  try {
+    const keypairRootPath = resolveWalletKeypairRootPathForInstanceId(instanceId);
+    const walletLibraryFilePath = path.join(keypairRootPath, DEFAULT_WALLET_LIBRARY_FILE_NAME);
+    const walletLibrary = await readManagedWalletLibraryEntries({
+      filePath: walletLibraryFilePath,
+      allowMissing: true,
+    });
+    const filteredEntries = await resolveWalletEntries(
+      walletLibrary.entries,
+      input.actionInput as GetManagedWalletContentsInput,
+    );
+    const requestLane = getWalletContentsRequestLane(input.ctx);
+    const requestKey = buildWalletScanRequestKey({
+      instanceId,
+      includeZeroBalances: input.actionInput.includeZeroBalances,
+      useHeliusDas: false,
+      entries: filteredEntries,
+    });
+    const readMode = classifySimpleWalletContentsRead({
+      ctx: input.ctx,
+      walletCount: filteredEntries.length,
+      hasCustomLoader: Boolean(input.deps.loadWalletContents),
+    });
+
+    if (readMode === "queued") {
+      const reusableJob = resolveReusableWalletScanJob(input.ctx, requestKey, WALLET_CONTENTS_SCAN_ROUTINE_NAME);
+      if (reusableJob?.status === "completed" && reusableJob.job.lastResult?.ok === true && reusableJob.job.lastResult.data) {
+        return {
+          ok: true,
+          retryable: false,
+          data: reusableJob.job.lastResult.data as ManagedWalletContentsActionData,
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      }
+      if (reusableJob) {
+        return {
+          ok: true,
+          retryable: false,
+          data: createQueuedWalletContentsPayload(
+            reusableJob.job,
+            requestKey,
+            `Wallet scan job #${reusableJob.job.serialNumber ?? reusableJob.job.id} is already ${reusableJob.job.status} in the background.`,
+          ),
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      }
+
+      const scanJob = await input.ctx.enqueueJob?.({
+        botId: requestKey,
+        routineName: WALLET_CONTENTS_SCAN_ROUTINE_NAME,
+        totalCycles: 1,
+        config: {
+          requestKey,
+          summaryDepth: "full",
+          input: {
+            ...input.actionInput,
+            instanceId,
+          },
+        },
+      });
+
+      if (scanJob) {
+        return {
+          ok: true,
+          retryable: false,
+          data: createQueuedWalletContentsPayload(
+            scanJob,
+            requestKey,
+            `Queued wallet scan job #${scanJob.serialNumber ?? scanJob.id} because this wallet read is large enough to run more safely in the background.`,
+          ),
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      }
+    }
+
+    const preferredRpcUrl = await loadPreferredRpcUrl({
+      instanceId,
+      ctx: input.ctx,
+      hasCustomLoader: Boolean(input.deps.loadWalletContents),
+    });
+    const loadOutcome = input.deps.loadWalletContents
+      ? await loadWalletsWithLoader(filteredEntries, input.deps.loadWalletContents, {
+          rpcUrl: preferredRpcUrl,
+          includeZeroBalances: input.actionInput.includeZeroBalances,
+        })
+      : await loadWalletContentsFromRpc({
+          entries: filteredEntries,
+          rpcUrl: preferredRpcUrl,
+          includeZeroBalances: input.actionInput.includeZeroBalances,
+          lane: requestLane,
+        });
+
+    const wallets = loadOutcome.wallets;
+    if (wallets.length === 0 && loadOutcome.walletErrors.length > 0) {
+      throw new Error(loadOutcome.walletErrors[0]?.error ?? "Managed-wallet RPC reads failed.");
+    }
+
+    return {
+      ok: true,
+      retryable: false,
+      data: buildManagedWalletContentsPayload({
+        instanceId,
+        walletLibraryFilePath,
+        invalidLibraryLineCount: walletLibrary.invalidLineCount,
+        includeZeroBalances: input.actionInput.includeZeroBalances,
+        dataSource: loadOutcome.usedSequentialFallback ? "rpc-sequential" : "rpc-batch",
+        loadOutcome,
+        warnings: buildWalletContentWarnings({
+          usedSequentialFallback: loadOutcome.usedSequentialFallback,
+          walletErrors: loadOutcome.walletErrors,
+        }),
+      }),
+      durationMs: Date.now() - startedAt,
+      timestamp: Date.now(),
+      idempotencyKey,
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      ok: false,
+      retryable: isRetryableRpcError(error),
+      error: message,
+      code: isRetryableRpcError(error) ? "GET_WALLET_CONTENTS_RATE_LIMITED" : "GET_WALLET_CONTENTS_FAILED",
+      durationMs: Date.now() - startedAt,
+      timestamp: Date.now(),
+      idempotencyKey,
+    };
+  }
 };
 
 export const createGetManagedWalletContentsAction = (
@@ -1648,3 +2056,27 @@ export const createGetManagedWalletContentsAction = (
 };
 
 export const getManagedWalletContentsAction = createGetManagedWalletContentsAction();
+
+export const createGetWalletContentsAction = (
+  deps: GetManagedWalletContentsDeps = {},
+): Action<GetWalletContentsInput, ManagedWalletContentsActionData> => {
+  return {
+    name: "getWalletContents",
+    category: "data-based",
+    subcategory: "read-only",
+    inputSchema: getWalletContentsInputSchema,
+    async execute(ctx, input) {
+      return await executeWalletContentsRpcOnly({
+        ctx,
+        actionInput: input,
+        deps,
+      });
+    },
+  };
+};
+
+export const getWalletContentsAction = createGetWalletContentsAction();
+
+export const resetWalletContentsCachesForTests = (): void => {
+  walletBalanceCache.clear();
+};

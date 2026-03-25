@@ -12,16 +12,16 @@ import {
   parseUpdateVaultRequest,
   parseUpsertSecretRequest,
 } from "./parsers";
-import { getAiSettings, updateAiSettings } from "./domains/ai/settings";
+import { getAiSettings, updateAiSettings } from "./domains/ai-settings";
 import { deleteConversation, streamChat, getConversationMessages, getConversations } from "./domains/chat";
 import { createInstance, listInstances, signInInstance, signOutInstance } from "./domains/instances";
-import { runLlmCheck } from "./domains/ai/llm-check";
-import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime/overview";
+import { runLlmCheck } from "./domains/llm-check";
+import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-overview";
 import { getSolPrice } from "../market/sol-price";
 import { getTracker, updateTracker } from "./domains/tracker";
-import { getTradingSettings, updateTradingSettings } from "./domains/settings/trading";
-import { getWakeupSettings, updateWakeupSettings } from "./domains/settings/wakeup";
-import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault/secrets";
+import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
+import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeup-settings";
+import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
 const RUNTIME_APP_API_BASE_PATH = "/v1/app";
@@ -79,7 +79,7 @@ const extractConversationRoute = (
   return null;
 };
 
-export const createRuntimeTransportRequestHandler = (context: RuntimeTransportContext): ((request: Request) => Promise<Response>) => {
+export const createRuntimeApiRequestHandler = (context: RuntimeTransportContext): ((request: Request) => Promise<Response>) => {
   return async (request: Request) => {
     const verboseApiLogs = process.env.TRENCHCLAW_API_LOGS === "1";
     const url = new URL(request.url);
@@ -122,7 +122,10 @@ export const createRuntimeTransportRequestHandler = (context: RuntimeTransportCo
       }));
     }
 
-    if (request.method === "POST" && url.pathname === "/v1/chat/stream") {
+    if (
+      request.method === "POST"
+      && (url.pathname === "/v1/chat/stream" || matchesAppRoute(url.pathname, "/chat/stream"))
+    ) {
       const payload = await parseUiChatRequest(request);
       if (!payload) {
         return logResponse(jsonWithCors(toErrorPayloadV1("invalid_payload", "Invalid chat payload"), 400));
@@ -441,4 +444,3 @@ export const createRuntimeTransportRequestHandler = (context: RuntimeTransportCo
   };
 };
 
-export const createAppHandler = createRuntimeTransportRequestHandler;

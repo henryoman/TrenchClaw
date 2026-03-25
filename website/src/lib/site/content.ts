@@ -18,8 +18,8 @@ export const installTargets = [
 export const docsPrerequisiteBootstrap = {
   label: 'Prerequisite installer',
   description: 'Run this if you want TrenchClaw to install or update the optional external CLIs used by some workflows.',
-  command: 'curl -fsSL https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-required-tools.sh | sh',
-  note: 'Today this helper manages Solana CLI and Helius CLI. For Helius it prefers Bun, then pnpm, and prints manual install commands if none are available.',
+  command: 'curl -fsSL https://trenchclaw.vercel.app/install-tools | sh',
+  note: 'Today this helper manages Solana CLI and Helius CLI. For Helius it currently requires Node.js on PATH, then prefers Bun, then pnpm, and prints manual install commands if none are available.',
 } as const;
 
 export const docsPrerequisites = [

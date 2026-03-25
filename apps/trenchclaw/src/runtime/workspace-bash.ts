@@ -1,5 +1,6 @@
+import { existsSync } from "node:fs";
 import type { Dirent } from "node:fs";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readlink, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createBashTool } from "bash-tool";
 import { tool } from "ai";
@@ -21,7 +22,7 @@ import {
   resolveInstanceToolBinRoot,
 } from "./instance/paths";
 import { RUNTIME_INSTANCE_ROOT } from "./runtime-paths";
-import { getModelToolEnvelopeSchema, MACHINE_TOOL_ENVELOPE_NOTE } from "./chat/model-tool-language";
+import { getModelToolEnvelopeSchema } from "../actions/model";
 
 interface WorkspaceBashOptions {
   workspaceRootDirectory: string;
@@ -33,6 +34,10 @@ interface WorkspaceBashOptions {
   actor?: "agent" | "user" | "system";
   commandTimeoutMs?: number;
   allowMutatingCommands?: boolean;
+  toolMetadataByName?: Partial<Record<string, {
+    description?: string;
+    inputExamples?: Array<{ input: unknown }>;
+  }>>;
 }
 
 const DEFAULT_COMMAND_TIMEOUT_MS = 30_000;
@@ -48,6 +53,7 @@ const SAFE_SYSTEM_PATH_ENTRIES = [
   "/usr/sbin",
   "/sbin",
 ].filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
+const BRIDGED_WORKSPACE_COMMANDS = ["solana", "solana-keygen", "helius", "dune"] as const;
 
 export const WORKSPACE_LAYOUT_DIRECTORIES = INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES;
 
@@ -102,6 +108,11 @@ const workspaceWriteFileInputSchema = z.object({
   path: z.string().trim().min(1),
   content: z.string(),
 });
+
+const unwrapLegacyParamsEnvelope = <T>(rawInput: unknown): T =>
+  ((rawInput !== null && typeof rawInput === "object" && "params" in rawInput)
+    ? (rawInput as { params: T }).params
+    : rawInput) as T;
 
 const WORKSPACE_BASH_MODE_VALUES = [
   "shell",
@@ -365,6 +376,49 @@ const buildSanitizedShellEnvironment = (input: {
   };
 };
 
+const resolveHostCommandPath = (commandName: string): string | null => {
+  const pathEntries = (process.env.PATH ?? "")
+    .split(path.delimiter)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+
+  for (const pathEntry of pathEntries) {
+    const candidatePath = path.join(pathEntry, commandName);
+    if (existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+
+  return Bun.which(commandName) ?? null;
+};
+
+const syncWorkspaceToolBinCommands = async (toolBinDirectory: string): Promise<void> => {
+  await Promise.all(
+    BRIDGED_WORKSPACE_COMMANDS.map(async (commandName) => {
+      const detectedCommandPath = resolveHostCommandPath(commandName);
+      const linkPath = path.join(toolBinDirectory, commandName);
+
+      if (!detectedCommandPath) {
+        await rm(linkPath, { force: true });
+        return;
+      }
+
+      const resolvedCommandPath = path.resolve(detectedCommandPath);
+      try {
+        const existingTarget = await readlink(linkPath);
+        if (path.resolve(path.dirname(linkPath), existingTarget) === resolvedCommandPath) {
+          return;
+        }
+      } catch {
+        // No usable symlink exists yet; replace whatever is there.
+      }
+
+      await rm(linkPath, { force: true, recursive: true });
+      await symlink(resolvedCommandPath, linkPath);
+    }),
+  );
+};
+
 class HostWorkspaceSandbox {
   private readonly bashRoot: string;
   private readonly readRoot: string;
@@ -417,6 +471,7 @@ class HostWorkspaceSandbox {
       mkdir(this.tmpDirectory, { recursive: true }),
       mkdir(this.toolBinDirectory, { recursive: true }),
     ]);
+    await syncWorkspaceToolBinCommands(this.toolBinDirectory);
     const child = Bun.spawn([BASH_EXECUTABLE, "--noprofile", "--norc", "-lc", sanitizedCommand], {
       cwd: this.bashRoot,
       stdout: "pipe",
@@ -548,6 +603,12 @@ export const WORKSPACE_BASH_TOOL_NAME = "workspaceBash";
 export const WORKSPACE_LIST_DIRECTORY_TOOL_NAME = "workspaceListDirectory";
 export const WORKSPACE_READ_FILE_TOOL_NAME = "workspaceReadFile";
 export const WORKSPACE_WRITE_FILE_TOOL_NAME = "workspaceWriteFile";
+export const WORKSPACE_TOOL_NAMES = [
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
+] as const;
 
 export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): Promise<Record<string, unknown>> => {
   const bashRootDirectory = path.resolve(options.workspaceRootDirectory);
@@ -583,55 +644,83 @@ export const createWorkspaceBashTools = async (options: WorkspaceBashOptions): P
 
   const rawBashTool = toolkit.tools.bash as { inputSchema: unknown; execute: (payload: unknown) => Promise<unknown> };
   const writableSession = (options.allowMutatingCommands ?? DEFAULT_ALLOW_MUTATING_COMMANDS) ? "writable" : "read-only";
+  const toolMetadataByName = options.toolMetadataByName ?? {};
 
   return {
     [WORKSPACE_LIST_DIRECTORY_TOOL_NAME]: tool({
       description:
-        `List files and folders from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. ` +
-        "Prefer this first for browsing the available runtime workspace paths before calling workspaceReadFile. " +
-        "Returns exact workspace-relative paths that can be passed directly into workspaceReadFile. " +
-        `Protected vault and keypair paths are omitted. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+        toolMetadataByName[WORKSPACE_LIST_DIRECTORY_TOOL_NAME]?.description
+        ?? (
+          `List files and folders from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. `
+          + "Prefer this first for browsing the available runtime workspace paths before calling workspaceReadFile. "
+          + "Returns exact workspace-relative paths that can be passed directly into workspaceReadFile. "
+          + "Protected vault and keypair paths are omitted."
+        ),
       inputSchema: getModelToolEnvelopeSchema(
         WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
         listWorkspaceDirectoryInputSchema,
       ) as never,
-      execute: async ({ params }) =>
-        sandbox.listDirectory({
-          directoryPath: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).path,
-          depth: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).depth,
-          limit: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).limit,
-          includeHidden: (params as z.output<typeof listWorkspaceDirectoryInputSchema>).includeHidden,
-        }),
+      ...(toolMetadataByName[WORKSPACE_LIST_DIRECTORY_TOOL_NAME]?.inputExamples
+        ? { inputExamples: toolMetadataByName[WORKSPACE_LIST_DIRECTORY_TOOL_NAME]?.inputExamples }
+        : {}),
+      execute: async (rawInput) => {
+        const input = unwrapLegacyParamsEnvelope<z.output<typeof listWorkspaceDirectoryInputSchema>>(rawInput);
+        return await sandbox.listDirectory({
+          directoryPath: input.path,
+          depth: input.depth,
+          limit: input.limit,
+          includeHidden: input.includeHidden,
+        });
+      },
     }),
     [WORKSPACE_BASH_TOOL_NAME]: tool({
       description:
-        `Run policy-constrained shell commands from the runtime workspace root ${bashRootDirectory}. This session is ${writableSession}. ` +
-        `Always call this with an explicit command ` +
-        "`type` inside `params`, such as `shell`, `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, or `http_get`. " +
-        `This is not a true isolated VM sandbox. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+        toolMetadataByName[WORKSPACE_BASH_TOOL_NAME]?.description
+        ?? (
+          `Run policy-constrained shell commands from the runtime workspace root ${bashRootDirectory}. This session is ${writableSession}. `
+          + "Always call this with an explicit top-level `type`, such as `shell`, `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, or `http_get`. "
+          + "This is not a true isolated VM sandbox."
+        ),
       inputSchema: getModelToolEnvelopeSchema(WORKSPACE_BASH_TOOL_NAME, workspaceBashInputSchema) as never,
-      execute: async ({ params }) => {
-        const input = workspaceBashInputSchema.parse(params);
+      ...(toolMetadataByName[WORKSPACE_BASH_TOOL_NAME]?.inputExamples
+        ? { inputExamples: toolMetadataByName[WORKSPACE_BASH_TOOL_NAME]?.inputExamples }
+        : {}),
+      execute: async (rawInput) => {
+        const input = workspaceBashInputSchema.parse(unwrapLegacyParamsEnvelope(rawInput));
         const command = resolveWorkspaceBashCommand(input);
         return rawBashTool.execute({ command });
       },
     }),
     [WORKSPACE_READ_FILE_TOOL_NAME]: tool({
       description:
-        `Read an exact file from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. ` +
-        "Prefer this when you already know the runtime workspace file path and need notes, configs, generated artifacts, or other runtime workspace contents. " +
-        `Protected vault and keypair files are blocked from direct reads. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+        toolMetadataByName[WORKSPACE_READ_FILE_TOOL_NAME]?.description
+        ?? (
+          `Read an exact file from the runtime workspace rooted at ${path.resolve(options.readRootDirectory ?? options.workspaceRootDirectory)}. `
+          + "Prefer this when you already know the runtime workspace file path and need notes, configs, generated artifacts, or other runtime workspace contents. "
+          + "Protected vault and keypair files are blocked from direct reads."
+        ),
       inputSchema: getModelToolEnvelopeSchema(WORKSPACE_READ_FILE_TOOL_NAME, workspaceReadFileInputSchema) as never,
-      execute: async ({ params }) =>
-        ({ content: await sandbox.readFile((params as z.output<typeof workspaceReadFileInputSchema>).path) }),
+      ...(toolMetadataByName[WORKSPACE_READ_FILE_TOOL_NAME]?.inputExamples
+        ? { inputExamples: toolMetadataByName[WORKSPACE_READ_FILE_TOOL_NAME]?.inputExamples }
+        : {}),
+      execute: async (rawInput) => {
+        const input = unwrapLegacyParamsEnvelope<z.output<typeof workspaceReadFileInputSchema>>(rawInput);
+        return { content: await sandbox.readFile(input.path) };
+      },
     }),
     [WORKSPACE_WRITE_FILE_TOOL_NAME]: tool({
       description:
-        `Create or replace a file inside the runtime workspace root ${writeRootDirectory}. ` +
-        `Prefer this over mutating shell commands for notes, scratch files, output, and other runtime workspace artifacts. ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+        toolMetadataByName[WORKSPACE_WRITE_FILE_TOOL_NAME]?.description
+        ?? (
+          `Create or replace a file inside the runtime workspace root ${writeRootDirectory}. `
+          + "Prefer this over mutating shell commands for notes, scratch files, output, and other runtime workspace artifacts."
+        ),
       inputSchema: getModelToolEnvelopeSchema(WORKSPACE_WRITE_FILE_TOOL_NAME, workspaceWriteFileInputSchema) as never,
-      execute: async ({ params }) => {
-        const parsed = params as z.output<typeof workspaceWriteFileInputSchema>;
+      ...(toolMetadataByName[WORKSPACE_WRITE_FILE_TOOL_NAME]?.inputExamples
+        ? { inputExamples: toolMetadataByName[WORKSPACE_WRITE_FILE_TOOL_NAME]?.inputExamples }
+        : {}),
+      execute: async (rawInput) => {
+        const parsed = unwrapLegacyParamsEnvelope<z.output<typeof workspaceWriteFileInputSchema>>(rawInput);
         await sandbox.writeFiles([{ path: parsed.path, content: parsed.content }]);
         return { ok: true, path: parsed.path };
       },

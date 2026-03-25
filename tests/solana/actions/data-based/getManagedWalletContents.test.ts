@@ -4,7 +4,11 @@ import path from "node:path";
 
 import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
-import { createGetManagedWalletContentsAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getManagedWalletContents";
+import {
+  createGetManagedWalletContentsAction,
+  createGetWalletContentsAction,
+  resetWalletContentsCachesForTests,
+} from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getManagedWalletContents";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
@@ -13,6 +17,7 @@ const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
 const previousFetch = globalThis.fetch;
 
 afterEach(async () => {
+  resetWalletContentsCachesForTests();
   for (const directoryPath of tempInstanceDirectories.splice(0)) {
     await rm(directoryPath, { recursive: true, force: true }).catch(() => {});
   }
@@ -457,7 +462,7 @@ describe("getManagedWalletContentsAction", () => {
           headers: { "content-type": "application/json" },
         },
       );
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const action = createGetManagedWalletContentsAction();
     const result = await action.execute(
@@ -649,7 +654,7 @@ describe("getManagedWalletContentsAction", () => {
           headers: { "content-type": "application/json" },
         },
       );
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const action = createGetManagedWalletContentsAction();
     const result = await action.execute(
@@ -832,7 +837,7 @@ describe("getManagedWalletContentsAction", () => {
         status: 200,
         headers: { "content-type": "application/json" },
       });
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const action = createGetManagedWalletContentsAction();
     const result = await action.execute(
@@ -924,7 +929,7 @@ describe("getManagedWalletContentsAction", () => {
           headers: { "content-type": "application/json" },
         },
       );
-    }) as typeof fetch;
+    }) as unknown as typeof fetch;
 
     const action = createGetManagedWalletContentsAction();
     const result = await action.execute(
@@ -1149,4 +1154,392 @@ describe("getManagedWalletContentsAction", () => {
       }),
     ]);
   }, 15000);
+
+  test("loads selected wallets through the simple getWalletContents action", async () => {
+    const instanceId = "81";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      [
+        JSON.stringify({
+          walletId: "core-wallets.wallet_000",
+          walletGroup: "core-wallets",
+          walletName: "wallet_000",
+          address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+        }),
+        JSON.stringify({
+          walletId: "core-wallets.wallet_001",
+          walletGroup: "core-wallets",
+          walletName: "wallet_001",
+          address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.label.json"),
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let seenRpcBody: unknown;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      seenRpcBody = init?.body ? JSON.parse(String(init.body)) : null;
+      return new Response(
+        JSON.stringify([
+          {
+            jsonrpc: "2.0",
+            id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance",
+            result: { value: 123_000_000 },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:spl",
+            result: { value: [] },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:token2022",
+            result: { value: [] },
+          },
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+
+    const action = createGetWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        wallets: ["wallet_001"],
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(seenRpcBody).toEqual([
+      expect.objectContaining({
+        id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance",
+      }),
+      expect.objectContaining({
+        id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:spl",
+      }),
+      expect.objectContaining({
+        id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:token2022",
+      }),
+    ]);
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      walletCount: number;
+      wallets: Array<{ walletName: string; balanceLamports: string }>;
+    };
+    expect(payload.walletCount).toBe(1);
+    expect(payload.wallets).toEqual([
+      expect.objectContaining({
+        walletName: "wallet_001",
+        balanceLamports: "123000000",
+      }),
+    ]);
+  });
+
+  test("prefers configured Helius RPC for the simple getWalletContents action", async () => {
+    const instanceId = "82";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      JSON.stringify({
+        walletId: "core-wallets.wallet_000",
+        walletGroup: "core-wallets",
+        walletName: "wallet_000",
+        address: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1",
+        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+      }),
+      "utf8",
+    );
+    await mkdir(path.join(instanceDirectory, "secrets"), { recursive: true });
+    await writeFile(
+      path.join(instanceDirectory, "secrets", "vault.json"),
+      `${JSON.stringify({
+        rpc: {
+          default: {
+            "provider-id": "helius",
+            "api-key": "test-helius-key",
+            "http-url": "https://mainnet.helius-rpc.com/?api-key=test-helius-key",
+          },
+        },
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let seenUrl = "";
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      seenUrl = typeof input === "string" ? input : input.toString();
+      return new Response(
+        JSON.stringify([
+          {
+            jsonrpc: "2.0",
+            id: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:balance",
+            result: { value: 2_000_000_000 },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:spl",
+            result: { value: [] },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:token2022",
+            result: { value: [] },
+          },
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }) as typeof fetch;
+
+    const action = createGetWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        wallets: ["wallet_000"],
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(seenUrl).toBe("https://mainnet.helius-rpc.com/?api-key=test-helius-key");
+  });
+
+  test("reuses cached wallet balances for repeated getWalletContents reads", async () => {
+    const instanceId = "83";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      JSON.stringify({
+        walletId: "core-wallets.wallet_000",
+        walletGroup: "core-wallets",
+        walletName: "wallet_000",
+        address: "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF",
+        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+      }),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let requestCount = 0;
+    globalThis.fetch = (async () => {
+      requestCount += 1;
+      return new Response(
+        JSON.stringify([
+          {
+            jsonrpc: "2.0",
+            id: "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF:balance",
+            result: { value: 500_000_000 },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF:spl",
+            result: { value: [] },
+          },
+          {
+            jsonrpc: "2.0",
+            id: "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF:token2022",
+            result: { value: [] },
+          },
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }) as unknown as typeof fetch;
+
+    const action = createGetWalletContentsAction();
+    const firstResult = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        wallets: ["wallet_000"],
+        includeZeroBalances: false,
+      },
+    );
+    const secondResult = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        wallets: ["wallet_000"],
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(firstResult.ok).toBe(true);
+    expect(secondResult.ok).toBe(true);
+    expect(requestCount).toBe(1);
+  });
+
+  test("falls back only the failed wallet chunk entries for getWalletContents", async () => {
+    const instanceId = "84";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      [
+        JSON.stringify({
+          walletId: "core-wallets.wallet_000",
+          walletGroup: "core-wallets",
+          walletName: "wallet_000",
+          address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+        }),
+        JSON.stringify({
+          walletId: "core-wallets.wallet_001",
+          walletGroup: "core-wallets",
+          walletName: "wallet_001",
+          address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+          keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.json"),
+          walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_001.label.json"),
+        }),
+      ].join("\n"),
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    let requestCount = 0;
+    globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) as Array<{ id: string }> : [];
+      requestCount += 1;
+      if (body.length > 3) {
+        return new Response(
+          JSON.stringify([
+            {
+              jsonrpc: "2.0",
+              id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance",
+              result: { value: 40_010_000 },
+            },
+            {
+              jsonrpc: "2.0",
+              id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:spl",
+              result: { value: [] },
+            },
+            {
+              jsonrpc: "2.0",
+              id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:token2022",
+              result: { value: [] },
+            },
+            {
+              jsonrpc: "2.0",
+              id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:spl",
+              error: { code: 429, message: "Too many requests" },
+            },
+            {
+              jsonrpc: "2.0",
+              id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance",
+              result: { value: 11_000_000 },
+            },
+            {
+              jsonrpc: "2.0",
+              id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:token2022",
+              result: { value: [] },
+            },
+          ]),
+          {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          },
+        );
+      }
+
+      const request = body[0] as { id: string };
+      const responses: Record<string, unknown> = {
+        "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance": {
+          jsonrpc: "2.0",
+          id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance",
+          result: { value: 11_000_000 },
+        },
+        "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:spl": {
+          jsonrpc: "2.0",
+          id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:spl",
+          result: { value: [] },
+        },
+        "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:token2022": {
+          jsonrpc: "2.0",
+          id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:token2022",
+          result: { value: [] },
+        },
+      };
+
+      return new Response(JSON.stringify([responses[request.id]]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }) as typeof fetch;
+
+    const action = createGetWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(requestCount).toBeGreaterThan(1);
+    const payload = result.data as {
+      dataSource: string;
+      warnings: Array<{ code: string }>;
+      wallets: Array<{ walletName: string; balanceLamports: string }>;
+    };
+    expect(payload.dataSource).toBe("rpc-sequential");
+    expect(payload.warnings).toEqual([
+      expect.objectContaining({
+        code: "RPC_SEQUENTIAL_FALLBACK",
+      }),
+    ]);
+    expect(payload.wallets).toEqual([
+      expect.objectContaining({
+        walletName: "wallet_000",
+        balanceLamports: "40010000",
+      }),
+      expect.objectContaining({
+        walletName: "wallet_001",
+        balanceLamports: "11000000",
+      }),
+    ]);
+  });
 });

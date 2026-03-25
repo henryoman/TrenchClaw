@@ -26,7 +26,7 @@ const buildAssistantResponseActivitySummary = (context: RuntimeTransportContext,
       return "Assistant response finished";
     }
 
-    const toolPartCount = countToolUiParts(message.metadata?.uiParts);
+    const toolPartCount = countToolUiParts(message.parts);
     if (toolPartCount > 0) {
       return `Assistant response finished (${toolPartCount} tool update${toolPartCount === 1 ? "" : "s"})`;
     }
@@ -113,9 +113,8 @@ export const getConversationMessages = (
     id: message.id,
     role: message.role,
     content: message.content,
-    parts: Array.isArray(message.metadata?.uiParts)
-      ? (message.metadata.uiParts as Array<Record<string, unknown>>)
-      : undefined,
+    parts: message.parts,
+    sequence: message.sequence,
     createdAt: message.createdAt,
   }));
 

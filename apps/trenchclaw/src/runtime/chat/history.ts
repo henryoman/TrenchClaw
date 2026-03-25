@@ -22,7 +22,7 @@ const clampPositiveInt = (value: number | undefined, fallback: number): number =
 };
 
 const compareChatMessages = (left: ChatMessageState, right: ChatMessageState): number =>
-  left.createdAt - right.createdAt || left.id.localeCompare(right.id);
+  left.sequence - right.sequence || left.createdAt - right.createdAt || left.id.localeCompare(right.id);
 
 const normalizePartForFingerprint = (part: unknown): unknown => {
   if (!part || typeof part !== "object") {
@@ -55,10 +55,9 @@ export const isReplayableUiMessage = (message: UIMessage): boolean =>
   });
 
 export const replayChatMessageState = (message: ChatMessageState): UIMessage => {
-  const storedUiParts = message.metadata?.uiParts;
   const parts =
-    Array.isArray(storedUiParts)
-      ? (storedUiParts as UIMessage["parts"])
+    Array.isArray(message.parts) && message.parts.length > 0
+      ? (message.parts as UIMessage["parts"])
       : message.content.trim().length > 0
         ? ([{ type: "text", text: message.content }] as UIMessage["parts"])
         : ([] as UIMessage["parts"]);

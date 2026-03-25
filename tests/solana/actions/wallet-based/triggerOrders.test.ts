@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 
 import { InMemoryStateStore, createActionContext } from "../../../../apps/trenchclaw/src/ai";
 import {
@@ -6,6 +6,51 @@ import {
 } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/createOrder";
 import { getTriggerOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/getOrders";
 import { triggerCancelOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/cancelOrders";
+
+const MUTABLE_ENV_KEYS = [
+  "TRENCHCLAW_VAULT_FILE",
+  "TRENCHCLAW_VAULT_TEMPLATE_FILE",
+] as const;
+const initialEnv = Object.fromEntries(MUTABLE_ENV_KEYS.map((key) => [key, process.env[key]]));
+const createdFiles: string[] = [];
+const initialFetch = globalThis.fetch;
+
+const writeVaultJson = async (apiKey: string): Promise<string> => {
+  const target = `/tmp/trenchclaw-trigger-orders-vault-${crypto.randomUUID()}.json`;
+  await Bun.write(
+    target,
+    JSON.stringify(
+      {
+        integrations: {
+          jupiter: {
+            "api-key": apiKey,
+          },
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  createdFiles.push(target);
+  return target;
+};
+
+afterEach(async () => {
+  globalThis.fetch = initialFetch;
+
+  for (const key of MUTABLE_ENV_KEYS) {
+    const initial = initialEnv[key];
+    if (initial === undefined) {
+      delete process.env[key];
+      continue;
+    }
+    process.env[key] = initial;
+  }
+
+  for (const filePath of createdFiles.splice(0)) {
+    await Bun.$`rm -f ${filePath}`.quiet();
+  }
+});
 
 describe("trigger order actions", () => {
   test("creates an exact-price trigger order with derived making and taking amounts", async () => {
@@ -334,6 +379,38 @@ describe("trigger order actions", () => {
       return;
     }
     expect(result.error).toContain("Pass buyPrice explicitly");
+  });
+
+  test("lazily resolves the trigger adapter from the shared Jupiter vault key", async () => {
+    process.env.TRENCHCLAW_VAULT_FILE = await writeVaultJson("vault-trigger-key");
+    globalThis.fetch = (async (url: URL | RequestInfo) => {
+      expect(String(url)).toContain("/getTriggerOrders?");
+      return new Response(JSON.stringify({
+        user: "wallet-1",
+        orderStatus: "active",
+        orders: [],
+        page: 1,
+        totalPages: 1,
+      }));
+    }) as typeof fetch;
+
+    const result = await getTriggerOrdersAction.execute(
+      createActionContext({}),
+      {
+        user: "wallet-1",
+        orderStatus: "active",
+        page: 1,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.data?.user).toBe("wallet-1");
+    expect(result.data?.orderStatus).toBe("active");
+    expect(result.data?.orders).toEqual([]);
   });
 
   test("normalizes Trigger V1 order listings", async () => {

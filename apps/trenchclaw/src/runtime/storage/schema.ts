@@ -1,113 +1,38 @@
 import { z } from "zod";
 
-import type { ActionResult } from "../../ai/contracts/types/action";
-import type {
-  ChatMessageState,
-  ConversationState,
-  InstanceFactState,
-  InstanceProfileState,
-  JobState,
-} from "../../ai/contracts/types/state";
 import {
-  botIdSchema,
+  actionResultSchema,
+  chatMessageMetadataSchema,
+  chatMessageStateInputSchema,
+  chatMessageStateSchema,
+  chatMessageRoleSchema,
   confidenceSchema,
-  conversationIdSchema,
+  conversationStateSchema,
   factIdSchema,
   factKeySchema,
-  idempotencyKeySchema,
+  instanceFactStateSchema,
   instanceIdSchema,
-  jobIdSchema,
+  instanceProfileStateSchema,
+  jobStateSchema,
   nonEmptyTrimmedStringSchema,
   nonNegativeIntegerSchema,
   positiveIntegerSchema,
-  sessionIdSchema,
+  runtimeJobStatusSchema,
   unixMillisecondsSchema,
-} from "./schema-primitives";
-import { sqliteJobStatusSchema } from "./sqlite-schema";
+} from "../../contracts/persistence";
 
-const optionalUnixMs = unixMillisecondsSchema.optional();
-const jsonRecord = z.record(z.string(), z.unknown());
-
-export const runtimeJobStatusSchema = sqliteJobStatusSchema;
-
-export const actionResultSchema: z.ZodType<ActionResult> = z.object({
-  ok: z.boolean(),
-  data: z.unknown().optional(),
-  error: z.string().optional(),
-  code: z.string().optional(),
-  retryable: z.boolean(),
-  txSignature: z.string().optional(),
-  durationMs: z.number().nonnegative(),
-  timestamp: unixMillisecondsSchema,
-  idempotencyKey: idempotencyKeySchema,
-  decisionTrace: z.array(z.string()).optional(),
-});
-
-export const jobStateSchema: z.ZodType<JobState> = z.object({
-  id: jobIdSchema,
-  serialNumber: positiveIntegerSchema.optional(),
-  botId: botIdSchema,
-  routineName: nonEmptyTrimmedStringSchema,
-  status: runtimeJobStatusSchema,
-  config: jsonRecord,
-  nextRunAt: optionalUnixMs,
-  lastRunAt: optionalUnixMs,
-  cyclesCompleted: nonNegativeIntegerSchema,
-  totalCycles: nonNegativeIntegerSchema.optional(),
-  lastResult: actionResultSchema.optional(),
-  attemptCount: nonNegativeIntegerSchema.optional(),
-  leaseOwner: nonEmptyTrimmedStringSchema.optional(),
-  leaseExpiresAt: optionalUnixMs,
-  lastError: z.string().optional(),
-  createdAt: unixMillisecondsSchema,
-  updatedAt: unixMillisecondsSchema,
-});
-
-export const chatMessageRoleSchema = z.enum(["system", "user", "assistant", "tool"]);
-
-export const conversationStateSchema: z.ZodType<ConversationState> = z.object({
-  id: conversationIdSchema,
-  sessionId: sessionIdSchema.optional(),
-  title: z.string().optional(),
-  summary: z.string().optional(),
-  createdAt: unixMillisecondsSchema,
-  updatedAt: unixMillisecondsSchema,
-});
-
-export const chatMessageStateSchema: z.ZodType<ChatMessageState> = z.object({
-  id: nonEmptyTrimmedStringSchema,
-  conversationId: conversationIdSchema,
-  role: chatMessageRoleSchema,
-  content: z.string(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-  createdAt: unixMillisecondsSchema,
-});
-
-export const instanceProfileStateSchema: z.ZodType<InstanceProfileState> = z.object({
-  instanceId: instanceIdSchema,
-  displayName: z.string().optional(),
-  summary: z.string().optional(),
-  tradingStyle: z.string().optional(),
-  riskTolerance: z.string().optional(),
-  preferredAssets: z.array(nonEmptyTrimmedStringSchema).optional(),
-  dislikedAssets: z.array(nonEmptyTrimmedStringSchema).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
-  createdAt: unixMillisecondsSchema,
-  updatedAt: unixMillisecondsSchema,
-});
-
-export const instanceFactStateSchema: z.ZodType<InstanceFactState> = z.object({
-  id: factIdSchema,
-  instanceId: instanceIdSchema,
-  factKey: factKeySchema,
-  factValue: z.unknown(),
-  confidence: confidenceSchema,
-  source: nonEmptyTrimmedStringSchema,
-  sourceMessageId: nonEmptyTrimmedStringSchema.optional(),
-  createdAt: unixMillisecondsSchema,
-  updatedAt: unixMillisecondsSchema,
-  expiresAt: unixMillisecondsSchema.optional(),
-});
+export {
+  actionResultSchema,
+  chatMessageMetadataSchema,
+  chatMessageRoleSchema,
+  chatMessageStateInputSchema,
+  chatMessageStateSchema,
+  conversationStateSchema,
+  instanceFactStateSchema,
+  instanceProfileStateSchema,
+  jobStateSchema,
+  runtimeJobStatusSchema,
+};
 
 export const sqliteStateStoreConfigSchema = z.object({
   path: nonEmptyTrimmedStringSchema,
@@ -226,5 +151,5 @@ export type HttpCacheEntryRecord = z.infer<typeof httpCacheEntryRecordSchema>;
 export type RuntimeRetentionInput = z.infer<typeof runtimeRetentionInputSchema>;
 export type RuntimeRetentionResult = z.infer<typeof runtimeRetentionResultSchema>;
 export type ConversationStateInput = z.infer<typeof conversationStateSchema>;
-export type ChatMessageStateInput = z.infer<typeof chatMessageStateSchema>;
+export type ChatMessageStateInput = z.infer<typeof chatMessageStateInputSchema>;
 export type InstanceFactStateInput = z.infer<typeof instanceFactStateSchema>;

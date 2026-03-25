@@ -95,7 +95,7 @@ export const triggerOrderAction: Action<TriggerOrderInput, TriggerOrderOutput> =
     };
 
     try {
-      const adapter = resolveTriggerAdapter(ctx);
+      const adapter = await resolveTriggerAdapter(ctx);
       const maker = resolveMakerAddress(ctx, input);
       const payer = input.payer?.trim() || maker;
       const normalizedInputMint = normalizeCoinToMint(input.inputCoin, input.coinAliases);

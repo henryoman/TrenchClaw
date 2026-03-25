@@ -81,12 +81,6 @@
     quickBuyPresets: [],
     customPresets: [],
   };
-  const SCHEDULE_ACTION_OPTIONS = [
-    {
-      value: "scheduleManagedUltraSwap",
-      label: "Managed Ultra swap",
-    },
-  ] as const;
 
   let aiSettingsDraft: GuiAiSettingsView = { ...DEFAULT_AI_SETTINGS };
   let tradingSettingsDraft: GuiTradingSettingsView = { ...DEFAULT_TRADING_SETTINGS };
@@ -209,7 +203,7 @@
     const normalized: GuiTradingSettingsView = {
       ...tradingSettingsDraft,
       defaultAmountUnit: "ui",
-      scheduleActionName: tradingSettingsDraft.scheduleActionName.trim() || DEFAULT_TRADING_SETTINGS.scheduleActionName,
+      scheduleActionName: DEFAULT_TRADING_SETTINGS.scheduleActionName,
       quickBuyPresets: [...tradingSettingsDraft.quickBuyPresets],
       customPresets: [...tradingSettingsDraft.customPresets],
     };
@@ -429,7 +423,7 @@
         </div>
       </div>
 
-      <div class="settings-grid">
+      <div class="settings-grid settings-grid-single">
         <RetroField label="Default swap settings">
           <RetroSelect
             value={tradingSettingsDraft.defaultSwapProvider}
@@ -446,22 +440,6 @@
             <option value="standard">Standard RPC</option>
           </RetroSelect>
         </RetroField>
-
-        <RetroField label="Default scheduled action">
-          <RetroSelect
-            value={tradingSettingsDraft.scheduleActionName}
-            indicatorShape="triangle"
-            disabled={tradingSettingsBusy}
-            on:valueChange={(event) => {
-              onTradingSettingChange("scheduleActionName", (event as ValueInputEvent).detail.value);
-            }}
-          >
-            {#each SCHEDULE_ACTION_OPTIONS as option}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </RetroSelect>
-        </RetroField>
-
       </div>
     </section>
 

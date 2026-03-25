@@ -15,14 +15,21 @@ import { z } from "zod";
 import type { GatewayLane } from "../../ai/gateway";
 import { createActionContext } from "../../ai/contracts/types/context";
 import { createChatMessageId, createToolCallId } from "../../ai/contracts/types/ids";
-import { createWorkspaceBashTools } from "../workspace-bash";
-import {
-  CHAT_MODEL_FALLBACK_GENERATE_TIMEOUT,
-  CHAT_MODEL_STREAM_TIMEOUT,
-  RUNTIME_WORKSPACE_TOOL_NAMES,
-  resolveWorkspaceRootDirectory,
-  toToolDescription,
-} from "./constants";
+import type { RuntimeCapabilitySnapshot } from "../tools";
+import type { RuntimeLogger } from "../logger";
+import { WORKSPACE_TOOL_NAMES, createWorkspaceBashTools, resolveDefaultWorkspaceBashRoot } from "../workspace-bash";
+import type { RuntimeGateway } from "../../ai/gateway";
+import type {
+  ActionDispatcher,
+  ActionRegistry,
+  RuntimeEventBus,
+  StateStore,
+} from "../../ai";
+import type {
+  RuntimeJobControlRequest,
+  RuntimeJobEnqueueRequest,
+} from "../../ai/contracts/types/context";
+import type { convertToModelMessages as convertToModelMessagesFn, generateText as generateTextFn, streamText as streamTextFn } from "ai";
 import {
   DEFAULT_CONVERSATION_HISTORY_SLICE_LIMIT,
   DEFAULT_CONVERSATION_HISTORY_SLICE_TOKEN_BUDGET,
@@ -35,9 +42,8 @@ import {
 } from "./history";
 import {
   getModelToolEnvelopeSchema,
-  MACHINE_TOOL_ENVELOPE_NOTE,
   normalizeModelToolEnvelopeInput,
-} from "./model-tool-language";
+} from "../../actions/model";
 import {
   createDirectTextStreamResponse,
   createDirectToolResultStreamResponse,
@@ -63,11 +69,6 @@ import {
   uiChunkHasVisibleText,
   writeAssistantTextMessage,
 } from "./streaming";
-import type {
-  RuntimeChatService,
-  RuntimeChatServiceDeps,
-  RuntimeChatServiceOverrides,
-} from "./types";
 import {
   assistantMessageHasTextAfterToolActivity,
   assistantMessageHasToolActivity,
@@ -80,6 +81,63 @@ import {
   toRuntimeChatErrorMessage,
   trimOrUndefinedValue,
 } from "./utils";
+
+export interface RuntimeChatService {
+  listToolNames: (lane?: GatewayLane) => string[];
+  stream: (
+    messages: UIMessage[],
+    input?: {
+      headers?: HeadersInit;
+      chatId?: string;
+      sessionId?: string;
+      conversationTitle?: string;
+      lane?: GatewayLane;
+      abortSignal?: AbortSignal;
+    },
+  ) => Promise<Response>;
+}
+
+export interface RuntimeChatServiceDeps {
+  dispatcher: ActionDispatcher;
+  registry: ActionRegistry;
+  eventBus: RuntimeEventBus;
+  stateStore: StateStore;
+  rpcUrl?: string;
+  jupiter?: unknown;
+  jupiterTrigger?: unknown;
+  jupiterUltra?: unknown;
+  tokenAccounts?: unknown;
+  ultraSigner?: {
+    address?: string;
+    signBase64Transaction: (base64Transaction: string) => Promise<string>;
+  };
+  enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<import("../../ai").JobState>;
+  manageJob?: (input: RuntimeJobControlRequest) => Promise<import("../../ai").JobState>;
+  logger?: RuntimeLogger;
+  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  workspaceRootDirectory?: string;
+  gateway: RuntimeGateway;
+}
+
+export interface RuntimeChatServiceOverrides {
+  convertToModelMessages?: typeof convertToModelMessagesFn;
+  streamText?: typeof streamTextFn;
+  generateText?: typeof generateTextFn;
+}
+
+const CHAT_MODEL_STREAM_TIMEOUT = {
+  totalMs: 900_000,
+  stepMs: 600_000,
+  chunkMs: 300_000,
+} as const;
+
+const CHAT_MODEL_FALLBACK_GENERATE_TIMEOUT = {
+  totalMs: 300_000,
+  stepMs: 300_000,
+} as const;
+
+const resolveWorkspaceRootDirectory = (workspaceRootDirectory?: string): string =>
+  workspaceRootDirectory ?? resolveDefaultWorkspaceBashRoot();
 
 const isOpenRouterFreeModel = (provider: string | null | undefined, modelId: string | null | undefined): boolean =>
   provider === "openrouter" && typeof modelId === "string" && (modelId === "openrouter/free" || modelId.endsWith(":free"));
@@ -124,8 +182,11 @@ const buildActionTools = (
     const capability = deps.capabilitySnapshot?.actions.find((entry) => entry.name === action.name);
     const modelInputSchema = getModelToolEnvelopeSchema(action.name, action.inputSchema as z.ZodTypeAny);
     tools[action.name] = tool({
-      description: `${capability?.toolDescription ?? toToolDescription(action.name, action.category, action.subcategory)} ${MACHINE_TOOL_ENVELOPE_NOTE}`,
+      description:
+        capability?.toolDescription
+        ?? `Dispatch runtime action "${action.name}" (${action.category}${action.subcategory ? `/${action.subcategory}` : ""}).`,
       inputSchema: modelInputSchema as z.ZodTypeAny,
+      ...(capability?.exampleInput === undefined ? {} : { inputExamples: [{ input: capability.exampleInput }] }),
       execute: async (rawEnvelope: unknown) => {
         const rawInput = normalizeModelToolEnvelopeInput(action.name, rawEnvelope);
         const cacheKey = `${action.name}:${serializeForToolCache(rawInput)}`;
@@ -414,7 +475,7 @@ export const createRuntimeChatService = (
             manageJob: deps.manageJob,
           }),
           {
-            actionName: "getManagedWalletContents",
+            actionName: "getWalletContents",
             input: fastPathInput,
           },
         );
@@ -431,7 +492,7 @@ export const createRuntimeChatService = (
               headers: input?.headers,
               chatId,
               originalMessages: messages,
-              toolName: "getManagedWalletContents",
+              toolName: "getWalletContents",
               toolInput: fastPathInput,
               toolOutput: directResult.data,
               text: responseText,
@@ -477,7 +538,7 @@ export const createRuntimeChatService = (
             manageJob: deps.manageJob,
           }),
           {
-            actionName: "getManagedWalletContents",
+            actionName: "getWalletContents",
             input: fastPathInput,
           },
         );
@@ -486,7 +547,7 @@ export const createRuntimeChatService = (
           directResult?.ok && directResult.data
             ? formatWalletContentsFastPathText(directResult.data)
             : directResult?.error
-              ? formatWalletContentsRateLimitText("getManagedWalletContents", directResult.error)
+              ? formatWalletContentsRateLimitText("getWalletContents", directResult.error)
                 ?? `I couldn't load wallet contents: ${directResult.error}`
               : null;
         if (directResult && directText) {
@@ -500,7 +561,7 @@ export const createRuntimeChatService = (
             headers: input?.headers,
             chatId,
             originalMessages: messages,
-            toolName: "getManagedWalletContents",
+            toolName: "getWalletContents",
             toolInput: fastPathInput,
             toolOutput: directResult.ok
               ? directResult.data
@@ -602,16 +663,26 @@ export const createRuntimeChatService = (
         },
       });
       const needsWorkspaceTools = preparedExecution.toolNames.some((toolName) =>
-        RUNTIME_WORKSPACE_TOOL_NAMES.includes(toolName as (typeof RUNTIME_WORKSPACE_TOOL_NAMES)[number]),
+        WORKSPACE_TOOL_NAMES.includes(toolName as (typeof WORKSPACE_TOOL_NAMES)[number]),
       );
       if (needsWorkspaceTools) {
         const workspaceToolsStartedAt = Date.now();
         const workspaceRootDirectory = resolveWorkspaceRootDirectory(deps.workspaceRootDirectory);
+        const workspaceToolMetadataByName = Object.fromEntries(
+          (deps.capabilitySnapshot?.workspaceTools ?? []).map((toolEntry) => [
+            toolEntry.name,
+            {
+              description: toolEntry.toolDescription,
+              ...(toolEntry.exampleInput === undefined ? {} : { inputExamples: [{ input: toolEntry.exampleInput }] }),
+            },
+          ]),
+        );
         const workspaceToolPromise =
           workspaceToolPromises.get(workspaceRootDirectory) ??
           createWorkspaceBashTools({
             workspaceRootDirectory,
             actor: "agent",
+            toolMetadataByName: workspaceToolMetadataByName,
           });
         workspaceToolPromises.set(workspaceRootDirectory, workspaceToolPromise);
         const loadedWorkspaceTools = await workspaceToolPromise;
@@ -1083,4 +1154,3 @@ export const createRuntimeChatService = (
   };
 };
 
-export type { RuntimeChatService } from "./types";

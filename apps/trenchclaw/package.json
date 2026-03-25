@@ -28,7 +28,6 @@
     "typescript": "^6.0.2"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.48",
     "@openrouter/ai-sdk-provider": "^2.3.3",
     "@solana/kit": "^6.5.0",
     "@solana/transactions": "^6.5.0",

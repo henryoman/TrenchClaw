@@ -11,10 +11,17 @@ take profits, or cancellation of existing trigger orders.
   - "buy when token drops to Y"
   - "set a stop loss"
   - "set a take profit"
+- if wallet, pair, and side are already clear but the amount is missing, ask only
+  for the amount instead of inspecting wallet balances first
+- if the request is relative to the current price, wait until the rest of the
+  order payload is concrete, then do one live price read and convert it to
+  `exactPrice`
 
 ## Pick The Trigger Shape
 
 - use exact target-price style when the user gives a literal price target
+- use exact target-price style after one live price read when the user says
+  things like "2% above the current price" or "5% below the current price"
 - use percent-from-buy-price style only when the user clearly references entry
   price, stop loss percentage, or take profit percentage
 

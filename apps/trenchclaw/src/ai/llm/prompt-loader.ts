@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance/state";
 import { loadRuntimeSettings } from "../../runtime/settings";
-import { getRuntimeCapabilitySnapshot } from "../../runtime/capabilities/selectors";
+import { getRuntimeCapabilitySnapshot } from "../../runtime/tools";
 import { loadRuntimePromptSections } from "../../runtime/prompt/composer";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
 import { resolveVaultFile } from "./vault-file";
@@ -86,10 +86,10 @@ const renderShellToolingSummary = (): string => {
 
   return [
     "### Shell Tooling",
-    "- Every tool call uses a machine JSON envelope with `params` for the real arguments. Optional `thought`, `notes`, or `meta` fields are allowed and ignored by execution.",
+    "- Call each tool with one JSON object that matches its registered schema.",
     "- `workspaceListDirectory` is the default browse tool for runtime workspace files and folders.",
     "- `workspaceBash` is for actual shell or CLI work after you know the path or command you need.",
-    "- Always call `workspaceBash` through `params`, with an explicit `params.type` such as `\"cli\"`, `\"version\"`, `\"help\"`, `\"which\"`, `\"search_text\"`, `\"list_directory\"`, `\"http_get\"`, or `\"shell\"` with `params.command`.",
+    "- Always call `workspaceBash` with a top-level `type` such as `\"cli\"`, `\"version\"`, `\"help\"`, `\"which\"`, `\"search_text\"`, `\"list_directory\"`, `\"http_get\"`, or `\"shell\"` with `command`.",
     "- If no typed runtime action covers the needed read and a bounded trusted CLI command can answer it, prefer `workspaceBash` over refusing the task.",
     "- `workspaceBash` is a policy-constrained host shell today. Network-capable commands like `curl` or `type = \"http_get\"` can work when the host has network access, but this is still not the preferred runtime for arbitrary model-driven bash or host `bun run *.ts`.",
     "- Treat CLI tools like `solana`, `solana-keygen`, `helius`, and `dune` as things to invoke through `workspaceBash` rather than through any hidden side channel.",

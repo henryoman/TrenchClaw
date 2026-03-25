@@ -4,7 +4,10 @@ import { z } from "zod";
 import type { ActionContext } from "../../../../../ai/contracts/types/context";
 import type { ActionResult } from "../../../../../ai/contracts/types/action";
 import type { StateStore } from "../../../../../ai/contracts/types/state";
-import type { JupiterTriggerAdapter } from "../../../../lib/adapters/jupiter-trigger";
+import {
+  createJupiterTriggerAdapterFromConfig,
+  type JupiterTriggerAdapter,
+} from "../../../../lib/adapters/jupiter-trigger";
 import { resolveHeliusRpcConfig } from "../../../../lib/rpc/helius";
 import { findManagedWalletEntryBySelection } from "../../../../lib/wallet/wallet-selector";
 import {
@@ -231,10 +234,24 @@ const divRound = (numerator: bigint, denominator: bigint): bigint => {
   return (numerator + denominator / 2n) / denominator;
 };
 
-export const resolveTriggerAdapter = (ctx: ActionContext): JupiterTriggerAdapter => {
-  const adapter = (ctx as TriggerContext).jupiterTrigger;
+export const resolveTriggerAdapter = async (ctx: ActionContext): Promise<JupiterTriggerAdapter> => {
+  const triggerContext = ctx as TriggerContext;
+  const existingAdapter = triggerContext.jupiterTrigger;
+  if (existingAdapter) {
+    return existingAdapter;
+  }
+
+  const resolvedAdapter = await createJupiterTriggerAdapterFromConfig();
+  if (resolvedAdapter) {
+    triggerContext.jupiterTrigger = resolvedAdapter;
+    return resolvedAdapter;
+  }
+
+  const adapter = triggerContext.jupiterTrigger;
   if (!adapter) {
-    throw new Error("Missing Jupiter Trigger adapter in action context (ctx.jupiterTrigger)");
+    throw new Error(
+      "Missing Jupiter Trigger adapter. Configure integrations/jupiter/api-key in the active instance vault. Trigger orders share the same Jupiter API key as Ultra.",
+    );
   }
   return adapter;
 };

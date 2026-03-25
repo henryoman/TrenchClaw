@@ -6,9 +6,10 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
   exit 1
 fi
 
-LOCAL_BIN_DIR="$HOME/.local/bin"
+DEFAULT_INSTALL_DIR="$HOME/.local/bin"
 TRENCHCLAW_INSTALLER_URL="${TRENCHCLAW_INSTALLER_URL:-https://raw.githubusercontent.com/henryoman/trenchclaw/main/scripts/install-trenchclaw.sh}"
 TRENCHCLAW_VERSION="${TRENCHCLAW_VERSION:-latest}"
+TRENCHCLAW_INSTALL_DIR="${TRENCHCLAW_INSTALL_DIR:-${TRENCHCLAW_BIN_DIR:-$DEFAULT_INSTALL_DIR}}"
 
 info() {
   printf '%s\n' "[trenchclaw-bootstrap] $1"
@@ -66,10 +67,10 @@ install_or_upgrade_trenchclaw() {
   installer_tmp="$(mktemp)"
   trap 'rm -f "$installer_tmp"' EXIT INT TERM HUP
   curl_secure "$TRENCHCLAW_INSTALLER_URL" -o "$installer_tmp"
-  TRENCHCLAW_VERSION="$TRENCHCLAW_VERSION" sh "$installer_tmp"
+  TRENCHCLAW_VERSION="$TRENCHCLAW_VERSION" TRENCHCLAW_INSTALL_DIR="$TRENCHCLAW_INSTALL_DIR" bash "$installer_tmp"
 
-  add_path_for_current_process "$LOCAL_BIN_DIR"
-  ensure_path_in_shell_profiles "$LOCAL_BIN_DIR"
+  add_path_for_current_process "$TRENCHCLAW_INSTALL_DIR"
+  ensure_path_in_shell_profiles "$TRENCHCLAW_INSTALL_DIR"
   need_cmd trenchclaw || fail "TrenchClaw launcher is unavailable after install/upgrade"
   trap - EXIT INT TERM HUP
   rm -f "$installer_tmp"

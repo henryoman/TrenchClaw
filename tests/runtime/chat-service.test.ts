@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { ActionDispatcher, ActionResult, LlmClient, RuntimeGateway } from "../../apps/trenchclaw/src/ai";
 import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/contracts/types";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore, createActionContext, createRuntimeGateway } from "../../apps/trenchclaw/src/ai";
-import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
+import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/tools";
 import { createRuntimeChatService as createRuntimeChatServiceBase } from "../../apps/trenchclaw/src/runtime/chat/service";
 import { loadRuntimeSettings, resolvePrimaryRuntimeEndpoints } from "../../apps/trenchclaw/src/runtime/settings";
 import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
@@ -422,7 +422,7 @@ describe("RuntimeChatService", () => {
       {
         dispatcher: {
           dispatchStep: async (_context: ActionContext, step: ActionStep) => {
-            expect(step.actionName).toBe("getManagedWalletContents");
+            expect(step.actionName).toBe("getWalletContents");
             return {
               results: [
                 makeActionResult({
@@ -475,7 +475,7 @@ describe("RuntimeChatService", () => {
     const body = await response.text();
     expect(streamInvocationCount).toBe(0);
     expect(body).toContain("wallet_000");
-    expect(body).toContain("getManagedWalletContents");
+    expect(body).toContain("getWalletContents");
 
     const assistant = stateStore.listChatMessages("chat-fast-wallets-1", 10).find((message) => message.role === "assistant");
     expect(assistant?.content).toContain("We have 2 managed wallets");
@@ -1598,7 +1598,9 @@ describe("RuntimeChatService", () => {
       return;
     }
 
-    expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane: `closeTokenAccount`, `transfer`");
+    expect(execution.toolNames).toEqual(["queryRuntimeStore", "transfer", "closeTokenAccount"]);
+    expect(execution.systemPrompt).toContain("## Tool Surface For This Turn");
+    expect(execution.systemPrompt).toContain("enabled command groups: Runtime + Queue, Wallet Execution");
     expect(execution.systemPrompt).toContain("## Command Groups");
     expect(execution.systemPrompt).toContain("### Wallet Execution");
     expect(execution.systemPrompt).toContain("## Async Tool Behavior");
@@ -1664,10 +1666,9 @@ describe("RuntimeChatService", () => {
       return;
     }
 
-    expect(execution.systemPrompt).toContain("wallet mutation tools in operator lane:");
-    expect(execution.systemPrompt).not.toContain("`managedUltraSwap`");
-    expect(execution.systemPrompt).not.toContain("`scheduleManagedUltraSwap`");
-    expect(execution.systemPrompt).not.toContain("Ultra-only scheduling surface");
+    expect(execution.toolNames).toEqual([]);
+    expect(execution.systemPrompt).toContain("enabled command groups: none");
+    expect(execution.systemPrompt).not.toContain("### Wallet Execution");
   });
 
   test("routes flat JSON scheduled managed swaps through the operator prompt guidance", async () => {
@@ -1734,9 +1735,9 @@ describe("RuntimeChatService", () => {
       return;
     }
 
-    expect(execution.systemPrompt).toContain("`scheduleManagedSwap`");
-    expect(execution.systemPrompt).toContain("the user explicitly wants to schedule a swap for later");
-    expect(execution.systemPrompt).toContain("configured main swap type is used by default");
+    expect(execution.toolNames).toEqual(["managedSwap", "scheduleManagedSwap"]);
+    expect(execution.systemPrompt).toContain("enabled command groups: Wallet Execution");
+    expect(execution.systemPrompt).toContain("prefer the flatter scheduling surface before escalating to a richer routine payload");
   });
 
   test("shows upcoming trading schedule in the operator prompt and points to the read path", async () => {
@@ -1786,7 +1787,7 @@ describe("RuntimeChatService", () => {
             sideEffectLevel: "read",
             enabledNow: true,
             requiresConfirmation: false,
-            exampleInput: { request: { type: "listUpcomingTradingJobs" } },
+            exampleInput: { type: "listUpcomingTradingJobs" },
             toolDescription: "runtime store",
             releaseReadinessStatus: "shipped-now",
             releaseReadinessNote: "Shipped now.",
@@ -1813,7 +1814,7 @@ describe("RuntimeChatService", () => {
     }
 
     expect(execution.systemPrompt).toContain("### Upcoming Trading Schedule");
-    expect(execution.systemPrompt).toContain("request.type = \"listUpcomingTradingJobs\"");
+    expect(execution.systemPrompt).toContain("type = \"listUpcomingTradingJobs\"");
     expect(execution.systemPrompt).toContain("#17 pending swap_once");
     expect(execution.systemPrompt).toContain("SOL -> USDC");
   });
@@ -1882,9 +1883,10 @@ describe("RuntimeChatService", () => {
       return;
     }
 
-    expect(execution.systemPrompt).toContain("prefer `managedTriggerOrder` with `trigger.kind = \"exactPrice\"`");
-    expect(execution.systemPrompt).toContain("Use `percentFromBuyPrice` only when the user explicitly frames the trigger relative to entry price");
-    expect(execution.systemPrompt).toContain("treat the order as submitted and tell the user it can be tracked with `getTriggerOrders` using `orderStatus = \"active\"`");
+    expect(execution.toolNames).toEqual(["getTriggerOrders", "managedTriggerOrder"]);
+    expect(execution.systemPrompt).toContain("enabled command groups: Wallet Execution");
+    expect(execution.systemPrompt).toContain("If a wallet execution request is otherwise concrete but missing one required field");
+    expect(execution.systemPrompt).toContain("If the user says a trigger is relative to the current price");
   });
 
   test("keeps the operator gateway prompt and tool list compact", async () => {
@@ -1896,7 +1898,7 @@ describe("RuntimeChatService", () => {
         modelTools: [
           {
             kind: "action",
-            name: "getManagedWalletContents",
+            name: "getWalletContents",
             description: "wallet contents",
             purpose: "wallet contents",
             routingHint: "wallet contents",
@@ -1972,21 +1974,11 @@ describe("RuntimeChatService", () => {
     }
     expect(execution.toolNames.length).toBeLessThanOrEqual(12);
     expect(execution.maxToolSteps).toBe(12);
-    expect(execution.toolNames).toEqual([
-      "getManagedWalletContents",
-      "queryRuntimeStore",
-      WORKSPACE_BASH_TOOL_NAME,
-      WORKSPACE_READ_FILE_TOOL_NAME,
-    ]);
-    expect(execution.toolNames).toContain(WORKSPACE_BASH_TOOL_NAME);
-    expect(execution.toolNames).toContain(WORKSPACE_READ_FILE_TOOL_NAME);
+    expect(execution.toolNames).toEqual(["queryRuntimeStore"]);
     expect(execution.systemPrompt).toContain("## Command Groups");
     expect(execution.systemPrompt).toContain("### Runtime + Queue");
-    expect(execution.systemPrompt).toContain("### RPC Data Fetch");
-    expect(execution.systemPrompt).toContain("### CLI + Workspace");
-    expect(execution.systemPrompt).toContain("### CLI + Workspace");
-    expect(execution.systemPrompt).toContain("default sequence: `workspaceListDirectory` -> `workspaceReadFile` -> `workspaceBash`");
-    expect(execution.systemPrompt).toContain("Use `workspaceBash` for CLI programs like `solana`, `solana-keygen`, `helius`, `dune`, `bun`");
+    expect(execution.systemPrompt).not.toContain("### RPC Data Fetch");
+    expect(execution.systemPrompt).not.toContain("### CLI + Workspace");
     expect(execution.systemPrompt).toContain("## Knowledge");
     expect(execution.systemPrompt).toContain("runtime-reference");
     expect(execution.systemPrompt).toContain("listKnowledgeDocs");
@@ -2008,7 +2000,7 @@ describe("RuntimeChatService", () => {
             sideEffectLevel: "read",
             enabledNow: true,
             requiresConfirmation: false,
-            exampleInput: { request: { query: "skills", tier: "skills" } },
+            exampleInput: { query: "skills", tier: "skills" },
             toolDescription: "list knowledge docs",
             releaseReadinessStatus: "shipped-now",
             releaseReadinessNote: "Shipped now.",
@@ -2173,19 +2165,15 @@ describe("RuntimeChatService", () => {
     }
     expect(execution.toolNames).toEqual([
       "getDexscreenerLatestTokenProfiles",
+      "getDexscreenerTopTokenBoosts",
+      "getDexscreenerTokensByChain",
       "getDexscreenerPairByChainAndPairId",
       "getDexscreenerTokenPairsByChain",
-      "getDexscreenerTokensByChain",
-      "getDexscreenerTopTokenBoosts",
       "searchDexscreenerPairs",
     ]);
     expect(execution.systemPrompt).toContain("## Tool Selection Rules");
-    expect(execution.systemPrompt).toContain("## Meme Coin Routine");
-    expect(execution.systemPrompt).toContain("if the user asks about meme coins, current meme coins, hot meme coins, or trending meme coins: run `getDexscreenerTopTokenBoosts` first");
-    expect(execution.systemPrompt).toContain("## Dexscreener Quick Picks");
-    expect(execution.systemPrompt).toContain("### `getDexscreenerTokensByChain`");
-    expect(execution.systemPrompt).toContain("Pass up to 30 `tokenAddresses`.");
-    expect(execution.systemPrompt).toContain("Do not default to `getDexscreenerLatestTokenBoosts` for broad trending questions.");
+    expect(execution.systemPrompt).toContain("enabled command groups: Market + News");
+    expect(execution.systemPrompt).toContain("available now: 6 tools");
     expect(execution.systemPrompt).toContain("Never answer a token question with only a raw token address unless the available tool results truly contain no better identifier");
     expect(execution.systemPrompt).toContain("For coin or token answers, prefer `name (symbol)` or equivalent metadata first");
   });
@@ -2264,11 +2252,9 @@ describe("RuntimeChatService", () => {
       "getTokenHolderDistribution",
       "rankDexscreenerTopTokenBoostsByWhales",
     ]);
-    expect(execution.systemPrompt).toContain("For whales, top holders, largest accounts, or holder concentration on one known token, use `getTokenHolderDistribution`");
-    expect(execution.systemPrompt).toContain("prefer `rankDexscreenerTopTokenBoostsByWhales` when it is available");
-    expect(execution.systemPrompt).toContain("prefer short-term price performance windows first: use `priceChange.m5` and `priceChange.h1`");
-    expect(execution.systemPrompt).toContain("default whales to distinct owner wallets holding at least 1% of supply");
-    expect(execution.systemPrompt).toContain("Do not stop after a partial market-discovery answer when the user also asked for whales");
+    expect(execution.systemPrompt).toContain("enabled command groups: Market + News");
+    expect(execution.systemPrompt).toContain("available now: 3 tools");
+    expect(execution.systemPrompt).toContain("When batch reads are available, prefer one valid batch call over many duplicate tiny calls.");
   });
 
   test("includes a compact wallet summary in the system prompt", async () => {
@@ -2385,7 +2371,7 @@ describe("RuntimeChatService", () => {
 
     expect(capturedSystemPrompt).toContain("## Wallet Summary");
     expect(capturedSystemPrompt).toContain("managed wallet status: missing library file");
-    expect(capturedSystemPrompt).toContain("use `getManagedWalletContents` for holdings and token balances");
+    expect(capturedSystemPrompt).toContain("use `getWalletContents` for SOL and token balances");
     expect(capturedSystemPrompt).toContain("never read or edit vaults, keypairs, or wallet-library files directly with file tools");
   });
 
@@ -2439,7 +2425,7 @@ describe("RuntimeChatService", () => {
         id: "assistant-1",
         role: "assistant",
         parts: [
-          { type: "tool-echo", toolCallId: "tool-call-1", state: "output-available", input: { params: { value: 42 } }, output: { ok: true } },
+          { type: "tool-echo", toolCallId: "tool-call-1", state: "output-available", input: { value: 42 }, output: { ok: true } },
           { type: "text", text: "calling tool now" },
         ] as UIMessage["parts"],
       },
@@ -2452,7 +2438,7 @@ describe("RuntimeChatService", () => {
       type: "tool-echo",
       toolCallId: "tool-call-1",
       state: "output-available",
-      input: { params: { value: 42 } },
+      input: { value: 42 },
       output: { ok: true },
     });
   });
@@ -2812,7 +2798,7 @@ describe("RuntimeChatService", () => {
     );
 
     const assistant = stateStore.listChatMessages("chat-structured-1", 10).find((message) => message.role === "assistant");
-    expect(assistant?.metadata?.uiParts).toEqual([
+    expect(assistant?.parts).toEqual([
       { type: "reasoning", text: "Inspecting wallet state", state: "done" },
       { type: "text", text: "Wallet state inspected." },
     ]);
@@ -2893,7 +2879,7 @@ describe("RuntimeChatService", () => {
     const assistant = stateStore.listChatMessages("chat-tool-only-1", 10).find((message) => message.role === "assistant");
     expect(assistant).toBeDefined();
     expect(assistant?.content).toBe("");
-    expect(assistant?.metadata?.uiParts).toEqual([
+    expect(assistant?.parts).toEqual([
       {
         type: "tool-echo",
         toolCallId: "tool-only-call-1",
@@ -3198,7 +3184,7 @@ describe("RuntimeChatService", () => {
       .listChatMessages("chat-tool-recovery-1", 10)
       .filter((message) => message.role === "assistant");
     expect(assistantMessages.at(-1)?.content).toContain("Top volume meme coin today is BONK.");
-    const uiParts = assistantMessages.at(-1)?.metadata?.uiParts as Array<Record<string, unknown>> | undefined;
+    const uiParts = assistantMessages.at(-1)?.parts as Array<Record<string, unknown>> | undefined;
     expect(Array.isArray(uiParts)).toBe(true);
     expect(
       uiParts?.some((part) =>

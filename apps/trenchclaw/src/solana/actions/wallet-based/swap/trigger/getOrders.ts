@@ -97,7 +97,7 @@ export const getTriggerOrdersAction: Action<GetTriggerOrdersInput, GetTriggerOrd
     const idempotencyKey = crypto.randomUUID();
 
     try {
-      const adapter = resolveTriggerAdapter(ctx);
+      const adapter = await resolveTriggerAdapter(ctx);
       const user = await resolveWalletAddressFromInput(input);
       if (!user) {
         throw new Error("Unable to resolve wallet address for getTriggerOrders");

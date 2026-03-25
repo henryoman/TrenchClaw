@@ -1,6 +1,7 @@
 import type {
   ActionResult,
   ChatMessageState,
+  ChatMessageStateInput,
   ConversationHistorySlice,
   ConversationState,
   InstanceFactState,
@@ -12,6 +13,7 @@ import type {
   RuntimeSearchScope,
   StateStore as IStateStore,
 } from "../contracts/types";
+import { chatMessageStateInputSchema, chatMessageStateSchema } from "../../contracts/persistence";
 import { createConversationHistorySlice } from "../../runtime/chat/history";
 
 export class InMemoryStateStore implements IStateStore {
@@ -135,20 +137,32 @@ export class InMemoryStateStore implements IStateStore {
     return deleted;
   }
 
-  saveChatMessage(message: ChatMessageState): void {
-    const messages = this.chatMessages.get(message.conversationId) ?? [];
-    const existingIndex = messages.findIndex((existing) => existing.id === message.id);
+  saveChatMessage(message: ChatMessageStateInput): void {
+    const parsedInput = chatMessageStateInputSchema.parse(message);
+    const messages = this.chatMessages.get(parsedInput.conversationId) ?? [];
+    const existingIndex = messages.findIndex((existing) => existing.id === parsedInput.id);
+    const nextSequence =
+      typeof parsedInput.sequence === "number" && Number.isFinite(parsedInput.sequence)
+        ? Math.max(1, Math.trunc(parsedInput.sequence))
+        : existingIndex >= 0
+          ? messages[existingIndex]!.sequence
+          : messages.length + 1;
+    const parsed = chatMessageStateSchema.parse({
+      ...parsedInput,
+      parts: parsedInput.parts ?? [{ type: "text", text: parsedInput.content }],
+      sequence: nextSequence,
+    });
     if (existingIndex >= 0) {
-      messages[existingIndex] = { ...message };
+      messages[existingIndex] = parsed;
     } else {
-      messages.push({ ...message });
+      messages.push(parsed);
     }
-    this.chatMessages.set(message.conversationId, messages);
+    this.chatMessages.set(parsed.conversationId, messages);
   }
 
   listChatMessages(conversationId: string, limit = 500): ChatMessageState[] {
     return (this.chatMessages.get(conversationId) ?? [])
-      .toSorted((a, b) => a.createdAt - b.createdAt)
+      .toSorted((a, b) => a.sequence - b.sequence || a.createdAt - b.createdAt || a.id.localeCompare(b.id))
       .slice(0, Math.max(1, Math.trunc(limit)));
   }
 
@@ -159,7 +173,7 @@ export class InMemoryStateStore implements IStateStore {
     tokenBudget?: number;
   }): ConversationHistorySlice {
     const ordered = (this.chatMessages.get(input.conversationId) ?? [])
-      .toSorted((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+      .toSorted((a, b) => a.sequence - b.sequence || a.createdAt - b.createdAt || a.id.localeCompare(b.id));
     const beforeMessageId = input.beforeMessageId?.trim();
     const endExclusive =
       beforeMessageId && beforeMessageId.length > 0

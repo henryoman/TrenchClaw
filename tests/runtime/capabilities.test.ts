@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
-import { getGatewayToolNamesForLane, OPERATOR_TOOL_ALLOWLIST } from "../../apps/trenchclaw/src/ai/gateway/lane-policy";
-import { getRuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/capabilities";
+import { getGatewayToolNamesForLane } from "../../apps/trenchclaw/src/ai/gateway/lane-policy";
+import { getRuntimeCapabilitySnapshot, resolveToolVisibility } from "../../apps/trenchclaw/src/runtime/tools";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { createPersistedTestInstance } from "../helpers/instance-fixtures";
 import { runtimeStatePath } from "../helpers/core-paths";
@@ -373,6 +373,16 @@ describe("runtime capability snapshot", () => {
           "    trigger:\n      enabled: true\n      allowOrders: true\n      allowReads: true\n      allowCancellations: true\n    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
         ),
     );
+    process.env.TRENCHCLAW_VAULT_FILE = await writeTempFile(
+      "json",
+      JSON.stringify({
+        integrations: {
+          jupiter: {
+            "api-key": "vault-trigger-key",
+          },
+        },
+      }),
+    );
 
     try {
       const settings = await loadRuntimeSettings("safe");
@@ -386,6 +396,26 @@ describe("runtime capability snapshot", () => {
     } finally {
       console.warn = originalWarn;
     }
+  });
+
+  test("hides Jupiter Trigger tools when trigger settings are enabled but no Jupiter key is configured", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML
+        .replace("trading:\n  enabled: false", "trading:\n  enabled: true")
+        .replace(
+          "    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
+          "    trigger:\n      enabled: true\n      allowOrders: true\n      allowReads: true\n      allowCancellations: true\n    standard:\n      enabled: false\n      allowQuotes: false\n      allowExecutions: false",
+        ),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
+
+    expect(modelToolNames).not.toContain("getTriggerOrders");
+    expect(modelToolNames).not.toContain("managedTriggerOrder");
+    expect(modelToolNames).not.toContain("managedTriggerCancelOrders");
   });
 
   test("exposes flat JSON managed-swap scheduling while keeping the internal routine schema hidden", async () => {
@@ -432,11 +462,15 @@ describe("runtime capability snapshot", () => {
     const settings = await loadRuntimeSettings("safe");
     const snapshot = await getRuntimeCapabilitySnapshot(settings);
     const operatorNames = getGatewayToolNamesForLane(snapshot, "operator-chat");
-    const allow = new Set<string>(OPERATOR_TOOL_ALLOWLIST);
     const snapshotNames = new Set(snapshot.modelTools.map((entry) => entry.name));
+    const operatorVisibleNames = new Set(
+      snapshot.modelTools
+        .filter((entry) => (entry.visibility ?? resolveToolVisibility(entry.name)).operatorChat !== "never")
+        .map((entry) => entry.name),
+    );
 
     for (const name of operatorNames) {
-      expect(allow.has(name)).toBe(true);
+      expect(operatorVisibleNames.has(name)).toBe(true);
       expect(snapshotNames.has(name)).toBe(true);
     }
   });
@@ -445,7 +479,10 @@ describe("runtime capability snapshot", () => {
     const settings = await loadRuntimeSettings("safe");
     const snapshot = await getRuntimeCapabilitySnapshot(settings);
     const laneNames = getGatewayToolNamesForLane(snapshot, "workspace-agent").toSorted();
-    const snapshotNames = snapshot.modelTools.map((entry) => entry.name).toSorted();
+    const snapshotNames = snapshot.modelTools
+      .filter((entry) => (entry.visibility ?? resolveToolVisibility(entry.name)).workspaceAgent)
+      .map((entry) => entry.name)
+      .toSorted();
     expect(laneNames).toEqual(snapshotNames);
   });
 });

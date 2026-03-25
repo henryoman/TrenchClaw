@@ -20,8 +20,6 @@ export interface RuntimeTransportContext {
   waitForJobResult(jobId: string, waitMs: number): Promise<ReturnType<RuntimeBootstrap["stateStore"]["getJob"]>>;
 }
 
-export type RuntimeTransportDomainContext = RuntimeTransportContext;
-
 export const resolveSurfaceInstanceId = (
   context: Pick<RuntimeTransportContext, "getActiveInstance">,
 ): string | null => context.getActiveInstance()?.localInstanceId ?? resolveCurrentActiveInstanceIdSync();

@@ -1,21 +1,6 @@
-import type { RuntimeModelToolSnapshotEntry } from "../capabilities/types";
+import { TOOL_GROUP_IDS, resolveToolGroup, type RuntimeModelToolSnapshotEntry, type ToolGroupId } from "../tools";
 
-type ToolGroupId =
-  | "runtime-queue"
-  | "rpc-data-fetch"
-  | "market-news"
-  | "wallet-execution"
-  | "workspace-cli"
-  | "knowledge";
-
-const TOOL_GROUP_ORDER: readonly ToolGroupId[] = [
-  "runtime-queue",
-  "rpc-data-fetch",
-  "market-news",
-  "wallet-execution",
-  "workspace-cli",
-  "knowledge",
-] as const;
+export const TOOL_GROUP_ORDER: readonly ToolGroupId[] = TOOL_GROUP_IDS;
 
 const TOOL_GROUP_COPY: Record<ToolGroupId, {
   title: string;
@@ -44,7 +29,7 @@ const TOOL_GROUP_COPY: Record<ToolGroupId, {
   "wallet-execution": {
     title: "Wallet Execution",
     forLine: "wallet creation, transfers, swaps, trigger orders, token-account cleanup, and trading routines",
-    flowLine: "read first to remove ambiguity, then write only after the user clearly asked for the mutation",
+    flowLine: "resolve ambiguity or required live state first; if only one required field is missing, ask for that field instead of starting a broader read chain; then write only after the user clearly asked for the mutation",
     expectLine: "expect confirmation-sensitive writes, execution receipts, or queued routine/job records",
   },
   "workspace-cli": {
@@ -61,88 +46,19 @@ const TOOL_GROUP_COPY: Record<ToolGroupId, {
   },
 };
 
-const hasPrefix = (value: string, prefix: string): boolean => value.startsWith(prefix);
+const getToolGroupTitle = (groupId: ToolGroupId): string => TOOL_GROUP_COPY[groupId].title;
+const getToolGroup = (tool: RuntimeModelToolSnapshotEntry): ToolGroupId => tool.group ?? resolveToolGroup(tool.name);
 
-const isRpcDataFetchTool = (toolName: string): boolean =>
-  toolName === "getManagedWalletContents"
-  || toolName === "getManagedWalletSolBalances"
-  || toolName === "getSwapHistory"
-  || toolName === "getConfiguredNewsFeeds"
-  || toolName === "getWalletTracker";
-
-const isMarketNewsTool = (toolName: string): boolean =>
-  toolName === "getConfiguredNewsFeeds"
-  || toolName === "getWalletTracker"
-  || toolName === "getCryptoNewsLatest"
-  || toolName === "searchCryptoNews"
-  || toolName === "getCryptoAssetSentiment"
-  || toolName === "getCryptoFearGreedIndex"
-  || toolName === "getCryptoTrendingTopics"
-  || toolName === "getTokenLaunchTime"
-  || toolName === "getTokenPricePerformance"
-  || toolName === "getTokenHolderDistribution"
-  || toolName === "rankDexscreenerTopTokenBoostsByWhales"
-  || toolName === "downloadGeckoTerminalOhlcv"
-  || toolName === "getLatestSolanaNews"
-  || hasPrefix(toolName, "getDexscreener")
-  || hasPrefix(toolName, "searchDexscreener");
-
-const isRuntimeQueueTool = (toolName: string): boolean =>
-  toolName === "queryRuntimeStore"
-  || toolName === "queryInstanceMemory"
-  || toolName === "mutateInstanceMemory"
-  || toolName === "pingRuntime"
-  || toolName === "enqueueRuntimeJob"
-  || toolName === "manageRuntimeJob"
-  || toolName === "submitTradingRoutine"
-  || toolName === "runWakeupCheck"
-  || toolName === "sleep";
-
-const isKnowledgeTool = (toolName: string): boolean =>
-  toolName === "listKnowledgeDocs" || toolName === "readKnowledgeDoc";
-
-const isWorkspaceTool = (toolName: string): boolean =>
-  toolName === "workspaceListDirectory"
-  || toolName === "workspaceReadFile"
-  || toolName === "workspaceWriteFile"
-  || toolName === "workspaceBash";
-
-const classifyToolGroup = (tool: RuntimeModelToolSnapshotEntry): ToolGroupId => {
-  if (isKnowledgeTool(tool.name)) {
-    return "knowledge";
-  }
-  if (isWorkspaceTool(tool.name)) {
-    return "workspace-cli";
-  }
-  if (isRuntimeQueueTool(tool.name)) {
-    return "runtime-queue";
-  }
-  if (isMarketNewsTool(tool.name)) {
-    return "market-news";
-  }
-  if (isRpcDataFetchTool(tool.name)) {
-    return "rpc-data-fetch";
-  }
-  return "wallet-execution";
-};
-
-const formatToolList = (tools: RuntimeModelToolSnapshotEntry[]): string =>
-  tools.map((tool) => `\`${tool.name}\``).join(", ");
-
-const formatToolListOrNone = (tools: RuntimeModelToolSnapshotEntry[]): string =>
-  tools.length > 0 ? formatToolList(tools) : "none";
+const getEnabledToolGroupIds = (tools: RuntimeModelToolSnapshotEntry[]): ToolGroupId[] =>
+  TOOL_GROUP_ORDER.filter((groupId) => tools.some((tool) => getToolGroup(tool) === groupId));
 
 export const renderModelAccessSummarySection = (tools: RuntimeModelToolSnapshotEntry[]): string => {
   const sortedTools = tools.toSorted((left, right) => left.name.localeCompare(right.name));
-  const runtimeQueueTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "runtime-queue");
-  const rpcTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "rpc-data-fetch");
-  const marketNewsTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "market-news");
-  const workspaceTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "workspace-cli");
-  const knowledgeTools = sortedTools.filter((tool) => classifyToolGroup(tool) === "knowledge");
+  const enabledGroupIds = getEnabledToolGroupIds(sortedTools);
   const mutatingTools = sortedTools.filter((tool) =>
     tool.sideEffectLevel !== "read"
-    && classifyToolGroup(tool) !== "workspace-cli"
-    && classifyToolGroup(tool) !== "knowledge");
+    && getToolGroup(tool) !== "workspace-cli"
+    && getToolGroup(tool) !== "knowledge");
   const hasRuntimeStoreRead = sortedTools.some((tool) => tool.name === "queryRuntimeStore");
 
   return [
@@ -154,21 +70,17 @@ export const renderModelAccessSummarySection = (tools: RuntimeModelToolSnapshotE
       : "- other chats/runtime records: not preloaded and not directly available in this request",
     "- protected material: vaults, keypairs, and hidden tools are not directly available",
     "",
-    "## Tools Available Right Now",
-    "- if a tool is not listed below, it is unavailable for this turn",
-    `- runtime + queue tools: ${formatToolListOrNone(runtimeQueueTools)}`,
-    `- RPC data tools: ${formatToolListOrNone(rpcTools)}`,
-    `- market + news tools: ${formatToolListOrNone(marketNewsTools)}`,
-    `- write/execute tools: ${formatToolListOrNone(mutatingTools)}`,
-    `- workspace tools: ${formatToolListOrNone(workspaceTools)}`,
-    `- knowledge tools: ${formatToolListOrNone(knowledgeTools)}`,
+    "## Tool Surface For This Turn",
+    "- only the tools registered for this request are callable",
+    `- enabled command groups: ${enabledGroupIds.map(getToolGroupTitle).join(", ") || "none"}`,
+    `- write or execute tools registered: ${mutatingTools.length > 0 ? "yes" : "no"}`,
   ].join("\n");
 };
 
 export const renderCommandMenuSection = (tools: RuntimeModelToolSnapshotEntry[], heading = "## Command Menu"): string => {
   const grouped = new Map<ToolGroupId, RuntimeModelToolSnapshotEntry[]>();
   for (const tool of tools) {
-    const group = classifyToolGroup(tool);
+    const group = getToolGroup(tool);
     const existing = grouped.get(group);
     if (existing) {
       existing.push(tool);
@@ -179,9 +91,9 @@ export const renderCommandMenuSection = (tools: RuntimeModelToolSnapshotEntry[],
 
   const lines = [
     heading,
-    "- Treat these as command groups. Pick the smallest group and smallest tool that can answer the request.",
-    "- If a tool is not listed inside these groups for the current request, it is unavailable.",
-    "- Every tool call uses one machine JSON envelope: put the real arguments under `params`. Optional `thought`, `notes`, or `meta` may be included and are ignored by runtime execution.",
+    "- Think in command groups first. Pick the smallest group and smallest tool that can answer the request.",
+    "- If a group is missing for this request, those tools are unavailable.",
+    "- Call tools with one JSON object that matches the registered schema.",
   ];
 
   for (const groupId of TOOL_GROUP_ORDER) {
@@ -194,7 +106,7 @@ export const renderCommandMenuSection = (tools: RuntimeModelToolSnapshotEntry[],
     lines.push(`- for: ${copy.forLine}`);
     lines.push(`- default flow: ${copy.flowLine}`);
     lines.push(`- expect: ${copy.expectLine}`);
-    lines.push(`- tools: ${formatToolList(toolsInGroup)}`);
+    lines.push(`- available now: ${toolsInGroup.length} tool${toolsInGroup.length === 1 ? "" : "s"}`);
   }
 
   return lines.join("\n");
@@ -244,8 +156,8 @@ export const renderAsyncToolBehaviorSection = (tools: RuntimeModelToolSnapshotEn
   }
 
   if (hasWorkspaceBash) {
-    lines.push("- `workspaceBash` is synchronous and timeout-bound. Put its command mode inside `params.type`, using values like `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, `http_get`, or `shell`. Do not use it for long-lived background daemons.");
-    lines.push("- Use `workspaceBash` for CLI programs like `solana`, `solana-keygen`, `helius`, `dune`, `bun`, or other host commands when present in PATH; keep every call machine-structured under `params`.");
+    lines.push("- `workspaceBash` is synchronous and timeout-bound. Put its command mode in top-level `type`, using values like `cli`, `version`, `help`, `which`, `search_text`, `list_directory`, `http_get`, or `shell`. Do not use it for long-lived background daemons.");
+    lines.push("- Use `workspaceBash` for CLI programs like `solana`, `solana-keygen`, `helius`, `dune`, `bun`, or other host commands when present in PATH.");
   }
 
   lines.push("- For multi-step work, keep the user oriented with short status notes that say what you are opening, what you are waiting on, and what result changed the next step.");

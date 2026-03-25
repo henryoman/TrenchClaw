@@ -83,6 +83,18 @@ export const walletInventoryScanRoutine: RoutinePlanner = async (_ctx, job) => {
   ];
 };
 
+export const walletContentsScanRoutine: RoutinePlanner = async (_ctx, job) => {
+  const config = walletInventoryScanRoutineConfigSchema.parse(job.config);
+  return [
+    {
+      key: "wallet-contents-scan",
+      actionName: "getWalletContents",
+      input: config.input,
+      idempotencyKey: `${job.id}:wallet-contents-scan`,
+    },
+  ];
+};
+
 export const runtimeWakeupRoutine: RoutinePlanner = async (_ctx, job) => {
   const instanceId = typeof job.config.instanceId === "string" ? job.config.instanceId.trim() : undefined;
   return [
@@ -102,6 +114,7 @@ const BUILTIN_ROUTINES: Record<string, RoutinePlanner> = {
   actionSequence: actionSequenceRoutine,
   createWallets: createWalletsRoutine,
   runtimeWakeup: runtimeWakeupRoutine,
+  walletContentsScan: walletContentsScanRoutine,
   walletInventoryScan: walletInventoryScanRoutine,
 };
 

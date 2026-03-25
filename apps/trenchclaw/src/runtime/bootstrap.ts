@@ -32,15 +32,16 @@ import {
   getRuntimeActionCatalog,
   getRuntimeActionsRequiringUserConfirmation,
   isRuntimeActionEnabledBySettings,
-} from "./capabilities";
-import { getRuntimeCapabilitySnapshot, type RuntimeCapabilitySnapshot } from "./capabilities";
+  getRuntimeCapabilitySnapshot,
+  type RuntimeCapabilitySnapshot,
+} from "./tools";
 import {
   loadRuntimeSettings,
   resolvePrimaryRuntimeEndpoints,
   resolveRuntimeSettingsProfile,
   type RuntimeSettings,
 } from "./settings";
-import { createRuntimeLogger, type RuntimeLogger } from "./logging/runtime-logger";
+import { createRuntimeLogger, type RuntimeLogger } from "./logger";
 import { createRuntimeActionThrottle } from "./scheduling/trading-throttle";
 import {
   LiveLogStore,
@@ -57,7 +58,7 @@ import { createRuntimeChatService, type RuntimeChatService } from "./chat/servic
 import { ensureInstanceLayout } from "./instance/layout";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance/state";
 import { isRecord } from "./shared/object-utils";
-import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./chat/notices";
+import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./runtime-notices";
 import { syncManagedWakeupJob } from "./scheduling/managed-wakeup";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
@@ -541,6 +542,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   });
   const sessionSummaryStore = new SessionSummaryStore({
     directory: path.join(instanceRootDirectory, "logs", "sessions"),
+    sqliteStateStore: sqliteStore ?? undefined,
   });
   const summaryLogStore = new SummaryLogStore({
     directory: path.join(instanceRootDirectory, "logs", "summaries"),
@@ -616,6 +618,11 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
   const jupiterTrigger = await createJupiterTriggerAdapterFromConfig();
   const jupiter = await createJupiterAdapterFromConfig();
   const jupiterUltra = await createJupiterUltraAdapterFromConfig();
+  logger.info("integrations:jupiter_ready", {
+    swap: Boolean(jupiter),
+    trigger: Boolean(jupiterTrigger),
+    ultra: Boolean(jupiterUltra),
+  });
   const tokenAccounts = createTokenAccountAdapter({ rpcUrl: runtimeRpcUrl });
   const ultraSigner = await createUltraSignerAdapterFromVault({ rpcUrl: runtimeRpcUrl });
   let scheduler: Scheduler;
@@ -796,6 +803,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
           `agent:${process.env.TRENCHCLAW_AGENT_ID?.trim() || settings.storage.sessions.agentId}:main`,
         source: process.env.TRENCHCLAW_SESSION_SOURCE?.trim() || settings.storage.sessions.source,
         reuseSessionOnBoot: settings.storage.sessions.reuseSessionOnBoot,
+        sqliteStateStore: sqliteStore ?? undefined,
       })
     : undefined;
   const session = sessionLogStore ? await sessionLogStore.open() : null;

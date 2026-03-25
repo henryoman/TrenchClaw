@@ -59,6 +59,9 @@ const renderColumnDefinition = (column: ColumnSpec): string => {
   if (column.check) {
     parts.push(`CHECK (${column.check})`);
   }
+  if (column.defaultSql !== undefined) {
+    parts.push(`DEFAULT ${column.defaultSql}`);
+  }
   if (column.references) {
     parts.push(
       `REFERENCES ${quoteIdentifier(column.references.table)}(${quoteIdentifier(column.references.column)})`,

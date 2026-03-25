@@ -12,9 +12,10 @@ import {
   jobIdSchema,
   nonEmptyTrimmedStringSchema,
   nonNegativeIntegerSchema,
+  positiveIntegerSchema,
   sessionIdSchema,
   unixMillisecondsSchema,
-} from "./schema-primitives";
+} from "../../contracts/persistence";
 
 export type SqlitePrimitive = "TEXT" | "INTEGER" | "REAL" | "BLOB";
 
@@ -31,6 +32,7 @@ export type ColumnSpec = {
   primaryKey?: boolean;
   unique?: boolean;
   check?: string;
+  defaultSql?: string;
   references?: ForeignKeySpec;
 };
 
@@ -62,9 +64,17 @@ const renderEnumCheck = (columnName: string, values: readonly string[]): string 
 
 const SQLITE_JOB_STATUS_VALUES = ["pending", "running", "paused", "stopped", "failed"] as const;
 const SQLITE_CHAT_ROLE_VALUES = ["system", "user", "assistant", "tool"] as const;
+const SQLITE_SESSION_ENTRY_TYPE_VALUES = ["session", "message", "event"] as const;
+const SQLITE_SESSION_MESSAGE_ROLE_VALUES = ["system", "user", "assistant", "toolResult"] as const;
+const SQLITE_RUNTIME_PROFILE_VALUES = ["safe", "dangerous", "veryDangerous"] as const;
+const SQLITE_COMPACTION_LEVEL_VALUES = ["basic"] as const;
 
 export const sqliteJobStatusSchema = z.enum(SQLITE_JOB_STATUS_VALUES);
 export const sqliteChatRoleSchema = z.enum(SQLITE_CHAT_ROLE_VALUES);
+export const sqliteSessionEntryTypeSchema = z.enum(SQLITE_SESSION_ENTRY_TYPE_VALUES);
+export const sqliteSessionMessageRoleSchema = z.enum(SQLITE_SESSION_MESSAGE_ROLE_VALUES);
+export const sqliteRuntimeProfileSchema = z.enum(SQLITE_RUNTIME_PROFILE_VALUES);
+export const sqliteCompactionLevelSchema = z.enum(SQLITE_COMPACTION_LEVEL_VALUES);
 
 export const sqliteSchemaMigrationTable = defineSqliteTable("schema_migrations", {
   rowSchema: z.object({
@@ -162,8 +172,10 @@ export const sqliteChatMessageTable = defineSqliteTable("chat_messages", {
   rowSchema: z.object({
     id: chatMessageIdSchema,
     conversation_id: conversationIdSchema,
+    sequence: nonNegativeIntegerSchema,
     role: sqliteChatRoleSchema,
     content: z.string(),
+    parts_json: z.string(),
     metadata_json: z.string().nullable(),
     created_at: unixMillisecondsSchema,
   }),
@@ -175,12 +187,131 @@ export const sqliteChatMessageTable = defineSqliteTable("chat_messages", {
       notNull: true,
       references: { table: "conversations", column: "id", onDelete: "CASCADE" },
     },
+    { name: "sequence", type: "INTEGER", notNull: true, defaultSql: "0", check: "sequence >= 0" },
     { name: "role", type: "TEXT", notNull: true, check: renderEnumCheck("role", SQLITE_CHAT_ROLE_VALUES) },
     { name: "content", type: "TEXT", notNull: true },
+    { name: "parts_json", type: "TEXT", notNull: true, defaultSql: "'[]'" },
     { name: "metadata_json", type: "TEXT" },
     { name: "created_at", type: "INTEGER", notNull: true },
   ],
-  indexes: [{ name: "idx_chat_messages_conversation_created_at", columns: ["conversation_id", "created_at"] }],
+  indexes: [
+    { name: "idx_chat_messages_conversation_sequence", columns: ["conversation_id", "sequence"] },
+    { name: "idx_chat_messages_conversation_created_at", columns: ["conversation_id", "created_at"] },
+  ],
+});
+
+export const sqliteRuntimeSessionTable = defineSqliteTable("runtime_sessions", {
+  rowSchema: z.object({
+    session_id: sessionIdSchema,
+    session_key: nonEmptyTrimmedStringSchema,
+    agent_id: nonEmptyTrimmedStringSchema,
+    source: nonEmptyTrimmedStringSchema,
+    created_at: unixMillisecondsSchema,
+    updated_at: unixMillisecondsSchema,
+    message_count: nonNegativeIntegerSchema,
+    event_count: nonNegativeIntegerSchema,
+    ended_at: unixMillisecondsSchema.nullable(),
+  }),
+  columns: [
+    { name: "session_id", type: "TEXT", primaryKey: true },
+    { name: "session_key", type: "TEXT", notNull: true },
+    { name: "agent_id", type: "TEXT", notNull: true },
+    { name: "source", type: "TEXT", notNull: true },
+    { name: "created_at", type: "INTEGER", notNull: true },
+    { name: "updated_at", type: "INTEGER", notNull: true },
+    { name: "message_count", type: "INTEGER", notNull: true, defaultSql: "0", check: "message_count >= 0" },
+    { name: "event_count", type: "INTEGER", notNull: true, defaultSql: "0", check: "event_count >= 0" },
+    { name: "ended_at", type: "INTEGER", check: "ended_at IS NULL OR ended_at >= 0" },
+  ],
+  indexes: [
+    { name: "idx_runtime_sessions_key_updated", columns: ["session_key", "updated_at"] },
+    { name: "idx_runtime_sessions_updated_at", columns: ["updated_at"] },
+  ],
+});
+
+export const sqliteRuntimeSessionEntryTable = defineSqliteTable("runtime_session_entries", {
+  rowSchema: z.object({
+    id: positiveIntegerSchema,
+    session_id: sessionIdSchema,
+    sequence: positiveIntegerSchema,
+    entry_type: sqliteSessionEntryTypeSchema,
+    timestamp: unixMillisecondsSchema,
+    role: sqliteSessionMessageRoleSchema.nullable(),
+    event_type: z.string().nullable(),
+    text_content: z.string().nullable(),
+    usage_json: z.string().nullable(),
+    payload_json: z.string().nullable(),
+    metadata_json: z.string().nullable(),
+  }),
+  columns: [
+    { name: "id", type: "INTEGER", primaryKey: true },
+    {
+      name: "session_id",
+      type: "TEXT",
+      notNull: true,
+      references: { table: "runtime_sessions", column: "session_id", onDelete: "CASCADE" },
+    },
+    { name: "sequence", type: "INTEGER", notNull: true, check: "sequence >= 1" },
+    { name: "entry_type", type: "TEXT", notNull: true, check: renderEnumCheck("entry_type", SQLITE_SESSION_ENTRY_TYPE_VALUES) },
+    { name: "timestamp", type: "INTEGER", notNull: true },
+    {
+      name: "role",
+      type: "TEXT",
+      check: `role IS NULL OR ${renderEnumCheck("role", SQLITE_SESSION_MESSAGE_ROLE_VALUES)}`,
+    },
+    { name: "event_type", type: "TEXT" },
+    { name: "text_content", type: "TEXT" },
+    { name: "usage_json", type: "TEXT" },
+    { name: "payload_json", type: "TEXT" },
+    { name: "metadata_json", type: "TEXT" },
+  ],
+  indexes: [
+    { name: "idx_runtime_session_entries_session_sequence", columns: ["session_id", "sequence"] },
+    { name: "idx_runtime_session_entries_session_timestamp", columns: ["session_id", "timestamp"] },
+  ],
+});
+
+export const sqliteRuntimeSessionSummaryTable = defineSqliteTable("runtime_session_summaries", {
+  rowSchema: z.object({
+    session_id: sessionIdSchema,
+    session_key: nonEmptyTrimmedStringSchema,
+    source: nonEmptyTrimmedStringSchema,
+    created_at: unixMillisecondsSchema,
+    updated_at: unixMillisecondsSchema,
+    message_count: nonNegativeIntegerSchema,
+    event_count: nonNegativeIntegerSchema,
+    profile: sqliteRuntimeProfileSchema,
+    scheduler_tick_ms: nonNegativeIntegerSchema,
+    registered_actions_json: z.string(),
+    pending_jobs_at_stop: nonNegativeIntegerSchema,
+    started_at: unixMillisecondsSchema,
+    ended_at: unixMillisecondsSchema,
+    duration_sec: nonNegativeIntegerSchema,
+    compaction_level: sqliteCompactionLevelSchema,
+  }),
+  columns: [
+    {
+      name: "session_id",
+      type: "TEXT",
+      primaryKey: true,
+      references: { table: "runtime_sessions", column: "session_id", onDelete: "CASCADE" },
+    },
+    { name: "session_key", type: "TEXT", notNull: true },
+    { name: "source", type: "TEXT", notNull: true },
+    { name: "created_at", type: "INTEGER", notNull: true },
+    { name: "updated_at", type: "INTEGER", notNull: true },
+    { name: "message_count", type: "INTEGER", notNull: true, check: "message_count >= 0" },
+    { name: "event_count", type: "INTEGER", notNull: true, check: "event_count >= 0" },
+    { name: "profile", type: "TEXT", notNull: true, check: renderEnumCheck("profile", SQLITE_RUNTIME_PROFILE_VALUES) },
+    { name: "scheduler_tick_ms", type: "INTEGER", notNull: true, check: "scheduler_tick_ms >= 0" },
+    { name: "registered_actions_json", type: "TEXT", notNull: true },
+    { name: "pending_jobs_at_stop", type: "INTEGER", notNull: true, check: "pending_jobs_at_stop >= 0" },
+    { name: "started_at", type: "INTEGER", notNull: true },
+    { name: "ended_at", type: "INTEGER", notNull: true },
+    { name: "duration_sec", type: "INTEGER", notNull: true, check: "duration_sec >= 0" },
+    { name: "compaction_level", type: "TEXT", notNull: true, check: renderEnumCheck("compaction_level", SQLITE_COMPACTION_LEVEL_VALUES) },
+  ],
+  indexes: [{ name: "idx_runtime_session_summaries_updated_at", columns: ["updated_at"] }],
 });
 
 export const sqliteInstanceProfileTable = defineSqliteTable("instance_profiles", {
@@ -375,6 +506,9 @@ export const sqliteTableContracts = {
   action_receipts: sqliteActionReceiptTable,
   conversations: sqliteConversationTable,
   chat_messages: sqliteChatMessageTable,
+  runtime_sessions: sqliteRuntimeSessionTable,
+  runtime_session_entries: sqliteRuntimeSessionEntryTable,
+  runtime_session_summaries: sqliteRuntimeSessionSummaryTable,
   instance_profiles: sqliteInstanceProfileTable,
   instance_facts: sqliteInstanceFactTable,
   market_instruments: sqliteMarketInstrumentTable,
@@ -392,6 +526,9 @@ export const sqliteJobRowSchema = sqliteJobTable.rowSchema;
 export const sqliteActionReceiptRowSchema = sqliteActionReceiptTable.rowSchema;
 export const sqliteConversationRowSchema = sqliteConversationTable.rowSchema;
 export const sqliteChatMessageRowSchema = sqliteChatMessageTable.rowSchema;
+export const sqliteRuntimeSessionRowSchema = sqliteRuntimeSessionTable.rowSchema;
+export const sqliteRuntimeSessionEntryRowSchema = sqliteRuntimeSessionEntryTable.rowSchema;
+export const sqliteRuntimeSessionSummaryRowSchema = sqliteRuntimeSessionSummaryTable.rowSchema;
 export const sqliteInstanceProfileRowSchema = sqliteInstanceProfileTable.rowSchema;
 export const sqliteInstanceFactRowSchema = sqliteInstanceFactTable.rowSchema;
 export const sqliteMarketInstrumentRowSchema = sqliteMarketInstrumentTable.rowSchema;
@@ -405,6 +542,9 @@ export const sqliteTables = {
   action_receipts: sqliteActionReceiptRowSchema,
   conversations: sqliteConversationRowSchema,
   chat_messages: sqliteChatMessageRowSchema,
+  runtime_sessions: sqliteRuntimeSessionRowSchema,
+  runtime_session_entries: sqliteRuntimeSessionEntryRowSchema,
+  runtime_session_summaries: sqliteRuntimeSessionSummaryRowSchema,
   instance_profiles: sqliteInstanceProfileRowSchema,
   instance_facts: sqliteInstanceFactRowSchema,
   market_instruments: sqliteMarketInstrumentRowSchema,
@@ -421,6 +561,9 @@ export type SqliteJobRow = z.infer<typeof sqliteJobRowSchema>;
 export type SqliteActionReceiptRow = z.infer<typeof sqliteActionReceiptRowSchema>;
 export type SqliteConversationRow = z.infer<typeof sqliteConversationRowSchema>;
 export type SqliteChatMessageRow = z.infer<typeof sqliteChatMessageRowSchema>;
+export type SqliteRuntimeSessionRow = z.infer<typeof sqliteRuntimeSessionRowSchema>;
+export type SqliteRuntimeSessionEntryRow = z.infer<typeof sqliteRuntimeSessionEntryRowSchema>;
+export type SqliteRuntimeSessionSummaryRow = z.infer<typeof sqliteRuntimeSessionSummaryRowSchema>;
 export type SqliteInstanceProfileRow = z.infer<typeof sqliteInstanceProfileRowSchema>;
 export type SqliteInstanceFactRow = z.infer<typeof sqliteInstanceFactRowSchema>;
 export type SqliteMarketInstrumentRow = z.infer<typeof sqliteMarketInstrumentRowSchema>;

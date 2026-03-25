@@ -530,7 +530,9 @@ export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorRe
       details: commands.solana
         ? `Detected at ${commands.solana}.`
         : "Solana CLI is not installed. This does not block first launch, but some shell and power-user workflows expect it.",
-      fixHint: commands.solana ? undefined : "Install with the tool helper or the official Anza installer when a workflow needs it.",
+      fixHint: commands.solana
+        ? undefined
+        : "Install with `curl -fsSL https://trenchclaw.vercel.app/install-tools | sh` or the official Anza installer when a workflow needs it.",
     },
     {
       id: "solana-keygen",
@@ -539,7 +541,9 @@ export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorRe
       details: commands["solana-keygen"]
         ? `Detected at ${commands["solana-keygen"]}.`
         : "solana-keygen is not installed. Vanity wallet helper flows depend on it.",
-      fixHint: commands["solana-keygen"] ? undefined : "Install Solana CLI to provide solana-keygen.",
+      fixHint: commands["solana-keygen"]
+        ? undefined
+        : "Install Solana CLI with `curl -fsSL https://trenchclaw.vercel.app/install-tools | sh` or the official Anza installer to provide solana-keygen.",
     },
     {
       id: "helius-cli",
@@ -548,7 +552,9 @@ export const collectDoctorReport = (options: DoctorReportOptions = {}): DoctorRe
       details: commands.helius
         ? `Detected at ${commands.helius}.`
         : "Helius CLI is not installed. This does not block first launch, but CLI-backed shell workflows will ask for it.",
-      fixHint: commands.helius ? undefined : "Install with the tool helper or `bun add -g helius-cli@latest` when a workflow needs it.",
+      fixHint: commands.helius
+        ? undefined
+        : "Install with `curl -fsSL https://trenchclaw.vercel.app/install-tools | sh` when a workflow needs it.",
     },
   ];
 
@@ -1115,7 +1121,7 @@ const logOptionalToolDiagnostics = (): void => {
   }
 
   console.log(
-    `${RUNNER_LOG_PREFIX} optional tools missing: ${emphasize(missingTools.join(", "))} (only required for specific features; run ${strong("trenchclaw doctor")} for details)`,
+    `${RUNNER_LOG_PREFIX} optional tools missing: ${emphasize(missingTools.join(", "))} (only required for specific features; run ${strong("trenchclaw doctor")} or ${strong("curl -fsSL https://trenchclaw.vercel.app/install-tools | sh")} for details)`,
   );
 };
 

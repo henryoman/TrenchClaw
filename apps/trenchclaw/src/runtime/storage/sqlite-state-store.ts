@@ -3,6 +3,7 @@ import { Database } from "bun:sqlite";
 import type { ActionResult } from "../../ai/contracts/types/action";
 import type {
   ChatMessageState,
+  ChatMessageStateInput,
   ConversationHistorySlice,
   ConversationState,
   InstanceFactState,
@@ -15,11 +16,23 @@ import type {
   StateStore,
 } from "../../ai/contracts/types/state";
 import {
+  chatMessageMetadataSchema,
+  persistedUiMessagePartsSchema,
+  runtimeSessionStateSchema,
+  runtimeSessionSummaryRecordSchema,
+  type RuntimeSessionMessageRole,
+  type RuntimeSessionState,
+  type RuntimeSessionSummaryRecord,
+  type ChatMessageMetadata,
+  type PersistedUiMessagePart,
+} from "../../contracts/persistence";
+import {
   MAX_CONVERSATION_HISTORY_SCAN_MESSAGES,
   createConversationHistorySlice,
 } from "../chat/history";
 import {
   actionResultSchema,
+  chatMessageStateInputSchema,
   chatMessageStateSchema,
   conversationStateSchema,
   instanceFactStateSchema,
@@ -45,13 +58,14 @@ import {
   type SaveOhlcvBarsInput,
 } from "./schema";
 import { getSqliteSchemaSnapshot, syncSqliteSchema, type SqliteSchemaSyncReport } from "./sqlite-orm";
-import { initializeStorageFilePath } from "./storage-shared";
+import { initializeStorageFilePath } from "./log-files";
 import {
   sqliteChatMessageRowSchema,
   sqliteConversationRowSchema,
   sqliteInstanceFactRowSchema,
   sqliteInstanceProfileRowSchema,
   sqliteJobRowSchema,
+  sqliteRuntimeSessionRowSchema,
 } from "./sqlite-schema";
 
 export type SqliteStateStoreConfig = {
@@ -81,6 +95,90 @@ const parseJsonWithSchema = <T>(
   return result.data;
 };
 
+const buildTextOnlyChatParts = (content: string): PersistedUiMessagePart[] => [
+  {
+    type: "text",
+    text: content,
+  },
+];
+
+const normalizeStoredChatMetadata = (metadataJson: string | null): {
+  metadata: ChatMessageMetadata | undefined;
+  serializedMetadata: string | null;
+  legacyUiParts: PersistedUiMessagePart[] | null;
+} => {
+  if (metadataJson == null) {
+    return {
+      metadata: undefined,
+      serializedMetadata: null,
+      legacyUiParts: null,
+    };
+  }
+
+  const parsed = parseJson<unknown>(metadataJson, null);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    return {
+      metadata: undefined,
+      serializedMetadata: null,
+      legacyUiParts: null,
+    };
+  }
+
+  const metadataRecord = { ...(parsed as Record<string, unknown>) };
+  const legacyUiParts = Array.isArray(metadataRecord.uiParts)
+    ? parseJsonWithSchema(JSON.stringify(metadataRecord.uiParts), persistedUiMessagePartsSchema, null)
+    : null;
+  delete metadataRecord.uiParts;
+
+  if (Object.keys(metadataRecord).length === 0) {
+    return {
+      metadata: undefined,
+      serializedMetadata: null,
+      legacyUiParts,
+    };
+  }
+
+  const metadataResult = chatMessageMetadataSchema.safeParse(metadataRecord);
+  if (!metadataResult.success) {
+    return {
+      metadata: undefined,
+      serializedMetadata: null,
+      legacyUiParts,
+    };
+  }
+
+  return {
+    metadata: metadataResult.data,
+    serializedMetadata: JSON.stringify(metadataResult.data),
+    legacyUiParts,
+  };
+};
+
+const normalizeStoredChatParts = (input: {
+  content: string;
+  partsJson: string | null;
+  metadataJson: string | null;
+}): {
+  parts: PersistedUiMessagePart[];
+  serializedParts: string;
+  metadata: ChatMessageMetadata | undefined;
+  serializedMetadata: string | null;
+} => {
+  const metadata = normalizeStoredChatMetadata(input.metadataJson);
+  const parsedParts =
+    input.partsJson == null
+      ? null
+      : parseJsonWithSchema(input.partsJson, persistedUiMessagePartsSchema, null);
+  const parts = parsedParts ?? metadata.legacyUiParts ?? buildTextOnlyChatParts(input.content);
+
+  return {
+    parts,
+    serializedParts: JSON.stringify(parts),
+    metadata: metadata.metadata,
+    serializedMetadata: metadata.serializedMetadata,
+  };
+};
+
 const toFiniteNumber = (value: unknown): number | null => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
@@ -107,7 +205,389 @@ export class SqliteStateStore implements StateStore {
 
     this.configureConnection();
     this.schemaSyncReport = syncSqliteSchema(this.db);
+    this.repairChatMessageStorage();
     this.nextJobSerialNumber = this.readNextJobSerialNumber();
+  }
+
+  private repairChatMessageStorage(): void {
+    const rows = this.db
+      .query(
+        `
+        SELECT id, conversation_id, sequence, role, content, parts_json, metadata_json, created_at
+        FROM chat_messages
+        ORDER BY conversation_id ASC, created_at ASC, id ASC
+      `,
+      )
+      .all() as Record<string, unknown>[];
+
+    let currentConversationId: string | null = null;
+    let nextSequence = 0;
+    for (const row of rows) {
+      const parsed = sqliteChatMessageRowSchema.parse(row);
+      if (parsed.conversation_id !== currentConversationId) {
+        currentConversationId = parsed.conversation_id;
+        nextSequence = 1;
+      } else {
+        nextSequence += 1;
+      }
+
+      const normalized = normalizeStoredChatParts({
+        content: parsed.content,
+        partsJson: parsed.parts_json,
+        metadataJson: parsed.metadata_json,
+      });
+      if (
+        parsed.sequence === nextSequence
+        && parsed.parts_json === normalized.serializedParts
+        && (parsed.metadata_json ?? null) === normalized.serializedMetadata
+      ) {
+        continue;
+      }
+
+      this.db
+        .query(
+          `
+          UPDATE chat_messages
+          SET
+            sequence = ?,
+            parts_json = ?,
+            metadata_json = ?
+          WHERE id = ?
+        `,
+        )
+        .run(nextSequence, normalized.serializedParts, normalized.serializedMetadata, parsed.id);
+    }
+  }
+
+  private resolveChatMessageSequence(input: {
+    conversationId: string;
+    messageId: string;
+    requestedSequence?: number;
+  }): number {
+    if (typeof input.requestedSequence === "number" && Number.isFinite(input.requestedSequence)) {
+      return Math.max(1, Math.trunc(input.requestedSequence));
+    }
+
+    const existing = this.db
+      .query(
+        `
+        SELECT sequence
+        FROM chat_messages
+        WHERE id = ?
+        LIMIT 1
+      `,
+      )
+      .get(input.messageId) as { sequence?: number } | null;
+    if (typeof existing?.sequence === "number" && Number.isFinite(existing.sequence) && existing.sequence > 0) {
+      return Math.trunc(existing.sequence);
+    }
+
+    const maxRow = this.db
+      .query(
+        `
+        SELECT MAX(sequence) AS max_sequence
+        FROM chat_messages
+        WHERE conversation_id = ?
+      `,
+      )
+      .get(input.conversationId) as { max_sequence?: number | null } | null;
+    const nextSequence = Math.trunc(Number(maxRow?.max_sequence ?? 0)) + 1;
+    return Math.max(1, nextSequence);
+  }
+
+  private getNextRuntimeSessionEntrySequence(sessionId: string): number {
+    const row = this.db
+      .query(
+        `
+        SELECT MAX(sequence) AS max_sequence
+        FROM runtime_session_entries
+        WHERE session_id = ?
+      `,
+      )
+      .get(sessionId) as { max_sequence?: number | null } | null;
+    return Math.max(1, Math.trunc(Number(row?.max_sequence ?? 0)) + 1);
+  }
+
+  private appendRuntimeSessionMarker(input: {
+    sessionId: string;
+    timestamp: number;
+    metadata?: Record<string, unknown>;
+  }): void {
+    this.db
+      .query(
+        `
+        INSERT INTO runtime_session_entries (
+          session_id, sequence, entry_type, timestamp, role, event_type, text_content, usage_json, payload_json, metadata_json
+        )
+        VALUES (?, ?, 'session', ?, NULL, NULL, NULL, NULL, NULL, ?)
+      `,
+      )
+      .run(
+        input.sessionId,
+        this.getNextRuntimeSessionEntrySequence(input.sessionId),
+        input.timestamp,
+        input.metadata === undefined ? null : JSON.stringify(input.metadata),
+      );
+  }
+
+  private getRuntimeSessionRow(sessionId: string): RuntimeSessionState | null {
+    const row = this.db
+      .query(
+        `
+        SELECT session_id, session_key, agent_id, source, created_at, updated_at, message_count, event_count, ended_at
+        FROM runtime_sessions
+        WHERE session_id = ?
+        LIMIT 1
+      `,
+      )
+      .get(sessionId) as Record<string, unknown> | null;
+    if (!row) {
+      return null;
+    }
+
+    const parsed = sqliteRuntimeSessionRowSchema.parse(row);
+    return runtimeSessionStateSchema.parse({
+      sessionId: parsed.session_id,
+      sessionKey: parsed.session_key,
+      agentId: parsed.agent_id,
+      source: parsed.source,
+      createdAt: parsed.created_at,
+      updatedAt: parsed.updated_at,
+      messageCount: parsed.message_count,
+      eventCount: parsed.event_count,
+      endedAt: parsed.ended_at ?? undefined,
+    });
+  }
+
+  openRuntimeSession(input: {
+    agentId: string;
+    sessionKey: string;
+    source: string;
+    reuseSessionOnBoot?: boolean;
+  }): RuntimeSessionState {
+    const agentId = input.agentId.trim() || "main";
+    const sessionKey = input.sessionKey.trim() || `agent:${agentId}:main`;
+    const source = input.source.trim() || "cli";
+    const reuseSessionOnBoot = input.reuseSessionOnBoot ?? true;
+    const now = Date.now();
+    const existing = this.db
+      .query(
+        `
+        SELECT session_id, session_key, agent_id, source, created_at, updated_at, message_count, event_count, ended_at
+        FROM runtime_sessions
+        WHERE session_key = ?
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
+      `,
+      )
+      .get(sessionKey) as Record<string, unknown> | null;
+
+    if (reuseSessionOnBoot && existing) {
+      const parsed = sqliteRuntimeSessionRowSchema.parse(existing);
+      this.db
+        .query(
+          `
+          UPDATE runtime_sessions
+          SET updated_at = ?, ended_at = NULL
+          WHERE session_id = ?
+        `,
+        )
+        .run(now, parsed.session_id);
+      this.appendRuntimeSessionMarker({
+        sessionId: parsed.session_id,
+        timestamp: now,
+        metadata: {
+          agentId,
+          resumed: true,
+        },
+      });
+      return this.getRuntimeSessionRow(parsed.session_id)
+        ?? runtimeSessionStateSchema.parse({
+          sessionId: parsed.session_id,
+          sessionKey: parsed.session_key,
+          agentId: parsed.agent_id,
+          source: parsed.source,
+          createdAt: parsed.created_at,
+          updatedAt: now,
+          messageCount: parsed.message_count,
+          eventCount: parsed.event_count,
+          endedAt: undefined,
+        });
+    }
+
+    const sessionId = crypto.randomUUID();
+    this.db
+      .query(
+        `
+        INSERT INTO runtime_sessions (
+          session_id, session_key, agent_id, source, created_at, updated_at, message_count, event_count, ended_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 0, 0, NULL)
+      `,
+      )
+      .run(sessionId, sessionKey, agentId, source, now, now);
+    this.appendRuntimeSessionMarker({
+      sessionId,
+      timestamp: now,
+      metadata: {
+        agentId,
+      },
+    });
+    return this.getRuntimeSessionRow(sessionId)
+      ?? runtimeSessionStateSchema.parse({
+        sessionId,
+        sessionKey,
+        agentId,
+        source,
+        createdAt: now,
+        updatedAt: now,
+        messageCount: 0,
+        eventCount: 0,
+      });
+  }
+
+  appendRuntimeSessionMessage(input: {
+    sessionId: string;
+    role: RuntimeSessionMessageRole;
+    text: string;
+    usage?: {
+      cost?: {
+        total?: number;
+      };
+    };
+  }): void {
+    const timestamp = Date.now();
+    this.db
+      .query(
+        `
+        INSERT INTO runtime_session_entries (
+          session_id, sequence, entry_type, timestamp, role, event_type, text_content, usage_json, payload_json, metadata_json
+        )
+        VALUES (?, ?, 'message', ?, ?, NULL, ?, ?, NULL, NULL)
+      `,
+      )
+      .run(
+        input.sessionId,
+        this.getNextRuntimeSessionEntrySequence(input.sessionId),
+        timestamp,
+        input.role,
+        input.text,
+        input.usage === undefined ? null : JSON.stringify(input.usage),
+      );
+    this.db
+      .query(
+        `
+        UPDATE runtime_sessions
+        SET
+          updated_at = ?,
+          message_count = message_count + 1,
+          ended_at = NULL
+        WHERE session_id = ?
+      `,
+      )
+      .run(timestamp, input.sessionId);
+  }
+
+  appendRuntimeSessionEvent(input: {
+    sessionId: string;
+    eventType: string;
+    payload: unknown;
+  }): void {
+    const timestamp = Date.now();
+    this.db
+      .query(
+        `
+        INSERT INTO runtime_session_entries (
+          session_id, sequence, entry_type, timestamp, role, event_type, text_content, usage_json, payload_json, metadata_json
+        )
+        VALUES (?, ?, 'event', ?, NULL, ?, NULL, NULL, ?, NULL)
+      `,
+      )
+      .run(
+        input.sessionId,
+        this.getNextRuntimeSessionEntrySequence(input.sessionId),
+        timestamp,
+        input.eventType,
+        JSON.stringify(input.payload),
+      );
+    this.db
+      .query(
+        `
+        UPDATE runtime_sessions
+        SET
+          updated_at = ?,
+          event_count = event_count + 1,
+          ended_at = NULL
+        WHERE session_id = ?
+      `,
+      )
+      .run(timestamp, input.sessionId);
+  }
+
+  getRuntimeSessionStats(sessionId: string): RuntimeSessionState | null {
+    return this.getRuntimeSessionRow(sessionId);
+  }
+
+  endRuntimeSession(sessionId: string): void {
+    const timestamp = Date.now();
+    this.db
+      .query(
+        `
+        UPDATE runtime_sessions
+        SET
+          updated_at = ?,
+          ended_at = ?
+        WHERE session_id = ?
+      `,
+      )
+      .run(timestamp, timestamp, sessionId);
+  }
+
+  saveRuntimeSessionSummary(summary: RuntimeSessionSummaryRecord): void {
+    const parsed = runtimeSessionSummaryRecordSchema.parse(summary);
+    this.db
+      .query(
+        `
+        INSERT INTO runtime_session_summaries (
+          session_id, session_key, source, created_at, updated_at, message_count, event_count,
+          profile, scheduler_tick_ms, registered_actions_json, pending_jobs_at_stop,
+          started_at, ended_at, duration_sec, compaction_level
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(session_id) DO UPDATE SET
+          session_key = excluded.session_key,
+          source = excluded.source,
+          created_at = excluded.created_at,
+          updated_at = excluded.updated_at,
+          message_count = excluded.message_count,
+          event_count = excluded.event_count,
+          profile = excluded.profile,
+          scheduler_tick_ms = excluded.scheduler_tick_ms,
+          registered_actions_json = excluded.registered_actions_json,
+          pending_jobs_at_stop = excluded.pending_jobs_at_stop,
+          started_at = excluded.started_at,
+          ended_at = excluded.ended_at,
+          duration_sec = excluded.duration_sec,
+          compaction_level = excluded.compaction_level
+      `,
+      )
+      .run(
+        parsed.sessionId,
+        parsed.sessionKey,
+        parsed.source,
+        parsed.createdAt,
+        parsed.updatedAt,
+        parsed.messageCount,
+        parsed.eventCount,
+        parsed.profile,
+        parsed.schedulerTickMs,
+        JSON.stringify(parsed.registeredActions),
+        parsed.pendingJobsAtStop,
+        parsed.startedAt,
+        parsed.endedAt,
+        parsed.durationSec,
+        parsed.compactionLevel,
+      );
   }
 
   recoverInterruptedJobs(now = Date.now()): number {
@@ -353,28 +833,33 @@ export class SqliteStateStore implements StateStore {
           this.db
             .query(
               `
-              SELECT id, conversation_id, role, content, metadata_json, created_at
+              SELECT id, conversation_id, sequence, role, content, parts_json, metadata_json, created_at
               FROM chat_messages
               WHERE id LIKE ? OR role LIKE ? OR content LIKE ?
-              ORDER BY created_at DESC
+              ORDER BY sequence DESC, created_at DESC, id DESC
               LIMIT ?
             `,
             )
             .all(like, like, like, messageScanLimit) as Record<string, unknown>[]
         )
-          .map((row) =>
-            chatMessageStateSchema.parse({
-              id: String(row.id),
-              conversationId: String(row.conversation_id),
-              role: String(row.role),
-              content: String(row.content),
-              metadata:
-                row.metadata_json == null
-                  ? undefined
-                  : parseJson<Record<string, unknown> | undefined>(String(row.metadata_json), undefined),
-              createdAt: Number(row.created_at),
-            }),
-          )
+          .map((row) => {
+            const parsed = sqliteChatMessageRowSchema.parse(row);
+            const normalized = normalizeStoredChatParts({
+              content: parsed.content,
+              partsJson: parsed.parts_json,
+              metadataJson: parsed.metadata_json,
+            });
+            return chatMessageStateSchema.parse({
+              id: parsed.id,
+              conversationId: parsed.conversation_id,
+              sequence: parsed.sequence,
+              role: parsed.role,
+              content: parsed.content,
+              parts: normalized.parts,
+              metadata: normalized.metadata,
+              createdAt: parsed.created_at,
+            });
+          })
           .slice(0, limit)
       : [];
 
@@ -632,17 +1117,28 @@ export class SqliteStateStore implements StateStore {
     return result.changes > 0;
   }
 
-  saveChatMessage(message: ChatMessageState): void {
-    const parsed = chatMessageStateSchema.parse(message);
+  saveChatMessage(message: ChatMessageStateInput): void {
+    const parsedInput = chatMessageStateInputSchema.parse(message);
+    const parsed = chatMessageStateSchema.parse({
+      ...parsedInput,
+      parts: parsedInput.parts ?? buildTextOnlyChatParts(parsedInput.content),
+      sequence: this.resolveChatMessageSequence({
+        conversationId: parsedInput.conversationId,
+        messageId: parsedInput.id,
+        requestedSequence: parsedInput.sequence,
+      }),
+    });
     this.db
       .query(
         `
-        INSERT INTO chat_messages (id, conversation_id, role, content, metadata_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO chat_messages (id, conversation_id, sequence, role, content, parts_json, metadata_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO UPDATE SET
           conversation_id = excluded.conversation_id,
+          sequence = excluded.sequence,
           role = excluded.role,
           content = excluded.content,
+          parts_json = excluded.parts_json,
           metadata_json = excluded.metadata_json,
           created_at = excluded.created_at
       `,
@@ -650,8 +1146,10 @@ export class SqliteStateStore implements StateStore {
       .run(
         parsed.id,
         parsed.conversationId,
+        parsed.sequence,
         parsed.role,
         parsed.content,
+        JSON.stringify(parsed.parts),
         parsed.metadata === undefined ? null : JSON.stringify(parsed.metadata),
         parsed.createdAt,
       );
@@ -661,10 +1159,10 @@ export class SqliteStateStore implements StateStore {
     const rows = this.db
       .query(
         `
-        SELECT id, conversation_id, role, content, metadata_json, created_at
+        SELECT id, conversation_id, sequence, role, content, parts_json, metadata_json, created_at
         FROM chat_messages
         WHERE conversation_id = ?
-        ORDER BY created_at ASC
+        ORDER BY sequence ASC, created_at ASC, id ASC
         LIMIT ?
       `,
       )
@@ -672,15 +1170,19 @@ export class SqliteStateStore implements StateStore {
 
     return rows.map((row) => {
       const parsed = sqliteChatMessageRowSchema.parse(row);
+      const normalized = normalizeStoredChatParts({
+        content: parsed.content,
+        partsJson: parsed.parts_json,
+        metadataJson: parsed.metadata_json,
+      });
       return chatMessageStateSchema.parse({
         id: parsed.id,
         conversationId: parsed.conversation_id,
+        sequence: parsed.sequence,
         role: parsed.role,
         content: parsed.content,
-        metadata:
-          parsed.metadata_json == null
-            ? undefined
-            : parseJson<Record<string, unknown> | undefined>(parsed.metadata_json, undefined),
+        parts: normalized.parts,
+        metadata: normalized.metadata,
         createdAt: parsed.created_at,
       });
     });
@@ -705,14 +1207,13 @@ export class SqliteStateStore implements StateStore {
     }
 
     const beforeMessageId = input.beforeMessageId?.trim();
-    let cursorCreatedAt: number | null = null;
-    let cursorId: string | null = null;
+    let cursorSequence: number | null = null;
 
     if (beforeMessageId) {
       const cursorRow = this.db
         .query(
           `
-          SELECT id, created_at
+          SELECT id, sequence
           FROM chat_messages
           WHERE conversation_id = ?
             AND id = ?
@@ -725,8 +1226,7 @@ export class SqliteStateStore implements StateStore {
         throw new Error(`beforeMessageId "${beforeMessageId}" was not found in conversation "${normalizedConversationId}"`);
       }
 
-      cursorCreatedAt = Number(cursorRow.created_at);
-      cursorId = String(cursorRow.id);
+      cursorSequence = Number(cursorRow.sequence);
     }
 
     const countRow = this.db
@@ -736,7 +1236,7 @@ export class SqliteStateStore implements StateStore {
             SELECT COUNT(*) AS message_count
             FROM chat_messages
             WHERE conversation_id = ?
-              AND (created_at < ? OR (created_at = ? AND id < ?))
+              AND sequence < ?
           `
           : `
             SELECT COUNT(*) AS message_count
@@ -746,7 +1246,7 @@ export class SqliteStateStore implements StateStore {
       )
       .get(
         ...(beforeMessageId
-          ? [normalizedConversationId, cursorCreatedAt!, cursorCreatedAt!, cursorId!]
+          ? [normalizedConversationId, cursorSequence!]
           : [normalizedConversationId]),
       ) as { message_count?: number } | null;
 
@@ -754,39 +1254,43 @@ export class SqliteStateStore implements StateStore {
       .query(
         beforeMessageId
           ? `
-            SELECT id, conversation_id, role, content, metadata_json, created_at
+            SELECT id, conversation_id, sequence, role, content, parts_json, metadata_json, created_at
             FROM chat_messages
             WHERE conversation_id = ?
-              AND (created_at < ? OR (created_at = ? AND id < ?))
-            ORDER BY created_at DESC, id DESC
+              AND sequence < ?
+            ORDER BY sequence DESC, created_at DESC, id DESC
             LIMIT ?
           `
           : `
-            SELECT id, conversation_id, role, content, metadata_json, created_at
+            SELECT id, conversation_id, sequence, role, content, parts_json, metadata_json, created_at
             FROM chat_messages
             WHERE conversation_id = ?
-            ORDER BY created_at DESC, id DESC
+            ORDER BY sequence DESC, created_at DESC, id DESC
             LIMIT ?
           `,
       )
       .all(
         ...(beforeMessageId
-          ? [normalizedConversationId, cursorCreatedAt!, cursorCreatedAt!, cursorId!, MAX_CONVERSATION_HISTORY_SCAN_MESSAGES]
+          ? [normalizedConversationId, cursorSequence!, MAX_CONVERSATION_HISTORY_SCAN_MESSAGES]
           : [normalizedConversationId, MAX_CONVERSATION_HISTORY_SCAN_MESSAGES]),
       ) as Record<string, unknown>[];
 
     const eligibleMessages = rows
       .map((row) => {
         const parsed = sqliteChatMessageRowSchema.parse(row);
+        const normalized = normalizeStoredChatParts({
+          content: parsed.content,
+          partsJson: parsed.parts_json,
+          metadataJson: parsed.metadata_json,
+        });
         return chatMessageStateSchema.parse({
           id: parsed.id,
           conversationId: parsed.conversation_id,
+          sequence: parsed.sequence,
           role: parsed.role,
           content: parsed.content,
-          metadata:
-            parsed.metadata_json == null
-              ? undefined
-              : parseJson<Record<string, unknown> | undefined>(parsed.metadata_json, undefined),
+          parts: normalized.parts,
+          metadata: normalized.metadata,
           createdAt: parsed.created_at,
         });
       })

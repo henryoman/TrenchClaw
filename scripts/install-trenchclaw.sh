@@ -140,13 +140,13 @@ choose_install_dir() {
     return 0
   fi
 
-  if [[ -d "$HOME/bin" ]] || mkdir -p "$HOME/bin" 2>/dev/null; then
-    printf '%s\n' "$HOME/bin"
+  if [[ -d "$HOME/.local/bin" ]] || mkdir -p "$HOME/.local/bin" 2>/dev/null; then
+    printf '%s\n' "$HOME/.local/bin"
     return 0
   fi
 
-  if [[ -d "$HOME/.local/bin" ]] || mkdir -p "$HOME/.local/bin" 2>/dev/null; then
-    printf '%s\n' "$HOME/.local/bin"
+  if [[ -d "$HOME/bin" ]] || mkdir -p "$HOME/bin" 2>/dev/null; then
+    printf '%s\n' "$HOME/bin"
     return 0
   fi
 

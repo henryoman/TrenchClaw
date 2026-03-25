@@ -346,7 +346,7 @@ TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for runtime jobs, receipts,
 
 Schema is Zod-first and auto-synced on boot:
 
-- Shared storage primitives + ID/value schemas: `src/runtime/storage/schema-primitives.ts`
+- Central persistence contracts + shared primitives: `src/contracts/persistence.ts`
 - Runtime row schemas: `src/runtime/storage/sqlite-schema.ts`
 - Runtime payload/state schemas: `src/runtime/storage/schema.ts`
 - SQL table/index contract + boot sync + drift inspection: `src/runtime/storage/sqlite-orm.ts`
@@ -381,10 +381,10 @@ The current public release does not promise a broad autonomous strategy engine y
 
 ### Install dev tooling
 
-Use the runner bootstrap script to install or upgrade the local development toolchain:
+Use the dev-only runner bootstrap script to install or upgrade the local development toolchain:
 
 ```bash
-sh ./apps/runner/scripts/bootstrap-deps.sh
+sh ./apps/runner/scripts/bootstrap-dev-tools.sh
 ```
 
 That helper manages:

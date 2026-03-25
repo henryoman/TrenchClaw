@@ -1,0 +1,1233 @@
+import { createBlockchainAlertAction } from "../solana/actions/data-fetch/alerts/createBlockchainAlert";
+import {
+  getCryptoAssetSentimentAction,
+  getCryptoFearGreedIndexAction,
+  getCryptoNewsLatestAction,
+  getCryptoTrendingTopicsAction,
+  searchCryptoNewsAction,
+} from "../solana/actions/data-fetch/api/cryptocurrency-cv-actions";
+import {
+  getDexscreenerLatestAdsAction,
+  getDexscreenerLatestCommunityTakeoversAction,
+  getDexscreenerLatestTokenBoostsAction,
+  getDexscreenerLatestTokenProfilesAction,
+  getDexscreenerOrdersByTokenAction,
+  getDexscreenerPairByChainAndPairIdAction,
+  getDexscreenerTokenPairsByChainAction,
+  getDexscreenerTokensByChainAction,
+  getDexscreenerTopTokenBoostsAction,
+  searchDexscreenerPairsAction,
+} from "../solana/actions/data-fetch/api/dexscreener-actions";
+import { getConfiguredNewsFeedsAction } from "../solana/actions/data-fetch/api/news-feed-registry-actions";
+import { getWalletTrackerAction } from "../solana/actions/data-fetch/api/wallet-tracker-actions";
+import { getLatestSolanaNewsAction } from "../solana/actions/data-fetch/api/rss-news-actions";
+import { getSwapHistoryAction } from "../solana/actions/data-fetch/api/swapHistory";
+import { mutateInstanceMemoryAction } from "../solana/actions/data-fetch/runtime/mutateInstanceMemory";
+import { enqueueRuntimeJobAction } from "../solana/actions/data-fetch/runtime/enqueueRuntimeJob";
+import { getManagedWalletContentsAction, getWalletContentsAction } from "../solana/actions/data-fetch/runtime/getManagedWalletContents";
+import { getManagedWalletSolBalancesAction } from "../solana/actions/data-fetch/runtime/getManagedWalletSolBalances";
+import { getTokenLaunchTimeAction } from "../solana/actions/data-fetch/runtime/getTokenLaunchTime";
+import { getTokenPricePerformanceAction } from "../solana/actions/data-fetch/runtime/getTokenPricePerformance";
+import { listKnowledgeDocsAction } from "../solana/actions/data-fetch/runtime/listKnowledgeDocs";
+import { manageRuntimeJobAction } from "../solana/actions/data-fetch/runtime/manageRuntimeJob";
+import { downloadGeckoTerminalOhlcvAction } from "../solana/actions/data-fetch/runtime/downloadGeckoTerminalOhlcv";
+import {
+  getTokenHolderDistributionAction,
+  rankDexscreenerTopTokenBoostsByWhalesAction,
+} from "../solana/actions/data-fetch/runtime/tokenHolderAnalytics";
+import { pingRuntimeAction } from "../solana/actions/data-fetch/runtime/pingRuntime";
+import { queryInstanceMemoryAction } from "../solana/actions/data-fetch/runtime/queryInstanceMemory";
+import { queryRuntimeStoreAction } from "../solana/actions/data-fetch/runtime/queryRuntimeStore";
+import { readKnowledgeDocAction } from "../solana/actions/data-fetch/runtime/readKnowledgeDoc";
+import { runWakeupCheckAction } from "../solana/actions/data-fetch/runtime/runWakeupCheck";
+import { scheduleManagedSwapAction } from "../solana/actions/data-fetch/runtime/scheduleManagedSwap";
+import { sleepAction } from "../solana/actions/data-fetch/runtime/sleep";
+import { submitTradingRoutineAction } from "../solana/actions/data-fetch/runtime/submitTradingRoutine";
+import {
+  closeTokenAccountAction,
+  createWalletGroupDirectoryAction,
+  createWalletsAction,
+  devnetAirdropAction,
+  getTriggerOrdersAction,
+  managedSwapAction,
+  managedTriggerCancelOrdersAction,
+  managedTriggerOrderAction,
+  managedUltraSwapAction,
+  scheduleManagedUltraSwapAction,
+  privacyAirdropAction,
+  privacySwapAction,
+  privacyTransferAction,
+  renameWalletsAction,
+  transferAction,
+  ultraExecuteSwapAction,
+  ultraQuoteSwapAction,
+  ultraSwapAction,
+} from "../solana/actions/wallet-based";
+import {
+  WORKSPACE_BASH_TOOL_NAME,
+  WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
+  WORKSPACE_READ_FILE_TOOL_NAME,
+  WORKSPACE_WRITE_FILE_TOOL_NAME,
+} from "../runtime/workspace-bash";
+import type {
+  RuntimeActionCapabilityDefinition,
+  RuntimeReleaseReadinessDescriptor,
+  WorkspaceToolCapabilityDefinition,
+} from "../runtime/tools/types";
+
+type RuntimeActionCapabilityDefinitionWithoutReadiness = Omit<RuntimeActionCapabilityDefinition, "releaseReadiness">;
+
+const canUseWalletSigningTransfers = ({
+  settings,
+}: {
+  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+}): boolean =>
+  settings.trading.enabled
+  && settings.wallet.dangerously.allowWalletSigning
+  && settings.trading.limits.maxSingleTransferSol > 0;
+
+const canUseUltraSwap = ({
+  settings,
+}: {
+  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+}): boolean =>
+  settings.trading.enabled
+  && settings.trading.jupiter.ultra.enabled
+  && settings.trading.jupiter.ultra.allowQuotes
+  && settings.trading.jupiter.ultra.allowExecutions;
+
+const canUseStandardSwap = ({
+  settings,
+}: {
+  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+}): boolean =>
+  settings.trading.enabled
+  && settings.trading.jupiter.standard.enabled
+  && settings.trading.jupiter.standard.allowQuotes
+  && settings.trading.jupiter.standard.allowExecutions;
+
+const canUseManagedSwap = ({
+  settings,
+}: {
+  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+}): boolean => canUseUltraSwap({ settings }) || canUseStandardSwap({ settings });
+
+const canUseTriggerOrders = ({
+  settings,
+}: {
+  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+}): boolean =>
+  settings.trading.enabled
+  && settings.trading.jupiter.trigger.enabled
+  && settings.trading.jupiter.trigger.allowOrders;
+
+const hasReadableWorkspaceSurface = ({
+  filesystemPolicy,
+}: Parameters<WorkspaceToolCapabilityDefinition["enabledBySettings"]>[0]): boolean =>
+  filesystemPolicy.defaultPermission === "read"
+  || filesystemPolicy.defaultPermission === "write"
+  || filesystemPolicy.readPaths.length > 0
+  || filesystemPolicy.writePaths.length > 0;
+
+const hasWritableWorkspaceSurface = ({
+  settings,
+  filesystemPolicy,
+}: Parameters<WorkspaceToolCapabilityDefinition["enabledBySettings"]>[0]): boolean =>
+  settings.agent.dangerously.allowFilesystemWrites
+  && (filesystemPolicy.defaultPermission === "write" || filesystemPolicy.writePaths.length > 0);
+
+const SHIPPED_NOW = (note: string): RuntimeReleaseReadinessDescriptor => ({
+  status: "shipped-now",
+  note,
+});
+
+const LIMITED = (note: string): RuntimeReleaseReadinessDescriptor => ({
+  status: "limited",
+  note,
+});
+
+const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseReadinessDescriptor> = {
+  createWalletGroupDirectory: SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
+  createWallets: SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
+  renameWallets: SHIPPED_NOW("Managed wallet creation and organization ship in the current release."),
+  queryRuntimeStore: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  queryInstanceMemory: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  listKnowledgeDocs: SHIPPED_NOW("Knowledge routing and doc lookup ship in the current release."),
+  readKnowledgeDoc: SHIPPED_NOW("Knowledge routing and doc lookup ship in the current release."),
+  mutateInstanceMemory: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  pingRuntime: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  runWakeupCheck: SHIPPED_NOW("Wakeup checks now run through one managed runtime routine and action surface."),
+  sleep: SHIPPED_NOW("Core runtime state and memory surfaces ship in the current release."),
+  getWalletContents: SHIPPED_NOW("Managed wallet balance reads now ship through one compact tool surface."),
+  getManagedWalletContents: SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
+  getManagedWalletSolBalances: SHIPPED_NOW("Managed wallet balance and holdings reads ship in the current release."),
+  getDexscreenerLatestAds: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerLatestCommunityTakeovers: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerLatestTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerLatestTokenProfiles: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerOrdersByToken: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerPairByChainAndPairId: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerTokenPairsByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerTokensByChain: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getDexscreenerTopTokenBoosts: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getTokenHolderDistribution: SHIPPED_NOW("On-chain token holder concentration reads ship in the current release."),
+  rankDexscreenerTopTokenBoostsByWhales: SHIPPED_NOW("Combined Dexscreener discovery plus on-chain holder concentration ranking ships in the current release."),
+  getTokenLaunchTime: SHIPPED_NOW("Managed liquidity-pool launch-time reads now resolve the best pool timestamp from one tiny JSON input."),
+  getTokenPricePerformance: SHIPPED_NOW("Managed historical price-performance reads now resolve the pool and candle window from one minimal JSON input."),
+  searchDexscreenerPairs: SHIPPED_NOW("Dexscreener discovery and market-data reads ship in the current release."),
+  getConfiguredNewsFeeds: SHIPPED_NOW("Instance-scoped RSS and news feed registry reads ship in the current release."),
+  getWalletTracker: SHIPPED_NOW("Instance-scoped tracked wallet and token registry reads ship in the current release."),
+  getLatestSolanaNews: SHIPPED_NOW("Live Solana news reads through normalized RSS/Atom feeds ship in the current release."),
+  getCryptoNewsLatest: SHIPPED_NOW("Live crypto news reads through the configured Cryptocurrency.cv API ship in the current release."),
+  searchCryptoNews: SHIPPED_NOW("Live crypto news search through the configured Cryptocurrency.cv API ships in the current release."),
+  getCryptoAssetSentiment: SHIPPED_NOW("Asset sentiment reads through the configured Cryptocurrency.cv API ship in the current release."),
+  getCryptoFearGreedIndex: SHIPPED_NOW("Fear and Greed reads through the configured Cryptocurrency.cv API ship in the current release."),
+  getCryptoTrendingTopics: SHIPPED_NOW("Trending topic reads through the configured Cryptocurrency.cv API ship in the current release."),
+  downloadGeckoTerminalOhlcv: SHIPPED_NOW("GeckoTerminal OHLC downloads now write raw Solana market-data snapshots into the instance workspace."),
+  devnetAirdrop: LIMITED("Available for testing flows, but still a narrow supported surface rather than a headline release feature."),
+  enqueueRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
+  manageRuntimeJob: LIMITED("Basic queueing and scheduled runtime jobs are available now as the supported automation surface."),
+  scheduleManagedSwap: LIMITED("Flat JSON scheduling for provider-agnostic managed swaps is available now on the supported automation surface."),
+  submitTradingRoutine: LIMITED("JSON trading-routine submission is available now as the supported automation surface."),
+  getSwapHistory: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  transfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  closeTokenAccount: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  getTriggerOrders: LIMITED("Jupiter Trigger V1 order reads and managed-wallet order flows are available now, but still a narrow supported surface."),
+  managedTriggerOrder: LIMITED("Jupiter Trigger V1 order reads and managed-wallet order flows are available now, but still a narrow supported surface."),
+  managedTriggerCancelOrders: LIMITED("Jupiter Trigger V1 order reads and managed-wallet order flows are available now, but still a narrow supported surface."),
+  privacyTransfer: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  privacyAirdrop: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  privacySwap: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
+  managedSwap: LIMITED("Provider-agnostic managed swap routing is available now across the configured Jupiter Ultra or Jupiter standard execution paths."),
+  ultraQuoteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  ultraExecuteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  managedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  scheduleManagedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  ultraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
+  createBlockchainAlert: LIMITED("Alert creation exists, but it is not yet a broad monitoring platform."),
+};
+
+const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDefinitionWithoutReadiness[] = [
+  {
+    kind: "action",
+    action: devnetAirdropAction,
+    description: "Request confirmed SOL airdrops on Solana devnet for raw addresses or managed wallets.",
+    purpose: "Fund test wallets so JSON routines can create wallets, airdrop devnet SOL, and run transfers or swaps.",
+    tags: ["wallets", "devnet", "airdrops", "testing"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletNames: ["example-wallet-1", "example-wallet-2"],
+      amountSol: 2,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: createWalletGroupDirectoryAction,
+    description: "Create one flat wallet group directory under the protected keypairs root.",
+    purpose: "Prepare a single-level wallet container before the guarded wallet batch builder runs.",
+    tags: ["wallets", "filesystem", "setup"],
+    exampleInput: {
+      walletGroup: "ops-market-makers",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.wallet.dangerously.allowCreatingWallets,
+    chatExposed: false,
+  },
+  {
+    kind: "action",
+    action: createWalletsAction,
+    description: "Create wallets in one or more flat wallet groups using a single JSON batch payload.",
+    purpose: "Provision fresh wallets quickly with simple sequential wallet files when names are omitted.",
+    tags: ["wallets", "setup", "keys"],
+    exampleInput: {
+      groups: [
+        {
+          walletGroup: "ops-market-makers",
+          count: 2,
+        },
+        {
+          walletGroup: "snipers",
+          walletNames: ["one", "two"],
+        },
+      ],
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.wallet.dangerously.allowCreatingWallets,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: renameWalletsAction,
+    description: "Update wallet organization labels for existing wallets without renaming wallet files.",
+    purpose: "Organize existing managed wallets without deleting them or touching secret key material.",
+    tags: ["wallets", "maintenance"],
+    exampleInput: {
+      edits: [
+        {
+          current: {
+            walletGroup: "ops-market-makers",
+            walletName: "one",
+          },
+          next: {
+            walletGroup: "ops-archive",
+            walletName: "main",
+          },
+        },
+      ],
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.wallet.dangerously.allowUpdatingWallets,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: enqueueRuntimeJobAction,
+    description: "Queue a runtime routine for immediate execution or a future Unix-millisecond time.",
+    purpose: "Let the model submit durable immediate and scheduled jobs into the runtime queue.",
+    tags: ["runtime", "queue", "scheduling", "write"],
+    exampleInput: {
+      botId: "ops-scheduler",
+      routineName: "actionSequence",
+      executeAtUnixMs: 1_767_000_000_000,
+      config: {
+        steps: [
+          {
+            key: "ping",
+            actionName: "pingRuntime",
+            input: {
+              message: "scheduled run",
+            },
+          },
+        ],
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: manageRuntimeJobAction,
+    description: "Pause or cancel a queued runtime job by job id.",
+    purpose: "Let the model safely stop scheduled or waiting jobs before they execute.",
+    tags: ["runtime", "queue", "scheduling", "write"],
+    exampleInput: {
+      jobSerial: 42,
+      operation: "resume",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: scheduleManagedSwapAction,
+    description: "Schedule a managed-wallet swap for later or a DCA plan with one flat JSON payload.",
+    purpose: "Give chat one easy JSON surface for 'swap for later' requests while using the configured main swap type unless the user explicitly overrides it.",
+    tags: ["runtime", "queue", "trading", "swaps", "scheduling", "json", "write"],
+    exampleInput: {
+      kind: "dca",
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "SOL",
+      outputCoin: "JUP",
+      amount: "0.3",
+      amountUnit: "ui",
+      whenIn: "60s",
+      installments: 3,
+      every: "5s",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: canUseManagedSwap,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: submitTradingRoutineAction,
+    description: "Submit a validated JSON trading routine for one-off swaps, DCA plans, or curated multi-step trading sequences.",
+    purpose: "Give the model one hardened, provider-agnostic JSON surface for durable trading automation.",
+    tags: ["runtime", "queue", "trading", "json", "write"],
+    exampleInput: {
+      version: 1,
+      kind: "dca",
+      executionMode: "staggered_jobs",
+      swap: {
+        walletGroup: "core-wallets",
+        walletName: "maker-1",
+        inputCoin: "SOL",
+        outputCoin: "JUP",
+        amount: "0.3",
+        amountUnit: "ui",
+      },
+      schedule: {
+        installments: 3,
+        startIn: "60s",
+        interval: "5s",
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: canUseManagedSwap,
+    requiresUserConfirmation: true,
+    // The current tool input is a top-level discriminated union. OpenRouter rejects
+    // that schema for function parameters, which blocks all live chat tool registration.
+    // Keep the action available internally until its input is reshaped to a provider-
+    // compatible top-level object schema.
+    chatExposed: false,
+  },
+  {
+    kind: "action",
+    action: listKnowledgeDocsAction,
+    description: "List the available TrenchClaw knowledge docs, deep references, and skill packs with short aliases.",
+    purpose: "Give the model a simple menu of app knowledge so it can choose the right doc without guessing long file paths.",
+    routingHint: "you want to browse available knowledge, discover doc aliases, or search for the right reference before reading it",
+    tags: ["knowledge", "docs", "read", "discovery"],
+    exampleInput: {
+      request: {
+        query: "helius cli",
+        tier: "all",
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: readKnowledgeDocAction,
+    description: "Read a knowledge doc or skill file by alias instead of by long repo path.",
+    purpose: "Open the exact knowledge file the model needs using a short alias such as `runtime-reference` or `helius-cli-readme`.",
+    routingHint: "you already know which knowledge doc you need, or `listKnowledgeDocs` returned the alias to open next",
+    tags: ["knowledge", "docs", "read"],
+    exampleInput: {
+      doc: "helius-cli-readme",
+      offset: 1,
+      limit: 120,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: queryRuntimeStoreAction,
+    description: "Read conversations, jobs, upcoming trading schedule, receipts, and other durable runtime state.",
+    purpose: "Inspect runtime history and state without mutating it, including queued wallet-scan status, scheduled trades, and recent runtime results.",
+    tags: ["runtime", "search", "state", "read"],
+    exampleInput: {
+      request: {
+        type: "listUpcomingTradingJobs",
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getConfiguredNewsFeedsAction,
+    description: "Read the instance-scoped configured RSS and Atom feed registry from the workspace configs folder.",
+    purpose: "Give the model a compact feed catalog with aliases, tags, and URLs so it can discover which feeds exist without reading the whole config file into the prompt.",
+    routingHint: "you need to discover which RSS or Atom feeds are configured for this instance before reading one by alias or exact URL",
+    tags: ["news", "rss", "atom", "config", "workspace", "read"],
+    exampleInput: {
+      query: "solana",
+      enabledOnly: true,
+      limit: 10,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getWalletTrackerAction,
+    description: "Read the instance-scoped tracked wallets and tracked tokens from the workspace configs folder.",
+    purpose: "Give the model one compact registry of the wallets and token mints the operator wants actively monitored so it can resolve addresses and mints before using other wallet, market, or CLI tools.",
+    routingHint: "you need to discover which wallets or tokens are being tracked for the active instance before reading swap history, balances, or running targeted CLI checks",
+    tags: ["wallets", "tokens", "tracking", "config", "workspace", "read"],
+    exampleInput: {
+      query: "smart wallet",
+      includeDisabled: false,
+      limit: 25,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getLatestSolanaNewsAction,
+    description: "Fetch the latest headlines from a live RSS or Atom feed, using either a configured feed alias or an explicit feed URL, and save a timestamped JSON snapshot into the workspace news folder.",
+    purpose: "Download a compact current-news artifact with titles, links, timestamps, categories, and short excerpts so later reads can inspect the saved JSON without re-querying the feed every time.",
+    routingHint: "the user asks for current Solana news, recent headlines, or you need to download a fresh news snapshot from a configured RSS or Atom feed",
+    tags: ["news", "rss", "atom", "headlines", "read", "workspace", "download"],
+    exampleInput: {
+      feedAlias: "solana-cryptopotato",
+      limit: 5,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getCryptoNewsLatestAction,
+    description: "Fetch the latest crypto headlines from Cryptocurrency.cv and save a timestamped JSON snapshot into the workspace news folder.",
+    purpose: "Download a fresh multi-source crypto news snapshot with the raw API payload and a saved artifact so later reads can inspect the exact result without re-querying immediately.",
+    routingHint: "the user asks for the latest crypto news, current headlines, or a fresh crypto news pull from the live news API",
+    tags: ["news", "crypto", "headlines", "api", "read", "workspace", "download"],
+    exampleInput: {
+      page: 1,
+      perPage: 10,
+      lang: "en",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: searchCryptoNewsAction,
+    description: "Search Cryptocurrency.cv news by keyword or asset term and save the raw result to the workspace news folder.",
+    purpose: "Pull a focused current-news snapshot for one term such as a coin, protocol, ETF, regulator, or narrative without forcing the model to scrape generic web search.",
+    routingHint: "the user asks for news about a specific token, protocol, topic, exchange, regulation story, or keyword",
+    tags: ["news", "crypto", "search", "api", "read", "workspace", "download"],
+    exampleInput: {
+      query: "solana",
+      page: 1,
+      perPage: 10,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getCryptoAssetSentimentAction,
+    description: "Fetch the Cryptocurrency.cv sentiment read for one asset symbol.",
+    purpose: "Answer requests for a lightweight API-provided asset sentiment snapshot without forcing the model to infer sentiment from unrelated market data.",
+    routingHint: "the user asks for current sentiment on a specific asset symbol from the configured crypto news API",
+    tags: ["news", "crypto", "sentiment", "api", "read", "workspace", "download"],
+    exampleInput: {
+      asset: "SOL",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getCryptoFearGreedIndexAction,
+    description: "Fetch the Cryptocurrency.cv Fear and Greed index snapshot.",
+    purpose: "Answer direct market-sentiment gauge requests from one lightweight news API surface.",
+    routingHint: "the user asks for the crypto fear and greed index or a simple market-sentiment gauge from the configured news API",
+    tags: ["news", "crypto", "sentiment", "fear-greed", "api", "read", "workspace", "download"],
+    exampleInput: {},
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getCryptoTrendingTopicsAction,
+    description: "Fetch the current trending topics from Cryptocurrency.cv and save the raw result to the workspace news folder.",
+    purpose: "Answer broad 'what is trending in crypto news' requests from a compact topic summary instead of making the model infer trends from scattered headlines.",
+    routingHint: "the user asks what themes, topics, or assets are trending in recent crypto coverage",
+    tags: ["news", "crypto", "trending", "topics", "api", "read", "workspace", "download"],
+    exampleInput: {},
+    includeInCatalog: () => true,
+    enabledBySettings: ({ settings }) => settings.agent.dangerously.allowNetworkAccess,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTokenLaunchTimeAction,
+    description: "Resolve a token launch timestamp from liquidity-pool creation data using one coin address plus one launch type.",
+    purpose: "Give the model one tiny JSON surface for requests like 'when did this token launch' while the runtime picks either the first known pool or the current main pool and returns one concrete launch timestamp.",
+    routingHint: "the user asks when a known coin launched, when its first pool appeared, or when the current main liquidity pool went live",
+    tags: ["dexscreener", "geckoterminal", "launch", "pool", "market-data"],
+    exampleInput: {
+      coinAddress: "So11111111111111111111111111111111111111112",
+      type: "main_pool",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTokenPricePerformanceAction,
+    description: "Compute historical token price performance from one coin address plus one lookback string.",
+    purpose: "Give the model one tiny JSON surface for requests like 'get 1 hour price performance' while the runtime resolves the best pool, current price, historical candle, and signed percentage change.",
+    routingHint: "the user asks how much a known coin moved over a concrete lookback window such as 15m, 1h, 4h, 24h, or 7d",
+    tags: ["geckoterminal", "market-data", "historical", "performance", "comparison"],
+    exampleInput: {
+      coinAddress: "So11111111111111111111111111111111111111112",
+      lookback: "1h",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: downloadGeckoTerminalOhlcvAction,
+    description: "Download raw GeckoTerminal OHLC JSON for a Solana pool into the active instance workspace.",
+    purpose: "Persist long OHLC payloads as JSON artifacts under workspace output so later research can read the exact downloaded market data instead of re-querying every time.",
+    routingHint: "you need raw Solana candle data saved to the runtime workspace for later research, charting, or offline inspection",
+    tags: ["geckoterminal", "ohlc", "market-data", "json", "workspace", "download"],
+    exampleInput: {
+      poolAddress: "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+      timeframe: "minute",
+      aggregate: 5,
+      limit: 100,
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getSwapHistoryAction,
+    description: "Fetch the 20 most recent Solana swaps for a wallet using Helius enhanced transaction history.",
+    purpose: "Show recent swap activity with backend UTC timestamps plus Pacific display timestamps for chat responses and UI rendering.",
+    tags: ["swaps", "history", "helius", "read"],
+    exampleInput: {
+      walletAddress: "9xQeWvG816bUx9EPfK5Yw9s6o1tuVd7a3mZ9zNnV3xF",
+      limit: 20,
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestTokenProfilesAction,
+    description: "Fetch a fresh discovery feed of the latest token profiles from Dexscreener.",
+    purpose: "Get a lightweight fresh-token discovery feed when the user asks what is new, newly listed, or when you need candidate tokens before pulling concrete market metrics.",
+    routingHint: "the user asks what is new, newly listed, or you need a first discovery pass before ranking candidate tokens",
+    tags: ["dexscreener", "market-data", "profiles"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestTokenBoostsAction,
+    description: "Fetch the most recently boosted tokens from Dexscreener.",
+    purpose: "Inspect the newest boosted or newly promoted tokens when the user explicitly asks what was just pushed, not as the default tool for broad 'hot today' or trending questions.",
+    routingHint: "the user explicitly asks what was just boosted, newly promoted, or most recently pushed on Dexscreener",
+    tags: ["dexscreener", "market-data", "boosts"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerTopTokenBoostsAction,
+    description: "Fetch the top boosted tokens from Dexscreener right now.",
+    purpose: "Rank current Dexscreener boost activity when the user asks what is hot, trending, or most promoted right now, not as a direct proxy for top volume or highest trading activity.",
+    routingHint: "the user asks what is hot, trending, or most promoted right now and a boost-ranked starting set is the best first pass",
+    tags: ["dexscreener", "market-data", "boosts"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerOrdersByTokenAction,
+    description: "Fetch Dexscreener paid order status for a token.",
+    purpose: "Check listing and paid promotion order state for a token address.",
+    tags: ["dexscreener", "orders", "token"],
+    exampleInput: {
+      tokenAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: searchDexscreenerPairsAction,
+    description: "Search Dexscreener pairs by query text.",
+    purpose: "Find token or pair candidates by symbol, name, or address before pulling detailed market data when the user names a token or gives only a fuzzy symbol hint.",
+    routingHint: "the user gives only a symbol, ticker, token name, or fuzzy token reference and you need discovery before any deeper market read",
+    tags: ["dexscreener", "search", "pairs"],
+    exampleInput: {
+      query: "SOL/USDC",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerPairByChainAndPairIdAction,
+    description: "Fetch a Dexscreener pair by Solana pair address.",
+    purpose: "Get detailed market data for one specific pair after discovery so you can answer from concrete liquidity, volume, and price-change fields.",
+    routingHint: "the user already gave one exact Solana pair address and wants that market's concrete data",
+    tags: ["dexscreener", "pair", "market-data"],
+    exampleInput: {
+      pairAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerTokenPairsByChainAction,
+    description: "Fetch Dexscreener pools for a token address on Solana.",
+    purpose: "Inspect all pools associated with one token address after discovery when you need to identify the right market or best pool for that token.",
+    routingHint: "the user gave one exact token address and you need that token's pools before answering",
+    tags: ["dexscreener", "token", "pairs"],
+    exampleInput: {
+      tokenAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerTokensByChainAction,
+    description: "Fetch Dexscreener market data for up to 30 token addresses on Solana.",
+    purpose: "Batch-load price, liquidity, volume, and price-change data for a small discovered Solana token set so you can rank, compare, and answer directly without extra exploration.",
+    routingHint: "you already know a small set of token addresses and need a concrete batch comparison or ranking answer",
+    tags: ["dexscreener", "tokens", "market-data"],
+    exampleInput: {
+      tokenAddresses: [
+        "So11111111111111111111111111111111111111112",
+        "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      ],
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTokenHolderDistributionAction,
+    description: "Fetch largest-holder concentration for one SPL token mint on Solana.",
+    purpose: "Aggregate the largest token accounts by owner wallet so the model can answer whale-count, top-holder, and concentration questions from live RPC data instead of stopping at market discovery.",
+    routingHint: "the user asks for whales, top holders, holder concentration, or largest accounts for one exact token mint",
+    tags: ["rpc", "holders", "whales", "market-data", "read"],
+    exampleInput: {
+      mintAddress: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6f4t5D7N9m3bjsz",
+      whaleThresholdPercent: 1,
+      topOwnersLimit: 5,
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: rankDexscreenerTopTokenBoostsByWhalesAction,
+    description: "Rank Dexscreener top-boosted Solana tokens by whale concentration using live RPC holder data.",
+    purpose: "Complete the common multi-step workflow of finding hot tokens and then identifying which one is most whale-heavy without forcing the model to spend several tool steps on repeated manual comparisons.",
+    routingHint: "the user asks which hot, trending, or boosted token currently has the most whales or the heaviest top-holder concentration",
+    tags: ["dexscreener", "rpc", "holders", "whales", "market-data", "ranking"],
+    exampleInput: {
+      limit: 10,
+      whaleThresholdPercent: 1,
+      topOwnersLimit: 5,
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestCommunityTakeoversAction,
+    description: "Fetch the latest community takeovers from Dexscreener.",
+    purpose: "Inspect current community takeover listings.",
+    tags: ["dexscreener", "community", "market-data"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getDexscreenerLatestAdsAction,
+    description: "Fetch the latest ads from Dexscreener.",
+    purpose: "Inspect recent Dexscreener ad inventory and promoted listings.",
+    tags: ["dexscreener", "ads", "market-data"],
+    exampleInput: {},
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled && settings.trading.dexscreener.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: queryInstanceMemoryAction,
+    description: "Read instance-scoped profile and durable fact memory.",
+    purpose: "Fetch stable preferences, notes, and granular memory for the active or requested instance.",
+    tags: ["memory", "profile", "facts", "read"],
+    exampleInput: {
+      request: {
+        type: "getBundle",
+        instanceId: "01",
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getWalletContentsAction,
+    description: "Fetch managed-wallet SOL and token balances through one compact balance-focused surface.",
+    purpose: "Answer managed-wallet balance questions with one simple multi-wallet read that favors batched RPC and a compact response shape.",
+    tags: ["wallets", "balances", "tokens", "read"],
+    exampleInput: {
+      wallets: ["000", "001"],
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getManagedWalletContentsAction,
+    description: "Fetch full managed-wallet contents: SOL, fungible balances, and collectible counts for each wallet.",
+    purpose: "Answer managed-wallet holdings questions directly, preferring Helius DAS metadata when Helius is the active private RPC and queueing heavier scans when inline reads would be less reliable.",
+    tags: ["wallets", "balances", "tokens", "read"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getManagedWalletSolBalancesAction,
+    description: "Fetch SOL balances for managed wallets in the active or requested instance.",
+    purpose: "Answer wallet balance questions directly using managed wallet metadata from the canonical wallet library.",
+    tags: ["wallets", "balances", "sol", "read"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: mutateInstanceMemoryAction,
+    description: "Write instance-scoped profile fields and durable facts.",
+    purpose: "Store user preferences and other persistent memory in the canonical runtime memory surface.",
+    tags: ["memory", "profile", "facts", "write"],
+    exampleInput: {
+      request: {
+        type: "upsertFact",
+        instanceId: "01",
+        factKey: "preferences/risk-tolerance",
+        factValue: "medium",
+      },
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: pingRuntimeAction,
+    description: "Ping the runtime and receive a small structured echo response.",
+    purpose: "Verify that the runtime action surface is reachable before deeper work.",
+    tags: ["runtime", "health", "read"],
+    exampleInput: {
+      message: "health-check",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: runWakeupCheckAction,
+    description: "Run the managed wakeup evaluation for the active instance and refresh the next anchored wakeup run.",
+    purpose: "Keep wakeup checks on one internal runtime surface so the GUI, scheduler, and boot path all use the same behavior.",
+    tags: ["runtime", "wakeup", "scheduler", "internal"],
+    exampleInput: {
+      trigger: "scheduled",
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: false,
+  },
+  {
+    kind: "action",
+    action: sleepAction,
+    description: "Pause a sequential routine for a fixed number of milliseconds.",
+    purpose: "Insert deterministic waits between action-sequence steps.",
+    tags: ["runtime", "timing", "sequence"],
+    exampleInput: {
+      waitMs: 2500,
+    },
+    includeInCatalog: () => true,
+    enabledBySettings: () => true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: createBlockchainAlertAction,
+    description: "Create blockchain or market alerts using the live alert action surface.",
+    purpose: "Persist alert conditions that should be monitored later.",
+    tags: ["alerts", "monitoring"],
+    exampleInput: {
+      chain: "solana",
+      assetSymbol: "SOL",
+      condition: {
+        kind: "price-above",
+        value: 200,
+      },
+      notification: {
+        channel: "runtime",
+      },
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: ({ settings }) => settings.trading.enabled,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: transferAction,
+    description: "Transfer SOL or SPL tokens from a managed wallet.",
+    purpose: "Execute direct wallet transfers when signing and limits allow it.",
+    tags: ["transfers", "wallet", "execution"],
+    exampleInput: {
+      destination: "8xY...dest",
+      amount: "0.25",
+      mintAddress: null,
+      userConfirmationToken: "confirm",
+    },
+    includeInCatalog: canUseWalletSigningTransfers,
+    enabledBySettings: canUseWalletSigningTransfers,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: closeTokenAccountAction,
+    description: "Close an empty SPL token account and reclaim its rent.",
+    purpose: "Clean up an empty managed-wallet token account after balances have been moved out so the locked rent can be recovered.",
+    tags: ["transfers", "wallet", "cleanup"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "001",
+      mintAddress: "CxWPdDBqxVo3fnTMRTvNuSrd4gkp78udSrFvkVDBAGS",
+      userConfirmationToken: "confirm",
+    },
+    includeInCatalog: canUseWalletSigningTransfers,
+    enabledBySettings: canUseWalletSigningTransfers,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: privacyTransferAction,
+    description: "Transfer funds through the privacy transfer flow.",
+    purpose: "Move funds while using the privacy-preserving runtime route.",
+    tags: ["transfers", "privacy", "execution"],
+    exampleInput: {
+      destination: "8xY...dest",
+      amount: "0.25",
+      mintAddress: null,
+    },
+    includeInCatalog: canUseWalletSigningTransfers,
+    enabledBySettings: canUseWalletSigningTransfers,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: privacyAirdropAction,
+    description: "Run the privacy airdrop flow through the managed runtime action surface.",
+    purpose: "Seed privacy flow balances when the runtime environment allows it.",
+    tags: ["airdrops", "privacy", "execution"],
+    exampleInput: {
+      amount: "1",
+      destination: "8xY...dest",
+    },
+    includeInCatalog: canUseWalletSigningTransfers,
+    enabledBySettings: canUseWalletSigningTransfers,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: getTriggerOrdersAction,
+    description: "List active or historical Jupiter Trigger V1 orders for a managed wallet or raw address.",
+    purpose: "Inspect current and historical trigger orders before creating replacements or cancelling existing orders.",
+    tags: ["trigger", "orders", "jupiter", "read"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      orderStatus: "active",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
+    enabledBySettings: ({ settings }) =>
+      settings.trading.enabled
+      && settings.trading.jupiter.trigger.enabled
+      && settings.trading.jupiter.trigger.allowReads,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedTriggerOrderAction,
+    description: "Create and submit a Jupiter Trigger V1 order from a managed wallet.",
+    purpose: "Place a single managed-wallet trigger order, especially direct exact-price targets, and return the order id needed to track or cancel the active order later.",
+    tags: ["trigger", "orders", "jupiter", "wallets", "execution"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "JUP",
+      outputCoin: "SOL",
+      amount: "100",
+      direction: "sellAbove",
+      trigger: {
+        kind: "exactPrice",
+        price: "0.005",
+      },
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
+    enabledBySettings: canUseTriggerOrders,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedTriggerCancelOrdersAction,
+    description: "Cancel one or more Jupiter Trigger V1 orders for a managed wallet.",
+    purpose: "Withdraw managed trigger orders cleanly when the user wants to stop or replace existing trigger exposure.",
+    tags: ["trigger", "orders", "jupiter", "wallets", "cancel"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      orders: ["7nE9GJoYHNmtaQvTQpota3KV2oz4pQ2dA6nvYK8EUJHV"],
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.trigger.enabled,
+    enabledBySettings: ({ settings }) =>
+      settings.trading.enabled
+      && settings.trading.jupiter.trigger.enabled
+      && settings.trading.jupiter.trigger.allowCancellations,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: ultraQuoteSwapAction,
+    description: "Request a Jupiter Ultra quote for a proposed swap.",
+    purpose: "Price a potential swap before execution.",
+    tags: ["swaps", "quote", "jupiter", "read"],
+    exampleInput: {
+      inputMint: "So11111111111111111111111111111111111111112",
+      outputMint: "EPjFWdd5AufqSSqeM2qvM8h1L4YFj7y2U6TQwYVCc4c",
+      amount: "1000000000",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
+    enabledBySettings: ({ settings }) =>
+      settings.trading.enabled && settings.trading.jupiter.ultra.enabled && settings.trading.jupiter.ultra.allowQuotes,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: ultraExecuteSwapAction,
+    description: "Execute a previously prepared Jupiter Ultra swap transaction.",
+    purpose: "Finalize a swap after a quote or prepared transaction already exists.",
+    tags: ["swaps", "execution", "jupiter"],
+    exampleInput: {
+      unsignedTransactionBase64: "<prepared-transaction>",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
+    enabledBySettings: ({ settings }) =>
+      settings.trading.enabled
+      && settings.trading.jupiter.ultra.enabled
+      && settings.trading.jupiter.ultra.allowExecutions,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedSwapAction,
+    description: "Run a managed-wallet swap through the configured swap provider.",
+    purpose: "Expose one stable managed swap surface while keeping the underlying provider swappable.",
+    tags: ["swaps", "execution", "wallets"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "SOL",
+      outputCoin: "JUP",
+      amount: "0.1",
+      amountUnit: "ui",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled,
+    enabledBySettings: canUseManagedSwap,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: managedUltraSwapAction,
+    description: "Run a simple Jupiter Ultra swap using a managed filesystem wallet.",
+    purpose: "Execute direct managed-wallet swaps while letting Ultra handle routing, slippage, and fees.",
+    tags: ["swaps", "execution", "jupiter", "wallets"],
+    exampleInput: {
+      swapType: "ultra",
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "SOL",
+      outputCoin: "JUP",
+      amount: "0.1",
+      amountUnit: "ui",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
+    enabledBySettings: canUseUltraSwap,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: scheduleManagedUltraSwapAction,
+    description: "Schedule a future managed-wallet Ultra swap or equal-interval DCA routine.",
+    purpose: "Queue one future swap or a managed Ultra DCA plan without exposing manual Ultra fee or slippage controls.",
+    tags: ["swaps", "scheduling", "dca", "jupiter", "wallets"],
+    exampleInput: {
+      walletGroup: "core-wallets",
+      walletName: "maker-1",
+      inputCoin: "SOL",
+      outputCoin: "JUP",
+      amount: "0.3",
+      amountUnit: "ui",
+      schedule: {
+        kind: "dca",
+        installments: 3,
+        startIn: "60s",
+        interval: "5s",
+      },
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
+    enabledBySettings: canUseUltraSwap,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: ultraSwapAction,
+    description: "Run the full Jupiter Ultra quote-and-execute swap flow.",
+    purpose: "Perform an end-to-end Ultra swap while relying on Ultra-managed execution settings.",
+    tags: ["swaps", "execution", "jupiter"],
+    exampleInput: {
+      inputMint: "So11111111111111111111111111111111111111112",
+      outputMint: "EPjFWdd5AufqSSqeM2qvM8h1L4YFj7y2U6TQwYVCc4c",
+      amount: "1000000000",
+    },
+    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
+    enabledBySettings: canUseUltraSwap,
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+  {
+    kind: "action",
+    action: privacySwapAction,
+    description: "Run the privacy swap flow using the managed runtime surface.",
+    purpose: "Perform a privacy-routed swap when both signing and Ultra execution are available.",
+    tags: ["swaps", "privacy", "execution"],
+    exampleInput: {
+      inputMint: "So11111111111111111111111111111111111111112",
+      outputMint: "EPjFWdd5AufqSSqeM2qvM8h1L4YFj7y2U6TQwYVCc4c",
+      amount: "1000000000",
+    },
+    includeInCatalog: ({ settings }) => canUseUltraSwap({ settings }) && canUseWalletSigningTransfers({ settings }),
+    enabledBySettings: ({ settings }) => canUseUltraSwap({ settings }) && canUseWalletSigningTransfers({ settings }),
+    requiresUserConfirmation: true,
+    chatExposed: true,
+  },
+];
+
+export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilityDefinition[] =
+  runtimeActionCapabilityDefinitionsBase.map((definition): RuntimeActionCapabilityDefinition => {
+    const releaseReadiness = RUNTIME_ACTION_RELEASE_READINESS_BY_NAME[definition.action.name];
+    if (!releaseReadiness) {
+      throw new Error(`Missing release readiness classification for runtime action "${definition.action.name}".`);
+    }
+
+    return Object.assign({}, definition, { releaseReadiness });
+  });
+
+export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilityDefinition[] = [
+  {
+    kind: "workspace-tool",
+    name: WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
+    description: "Open a workspace directory and return exact workspace-relative child paths.",
+    purpose: "Give the model a safe directory browser before it commits to an exact file path.",
+    routingHint: "you need to open folders, inspect the workspace tree, or discover the exact file path before reading a file",
+    sideEffectLevel: "read",
+    tags: ["workspace", "filesystem", "read", "browse"],
+    exampleInput: {
+      path: ".",
+      depth: 2,
+    },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
+    enabledBySettings: hasReadableWorkspaceSurface,
+    chatExposed: true,
+  },
+  {
+    kind: "workspace-tool",
+    name: WORKSPACE_READ_FILE_TOOL_NAME,
+    description: "Read one exact markdown, JSON, config, notes, or generated artifact file from the runtime workspace.",
+    purpose: "Open a known workspace file directly once directory browsing or another tool already gave you the path.",
+    routingHint: "you already know the exact runtime workspace path and need file contents instead of a directory listing or structured runtime data",
+    sideEffectLevel: "read",
+    tags: ["workspace", "filesystem", "read", "docs"],
+    exampleInput: {
+      path: "src/runtime/chat.ts",
+    },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
+    enabledBySettings: hasReadableWorkspaceSurface,
+    chatExposed: true,
+  },
+  {
+    kind: "workspace-tool",
+    name: WORKSPACE_WRITE_FILE_TOOL_NAME,
+    description: "Create or replace a file inside the runtime workspace writable roots.",
+    purpose: "Make exact runtime workspace edits without relying on mutating shell commands.",
+    routingHint: "you need to create or replace a runtime workspace file under notes, scratch, output, strategies, configs, or typescript",
+    sideEffectLevel: "write",
+    tags: ["workspace", "filesystem", "write", "edit"],
+    exampleInput: {
+      path: "notes/runtime.md",
+      content: "# runtime notes",
+    },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
+    enabledBySettings: hasWritableWorkspaceSurface,
+    chatExposed: true,
+  },
+  {
+    kind: "workspace-tool",
+    name: WORKSPACE_BASH_TOOL_NAME,
+    description: "Run policy-constrained shell commands from the runtime workspace through a small typed JSON surface for CLI, search, directory, HTTP, or raw shell work.",
+    purpose: "Use shell-native work such as `version`, `help`, `which`, `search_text`, `list_directory`, `http_get`, or raw `shell` only after simple directory or file tools are no longer enough.",
+    routingHint: "you need a real shell command or CLI in the runtime workspace rather than simple folder browsing or exact file contents",
+    sideEffectLevel: "read",
+    tags: ["workspace", "shell", "search", "cli"],
+    exampleInput: {
+      type: "search_text",
+      query: "wallet",
+      path: "notes",
+    },
+    releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
+    enabledBySettings: hasReadableWorkspaceSurface,
+    chatExposed: true,
+  },
+];

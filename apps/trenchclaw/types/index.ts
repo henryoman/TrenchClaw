@@ -1,3 +1,5 @@
+import type { PersistedUiMessagePart } from "../src/contracts/persistence";
+
 export type ActionCategory = "data-based" | "wallet-based";
 
 export type ActionSubcategory = "read-only" | "swap" | "transfer" | "mint";
@@ -187,7 +189,8 @@ export interface GuiConversationMessageView {
   id: string;
   role: "system" | "user" | "assistant" | "tool";
   content: string;
-  parts?: Array<Record<string, unknown>>;
+  parts: PersistedUiMessagePart[];
+  sequence: number;
   createdAt: number;
 }
 

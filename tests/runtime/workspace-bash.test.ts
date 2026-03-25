@@ -26,7 +26,7 @@ describe("workspace bash tools", () => {
     createdPaths.push(workspaceRoot);
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
     });
 
     const writeTool = tools[WORKSPACE_WRITE_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
@@ -117,6 +117,48 @@ describe("workspace bash tools", () => {
     );
 
     await expect(readTool.execute({ params: { path: "notes/from-bash.txt" } })).rejects.toThrow();
+  });
+
+  test("bridges supported host CLIs into the instance tool-bin", async () => {
+    const workspaceRoot = path.join(TEST_ROOT, crypto.randomUUID());
+    const fakeHostBin = path.join(runtimeStatePath(".tmp"), crypto.randomUUID());
+    const fakeDunePath = path.join(fakeHostBin, "dune");
+    createdPaths.push(workspaceRoot, fakeHostBin);
+
+    await Bun.$`mkdir -p ${fakeHostBin}`.quiet();
+    await Bun.write(fakeDunePath, "#!/usr/bin/env sh\nprintf 'dune 0.0.0-test\\n'\n");
+    await Bun.$`chmod 755 ${fakeDunePath}`.quiet();
+
+    const previousPath = process.env.PATH ?? "";
+    process.env.PATH = `${fakeHostBin}${path.delimiter}${previousPath}`;
+
+    try {
+      const tools = await createWorkspaceBashTools({
+        workspaceRootDirectory: workspaceRoot,
+        actor: "agent",
+      });
+      const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
+
+      const typedWhich = (await bashTool.execute({
+        params: {
+          type: "which",
+          program: "dune",
+        },
+      })) as { exitCode: number; stdout: string };
+      expect(typedWhich.exitCode).toBe(0);
+      expect(typedWhich.stdout.trim()).toBe(runtimeStatePath("instances/01/tool-bin/dune"));
+
+      const versionResult = (await bashTool.execute({
+        params: {
+          type: "version",
+          program: "dune",
+        },
+      })) as { exitCode: number; stdout: string };
+      expect(versionResult.exitCode).toBe(0);
+      expect(versionResult.stdout.trim()).toBe("dune 0.0.0-test");
+    } finally {
+      process.env.PATH = previousPath;
+    }
   });
 
   test("blocks workspace file reads outside the runtime workspace root", async () => {

@@ -53,7 +53,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     createdPaths.push(workspaceRoot);
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
     });
     const listTool = tools[WORKSPACE_LIST_DIRECTORY_TOOL_NAME] as {
       execute: (input: unknown) => Promise<{ directory: string; entries: unknown[]; truncated: boolean }>;
@@ -69,7 +69,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     createdPaths.push(workspaceRoot);
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
     });
     const writeTool = tools[WORKSPACE_WRITE_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
     const readTool = tools[WORKSPACE_READ_FILE_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
@@ -92,7 +92,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     await mkdir(workspaceRoot, { recursive: true });
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
@@ -113,7 +113,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     await mkdir(workspaceRoot, { recursive: true });
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
@@ -135,7 +135,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     await mkdir(workspaceRoot, { recursive: true });
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
@@ -156,7 +156,7 @@ describe("workspace tools + Solana/Helius CLIs", () => {
     await mkdir(workspaceRoot, { recursive: true });
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };
@@ -201,7 +201,7 @@ describe("workspaceBash writes CLI output to a file (read back)", () => {
     await mkdir(workspaceRoot, { recursive: true });
     const tools = await createWorkspaceBashTools({
       workspaceRootDirectory: workspaceRoot,
-      actor: "agent",
+      actor: "user",
       commandTimeoutMs: 60_000,
     });
     const bashTool = tools[WORKSPACE_BASH_TOOL_NAME] as { execute: (input: unknown) => Promise<unknown> };

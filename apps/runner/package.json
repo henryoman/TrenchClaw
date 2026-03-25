@@ -6,7 +6,8 @@
   "scripts": {
     "start": "bun index.ts",
     "build": "bun build index.ts --target bun --outdir dist",
-    "deps:bootstrap": "sh ./scripts/bootstrap-deps.sh",
+    "dev:deps:bootstrap": "sh ./scripts/bootstrap-dev-tools.sh",
+    "deps:bootstrap": "bun run dev:deps:bootstrap",
     "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix ."

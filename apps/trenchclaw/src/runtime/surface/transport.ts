@@ -4,7 +4,7 @@ import type {
 import type { RuntimeEvent, RuntimeEventName } from "../../ai";
 import type { RuntimeBootstrap } from "../bootstrap";
 import type { RuntimeTransportContext } from "./contracts";
-import { createRuntimeTransportRequestHandler } from "./router";
+import { createRuntimeApiRequestHandler } from "./router";
 import { RuntimeTransportSessionState } from "./session-state";
 import { streamChat } from "./domains/chat";
 import type { UIMessage } from "ai";
@@ -175,16 +175,16 @@ export class RuntimeTransport implements RuntimeTransportContext {
     return streamChat(this, messages, input);
   }
 
+  createHandler(): (request: Request) => Promise<Response> {
+    return createRuntimeApiRequestHandler(this);
+  }
+
   createApiHandler(): (request: Request) => Promise<Response> {
-    return createRuntimeTransportRequestHandler(this);
+    return this.createHandler();
   }
 }
 
-export const createRuntimeTransportHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
-  const transport = new RuntimeTransport(runtime);
-  return transport.createApiHandler();
-};
-
 export const createRuntimeApiHandler = (runtime: RuntimeBootstrap): ((request: Request) => Promise<Response>) => {
-  return createRuntimeTransportHandler(runtime);
+  const transport = new RuntimeTransport(runtime);
+  return transport.createHandler();
 };

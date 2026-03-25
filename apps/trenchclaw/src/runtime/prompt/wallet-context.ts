@@ -93,7 +93,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     `- WALLET_COUNT=${entries.length}`,
     `- WALLET_GROUPS=${groups.join(", ") || "(none)"}`,
     `- WALLET_INVALID_LIBRARY_LINES=${invalidLineCount}`,
-    "- For questions about full holdings or token balances of managed wallets, call `getManagedWalletContents` instead of using workspaceBash.",
+    "- For questions about token balances of managed wallets, call `getWalletContents` instead of using workspaceBash.",
     "- Large wallet inventory reads may queue a background job; use `queryRuntimeStore` if you need the status of a queued scan.",
     "- For SOL-only balance summaries of managed wallets, call `getManagedWalletSolBalances`.",
   ];
@@ -133,7 +133,7 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     "- To read all managed wallets in the active instance, omit `wallet`, `wallets`, `walletGroup`, and `walletNames` entirely.",
     "- To read one whole wallet group, pass `walletGroup` only and optionally `walletNames` for a named subset inside that group.",
     "- For single-wallet mutation tools like `transfer`, `closeTokenAccount`, `managedSwap`, `managedTriggerOrder`, and `managedTriggerCancelOrders`, prefer passing `wallet` as the wallet name string when it is unique in this active instance.",
-    "- For multi-wallet read tools like `getManagedWalletContents` and `getManagedWalletSolBalances`, prefer passing `wallets` as an array of wallet name strings when the names are unique in this active instance.",
+    "- For multi-wallet read tools like `getWalletContents`, `getManagedWalletContents`, and `getManagedWalletSolBalances`, prefer passing `wallets` as an array of wallet name strings when the names are unique in this active instance.",
     "- If a wallet name is ambiguous across groups, pass `wallet` as an object like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
     "- If multiple wallet names are ambiguous across groups, pass `wallets` as objects like `{ \"group\": \"core-wallets\", \"name\": \"maker-1\" }`.",
     "- Never pass a wallet group name like `core-wallets` through the single-wallet `wallet` field.",
@@ -186,7 +186,7 @@ export const renderRuntimeWalletPromptSummary = async (
     return [
       "- active instance wallet scope: none",
       "- managed wallet status: no active instance selected",
-      "- prefer `queryRuntimeStore`, `getManagedWalletContents`, or `getManagedWalletSolBalances` for wallet state questions",
+      "- prefer `queryRuntimeStore`, `getWalletContents`, or `getManagedWalletSolBalances` for wallet state questions",
     ].join("\n");
   }
 
@@ -198,8 +198,8 @@ export const renderRuntimeWalletPromptSummary = async (
       `- active instance wallet scope: ${activeInstanceId}`,
       `- wallet library file: ${walletLibraryContractPath}`,
       `- managed wallet status: missing library file (${DEFAULT_WALLET_LIBRARY_FILE_NAME})`,
-      "- use `getManagedWalletContents` for holdings and token balances",
-      "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC and may queue heavier scans for safety",
+      "- use `getWalletContents` for SOL and token balances",
+      "- use `getManagedWalletContents` only when you specifically need the broader inventory-style output",
       "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
       "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
     ].join("\n");
@@ -225,8 +225,8 @@ export const renderRuntimeWalletPromptSummary = async (
     "- whole-group reads: pass `walletGroup` only",
     "- never use a wallet group name inside the single-wallet `wallet` field and never invent an `all` wallet selector",
     "- use `createWallets` for wallet creation and `renameWallets` for label changes",
-    "- use `getManagedWalletContents` for holdings and token balances",
-    "- `getManagedWalletContents` prefers Helius DAS when Helius is the selected private RPC and may queue heavier scans for safety",
+    "- use `getWalletContents` for SOL and token balances",
+    "- use `getManagedWalletContents` only when you specifically need the broader inventory-style output",
     "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
     "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
   ].join("\n");

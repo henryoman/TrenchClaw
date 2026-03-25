@@ -323,7 +323,7 @@ TrenchClaw は、ランタイムジョブ、レシート、ポリシー / 判断
 
 スキーマは Zod ファーストで、起動時に自動同期されます。
 
-- 共有ストレージプリミティブ + ID / 値スキーマ: `src/runtime/storage/schema-primitives.ts`
+- 中央の永続化契約 + 共有プリミティブ: `src/contracts/persistence.ts`
 - ランタイム行スキーマ: `src/runtime/storage/sqlite-schema.ts`
 - ランタイム payload / state スキーマ: `src/runtime/storage/schema.ts`
 - SQL テーブル / インデックス契約 + 起動時同期 + ドリフト確認: `src/runtime/storage/sqlite-orm.ts`
@@ -358,10 +358,10 @@ TrenchClaw は、ランタイムジョブ、レシート、ポリシー / 判断
 
 ### 開発ツールの導入
 
-ローカル開発ツールチェーンのインストールや更新には、runner のブートストラップスクリプトを使ってください。
+ローカル開発ツールチェーンのインストールや更新には、dev 専用の runner ブートストラップスクリプトを使ってください。
 
 ```bash
-sh ./apps/runner/scripts/bootstrap-deps.sh
+sh ./apps/runner/scripts/bootstrap-dev-tools.sh
 ```
 
 この開発ヘルパーが管理するもの:

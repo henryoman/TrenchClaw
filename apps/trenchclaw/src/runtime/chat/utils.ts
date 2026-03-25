@@ -1,9 +1,28 @@
 import { isToolUIPart, type UIMessage } from "ai";
 import { createChatMessageId, createConversationId } from "../../ai/contracts/types/ids";
 import { isRecord } from "../shared/object-utils";
-import { WALLET_MUTATION_INTENT_TOKENS } from "./constants";
 
 export { isRecord } from "../shared/object-utils";
+
+const WALLET_MUTATION_INTENT_TOKENS = [
+  "transfer",
+  "send",
+  "move",
+  "swap",
+  "buy",
+  "sell",
+  "create",
+  "rename",
+  "close",
+  "delete",
+  "remove",
+  "fund",
+  "airdrop",
+  "deposit",
+  "withdraw",
+  "import",
+  "export",
+] as const;
 
 export const trimOrUndefinedValue = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();

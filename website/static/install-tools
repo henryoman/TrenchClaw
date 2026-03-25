@@ -61,7 +61,7 @@ require_cmd() {
 }
 
 print_manual_helius_install_help() {
-  info "Install one of these package managers, then rerun this helper or install Helius CLI manually:"
+  info "Helius CLI currently needs Node.js on PATH. Install Node.js first, then rerun this helper or install Helius CLI manually:"
   info "  bun add -g ${HELIUS_PACKAGE_NAME}@latest"
   info "  pnpm add -g ${HELIUS_PACKAGE_NAME}@latest"
 }
@@ -103,6 +103,12 @@ install_or_update_helius() {
   installer=""
 
   [ "$TRENCHCLAW_INSTALL_HELIUS" = "1" ] || return 0
+
+  if ! need_cmd node; then
+    info "Skipping Helius CLI install/update because Node.js is unavailable."
+    print_manual_helius_install_help
+    return 0
+  fi
 
   if need_cmd bun; then
     installer="bun"

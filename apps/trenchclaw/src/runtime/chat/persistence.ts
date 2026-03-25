@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { createChatMessageId } from "../../ai/contracts/types/ids";
-import type { RuntimeChatServiceDeps } from "./types";
+import type { RuntimeChatServiceDeps } from "./service";
 import { extractUiMessageText, trimOrUndefinedValue } from "./utils";
 
 const hasReplayableParts = (message: UIMessage): boolean =>
@@ -124,15 +124,11 @@ export const persistFinishedMessages = (
       conversationId: chatId,
       role: message.role,
       content,
+      parts: message.parts,
       metadata:
         message.metadata && typeof message.metadata === "object"
-          ? {
-              ...(message.metadata as Record<string, unknown>),
-              uiParts: message.parts,
-            }
-          : {
-              uiParts: message.parts,
-            },
+          ? { ...(message.metadata as Record<string, unknown>) }
+          : undefined,
       createdAt: existingMessage?.createdAt ?? updatedAt + index,
     });
   }

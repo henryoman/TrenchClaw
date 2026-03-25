@@ -1,83 +1,46 @@
 import type { ActionResult } from "./action";
 import type {
+  ChatMessageState,
+  ChatMessageStateInput,
+  ConversationState,
+  InstanceFactState,
+  InstanceProfileState,
+  JobState,
+  JobStatus,
+} from "../../../contracts/persistence";
+import type {
   BotId,
   ChatMessageId,
   ConversationId,
-  FactId,
   FactKey,
   IdempotencyKey,
   InstanceId,
   JobId,
-  SessionId,
 } from "./ids";
 
-export type JobStatus = "pending" | "running" | "paused" | "stopped" | "failed";
-
-export interface JobState {
-  id: JobId;
-  serialNumber?: number;
-  botId: BotId;
-  routineName: string;
-  status: JobStatus;
-  config: Record<string, unknown>;
-  nextRunAt?: number;
-  lastRunAt?: number;
-  cyclesCompleted: number;
-  totalCycles?: number;
-  lastResult?: ActionResult;
-  attemptCount?: number;
-  leaseOwner?: string;
-  leaseExpiresAt?: number;
-  lastError?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export type ChatMessageRole = "system" | "user" | "assistant" | "tool";
-
-export interface ConversationState {
-  id: ConversationId;
-  sessionId?: SessionId;
-  title?: string;
-  summary?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-export interface ChatMessageState {
-  id: ChatMessageId;
-  conversationId: ConversationId;
-  role: ChatMessageRole;
-  content: string;
-  metadata?: Record<string, unknown>;
-  createdAt: number;
-}
-
-export interface InstanceFactState {
-  id: FactId;
-  instanceId: InstanceId;
-  factKey: FactKey;
-  factValue: unknown;
-  confidence: number;
-  source: string;
-  sourceMessageId?: ChatMessageId;
-  createdAt: number;
-  updatedAt: number;
-  expiresAt?: number;
-}
-
-export interface InstanceProfileState {
-  instanceId: InstanceId;
-  displayName?: string;
-  summary?: string;
-  tradingStyle?: string;
-  riskTolerance?: string;
-  preferredAssets?: string[];
-  dislikedAssets?: string[];
-  metadata?: Record<string, unknown>;
-  createdAt: number;
-  updatedAt: number;
-}
+export type {
+  ChatMessageMetadata,
+  ChatMessageRole,
+  PersistedUiMessagePart,
+  RuntimeSessionEntryType,
+  RuntimeSessionEventEntry,
+  RuntimeSessionMessageEntry,
+  RuntimeSessionMessageRole,
+  RuntimeSessionState,
+  RuntimeSessionSummaryRecord,
+  RuntimeSummaryCategory,
+  RuntimeSummaryEntry,
+  RuntimeSummarySource,
+} from "../../../contracts/persistence";
+export type {
+  ChatMessageState,
+  ChatMessageStateInput,
+  ConversationState,
+  InstanceFactState,
+  InstanceProfileState,
+  JobState,
+  JobStatus,
+} from "../../../contracts/persistence";
 
 export interface InstanceMemoryBundle {
   instanceId: InstanceId;
@@ -145,7 +108,7 @@ export interface StateStore {
   getConversation(id: ConversationId): ConversationState | null;
   listConversations(limit?: number): ConversationState[];
   deleteConversation(id: ConversationId): boolean;
-  saveChatMessage(message: ChatMessageState): void;
+  saveChatMessage(message: ChatMessageStateInput): void;
   listChatMessages(conversationId: ConversationId, limit?: number): ChatMessageState[];
   getConversationHistorySlice(input: {
     conversationId: ConversationId;

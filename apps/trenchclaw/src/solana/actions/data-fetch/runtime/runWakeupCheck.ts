@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Action } from "../../../../ai/contracts/types/action";
 import type { JobState, StateStore } from "../../../../ai/contracts/types/state";
 import { resolveCurrentActiveInstanceIdSync } from "../../../../runtime/instance/state";
-import { persistRuntimeNotice } from "../../../../runtime/chat/notices";
+import { persistRuntimeNotice } from "../../../../runtime/runtime-notices";
 import {
   loadManagedWakeupSchedule,
   MANAGED_WAKEUP_ROUTINE_NAME,

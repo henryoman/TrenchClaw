@@ -42,7 +42,7 @@ export const triggerCancelOrdersAction: Action<
     const idempotencyKey = crypto.randomUUID();
 
     try {
-      const adapter = resolveTriggerAdapter(ctx);
+      const adapter = await resolveTriggerAdapter(ctx);
       const maker = resolveMakerAddress(ctx, input);
       const cancelPayload = await adapter.cancelOrders({
         maker,

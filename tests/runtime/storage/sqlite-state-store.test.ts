@@ -166,8 +166,12 @@ describe("SqliteStateStore", () => {
     const messages = store.listChatMessages("conv-1", 10);
     expect(messages.length).toBe(2);
     expect(messages[0]?.role).toBe("user");
+    expect(messages[0]?.sequence).toBe(1);
+    expect(messages[0]?.parts).toEqual([{ type: "text", text: "hello" }]);
     expect((messages[0]?.metadata as { source?: string } | undefined)?.source).toBe("test");
     expect(messages[1]?.role).toBe("assistant");
+    expect(messages[1]?.sequence).toBe(2);
+    expect(messages[1]?.parts).toEqual([{ type: "text", text: "hi there" }]);
 
     store.close();
   });

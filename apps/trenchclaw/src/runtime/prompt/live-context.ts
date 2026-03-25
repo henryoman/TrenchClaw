@@ -41,7 +41,7 @@ const renderUpcomingTradingScheduleSection = (
     return [
       "### Upcoming Trading Schedule",
       "- scheduled trading jobs: unavailable",
-      "- use `queryRuntimeStore` with `request.type = \"listUpcomingTradingJobs\"` if you need the queued trade schedule",
+      "- use `queryRuntimeStore` with `type = \"listUpcomingTradingJobs\"` if you need the queued trade schedule",
     ].join("\n");
   }
 
@@ -53,7 +53,7 @@ const renderUpcomingTradingScheduleSection = (
   const lines = [
     "### Upcoming Trading Schedule",
     `- scheduled trading jobs: ${upcomingTradingJobs.length > 0 ? upcomingTradingJobs.length : "none"}`,
-    "- use `queryRuntimeStore` with `request.type = \"listUpcomingTradingJobs\"` when the user asks what trades are queued or scheduled",
+    "- use `queryRuntimeStore` with `type = \"listUpcomingTradingJobs\"` when the user asks what trades are queued or scheduled",
   ];
 
   if (upcomingTradingJobs.length === 0) {
