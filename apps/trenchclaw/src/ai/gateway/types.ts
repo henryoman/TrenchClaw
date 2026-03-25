@@ -1,5 +1,5 @@
 import type { LanguageModel, UIMessage } from "ai";
-import type { RuntimeCapabilitySnapshot } from "../../tools";
+import type { RuntimeToolSnapshot } from "../../tools";
 import type { RuntimeSettings } from "../../runtime/settings";
 import type { ResolvedRuntimeEndpoints } from "../../runtime/settings";
 import type { ActionDispatcher, ActionRegistry, RuntimeEventBus, StateStore } from "..";
@@ -78,7 +78,8 @@ export type GatewayPreparedExecution = GatewayPreparedDirectExecution | GatewayP
 export interface GatewayContext {
   settings: RuntimeSettings;
   endpoints: ResolvedRuntimeEndpoints;
-  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  toolSnapshot?: RuntimeToolSnapshot;
+  capabilitySnapshot?: RuntimeToolSnapshot;
   dispatcher: ActionDispatcher;
   registry: ActionRegistry;
   eventBus: RuntimeEventBus;

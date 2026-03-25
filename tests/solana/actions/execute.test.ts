@@ -3,8 +3,8 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { executeAction, listRegisteredActions } from "../../../apps/trenchclaw/src/tools/execute";
-import { createPersistedTestInstance } from "../../helpers/instance-fixtures";
-import { runtimeStatePath } from "../../helpers/core-paths";
+import { createPersistedTestInstance } from "../../helpers/instanceFixtures";
+import { runtimeStatePath } from "../../helpers/corePaths";
 
 const previousFetch = globalThis.fetch;
 const MUTABLE_ENV_KEYS = [

@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance/state";
 import { loadRuntimeSettings } from "../../runtime/settings";
-import { getRuntimeCapabilitySnapshot } from "../../tools/snapshot";
+import { getRuntimeToolSnapshot } from "../../tools/snapshot";
 import { loadRuntimePromptSections } from "../../runtime/prompt/composer";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystemManifest";
 import { resolveVaultFile } from "./vaultFile";
@@ -100,12 +100,12 @@ const renderShellToolingSummary = (): string => {
 
 const renderLiveRuntimeRules = async (): Promise<string> => {
   const settings = await loadRuntimeSettings();
-  const [filesystemPolicy, capabilitySnapshot] = await Promise.all([
+  const [filesystemPolicy, toolSnapshot] = await Promise.all([
     summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 8 }),
-    getRuntimeCapabilitySnapshot(settings),
+    getRuntimeToolSnapshot(settings),
   ]);
   const promptSections = await loadRuntimePromptSections({
-    toolEntries: capabilitySnapshot.modelTools,
+    toolEntries: toolSnapshot.modelTools,
     includeWorkspaceDirectoryMap: true,
   });
   const activeInstanceId = resolveCurrentActiveInstanceIdSync();

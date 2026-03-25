@@ -70,17 +70,17 @@ import {
   WORKSPACE_WRITE_FILE_TOOL_NAME,
 } from "./workspace/bash";
 import type {
-  RuntimeActionCapabilityDefinition,
+  RuntimeActionToolDefinition,
   RuntimeReleaseReadinessDescriptor,
-  WorkspaceToolCapabilityDefinition,
+  RuntimeWorkspaceToolDefinition,
 } from "./types";
 
-type RuntimeActionCapabilityDefinitionWithoutReadiness = Omit<RuntimeActionCapabilityDefinition, "releaseReadiness">;
+type RuntimeActionToolDefinitionWithoutReadiness = Omit<RuntimeActionToolDefinition, "releaseReadiness">;
 
 const canUseWalletSigningTransfers = ({
   settings,
 }: {
-  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+  settings: Parameters<RuntimeActionToolDefinition["enabledBySettings"]>[0]["settings"];
 }): boolean =>
   settings.trading.enabled
   && settings.wallet.dangerously.allowWalletSigning
@@ -89,7 +89,7 @@ const canUseWalletSigningTransfers = ({
 const canUseUltraSwap = ({
   settings,
 }: {
-  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+  settings: Parameters<RuntimeActionToolDefinition["enabledBySettings"]>[0]["settings"];
 }): boolean =>
   settings.trading.enabled
   && settings.trading.jupiter.ultra.enabled
@@ -99,7 +99,7 @@ const canUseUltraSwap = ({
 const canUseStandardSwap = ({
   settings,
 }: {
-  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+  settings: Parameters<RuntimeActionToolDefinition["enabledBySettings"]>[0]["settings"];
 }): boolean =>
   settings.trading.enabled
   && settings.trading.jupiter.standard.enabled
@@ -109,13 +109,13 @@ const canUseStandardSwap = ({
 const canUseManagedSwap = ({
   settings,
 }: {
-  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+  settings: Parameters<RuntimeActionToolDefinition["enabledBySettings"]>[0]["settings"];
 }): boolean => canUseUltraSwap({ settings }) || canUseStandardSwap({ settings });
 
 const canUseTriggerOrders = ({
   settings,
 }: {
-  settings: Parameters<RuntimeActionCapabilityDefinition["enabledBySettings"]>[0]["settings"];
+  settings: Parameters<RuntimeActionToolDefinition["enabledBySettings"]>[0]["settings"];
 }): boolean =>
   settings.trading.enabled
   && settings.trading.jupiter.trigger.enabled
@@ -123,7 +123,7 @@ const canUseTriggerOrders = ({
 
 const hasReadableWorkspaceSurface = ({
   filesystemPolicy,
-}: Parameters<WorkspaceToolCapabilityDefinition["enabledBySettings"]>[0]): boolean =>
+}: Parameters<RuntimeWorkspaceToolDefinition["enabledBySettings"]>[0]): boolean =>
   filesystemPolicy.defaultPermission === "read"
   || filesystemPolicy.defaultPermission === "write"
   || filesystemPolicy.readPaths.length > 0
@@ -132,7 +132,7 @@ const hasReadableWorkspaceSurface = ({
 const hasWritableWorkspaceSurface = ({
   settings,
   filesystemPolicy,
-}: Parameters<WorkspaceToolCapabilityDefinition["enabledBySettings"]>[0]): boolean =>
+}: Parameters<RuntimeWorkspaceToolDefinition["enabledBySettings"]>[0]): boolean =>
   settings.agent.dangerously.allowFilesystemWrites
   && (filesystemPolicy.defaultPermission === "write" || filesystemPolicy.writePaths.length > 0);
 
@@ -207,7 +207,7 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   createBlockchainAlert: LIMITED("Alert creation exists, but it is not yet a broad monitoring platform."),
 };
 
-const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDefinitionWithoutReadiness[] = [
+const runtimeActionToolDefinitionsBase: readonly RuntimeActionToolDefinitionWithoutReadiness[] = [
   {
     kind: "action",
     action: devnetAirdropAction,
@@ -1155,8 +1155,8 @@ const runtimeActionCapabilityDefinitionsBase: readonly RuntimeActionCapabilityDe
   },
 ];
 
-export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilityDefinition[] =
-  runtimeActionCapabilityDefinitionsBase.map((definition): RuntimeActionCapabilityDefinition => {
+export const runtimeActionToolDefinitions: readonly RuntimeActionToolDefinition[] =
+  runtimeActionToolDefinitionsBase.map((definition): RuntimeActionToolDefinition => {
     const releaseReadiness = RUNTIME_ACTION_RELEASE_READINESS_BY_NAME[definition.action.name];
     if (!releaseReadiness) {
       throw new Error(`Missing release readiness classification for runtime action "${definition.action.name}".`);
@@ -1165,7 +1165,9 @@ export const runtimeActionCapabilityDefinitions: readonly RuntimeActionCapabilit
     return Object.assign({}, definition, { releaseReadiness });
   });
 
-export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilityDefinition[] = [
+export const runtimeActionCapabilityDefinitions = runtimeActionToolDefinitions;
+
+export const workspaceToolDefinitions: readonly RuntimeWorkspaceToolDefinition[] = [
   {
     kind: "workspace-tool",
     name: WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
@@ -1191,7 +1193,7 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
     sideEffectLevel: "read",
     tags: ["workspace", "filesystem", "read", "docs"],
     exampleInput: {
-      path: "src/runtime/chat.ts",
+      path: "configs/tracker.json",
     },
     releaseReadiness: SHIPPED_NOW("Runtime workspace tools ship in the current release when enabled by policy."),
     enabledBySettings: hasReadableWorkspaceSurface,
@@ -1231,3 +1233,5 @@ export const workspaceToolCapabilityDefinitions: readonly WorkspaceToolCapabilit
     chatExposed: true,
   },
 ];
+
+export const workspaceToolCapabilityDefinitions = workspaceToolDefinitions;

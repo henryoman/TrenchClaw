@@ -15,7 +15,7 @@ import { z } from "zod";
 import type { GatewayLane } from "../../ai/gateway";
 import { createActionContext } from "../../ai/contracts/types/context";
 import { createChatMessageId, createToolCallId } from "../../ai/contracts/types/ids";
-import type { RuntimeCapabilitySnapshot } from "../../tools";
+import type { RuntimeToolSnapshot } from "../../tools";
 import type { RuntimeLogger } from "../logger";
 import { WORKSPACE_TOOL_NAMES, createWorkspaceBashTools, resolveDefaultWorkspaceBashRoot } from "../../tools/workspace/bash";
 import type { RuntimeGateway } from "../../ai/gateway";
@@ -114,7 +114,8 @@ export interface RuntimeChatServiceDeps {
   enqueueJob?: (input: RuntimeJobEnqueueRequest) => Promise<import("../../ai").JobState>;
   manageJob?: (input: RuntimeJobControlRequest) => Promise<import("../../ai").JobState>;
   logger?: RuntimeLogger;
-  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  toolSnapshot?: RuntimeToolSnapshot;
+  capabilitySnapshot?: RuntimeToolSnapshot;
   workspaceRootDirectory?: string;
   gateway: RuntimeGateway;
 }
@@ -169,6 +170,7 @@ const buildActionTools = (
 ): Record<string, any> => {
   const tools: Record<string, any> = {};
   const toolResultCache = new Map<string, Promise<Record<string, unknown>>>();
+  const toolSnapshot = deps.toolSnapshot ?? deps.capabilitySnapshot;
 
   for (const registered of deps.registry.list()) {
     const action = deps.registry.get(registered.name);
@@ -179,14 +181,14 @@ const buildActionTools = (
       continue;
     }
 
-    const capability = deps.capabilitySnapshot?.actions.find((entry) => entry.name === action.name);
+    const toolEntry = toolSnapshot?.actions.find((entry) => entry.name === action.name);
     const modelInputSchema = getModelToolEnvelopeSchema(action.name, action.inputSchema as z.ZodTypeAny);
     tools[action.name] = tool({
       description:
-        capability?.toolDescription
+        toolEntry?.toolDescription
         ?? `Dispatch runtime action "${action.name}" (${action.category}${action.subcategory ? `/${action.subcategory}` : ""}).`,
       inputSchema: modelInputSchema as z.ZodTypeAny,
-      ...(capability?.exampleInput === undefined ? {} : { inputExamples: [{ input: capability.exampleInput }] }),
+      ...(toolEntry?.exampleInput === undefined ? {} : { inputExamples: [{ input: toolEntry.exampleInput }] }),
       execute: async (rawEnvelope: unknown) => {
         const rawInput = normalizeModelToolEnvelopeInput(action.name, rawEnvelope);
         const cacheKey = `${action.name}:${serializeForToolCache(rawInput)}`;
@@ -669,7 +671,7 @@ export const createRuntimeChatService = (
         const workspaceToolsStartedAt = Date.now();
         const workspaceRootDirectory = resolveWorkspaceRootDirectory(deps.workspaceRootDirectory);
         const workspaceToolMetadataByName = Object.fromEntries(
-          (deps.capabilitySnapshot?.workspaceTools ?? []).map((toolEntry) => [
+          ((deps.toolSnapshot ?? deps.capabilitySnapshot)?.workspaceTools ?? []).map((toolEntry) => [
             toolEntry.name,
             {
               description: toolEntry.toolDescription,

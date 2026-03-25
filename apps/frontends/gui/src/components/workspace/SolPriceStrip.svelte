@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { runtimeApi } from "../../runtime-api";
+  import { runtimeApi } from "../../runtimeApi";
   import RetroButton from "../ui/RetroButton.svelte";
 
   const PRICE_REFRESH_MS = 60_000;

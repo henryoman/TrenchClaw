@@ -6,7 +6,7 @@ import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { RuntimeTransport } from "../../apps/trenchclaw/src/runtime/surface";
 import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/solPrice";
-import { runtimeStatePath } from "../helpers/core-paths";
+import { runtimeStatePath } from "../helpers/corePaths";
 
 const buildRuntime = (input?: {
   streamImpl?: (

@@ -2,7 +2,7 @@
   import { resolve } from '$app/paths';
   import type { DocPage } from '$lib/docs';
 
-  import { copyCodeBlocks } from './copy-code';
+  import { copyCodeBlocks } from './copyCode';
 
   let { doc }: { doc: DocPage } = $props();
 </script>

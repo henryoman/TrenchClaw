@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { CREATE_NEW_OPTION } from "./config";
-  import { APP_BUILD_COMMIT, APP_BUILD_VERSION } from "./config/build-info";
-  import { GUI_QUEUE_PANEL_ENABLED, SAFETY_PROFILE_OPTIONS } from "./config/app-config";
+  import { APP_BUILD_COMMIT, APP_BUILD_VERSION } from "./config/buildInfo";
+  import { GUI_QUEUE_PANEL_ENABLED, SAFETY_PROFILE_OPTIONS } from "./config/appConfig";
   import {
     ChatPanel,
     CreateInstanceModal,
@@ -21,8 +21,8 @@
     WalletsPanel,
     WorkspaceShell,
   } from "./components";
-  import type { createChatController as CreateChatController } from "./features/chat/chat-controller.svelte";
-  import { createRuntimeController, formatTime } from "./features/runtime/runtime-controller.svelte";
+  import type { createChatController as CreateChatController } from "./features/chat/chatController.svelte";
+  import { createRuntimeController, formatTime } from "./features/runtime/runtimeController.svelte";
 
   const runtime = createRuntimeController();
   void runtime.initializeSplash();
@@ -38,7 +38,7 @@
       return;
     }
     try {
-      const { createChatController } = await import("./features/chat/chat-controller.svelte");
+      const { createChatController } = await import("./features/chat/chatController.svelte");
       chat = createChatController();
       await chat.initialize();
       chatInitError = "";

@@ -80,15 +80,15 @@ Run from repo root unless noted.
 
 ## Running One Test File
 
-- Single top-level test file: `bun test tests/runtime/chat-service.test.ts`
+- Single top-level test file: `bun test tests/runtime/chatService.test.ts`
 - Another example: `bun test tests/website/smoke.test.ts`
-- Multiple explicit files: `bun test tests/runtime/chat-service.test.ts tests/frontends/transport.test.ts`
+- Multiple explicit files: `bun test tests/runtime/chatService.test.ts tests/frontends/transport.test.ts`
 - From `website/`, website tests use relative paths like: `bun test ../tests/website`
 
 ## Running One Test or Describe Block
 
 - Bun supports test-name filtering.
-- Single named test example: `bun test tests/runtime/chat-service.test.ts -t "maps timeout failures to explicit runtime chat errors"`
+- Single named test example: `bun test tests/runtime/chatService.test.ts -t "maps timeout failures to explicit runtime chat errors"`
 - Prefer file + name filtering together for speed and determinism.
 
 ## Lint / Typecheck Expectations

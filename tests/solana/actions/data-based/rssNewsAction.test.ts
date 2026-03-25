@@ -7,8 +7,8 @@ import {
   DEFAULT_SOLANA_NEWS_FEED_URL,
   getLatestSolanaNewsAction,
 } from "../../../../apps/trenchclaw/src/tools/market/rssNews";
-import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
-import { runtimeStatePath } from "../../../helpers/core-paths";
+import { createPersistedTestInstance } from "../../../helpers/instanceFixtures";
+import { runtimeStatePath } from "../../../helpers/corePaths";
 
 const previousFetch = globalThis.fetch;
 const TEST_ENV_KEYS = [

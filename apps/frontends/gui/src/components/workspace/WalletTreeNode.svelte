@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { GuiWalletNodeView } from "@trenchclaw/types";
   import { onDestroy } from "svelte";
-  import { runtimeApi } from "../../runtime-api";
+  import { runtimeApi } from "../../runtimeApi";
 
   export let node: GuiWalletNodeView;
   export let depth = 0;

@@ -9,7 +9,7 @@ import {
   createGetWalletContentsAction,
   resetWalletContentsCachesForTests,
 } from "../../../../apps/trenchclaw/src/tools/wallet/getManagedWalletContents";
-import { runtimeStatePath } from "../../../helpers/core-paths";
+import { runtimeStatePath } from "../../../helpers/corePaths";
 
 const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
 const tempInstanceDirectories: string[] = [];

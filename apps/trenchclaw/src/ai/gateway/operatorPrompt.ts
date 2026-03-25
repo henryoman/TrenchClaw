@@ -1,5 +1,5 @@
 import type { StateStore } from "../contracts/types/state";
-import type { RuntimeCapabilitySnapshot } from "../../tools";
+import type { RuntimeToolSnapshot } from "../../tools";
 import type { RuntimeSettings } from "../../runtime/settings";
 import { loadRuntimePromptSections } from "../../runtime/prompt/composer";
 import {
@@ -20,7 +20,7 @@ const OPERATOR_KERNEL_PROMPT = [
   "Keep answers short and concrete unless the user asks for more.",
 ].join("\n");
 
-type ToolEntry = RuntimeCapabilitySnapshot["modelTools"][number];
+type ToolEntry = RuntimeToolSnapshot["modelTools"][number];
 
 const renderOperatorProfileSummary = (input: {
   settings: RuntimeSettings;
@@ -65,7 +65,7 @@ const renderOperatorToolExecutionFlow = (): string => [
 ].join("\n");
 
 const resolveOperatorToolEntries = (
-  snapshot: RuntimeCapabilitySnapshot | undefined,
+  snapshot: RuntimeToolSnapshot | undefined,
   toolNames: string[],
 ): ToolEntry[] =>
   toolNames
@@ -74,11 +74,13 @@ const resolveOperatorToolEntries = (
 
 export const buildOperatorChatPrompt = async (input: {
   settings: RuntimeSettings;
-  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  toolSnapshot?: RuntimeToolSnapshot;
+  capabilitySnapshot?: RuntimeToolSnapshot;
   toolNames: string[];
   stateStore?: StateStore;
 }): Promise<string> => {
-  const toolEntries = resolveOperatorToolEntries(input.capabilitySnapshot, input.toolNames);
+  const toolSnapshot = input.toolSnapshot ?? input.capabilitySnapshot;
+  const toolEntries = resolveOperatorToolEntries(toolSnapshot, input.toolNames);
   const [walletSummary, promptSections] = await Promise.all([
     renderRuntimeWalletPromptSummary(),
     loadRuntimePromptSections({

@@ -2,7 +2,7 @@
 
 TrenchClaw has one public shipping path: GitHub Releases publishing standalone `trenchclaw` binaries.
 
-The Release workflow always builds the GitHub release body from **`scripts/generate-release-notes.ts`**: a grouped summary (conventional-commit-style heuristics) plus a **full commit appendix** (subject, hash, author, date, and multi-line bodies). This replaces GitHub’s REST “Generate release notes” option, which only produced a short summary and a link to the compare view.
+The Release workflow always builds the GitHub release body from **`scripts/generateReleaseNotes.ts`**: a grouped summary (conventional-commit-style heuristics) plus a **full commit appendix** (subject, hash, author, date, and multi-line bodies). This replaces GitHub’s REST “Generate release notes” option, which only produced a short summary and a link to the compare view.
 
 ## What Gets Published
 

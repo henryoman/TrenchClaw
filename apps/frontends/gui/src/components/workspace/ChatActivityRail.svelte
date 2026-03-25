@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { GuiActivityEntry } from "@trenchclaw/types";
   import type { UIMessage } from "ai";
-  import { buildChatActivitySnapshot, type ChatStatus } from "./chat-activity";
+  import { buildChatActivitySnapshot, type ChatStatus } from "./chatActivity";
 
   type ChatActivityRailProps = {
     messages?: UIMessage[];

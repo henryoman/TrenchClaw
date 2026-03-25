@@ -15,7 +15,7 @@ describe('website smoke suite', () => {
 
   test('website scripts sync explicit shared content contract', async () => {
     const packageJson = await readFile(path.join(websiteRoot, 'package.json'), 'utf8');
-    expect(packageJson).toContain('"content:sync": "bun run ./scripts/sync-shared-content.ts"');
+    expect(packageJson).toContain('"content:sync": "bun run ./scripts/syncSharedContent.ts"');
     expect(packageJson).not.toContain('sync-public-assets');
   });
 

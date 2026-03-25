@@ -94,8 +94,8 @@ const CORE_DOC_METADATA = new Map<string, KnowledgeDocMetadata>([
       kind: "reference",
       authority: "repo-authored",
       priority: "read-first",
-      topics: ["runtime", "bootstrap", "capabilities", "state"],
-      readWhen: "runtime architecture, bootstrap flow, capability exposure, or state-root questions",
+      topics: ["runtime", "bootstrap", "tools", "state"],
+      readWhen: "runtime architecture, bootstrap flow, tool exposure, or state-root questions",
     },
   ],
   [

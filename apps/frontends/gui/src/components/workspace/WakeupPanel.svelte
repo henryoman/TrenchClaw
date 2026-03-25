@@ -9,7 +9,7 @@
     buildWakeupSchedulePreview,
     formatWakeupPreviewTime,
     WAKEUP_PREVIEW_ROUNDS,
-  } from "./wakeup-preview";
+  } from "./wakeupPreview";
 
   type WakeupPanelProps = {
     wakeupSettings?: GuiWakeupSettingsView | null;

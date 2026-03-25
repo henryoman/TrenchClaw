@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { GuiScheduleJobView, GuiWakeupSettingsView } from "@trenchclaw/types";
-  import { buildScheduleDisplayRows } from "./schedule-display";
+  import { buildScheduleDisplayRows } from "./scheduleDisplay";
 
   type SchedulePanelProps = {
     jobs?: GuiScheduleJobView[];

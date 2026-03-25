@@ -4,7 +4,7 @@ import path from "node:path";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { SqliteStateStore } from "../../../../apps/trenchclaw/src/runtime/storage/sqliteStateStore";
 import { queryRuntimeStoreAction } from "../../../../apps/trenchclaw/src/tools/core/queryRuntimeStore";
-import { runtimeStatePath } from "../../../helpers/core-paths";
+import { runtimeStatePath } from "../../../helpers/corePaths";
 
 const dbPaths: string[] = [];
 const RUNTIME_DB_DIRECTORY = runtimeStatePath("instances/01/data/.tests");

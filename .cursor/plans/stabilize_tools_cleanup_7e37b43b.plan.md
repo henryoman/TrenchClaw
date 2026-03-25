@@ -4,10 +4,10 @@ overview: "Re-base the migration on the code that exists today: `runtime/tools` 
 todos:
   - id: stabilize-runtime-tools
     content: Stabilize the current `runtime/tools` layer, imports, and naming around `Tool*` concepts
-    status: pending
+    status: completed
   - id: remove-stale-references
     content: Audit and remove outdated code, docs, tests, and knowledge references that still describe deleted or superseded structures
-    status: pending
+    status: completed
   - id: simplify-actions-registry
     content: Reduce `apps/trenchclaw/src/actions/registry.ts` size only where it lowers code and keeps imports stable
     status: pending
@@ -19,7 +19,7 @@ todos:
     status: pending
   - id: rebase-docs
     content: Update stale docs, website copy, and knowledge references after the code structure is stable
-    status: pending
+    status: completed
 isProject: false
 ---
 

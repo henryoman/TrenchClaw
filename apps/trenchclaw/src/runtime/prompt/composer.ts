@@ -1,6 +1,6 @@
 import type { StateStore } from "../../ai/contracts/types/state";
 import { renderKnowledgePromptSummary } from "../../ai/brain/knowledgeIndex";
-import type { RuntimeCapabilitySnapshot } from "../../tools";
+import type { RuntimeToolSnapshot } from "../../tools";
 import { renderLiveRuntimeContextSection } from "./liveContext";
 import {
   renderAsyncToolBehaviorSection,
@@ -8,7 +8,7 @@ import {
   renderWorkspaceDirectoryMapSection,
 } from "./toolMenu";
 
-export type PromptToolEntry = RuntimeCapabilitySnapshot["modelTools"][number];
+export type PromptToolEntry = RuntimeToolSnapshot["modelTools"][number];
 
 export interface RuntimePromptSections {
   commandMenuSection: string;

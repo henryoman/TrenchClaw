@@ -4,8 +4,8 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { createWalletGroupDirectoryAction } from "../../../../apps/trenchclaw/src/tools/wallet/create/createWalletGroupDirectory";
-import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
-import { runtimeStatePath } from "../../../helpers/core-paths";
+import { createPersistedTestInstance } from "../../../helpers/instanceFixtures";
+import { runtimeStatePath } from "../../../helpers/corePaths";
 
 const createdPaths = new Set<string>();
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;

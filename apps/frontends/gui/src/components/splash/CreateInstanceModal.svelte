@@ -4,7 +4,7 @@
   import RetroInput from "../ui/RetroInput.svelte";
   import RetroSelect from "../ui/RetroSelect.svelte";
   import RetroModal from "../ui/RetroModal.svelte";
-  import type { RuntimeSafetyProfile, SafetyProfileOption } from "../../config/app-config";
+  import type { RuntimeSafetyProfile, SafetyProfileOption } from "../../config/appConfig";
 
   export let name = "";
   export let safetyProfile: RuntimeSafetyProfile = "dangerous";

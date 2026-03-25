@@ -3,8 +3,8 @@
   import { isReasoningUIPart, isToolUIPart, type UIMessage } from "ai";
   import { marked } from "marked";
   import type { GuiConversationView } from "@trenchclaw/types";
-  import type { ChatStatus } from "./chat-activity";
-  import { buildAssistantMessageLayout } from "./chat-message-layout";
+  import type { ChatStatus } from "./chatActivity";
+  import { buildAssistantMessageLayout } from "./chatMessageLayout";
   import RetroButton from "../ui/RetroButton.svelte";
   import RetroModal from "../ui/RetroModal.svelte";
 

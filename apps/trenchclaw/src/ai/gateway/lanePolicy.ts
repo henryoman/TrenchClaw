@@ -1,5 +1,5 @@
 import type {
-  RuntimeCapabilitySnapshot,
+  RuntimeToolSnapshot,
   RuntimeModelToolSnapshotEntry,
   ToolGroupId,
 } from "../../tools/types";
@@ -48,7 +48,7 @@ const getToolVisibility = (toolEntry: RuntimeModelToolSnapshotEntry) =>
   toolEntry.visibility ?? resolveToolVisibility(toolEntry.name);
 
 const routeOperatorToolNamesForUserMessage = (
-  snapshot: RuntimeCapabilitySnapshot,
+  snapshot: RuntimeToolSnapshot,
   userMessage: string,
 ): string[] => {
   const availableTools = snapshot.modelTools.filter((toolEntry) => getToolVisibility(toolEntry).operatorChat !== "never");
@@ -145,7 +145,7 @@ export const buildGatewayLaneStatuses = (input: {
 };
 
 export const getGatewayToolNamesForLane = (
-  snapshot: RuntimeCapabilitySnapshot | undefined,
+  snapshot: RuntimeToolSnapshot | undefined,
   lane: GatewayLane,
   userMessage?: string,
 ): string[] => {

@@ -4,8 +4,8 @@ import { rm } from "node:fs/promises";
 import { getGatewayToolNamesForLane } from "../../apps/trenchclaw/src/ai/gateway/lanePolicy";
 import { getRuntimeCapabilitySnapshot, resolveToolVisibility } from "../../apps/trenchclaw/src/tools";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/settings";
-import { createPersistedTestInstance } from "../helpers/instance-fixtures";
-import { runtimeStatePath } from "../helpers/core-paths";
+import { createPersistedTestInstance } from "../helpers/instanceFixtures";
+import { runtimeStatePath } from "../helpers/corePaths";
 
 const DEXSCREENER_MODEL_TOOL_NAMES = [
   "getDexscreenerLatestAds",
@@ -135,7 +135,7 @@ runtime:
 storage:
   sqlite:
     enabled: false
-    path: /tmp/trenchclaw-capability-tests.db
+    path: /tmp/trenchclaw-tool-snapshot-tests.db
     walMode: true
     busyTimeoutMs: 5000
   sessions:
@@ -213,7 +213,7 @@ afterEach(async () => {
   await Bun.file(runtimeStatePath("instances", "active-instance.json")).delete().catch(() => {});
 });
 
-describe("runtime capability snapshot", () => {
+describe("runtime tool snapshot", () => {
   test("safe profile exposes read-only workspace tools but not workspace writes", async () => {
     const settings = await loadRuntimeSettings("safe");
     const snapshot = await getRuntimeCapabilitySnapshot(settings);

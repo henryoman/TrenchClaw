@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { createGetManagedWalletSolBalancesAction } from "../../../../apps/trenchclaw/src/tools/wallet/getManagedWalletSolBalances";
-import { runtimeStatePath } from "../../../helpers/core-paths";
+import { runtimeStatePath } from "../../../helpers/corePaths";
 
 const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");
 const tempInstanceDirectories: string[] = [];

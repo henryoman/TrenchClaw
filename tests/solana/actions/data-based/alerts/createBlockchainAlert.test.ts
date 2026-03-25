@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { createBlockchainAlertAction } from "../../../../../apps/trenchclaw/src/tools/market/createBlockchainAlert";
 import { createActionContext } from "../../../../../apps/trenchclaw/src/ai";
-import { createPersistedTestInstance } from "../../../../helpers/instance-fixtures";
-import { runtimeStatePath } from "../../../../helpers/core-paths";
+import { createPersistedTestInstance } from "../../../../helpers/instanceFixtures";
+import { runtimeStatePath } from "../../../../helpers/corePaths";
 
 const createdFiles: string[] = [];
 const createdDirectories = new Set<string>();

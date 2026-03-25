@@ -9,7 +9,7 @@
   "type": "module",
   "scripts": {
     "launch": "bun run --cwd .. launch",
-    "content:sync": "bun run ./scripts/sync-shared-content.ts",
+    "content:sync": "bun run ./scripts/syncSharedContent.ts",
     "dev": "bun run content:sync && bunx --bun vite dev",
     "build": "bun run content:sync && bunx --bun vite build",
     "preview": "bun run content:sync && bunx --bun vite preview",

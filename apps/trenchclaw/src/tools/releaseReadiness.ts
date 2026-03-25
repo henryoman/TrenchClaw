@@ -1,6 +1,6 @@
 import type {
   ReleaseReadinessStatus,
-  RuntimeCapabilitySnapshot,
+  RuntimeToolSnapshot,
   RuntimeComingSoonFeatureEntry,
   RuntimeModelToolSnapshotEntry,
 } from "./types";
@@ -91,7 +91,7 @@ export const getRuntimeComingSoonFeatures = (): RuntimeComingSoonFeatureEntry[] 
     note: entry.note,
   }));
 
-export const renderRuntimeReleaseReadinessSection = (snapshot: RuntimeCapabilitySnapshot): string =>
+export const renderRuntimeReleaseReadinessSection = (snapshot: RuntimeToolSnapshot): string =>
   [
     "## Release Readiness",
     "Treat this section as the source of truth for what the current release actually supports.",

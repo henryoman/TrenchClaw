@@ -13,15 +13,15 @@ This file explains the current runtime shape in the smallest possible form.
   - registers actions
   - starts scheduler/chat services
 
-- `src/runtime/chat.ts`
-  - exposes runtime actions and workspace tools to the model
+- `src/runtime/chat/service.ts`
+  - exposes registered runtime actions and workspace tools to the model
 
-- `src/runtime/capabilities/`
-  - defines what actions exist
-  - defines what is exposed to chat
-  - generates the capability appendix injected into the prompt
+- `src/tools/`
+  - defines the registered runtime actions and workspace tools
+  - computes the runtime tool snapshot for the current settings
+  - provides the tool metadata injected into prompts and model registrations
 
-- `src/runtime/load/`
+- `src/runtime/settings/`
   - loads runtime settings
   - merges base settings and active-instance settings
   - enforces authority boundaries
@@ -137,7 +137,7 @@ Important directories:
 
 If you need runtime truth:
 
-1. trust the injected capability appendix
+1. trust the injected runtime tool snapshot and registered tool definitions
 2. trust the injected live runtime context section for the current clock and shared backend SOL price snapshot
 3. trust the injected release-readiness section over bundled docs, knowledge files, or source references
 4. trust injected resolved settings

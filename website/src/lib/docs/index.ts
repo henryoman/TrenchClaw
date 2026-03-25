@@ -7,5 +7,5 @@ export {
   docsThemeStorageKey,
   homepageFeaturedDocCount,
   websiteSharedContract,
-} from './shared-contract';
+} from './sharedContract';
 export type { DocHeading, DocListItem, DocPage } from './types';

@@ -57,8 +57,8 @@ export const docsPrerequisites = [
 
 export const principles = [
   {
-    title: 'Capability-gated execution',
-    description: 'The model only gets the action and workspace tools that are present in the runtime capability snapshot for the current run.',
+    title: 'Tool-gated execution',
+    description: 'The model only gets the action and workspace tools that are present in the runtime tool snapshot for the current run.',
   },
   {
     title: 'Policy checks before side effects',

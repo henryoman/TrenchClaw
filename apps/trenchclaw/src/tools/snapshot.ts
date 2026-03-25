@@ -1,23 +1,23 @@
 import type { Action } from "../ai/contracts/types/action";
 import { toModelToolExampleInput } from "./model";
 import {
-  runtimeActionCapabilityDefinitions,
-  workspaceToolCapabilityDefinitions,
+  runtimeActionToolDefinitions,
+  workspaceToolDefinitions,
 } from "./registry";
 import { resolveJupiterTriggerApiKey } from "../solana/lib/jupiter/trigger";
 import type { RuntimeSettings } from "../runtime/settings";
 import { summarizeFilesystemPolicy } from "../runtime/security/filesystemManifest";
 import { getRuntimeComingSoonFeatures } from "./releaseReadiness";
 import type {
-  CapabilitySideEffectLevel,
-  RuntimeActionCapabilityDefinition,
-  RuntimeActionCapabilitySnapshotEntry,
-  RuntimeCapabilitySnapshot,
+  RuntimeActionToolDefinition,
+  RuntimeActionToolSnapshotEntry,
   RuntimeModelToolSnapshotEntry,
   RuntimeToolVisibility,
+  RuntimeToolSnapshot,
+  RuntimeWorkspaceToolDefinition,
+  RuntimeWorkspaceToolSnapshotEntry,
   ToolGroupId,
-  WorkspaceToolCapabilityDefinition,
-  WorkspaceToolCapabilitySnapshotEntry,
+  ToolSideEffectLevel,
 } from "./types";
 
 const compareByName = (a: { name: string }, b: { name: string }): number => a.name.localeCompare(b.name);
@@ -148,7 +148,7 @@ export const resolveToolVisibility = (toolName: string, chatExposed = true): Run
   };
 };
 
-const inferActionSideEffectLevel = (definition: RuntimeActionCapabilityDefinition): CapabilitySideEffectLevel => {
+const inferActionSideEffectLevel = (definition: RuntimeActionToolDefinition): ToolSideEffectLevel => {
   if (definition.sideEffectLevel) {
     return definition.sideEffectLevel;
   }
@@ -165,8 +165,8 @@ const inferActionSideEffectLevel = (definition: RuntimeActionCapabilityDefinitio
 };
 
 const inferWorkspaceSideEffectLevel = (
-  definition: WorkspaceToolCapabilityDefinition,
-): CapabilitySideEffectLevel => {
+  definition: RuntimeWorkspaceToolDefinition,
+): ToolSideEffectLevel => {
   if (definition.sideEffectLevel) {
     return definition.sideEffectLevel;
   }
@@ -222,9 +222,9 @@ const buildToolDescription = (input: {
 const isModelVisible = (input: RuntimeToolVisibility): boolean =>
   input.operatorChat !== "never" || input.workspaceAgent || input.backgroundSummary;
 
-const resolveActionMetadata = (definition: RuntimeActionCapabilityDefinition): {
+const resolveActionMetadata = (definition: RuntimeActionToolDefinition): {
   routingHint: string;
-  sideEffectLevel: CapabilitySideEffectLevel;
+  sideEffectLevel: ToolSideEffectLevel;
   group: ToolGroupId;
   visibility: RuntimeToolVisibility;
   chatExposed: boolean;
@@ -242,9 +242,9 @@ const resolveActionMetadata = (definition: RuntimeActionCapabilityDefinition): {
   };
 };
 
-const resolveWorkspaceMetadata = (definition: WorkspaceToolCapabilityDefinition): {
+const resolveWorkspaceMetadata = (definition: RuntimeWorkspaceToolDefinition): {
   routingHint: string;
-  sideEffectLevel: CapabilitySideEffectLevel;
+  sideEffectLevel: ToolSideEffectLevel;
   group: ToolGroupId;
   visibility: RuntimeToolVisibility;
   chatExposed: boolean;
@@ -263,10 +263,10 @@ const resolveWorkspaceMetadata = (definition: WorkspaceToolCapabilityDefinition)
 };
 
 const toActionSnapshotEntry = async (
-  definition: RuntimeActionCapabilityDefinition,
+  definition: RuntimeActionToolDefinition,
   settings: RuntimeSettings,
   filesystemPolicy: Awaited<ReturnType<typeof summarizeFilesystemPolicy>>,
-): Promise<RuntimeActionCapabilitySnapshotEntry> => {
+): Promise<RuntimeActionToolSnapshotEntry> => {
   const predicateContext = { settings, filesystemPolicy };
   const action = definition.action;
   const metadata = resolveActionMetadata(definition);
@@ -320,10 +320,10 @@ const toActionSnapshotEntry = async (
 };
 
 const toWorkspaceToolSnapshotEntry = async (
-  definition: WorkspaceToolCapabilityDefinition,
+  definition: RuntimeWorkspaceToolDefinition,
   settings: RuntimeSettings,
   filesystemPolicy: Awaited<ReturnType<typeof summarizeFilesystemPolicy>>,
-): Promise<WorkspaceToolCapabilitySnapshotEntry> => {
+): Promise<RuntimeWorkspaceToolSnapshotEntry> => {
   const metadata = resolveWorkspaceMetadata(definition);
   const enabledBySettings = definition.enabledBySettings({ settings, filesystemPolicy });
   const exposedToModel = enabledBySettings && isModelVisible(metadata.visibility);
@@ -360,14 +360,14 @@ const toWorkspaceToolSnapshotEntry = async (
 export const getRuntimeActionCatalog = async (settings: RuntimeSettings): Promise<Action<any, any>[]> => {
   const filesystemPolicy = await summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 32 });
   return (await Promise.all(
-    runtimeActionCapabilityDefinitions.map((definition) => toActionSnapshotEntry(definition, settings, filesystemPolicy)),
+    runtimeActionToolDefinitions.map((definition) => toActionSnapshotEntry(definition, settings, filesystemPolicy)),
   ))
     .filter((entry) => entry.includedInCatalog)
     .map((entry) => entry.action);
 };
 
 export const isRuntimeActionEnabledBySettings = async (settings: RuntimeSettings, actionName: string): Promise<boolean> => {
-  const definition = runtimeActionCapabilityDefinitions.find((entry) => entry.action.name === actionName);
+  const definition = runtimeActionToolDefinitions.find((entry) => entry.action.name === actionName);
   if (!definition) {
     return false;
   }
@@ -377,21 +377,21 @@ export const isRuntimeActionEnabledBySettings = async (settings: RuntimeSettings
 
 export const getRuntimeActionsRequiringUserConfirmation = (): ReadonlySet<string> =>
   new Set(
-    runtimeActionCapabilityDefinitions
+    runtimeActionToolDefinitions
       .filter((definition) => definition.requiresUserConfirmation === true)
       .map((definition) => definition.action.name),
   );
 
-export const getRuntimeCapabilitySnapshot = async (
+export const getRuntimeToolSnapshot = async (
   settings: RuntimeSettings,
-): Promise<RuntimeCapabilitySnapshot> => {
+): Promise<RuntimeToolSnapshot> => {
   const filesystemPolicy = await summarizeFilesystemPolicy({ actor: "agent", maxPathsPerBucket: 32 });
   const [actions, workspaceTools] = await Promise.all([
     Promise.all(
-      runtimeActionCapabilityDefinitions.map((definition) => toActionSnapshotEntry(definition, settings, filesystemPolicy)),
+      runtimeActionToolDefinitions.map((definition) => toActionSnapshotEntry(definition, settings, filesystemPolicy)),
     ),
     Promise.all(
-      workspaceToolCapabilityDefinitions.map((definition) => toWorkspaceToolSnapshotEntry(definition, settings, filesystemPolicy)),
+      workspaceToolDefinitions.map((definition) => toWorkspaceToolSnapshotEntry(definition, settings, filesystemPolicy)),
     ),
   ]);
 
@@ -446,3 +446,5 @@ export const getRuntimeCapabilitySnapshot = async (
     comingSoonFeatures: getRuntimeComingSoonFeatures(),
   };
 };
+
+export const getRuntimeCapabilitySnapshot = getRuntimeToolSnapshot;

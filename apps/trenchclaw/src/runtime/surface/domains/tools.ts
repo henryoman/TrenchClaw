@@ -3,11 +3,11 @@ import type {
   RuntimeApiToolsResponse,
   RuntimeApiWorkspaceToolView,
 } from "@trenchclaw/types";
-import { getRuntimeCapabilitySnapshot } from "../../../tools";
+import { getRuntimeToolSnapshot } from "../../../tools";
 import type { RuntimeTransportContext } from "../contracts";
 
 const mapActionTool = (
-  entry: Awaited<ReturnType<typeof getRuntimeCapabilitySnapshot>>["actions"][number],
+  entry: Awaited<ReturnType<typeof getRuntimeToolSnapshot>>["actions"][number],
 ): RuntimeApiActionToolView => ({
   kind: "action",
   name: entry.name,
@@ -35,7 +35,7 @@ const mapActionTool = (
 });
 
 const mapWorkspaceTool = (
-  entry: Awaited<ReturnType<typeof getRuntimeCapabilitySnapshot>>["workspaceTools"][number],
+  entry: Awaited<ReturnType<typeof getRuntimeToolSnapshot>>["workspaceTools"][number],
 ): RuntimeApiWorkspaceToolView => ({
   kind: "workspace-tool",
   name: entry.name,
@@ -57,7 +57,7 @@ const mapWorkspaceTool = (
 });
 
 export const getTools = async (context: RuntimeTransportContext): Promise<RuntimeApiToolsResponse> => {
-  const snapshot = await getRuntimeCapabilitySnapshot(context.runtime.settings);
+  const snapshot = await getRuntimeToolSnapshot(context.runtime.settings);
   return {
     actions: snapshot.actions.map(mapActionTool),
     workspaceTools: snapshot.workspaceTools.map(mapWorkspaceTool),

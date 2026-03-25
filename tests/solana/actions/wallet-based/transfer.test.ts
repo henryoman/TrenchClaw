@@ -4,8 +4,8 @@ import path from "node:path";
 
 import { createWalletsAction } from "../../../../apps/trenchclaw/src/tools/wallet/create/createWallets";
 import { transferAction } from "../../../../apps/trenchclaw/src/tools/wallet/transfer/transfer";
-import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
-import { runtimeStatePath } from "../../../helpers/core-paths";
+import { createPersistedTestInstance } from "../../../helpers/instanceFixtures";
+import { runtimeStatePath } from "../../../helpers/corePaths";
 
 const createdPaths = new Set<string>();
 const previousWalletLibraryPath = process.env.TRENCHCLAW_WALLET_LIBRARY_FILE;

@@ -28,7 +28,7 @@ implementation seams live.
 - Managed wallet signer: `apps/trenchclaw/src/solana/lib/wallet/walletSigner.ts`
 - Base signer implementation: `apps/trenchclaw/src/solana/lib/jupiter/ultraSigner.ts`
 - Operator prompt guidance: `apps/trenchclaw/src/ai/gateway/operatorPrompt.ts`
-- Capability catalog: `apps/trenchclaw/src/runtime/capabilities/action-definitions.ts`
+- Tool registry: `apps/trenchclaw/src/tools/registry.ts`
 
 ## How The Model Should Route Requests
 
@@ -100,7 +100,7 @@ Use these rules to keep the model tighter and reduce ambiguous trade execution:
 - For cancellations, resolve exact order ids first with `getTriggerOrders`.
 - For managed wallet actions, prefer unique wallet name strings when the active runtime already has an unambiguous match.
 
-## Recommended Prompt/Capability Direction
+## Recommended Prompt/Tool Direction
 
 If you want the runtime even tighter, keep these product statements consistent:
 
@@ -118,7 +118,7 @@ When touching Jupiter integrations in this repo, make sure these docs remain acc
 - `apps/trenchclaw/src/ai/brain/knowledge/deep-knowledge/jupiter-ai-docs.md`
 - `apps/trenchclaw/src/ai/brain/knowledge/deep-knowledge/trenchclaw-jupiter-integration.md`
 - `apps/trenchclaw/src/ai/gateway/operatorPrompt.ts`
-- `apps/trenchclaw/src/runtime/capabilities/action-definitions.ts`
+- `apps/trenchclaw/src/tools/registry.ts`
 
 ## Future Cleanup Ideas
 

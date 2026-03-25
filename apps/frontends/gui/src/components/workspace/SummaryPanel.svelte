@@ -9,7 +9,7 @@
     type ChatActivityItem,
     type ChatActivityFeedItem,
     type ChatStatus,
-  } from "./chat-activity";
+  } from "./chatActivity";
 
   export let entries: GuiActivityEntry[] = [];
   export let liveMessages: UIMessage[] = [];

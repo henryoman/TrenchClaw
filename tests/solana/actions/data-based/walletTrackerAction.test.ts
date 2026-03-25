@@ -4,8 +4,8 @@ import { rm } from "node:fs/promises";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { writeInstanceTrackerRegistry } from "../../../../apps/trenchclaw/src/runtime/instance/registries/tracker";
 import { getWalletTrackerAction } from "../../../../apps/trenchclaw/src/tools/market/walletTracker";
-import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
-import { runtimeStatePath } from "../../../helpers/core-paths";
+import { createPersistedTestInstance } from "../../../helpers/instanceFixtures";
+import { runtimeStatePath } from "../../../helpers/corePaths";
 
 const TEST_ENV_KEYS = [
   "TRENCHCLAW_SETTINGS_BASE_FILE",

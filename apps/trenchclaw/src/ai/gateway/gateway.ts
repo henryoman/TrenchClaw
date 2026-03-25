@@ -12,6 +12,7 @@ import type {
 export const createRuntimeGateway = (
   context: GatewayContext,
 ): RuntimeGateway => {
+  const toolSnapshot = context.toolSnapshot ?? context.capabilitySnapshot;
   const laneStatuses = buildGatewayLaneStatuses({
     provider: context.resolvedModel.provider,
     model: context.resolvedModel.model,
@@ -20,27 +21,27 @@ export const createRuntimeGateway = (
 
   const listToolNames = (lane: GatewayRequest["lane"] = "operator-chat"): string[] => {
     const selectedLane = lane ?? "operator-chat";
-    if (!context.capabilitySnapshot) {
+    if (!toolSnapshot) {
       return context.registry
         .list()
         .filter((entry) => Boolean(context.registry.get(entry.name)?.inputSchema))
         .map((entry) => entry.name)
         .toSorted((left, right) => left.localeCompare(right));
     }
-    return getGatewayToolNamesForLane(context.capabilitySnapshot, selectedLane).toSorted((left, right) => left.localeCompare(right));
+    return getGatewayToolNamesForLane(toolSnapshot, selectedLane).toSorted((left, right) => left.localeCompare(right));
   };
 
   const prepareChatExecution = async (request: GatewayRequest): Promise<GatewayPreparedExecution> => {
     const lane = request.lane ?? "operator-chat";
     const lanePolicy = getGatewayLanePolicy(lane);
 
-    const toolNames = context.capabilitySnapshot
-      ? getGatewayToolNamesForLane(context.capabilitySnapshot, lane, request.userMessage)
+    const toolNames = toolSnapshot
+      ? getGatewayToolNamesForLane(toolSnapshot, lane, request.userMessage)
       : listToolNames(lane);
     const systemPrompt = lanePolicy.promptKind === "operator"
       ? await buildOperatorChatPrompt({
         settings: context.settings,
-        capabilitySnapshot: context.capabilitySnapshot,
+        toolSnapshot,
         toolNames,
         stateStore: context.stateStore,
       })

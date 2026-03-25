@@ -42,7 +42,7 @@ The high-level sequence is:
 2. resolve the active instance
 3. load and merge settings for that instance
 4. initialize storage and instance layout
-5. build the runtime capability snapshot
+5. build the runtime tool snapshot
 6. register action surfaces and policies
 7. start chat, scheduler, GUI transport, and supporting services
 
@@ -135,8 +135,8 @@ TrenchClaw is not just a thin wrapper around an LLM plus a shell.
 
 The important guard rails are:
 
-- capability-gated tools
-  - the model only sees tools that exist in the runtime capability snapshot and are enabled by current settings
+- tool-gated execution
+  - the model only sees tools that exist in the runtime tool snapshot and are enabled by current settings
 - settings-aware action policy
   - unsupported or disabled actions are blocked before execution
 - explicit confirmation for dangerous actions
@@ -156,7 +156,7 @@ The model does not get arbitrary repo power by default.
 
 The main surfaces are:
 
-- runtime actions that are registered and exposed through the capability snapshot
+- runtime actions that are registered and exposed through the tool snapshot
 - workspace tools such as `workspaceBash`, `workspaceReadFile`, and `workspaceWriteFile` when enabled by policy
 
 If a tool is not in the injected runtime tool catalog for the current run, it is not callable.

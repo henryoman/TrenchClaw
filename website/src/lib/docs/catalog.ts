@@ -1,6 +1,6 @@
 import { parseFrontMatter } from './frontmatter';
 import { renderDocContent } from './render';
-import { homepageFeaturedDocCount, sharedDocSources } from './shared-contract';
+import { homepageFeaturedDocCount, sharedDocSources } from './sharedContract';
 import type { DocListItem, DocPage, DocSourceOverride } from './types';
 
 const localDocSources = import.meta.glob('/src/content/docs/*.md', {

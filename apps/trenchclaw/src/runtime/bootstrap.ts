@@ -31,10 +31,10 @@ import { loadRoutinePlanner } from "../automation/routines/load";
 import {
   getRuntimeActionCatalog,
   getRuntimeActionsRequiringUserConfirmation,
-  getRuntimeCapabilitySnapshot,
+  getRuntimeToolSnapshot,
   isRuntimeActionEnabledBySettings,
 } from "../tools/snapshot";
-import type { RuntimeCapabilitySnapshot } from "../tools/types";
+import type { RuntimeToolSnapshot } from "../tools/types";
 import {
   loadRuntimeSettings,
   resolvePrimaryRuntimeEndpoints,
@@ -595,7 +595,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       cache: pruneResult.cacheDeleted,
     });
   }
-  const capabilitySnapshot: RuntimeCapabilitySnapshot = await getRuntimeCapabilitySnapshot(settings);
+  const toolSnapshot: RuntimeToolSnapshot = await getRuntimeToolSnapshot(settings);
   const llmBinding = await resolveLlmRuntimeBinding();
   const llm = llmBinding.client ? instrumentLlmClient(llmBinding.client, logger) : null;
   const registry = new ActionRegistry();
@@ -880,7 +880,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       languageModel: llmBinding.languageModel,
     },
     logger,
-    capabilitySnapshot,
+    toolSnapshot,
     createActionContext: createRuntimeActionContext,
   });
 
@@ -915,7 +915,7 @@ export const bootstrapRuntime = async (): Promise<RuntimeBootstrap> => {
       enqueueJob,
       manageJob,
       logger,
-      capabilitySnapshot,
+      toolSnapshot,
       gateway,
     }),
     session,
