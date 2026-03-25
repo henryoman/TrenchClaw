@@ -7,7 +7,7 @@ import { toRuntimeContractRelativePath } from "../../../runtime/runtime-paths";
 import {
   assertWithinBrainProtectedDirectory,
   resolveAbsolutePath,
-} from "./protected-write-policy";
+} from "../../../runtime/security/protected-write-policy";
 import {
   DEFAULT_WALLET_LIBRARY_FILE_NAME,
   WALLET_KEYPAIRS_DIRECTORY_NAME,

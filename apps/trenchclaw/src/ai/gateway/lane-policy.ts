@@ -2,8 +2,8 @@ import type {
   RuntimeCapabilitySnapshot,
   RuntimeModelToolSnapshotEntry,
   ToolGroupId,
-} from "../../runtime/tools";
-import { resolveToolGroup, resolveToolVisibility } from "../../runtime/tools";
+} from "../../tools/types";
+import { resolveToolGroup, resolveToolVisibility } from "../../tools/snapshot";
 import type { GatewayLane, GatewayLanePolicy, GatewayLaneStatus } from "./types";
 
 const OPERATOR_GROUP_MATCHERS: Record<ToolGroupId, RegExp> = {

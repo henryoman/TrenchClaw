@@ -3,9 +3,9 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { InMemoryStateStore, createActionContext } from "../../../../apps/trenchclaw/src/ai";
 import {
   triggerOrderAction,
-} from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/createOrder";
-import { getTriggerOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/getOrders";
-import { triggerCancelOrdersAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/cancelOrders";
+} from "../../../../apps/trenchclaw/src/tools/trading/trigger/createOrder";
+import { getTriggerOrdersAction } from "../../../../apps/trenchclaw/src/tools/trading/trigger/getOrders";
+import { triggerCancelOrdersAction } from "../../../../apps/trenchclaw/src/tools/trading/trigger/cancelOrders";
 
 const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_VAULT_FILE",

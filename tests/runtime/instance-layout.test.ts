@@ -7,10 +7,10 @@ import { pathToFileURL } from "node:url";
 const WORKSPACE_ROOT = path.resolve(import.meta.dir, "../..");
 const CORE_APP_ROOT = path.join(WORKSPACE_ROOT, "apps/trenchclaw");
 const INSTANCE_LAYOUT_MODULE_URL = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/runtime/instance-layout.ts"),
+  path.join(CORE_APP_ROOT, "src/runtime/instance/layout.ts"),
 ).href;
 const INSTANCE_LAYOUT_SCHEMA_MODULE_URL = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/runtime/instance-layout-schema.ts"),
+  path.join(CORE_APP_ROOT, "src/runtime/instance/layout-schema.ts"),
 ).href;
 
 const createdRuntimeRoots: string[] = [];
@@ -85,12 +85,16 @@ describe("ensureInstanceLayout", () => {
         path.relative(result.first.instanceRoot, directoryPath).split(path.sep).join("/")),
     ).toEqual(result.expectedDirectoryPaths);
     expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual([
+      ".gitkeep",
+      ".gitkeep",
       "ai.json",
+      "instance.json",
       "news-feeds.json",
       "settings.json",
       "tracker.json",
       "trading.json",
       "vault.json",
+      "wakeup.json",
     ]);
     expect(result.second.createdDirectories).toEqual([]);
     expect(result.second.createdFiles).toEqual([]);

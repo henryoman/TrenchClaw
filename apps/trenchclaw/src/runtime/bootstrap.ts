@@ -25,16 +25,16 @@ import {
 import { createJupiterTriggerAdapterFromConfig } from "../solana/lib/adapters/jupiter-trigger";
 import { createJupiterAdapterFromConfig } from "../solana/lib/adapters/jupiter";
 import { createJupiterUltraAdapterFromConfig } from "../solana/lib/adapters/jupiter-ultra";
-import { createTokenAccountAdapter } from "../solana/lib/adapters/token-account";
+import { createTokenAccountAdapter } from "../solana/lib/rpc/token-account";
 import { createUltraSignerAdapterFromVault } from "../solana/lib/adapters/ultra-signer";
-import { loadRoutinePlanner } from "../solana/routines/load";
+import { loadRoutinePlanner } from "../automation/routines/load";
 import {
   getRuntimeActionCatalog,
   getRuntimeActionsRequiringUserConfirmation,
-  isRuntimeActionEnabledBySettings,
   getRuntimeCapabilitySnapshot,
-  type RuntimeCapabilitySnapshot,
-} from "./tools";
+  isRuntimeActionEnabledBySettings,
+} from "../tools/snapshot";
+import type { RuntimeCapabilitySnapshot } from "../tools/types";
 import {
   loadRuntimeSettings,
   resolvePrimaryRuntimeEndpoints,
@@ -42,7 +42,7 @@ import {
   type RuntimeSettings,
 } from "./settings";
 import { createRuntimeLogger, type RuntimeLogger } from "./logger";
-import { createRuntimeActionThrottle } from "./scheduling/trading-throttle";
+import { createRuntimeActionThrottle } from "../automation/policy/trading-throttle";
 import {
   LiveLogStore,
   MemoryLogStore,
@@ -58,8 +58,8 @@ import { createRuntimeChatService, type RuntimeChatService } from "./chat/servic
 import { ensureInstanceLayout } from "./instance/layout";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance/state";
 import { isRecord } from "./shared/object-utils";
-import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./runtime-notices";
-import { syncManagedWakeupJob } from "./scheduling/managed-wakeup";
+import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./chat/runtime-notices";
+import { syncManagedWakeupJob } from "../automation/triggers/wakeup";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();
 const TRADE_ACTIONS = new Set([

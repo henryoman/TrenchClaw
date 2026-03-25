@@ -9,7 +9,7 @@ import {
   type WakeupSettings,
   writeInstanceWakeupSettings,
 } from "../../settings/instance/wakeup";
-import { syncManagedWakeupJob } from "../../scheduling/managed-wakeup";
+import { syncManagedWakeupJob } from "../../../automation/triggers/wakeup";
 import { requireSurfaceInstanceId, resolveSurfaceInstanceId, type RuntimeTransportContext } from "../contracts";
 
 const cloneWakeupSettings = (settings: WakeupSettings): WakeupSettings => ({

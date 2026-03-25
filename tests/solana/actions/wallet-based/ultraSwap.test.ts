@@ -4,7 +4,7 @@ import type {
   JupiterUltraExecuteRequest,
   JupiterUltraOrderRequest,
 } from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
-import { ultraSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/swap";
+import { ultraSwapAction } from "../../../../apps/trenchclaw/src/tools/trading/ultra/swap";
 
 describe("ultra swap actions", () => {
   test("uses Ultra-managed execution settings for a simple swap", async () => {

@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai/core/state-store";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
-import { mutateInstanceMemoryAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/mutateInstanceMemory";
-import { queryInstanceMemoryAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/queryInstanceMemory";
+import { mutateInstanceMemoryAction } from "../../../../apps/trenchclaw/src/tools/core/mutateInstanceMemory";
+import { queryInstanceMemoryAction } from "../../../../apps/trenchclaw/src/tools/core/queryInstanceMemory";
 
 describe("instance memory actions", () => {
   test("updates profile and returns bundled memory with normalized fact keys", async () => {

@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
-import { createWalletGroupDirectoryAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWalletGroupDirectory";
+import { createWalletGroupDirectoryAction } from "../../../../apps/trenchclaw/src/tools/wallet/create/createWalletGroupDirectory";
 import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 

@@ -4,8 +4,8 @@ import { zodSchema } from "ai";
 import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import type { JobState } from "../../../../apps/trenchclaw/src/ai/contracts/types/state";
-import { listUpcomingTradingJobs } from "../../../../apps/trenchclaw/src/runtime/scheduling/upcoming-trading-jobs";
-import { scheduleManagedSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/scheduleManagedSwap";
+import { listUpcomingTradingJobs } from "../../../../apps/trenchclaw/src/automation/jobs/upcoming-trading-jobs";
+import { scheduleManagedSwapAction } from "../../../../apps/trenchclaw/src/tools/trading/scheduleManagedSwap";
 
 describe("scheduleManagedSwapAction", () => {
   test("queues a flat one-off scheduled swap through the managed routine surface", async () => {

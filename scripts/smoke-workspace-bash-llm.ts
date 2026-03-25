@@ -20,7 +20,7 @@ import { resolveInstanceToolBinRoot } from "../apps/trenchclaw/src/runtime/insta
 import {
   WORKSPACE_BASH_TOOL_NAME,
   createWorkspaceBashTools,
-} from "../apps/trenchclaw/src/runtime/workspace-bash";
+} from "../apps/trenchclaw/src/tools/workspace-bash";
 
 const INSTANCE_ID = "01";
 

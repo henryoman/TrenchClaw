@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import type { JobState } from "../../../../apps/trenchclaw/src/ai/contracts/types/state";
-import { scheduleManagedUltraSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/scheduleManagedSwap";
+import { scheduleManagedUltraSwapAction } from "../../../../apps/trenchclaw/src/tools/trading/ultra/scheduleManagedSwap";
 
 describe("scheduleManagedUltraSwapAction", () => {
   test("queues a single future managed Ultra swap", async () => {

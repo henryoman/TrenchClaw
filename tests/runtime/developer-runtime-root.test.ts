@@ -6,7 +6,7 @@ import path from "node:path";
 import {
   resolveDefaultWorkspaceRuntimeStateRoot,
   resolvePreferredWorkspaceRuntimeStateRoot,
-} from "../../apps/trenchclaw/src/runtime/developer-runtime-root";
+} from "../../apps/trenchclaw/src/runtime/runtime-paths";
 
 const createdRoots: string[] = [];
 

@@ -207,7 +207,7 @@ Helius-specific / closely related action entry points:
 - `src/solana/actions/data-fetch/rpc/getMarketData.ts`
 - `src/solana/actions/data-fetch/rpc/getTokenMetadata.ts`
 - `src/solana/actions/data-fetch/rpc/getTokenPrice.ts`
-- `src/solana/actions/data-fetch/runtime/getManagedWalletContents.ts`
+- `src/tools/runtime/getManagedWalletContents.ts`
 - `src/solana/actions/wallet-based/read-only/checkBalance.ts`
 - `src/solana/actions/wallet-based/read-only/checkSolBalance.ts`
 - `src/solana/actions/wallet-based/read-only/getWalletState.ts`

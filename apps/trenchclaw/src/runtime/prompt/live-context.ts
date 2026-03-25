@@ -1,6 +1,6 @@
 import type { StateStore } from "../../ai/contracts/types/state";
-import { getSolPrice } from "../market/sol-price";
-import { listUpcomingTradingJobs } from "../scheduling/upcoming-trading-jobs";
+import { listUpcomingTradingJobs } from "../../automation/jobs/upcoming-trading-jobs";
+import { getSolPrice } from "../../tools/market/sol-price";
 
 const usdFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",

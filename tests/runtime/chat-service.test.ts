@@ -8,16 +8,16 @@ import { z } from "zod";
 import type { ActionDispatcher, ActionResult, LlmClient, RuntimeGateway } from "../../apps/trenchclaw/src/ai";
 import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/contracts/types";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore, createActionContext, createRuntimeGateway } from "../../apps/trenchclaw/src/ai";
-import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/runtime/tools";
+import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/tools";
 import { createRuntimeChatService as createRuntimeChatServiceBase } from "../../apps/trenchclaw/src/runtime/chat/service";
 import { loadRuntimeSettings, resolvePrimaryRuntimeEndpoints } from "../../apps/trenchclaw/src/runtime/settings";
-import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
+import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/sol-price";
 import { SqliteStateStore } from "../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
 import {
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
-} from "../../apps/trenchclaw/src/runtime/workspace-bash";
+} from "../../apps/trenchclaw/src/tools/workspace-bash";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const makeActionResult = (input: {

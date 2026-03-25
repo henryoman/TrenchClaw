@@ -4,8 +4,8 @@ import {
   deriveEvenlySpacedIntervalMs,
   resolveGranularDurationMs,
   resolveScheduledTimeUnixMs,
-} from "../../apps/trenchclaw/src/runtime/scheduling/time";
-import { computeAnchoredWakeupRunAt } from "../../apps/trenchclaw/src/runtime/scheduling/managed-wakeup";
+} from "../../apps/trenchclaw/src/automation/triggers/time";
+import { computeAnchoredWakeupRunAt } from "../../apps/trenchclaw/src/automation/triggers/wakeup";
 
 describe("runtime time scheduling", () => {
   test("parses seconds for trading and rejects minute-only wakeup violations", () => {

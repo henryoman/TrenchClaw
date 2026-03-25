@@ -17,8 +17,9 @@ import { deleteConversation, streamChat, getConversationMessages, getConversatio
 import { createInstance, listInstances, signInInstance, signOutInstance } from "./domains/instances";
 import { runLlmCheck } from "./domains/llm-check";
 import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-overview";
-import { getSolPrice } from "../market/sol-price";
+import { getSolPrice } from "../../tools/market/sol-price";
 import { getTracker, updateTracker } from "./domains/tracker";
+import { getTools } from "./domains/tools";
 import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
 import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeup-settings";
 import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
@@ -171,6 +172,10 @@ export const createRuntimeApiRequestHandler = (context: RuntimeTransportContext)
 
     if (request.method === "GET" && matchesAppRoute(url.pathname, "/bootstrap")) {
       return Response.json(await getBootstrap(context), { headers: CORS_HEADERS });
+    }
+
+    if (request.method === "GET" && matchesAppRoute(url.pathname, "/tools")) {
+      return Response.json(await getTools(context), { headers: CORS_HEADERS });
     }
 
     if (request.method === "GET" && matchesAppRoute(url.pathname, "/sol-price")) {

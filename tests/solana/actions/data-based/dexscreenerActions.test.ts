@@ -12,7 +12,7 @@ import {
   getDexscreenerTokensByChainAction,
   getDexscreenerTopTokenBoostsAction,
   searchDexscreenerPairsAction,
-} from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/api/dexscreener-actions";
+} from "../../../../apps/trenchclaw/src/tools/market/dexscreener-actions";
 
 const previousFetch = globalThis.fetch;
 

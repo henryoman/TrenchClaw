@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import type { JobState } from "../../../../apps/trenchclaw/src/ai/contracts/types/state";
-import { enqueueRuntimeJobAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/enqueueRuntimeJob";
+import { enqueueRuntimeJobAction } from "../../../../apps/trenchclaw/src/tools/core/enqueueRuntimeJob";
 
 describe("enqueueRuntimeJobAction", () => {
   test("enqueues immediate work as ready when no future timestamp is provided", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { RuntimeActionThrottle, TokenBucketLane } from "../../apps/trenchclaw/src/runtime/scheduling/trading-throttle";
+import { RuntimeActionThrottle, TokenBucketLane } from "../../apps/trenchclaw/src/automation/policy/trading-throttle";
 
 describe("TokenBucketLane", () => {
   test("enforces min spacing and refill-based waits", async () => {

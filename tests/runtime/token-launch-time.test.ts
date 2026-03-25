@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createGetTokenLaunchTimeAction } from "../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getTokenLaunchTime";
+import { createGetTokenLaunchTimeAction } from "../../apps/trenchclaw/src/tools/market/getTokenLaunchTime";
 
 const buildGeckoPoolsPayload = (input: {
   coinAddress: string;

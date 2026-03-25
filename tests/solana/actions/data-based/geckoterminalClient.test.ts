@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import {
   getGeckoTerminalTokenPools,
   resetGeckoTerminalRateLimitStateForTests,
-} from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/api/geckoterminal";
+} from "../../../../apps/trenchclaw/src/solana/lib/clients/geckoterminal";
 
 const previousFetch = globalThis.fetch;
 const previousMinInterval = process.env.TRENCHCLAW_GECKOTERMINAL_MIN_INTERVAL_MS;

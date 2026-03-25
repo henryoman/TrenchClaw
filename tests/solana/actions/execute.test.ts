@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
-import { executeAction, listRegisteredActions } from "../../../apps/trenchclaw/src/solana/actions/execute";
+import { executeAction, listRegisteredActions } from "../../../apps/trenchclaw/src/tools/execute";
 import { createPersistedTestInstance } from "../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../helpers/core-paths";
 

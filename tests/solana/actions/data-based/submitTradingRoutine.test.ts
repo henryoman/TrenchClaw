@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import type { JobState } from "../../../../apps/trenchclaw/src/ai/contracts/types/state";
-import { submitTradingRoutineAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/submitTradingRoutine";
-import { tradingRoutineSpecSchema } from "../../../../apps/trenchclaw/src/solana/trading/routine-spec";
+import { submitTradingRoutineAction } from "../../../../apps/trenchclaw/src/tools/trading/submitTradingRoutine";
+import { tradingRoutineSpecSchema } from "../../../../apps/trenchclaw/src/automation/routines/trading-routine-spec";
 
 describe("submitTradingRoutineAction", () => {
   test("queues a standard-provider one-off swap through the same managedSwap surface", async () => {

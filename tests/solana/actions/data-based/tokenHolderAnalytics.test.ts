@@ -5,7 +5,7 @@ import {
   createGetTokenHolderDistributionAction,
   createRankDexscreenerTopTokenBoostsByWhalesAction,
   type TokenHolderDistribution,
-} from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/tokenHolderAnalytics";
+} from "../../../../apps/trenchclaw/src/tools/market/tokenHolderAnalytics";
 
 const SAMPLE_DISTRIBUTION = (overrides: Partial<TokenHolderDistribution> = {}): TokenHolderDistribution => ({
   mintAddress: "Mint111111111111111111111111111111111111111",

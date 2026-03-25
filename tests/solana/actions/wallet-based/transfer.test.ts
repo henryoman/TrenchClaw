@@ -2,8 +2,8 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
-import { createWalletsAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/create-wallets/createWallets";
-import { transferAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/transfer/transfer";
+import { createWalletsAction } from "../../../../apps/trenchclaw/src/tools/wallet/create/createWallets";
+import { transferAction } from "../../../../apps/trenchclaw/src/tools/wallet/transfer/transfer";
 import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 

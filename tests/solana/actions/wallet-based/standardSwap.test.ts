@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { executeSwapAction } from "../../../../apps/trenchclaw/src/solana/actions/wallet-based/swap/rpc/executeSwap";
+import { executeSwapAction } from "../../../../apps/trenchclaw/src/tools/trading/rpc/executeSwap";
 
 const previousFetch = globalThis.fetch;
 

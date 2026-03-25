@@ -4,7 +4,7 @@ import {
   ProtectedWriteForbiddenError,
   assertProtectedReadAllowed,
   assertProtectedWriteAllowed,
-} from "../../../apps/trenchclaw/src/solana/lib/wallet/protected-write-policy";
+} from "../../../apps/trenchclaw/src/runtime/security/protected-write-policy";
 import { resetFilesystemManifestCacheForTests } from "../../../apps/trenchclaw/src/runtime/security/filesystem-manifest";
 
 const createdFiles: string[] = [];

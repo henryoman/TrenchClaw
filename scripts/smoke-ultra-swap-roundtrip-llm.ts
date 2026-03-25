@@ -17,7 +17,7 @@ import type {
   JupiterUltraExecuteRequest,
   JupiterUltraOrderRequest,
 } from "../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
-import { ultraSwapAction } from "../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/swap";
+import { ultraSwapAction } from "../apps/trenchclaw/src/tools/trading/ultra/swap";
 
 const INSTANCE_ID = "01";
 const SOL_MINT = "So11111111111111111111111111111111111111112";

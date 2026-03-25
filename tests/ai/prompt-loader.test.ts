@@ -3,7 +3,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { loadSystemPromptPayload, resetPromptLoaderCache } from "../../apps/trenchclaw/src/ai/llm/prompt-loader";
-import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/runtime/market/sol-price";
+import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/sol-price";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const ENV_KEYS = [

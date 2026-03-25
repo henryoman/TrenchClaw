@@ -19,6 +19,7 @@ const directory = (children: Record<string, InstanceLayoutNode>): InstanceLayout
 export const INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES = [
   "configs",
   "added-knowledge",
+  "added-knowledge/skills",
 ] as const;
 
 const workspaceChildren = {
@@ -29,6 +30,7 @@ const workspaceChildren = {
   }),
   "added-knowledge": directory({
     ".gitkeep": file(),
+    skills: directory({}),
   }),
 } satisfies Record<string, InstanceLayoutNode>;
 

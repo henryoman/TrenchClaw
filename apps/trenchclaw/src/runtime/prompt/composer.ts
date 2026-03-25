@@ -1,6 +1,6 @@
 import type { StateStore } from "../../ai/contracts/types/state";
-import { renderKnowledgePromptSummary } from "../../lib/knowledge/knowledge-index";
-import type { RuntimeCapabilitySnapshot } from "../tools";
+import { renderKnowledgePromptSummary } from "../../ai/brain/knowledge-index";
+import type { RuntimeCapabilitySnapshot } from "../../tools";
 import { renderLiveRuntimeContextSection } from "./live-context";
 import {
   renderAsyncToolBehaviorSection,

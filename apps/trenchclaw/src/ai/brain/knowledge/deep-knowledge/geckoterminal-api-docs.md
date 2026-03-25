@@ -28,7 +28,7 @@ Exact CLI form:
 ```bash
 TRENCHCLAW_RUNTIME_STATE_ROOT="/absolute/path/to/trenchclaw-runtime-state" \
 TRENCHCLAW_ACTIVE_INSTANCE_ID="01" \
-bun run "src/solana/actions/execute.ts" downloadGeckoTerminalOhlcv \
+bun run "src/tools/execute.ts" downloadGeckoTerminalOhlcv \
   --input-json '{"poolAddress":"Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE","timeframe":"minute","aggregate":5,"limit":5}'
 ```
 

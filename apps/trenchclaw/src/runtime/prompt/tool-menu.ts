@@ -1,4 +1,5 @@
-import { TOOL_GROUP_IDS, resolveToolGroup, type RuntimeModelToolSnapshotEntry, type ToolGroupId } from "../tools";
+import { resolveToolGroup } from "../../tools/snapshot";
+import { TOOL_GROUP_IDS, type RuntimeModelToolSnapshotEntry, type ToolGroupId } from "../../tools/types";
 
 export const TOOL_GROUP_ORDER: readonly ToolGroupId[] = TOOL_GROUP_IDS;
 

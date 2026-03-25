@@ -1,5 +1,5 @@
 import type { LanguageModel, UIMessage } from "ai";
-import type { RuntimeCapabilitySnapshot } from "../../runtime/tools";
+import type { RuntimeCapabilitySnapshot } from "../../tools";
 import type { RuntimeSettings } from "../../runtime/settings";
 import type { ResolvedRuntimeEndpoints } from "../../runtime/settings";
 import type { ActionDispatcher, ActionRegistry, RuntimeEventBus, StateStore } from "..";

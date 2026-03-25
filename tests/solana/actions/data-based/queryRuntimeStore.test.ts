@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { SqliteStateStore } from "../../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
-import { queryRuntimeStoreAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/queryRuntimeStore";
+import { queryRuntimeStoreAction } from "../../../../apps/trenchclaw/src/tools/core/queryRuntimeStore";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const dbPaths: string[] = [];

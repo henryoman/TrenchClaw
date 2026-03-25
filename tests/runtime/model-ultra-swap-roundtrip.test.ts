@@ -9,7 +9,7 @@ import type {
   JupiterUltraExecuteRequest,
   JupiterUltraOrderRequest,
 } from "../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
-import { ultraSwapAction } from "../../apps/trenchclaw/src/solana/actions/wallet-based/swap/ultra/swap";
+import { ultraSwapAction } from "../../apps/trenchclaw/src/tools/trading/ultra/swap";
 
 const OPENROUTER_KEY =
   process.env.OPENROUTER_API_KEY?.trim() || process.env.TRENCHCLAW_SMOKE_OPENROUTER_API_KEY?.trim();

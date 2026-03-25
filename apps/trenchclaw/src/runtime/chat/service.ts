@@ -15,9 +15,9 @@ import { z } from "zod";
 import type { GatewayLane } from "../../ai/gateway";
 import { createActionContext } from "../../ai/contracts/types/context";
 import { createChatMessageId, createToolCallId } from "../../ai/contracts/types/ids";
-import type { RuntimeCapabilitySnapshot } from "../tools";
+import type { RuntimeCapabilitySnapshot } from "../../tools";
 import type { RuntimeLogger } from "../logger";
-import { WORKSPACE_TOOL_NAMES, createWorkspaceBashTools, resolveDefaultWorkspaceBashRoot } from "../workspace-bash";
+import { WORKSPACE_TOOL_NAMES, createWorkspaceBashTools, resolveDefaultWorkspaceBashRoot } from "../../tools/workspace-bash";
 import type { RuntimeGateway } from "../../ai/gateway";
 import type {
   ActionDispatcher,
@@ -43,7 +43,7 @@ import {
 import {
   getModelToolEnvelopeSchema,
   normalizeModelToolEnvelopeInput,
-} from "../../actions/model";
+} from "../../tools/model";
 import {
   createDirectTextStreamResponse,
   createDirectToolResultStreamResponse,

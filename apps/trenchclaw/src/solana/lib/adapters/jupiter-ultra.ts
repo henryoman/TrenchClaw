@@ -4,7 +4,7 @@ import {
   parseUltraJson,
   resolveRequestId,
   resolveSwapTransaction,
-} from "../ultra/parsing";
+} from "../jupiter/parsing";
 import { resolveJupiterApiKey } from "./jupiter";
 
 const DEFAULT_JUPITER_ULTRA_BASE_URL = "https://api.jup.ag/ultra/v1";

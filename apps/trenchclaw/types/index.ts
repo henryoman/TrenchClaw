@@ -169,6 +169,101 @@ export interface GuiActivityResponse {
   entries: GuiActivityEntry[];
 }
 
+export type RuntimeApiToolLaneVisibility = "never" | "routed" | "always";
+export type RuntimeApiToolGroupId =
+  | "runtime-queue"
+  | "rpc-data-fetch"
+  | "market-news"
+  | "wallet-execution"
+  | "workspace-cli"
+  | "knowledge";
+export type RuntimeApiToolSideEffectLevel = "read" | "write" | "execute";
+export type RuntimeApiReleaseReadinessStatus = "shipped-now" | "limited" | "coming-soon";
+
+export interface RuntimeApiToolVisibility {
+  operatorChat: RuntimeApiToolLaneVisibility;
+  workspaceAgent: boolean;
+  backgroundSummary: boolean;
+}
+
+export interface RuntimeApiActionToolView {
+  kind: "action";
+  name: string;
+  category: ActionCategory;
+  subcategory?: ActionSubcategory;
+  description: string;
+  purpose: string;
+  tags: readonly string[];
+  exampleInput?: unknown;
+  routingHint: string;
+  sideEffectLevel: RuntimeApiToolSideEffectLevel;
+  group: RuntimeApiToolGroupId;
+  visibility: RuntimeApiToolVisibility;
+  enabledNow: boolean;
+  exposedToModel: boolean;
+  toolDescription: string;
+  releaseReadinessStatus: RuntimeApiReleaseReadinessStatus;
+  releaseReadinessNote: string;
+  hasInputSchema: boolean;
+  hasOutputSchema: boolean;
+  includedInCatalog: boolean;
+  enabledBySettings: boolean;
+  requiresConfirmation: boolean;
+  chatExposed: boolean;
+}
+
+export interface RuntimeApiWorkspaceToolView {
+  kind: "workspace-tool";
+  name: string;
+  description: string;
+  purpose: string;
+  tags: readonly string[];
+  exampleInput?: unknown;
+  routingHint: string;
+  sideEffectLevel: RuntimeApiToolSideEffectLevel;
+  group: RuntimeApiToolGroupId;
+  visibility: RuntimeApiToolVisibility;
+  enabledNow: boolean;
+  exposedToModel: boolean;
+  toolDescription: string;
+  releaseReadinessStatus: RuntimeApiReleaseReadinessStatus;
+  releaseReadinessNote: string;
+  enabledBySettings: boolean;
+  chatExposed: boolean;
+}
+
+export interface RuntimeApiModelToolView {
+  kind: "action" | "workspace-tool";
+  name: string;
+  description: string;
+  purpose: string;
+  routingHint: string;
+  sideEffectLevel: RuntimeApiToolSideEffectLevel;
+  group?: RuntimeApiToolGroupId;
+  visibility?: RuntimeApiToolVisibility;
+  enabledNow: boolean;
+  requiresConfirmation: boolean;
+  exampleInput?: unknown;
+  toolDescription: string;
+  releaseReadinessStatus: RuntimeApiReleaseReadinessStatus;
+  releaseReadinessNote: string;
+}
+
+export interface RuntimeApiComingSoonFeatureView {
+  id: string;
+  label: string;
+  aliases: readonly string[];
+  status: RuntimeApiReleaseReadinessStatus;
+  note: string;
+}
+
+export interface RuntimeApiToolsResponse {
+  actions: RuntimeApiActionToolView[];
+  workspaceTools: RuntimeApiWorkspaceToolView[];
+  modelTools: RuntimeApiModelToolView[];
+  comingSoonFeatures: RuntimeApiComingSoonFeatureView[];
+}
+
 export interface GuiSolPriceResponse {
   priceUsd: number | null;
   updatedAt: number | null;

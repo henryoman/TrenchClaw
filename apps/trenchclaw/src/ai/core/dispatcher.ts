@@ -11,7 +11,7 @@ import type {
   RuntimeEventBus,
   StateStore,
 } from "../contracts/types";
-import type { RuntimeActionThrottleContract } from "../../runtime/scheduling/trading-throttle";
+import type { RuntimeActionThrottleContract } from "../../automation/policy/trading-throttle";
 import { createIdempotencyKey } from "../contracts/types";
 
 const DEFAULT_RETRY_POLICY: RetryPolicy = {

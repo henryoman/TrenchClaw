@@ -22,7 +22,7 @@ import {
   writeVaultData,
 } from "../../../ai/llm/vault-file";
 import { assertInstanceSystemWritePath } from "../../security/write-scope";
-import { PUBLIC_RPC_OPTIONS, RPC_PROVIDER_OPTIONS, SECRET_OPTIONS } from "../constants";
+import { PUBLIC_RPC_OPTIONS, RPC_PROVIDER_OPTIONS, SECRET_OPTIONS } from "../catalog";
 import { resolveSurfaceInstanceId, type RuntimeTransportContext } from "../contracts";
 
 interface SecretOptionInternal extends RuntimeApiSecretOptionView {

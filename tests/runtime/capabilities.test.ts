@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
 import { getGatewayToolNamesForLane } from "../../apps/trenchclaw/src/ai/gateway/lane-policy";
-import { getRuntimeCapabilitySnapshot, resolveToolVisibility } from "../../apps/trenchclaw/src/runtime/tools";
+import { getRuntimeCapabilitySnapshot, resolveToolVisibility } from "../../apps/trenchclaw/src/tools";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { createPersistedTestInstance } from "../helpers/instance-fixtures";
 import { runtimeStatePath } from "../helpers/core-paths";

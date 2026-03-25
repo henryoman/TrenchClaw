@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import type { JobState } from "../../../../apps/trenchclaw/src/ai/contracts/types/state";
-import { manageRuntimeJobAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/manageRuntimeJob";
+import { manageRuntimeJobAction } from "../../../../apps/trenchclaw/src/tools/core/manageRuntimeJob";
 
 describe("manageRuntimeJobAction", () => {
   test("pauses a queued job through the runtime job manager", async () => {

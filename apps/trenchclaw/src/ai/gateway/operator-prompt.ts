@@ -1,5 +1,5 @@
 import type { StateStore } from "../contracts/types/state";
-import type { RuntimeCapabilitySnapshot } from "../../runtime/tools";
+import type { RuntimeCapabilitySnapshot } from "../../tools";
 import type { RuntimeSettings } from "../../runtime/settings";
 import { loadRuntimePromptSections } from "../../runtime/prompt/composer";
 import {

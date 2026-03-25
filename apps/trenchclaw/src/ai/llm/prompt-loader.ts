@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 import { resolveCurrentActiveInstanceIdSync } from "../../runtime/instance/state";
 import { loadRuntimeSettings } from "../../runtime/settings";
-import { getRuntimeCapabilitySnapshot } from "../../runtime/tools";
+import { getRuntimeCapabilitySnapshot } from "../../tools/snapshot";
 import { loadRuntimePromptSections } from "../../runtime/prompt/composer";
 import { summarizeFilesystemPolicy } from "../../runtime/security/filesystem-manifest";
 import { resolveVaultFile } from "./vault-file";

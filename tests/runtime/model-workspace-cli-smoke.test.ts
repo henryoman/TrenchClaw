@@ -14,7 +14,7 @@ import {
   WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   createWorkspaceBashTools,
-} from "../../apps/trenchclaw/src/runtime/workspace-bash";
+} from "../../apps/trenchclaw/src/tools/workspace-bash";
 
 const INSTANCE_ID = "01";
 

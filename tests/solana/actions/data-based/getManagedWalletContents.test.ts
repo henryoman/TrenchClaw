@@ -8,7 +8,7 @@ import {
   createGetManagedWalletContentsAction,
   createGetWalletContentsAction,
   resetWalletContentsCachesForTests,
-} from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getManagedWalletContents";
+} from "../../../../apps/trenchclaw/src/tools/wallet/getManagedWalletContents";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 
 const RUNTIME_INSTANCE_DIRECTORY = runtimeStatePath("instances");

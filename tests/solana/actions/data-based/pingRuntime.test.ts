@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { pingRuntimeAction } from "../../../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/pingRuntime";
+import { pingRuntimeAction } from "../../../../apps/trenchclaw/src/tools/core/pingRuntime";
 
 describe("pingRuntimeAction", () => {
   test("echoes message and actor for safe dispatcher/queue verification", async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { createGetTokenPricePerformanceAction } from "../../apps/trenchclaw/src/solana/actions/data-fetch/runtime/getTokenPricePerformance";
+import { createGetTokenPricePerformanceAction } from "../../apps/trenchclaw/src/tools/market/getTokenPricePerformance";
 
 const buildTokenPoolsPayload = (input: {
   coinAddress: string;

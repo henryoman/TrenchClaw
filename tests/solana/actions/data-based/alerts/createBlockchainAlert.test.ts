@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
-import { createBlockchainAlertAction } from "../../../../../apps/trenchclaw/src/solana/actions/data-fetch/alerts/createBlockchainAlert";
+import { createBlockchainAlertAction } from "../../../../../apps/trenchclaw/src/tools/market/createBlockchainAlert";
 import { createActionContext } from "../../../../../apps/trenchclaw/src/ai";
 import { createPersistedTestInstance } from "../../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../../helpers/core-paths";
