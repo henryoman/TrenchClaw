@@ -79,7 +79,6 @@ export interface GatewayContext {
   settings: RuntimeSettings;
   endpoints: ResolvedRuntimeEndpoints;
   toolSnapshot?: RuntimeToolSnapshot;
-  capabilitySnapshot?: RuntimeToolSnapshot;
   dispatcher: ActionDispatcher;
   registry: ActionRegistry;
   eventBus: RuntimeEventBus;

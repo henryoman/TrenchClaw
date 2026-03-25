@@ -35,7 +35,7 @@ describe("sanitizeAgentSettings profile permissions", () => {
     expect(sanitized).toEqual({});
   });
 
-  test("dangerous allows only capability-level agent settings", () => {
+  test("dangerous allows only the narrow agent settings surface", () => {
     const sanitized = sanitizeAgentSettings(sample, "dangerous") as Record<string, any>;
 
     expect(sanitized.agent?.enabled).toBe(true);

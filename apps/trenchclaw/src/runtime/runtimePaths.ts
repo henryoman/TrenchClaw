@@ -150,7 +150,7 @@ const listInstanceIdsSync = (runtimeRoot: string): string[] => {
   return readdirSync(instancesRoot, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && INSTANCE_DIRECTORY_PATTERN.test(entry.name))
     .map((entry) => entry.name)
-    .sort((left, right) => left.localeCompare(right));
+    .toSorted((left, right) => left.localeCompare(right));
 };
 
 const readNonEmptyVaultStringCountSync = (vaultPath: string): number => {

@@ -459,6 +459,7 @@ export const createGetTokenPricePerformanceAction = (
 
         let verifiedHistory: VerifiedPoolHistory | null = null;
         for (const candidate of poolCandidates.slice(0, 5)) {
+          // oxlint-disable-next-line eslint/no-await-in-loop -- stop at the first pool with a verified history window.
           const ohlcvResponse = await runtimeDeps.loadPoolOhlcv({
             poolAddress: candidate.poolAddress,
             coinAddress: input.coinAddress,

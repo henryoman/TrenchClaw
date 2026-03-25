@@ -132,10 +132,12 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
     headers.set("x-ultra-api-key", config.apiKey);
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- rate-limit retries must stay sequential.
       const response = await fetchImpl(`${baseUrl}${path}`, {
         ...init,
         headers,
       });
+      // oxlint-disable-next-line eslint/no-await-in-loop -- parse the current retry response before deciding whether to continue.
       const payload = await parseUltraJson(response);
 
       if (response.ok) {
@@ -154,6 +156,7 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
         maxDelayMs,
         jitterMs,
       });
+      // oxlint-disable-next-line eslint/no-await-in-loop -- backoff applies to the current retry attempt only.
       await sleepImpl(Math.max(retryAfterMs ?? 0, backoffMs));
     }
 

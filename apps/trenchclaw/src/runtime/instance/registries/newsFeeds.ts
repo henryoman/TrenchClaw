@@ -36,14 +36,6 @@ export const DEFAULT_CONFIGURED_NEWS_FEEDS: readonly ConfiguredNewsFeed[] = [
   },
 ] as const;
 
-const createDefaultConfiguredNewsFeedRegistry = (): ConfiguredNewsFeedRegistry => ({
-  version: 1,
-  feeds: DEFAULT_CONFIGURED_NEWS_FEEDS.map((feed) =>
-    Object.assign({}, feed, {
-      tags: [...feed.tags],
-    })),
-});
-
 const parseConfiguredNewsFeedRegistry = (payload: unknown, filePath: string): ConfiguredNewsFeedRegistry => {
   const parsed = configuredNewsFeedRegistrySchema.parse(payload);
   const aliasMap = new Map<string, ConfiguredNewsFeed>();

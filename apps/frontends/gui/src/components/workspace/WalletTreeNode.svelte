@@ -1,18 +1,25 @@
 <script lang="ts">
   import type { GuiWalletNodeView } from "@trenchclaw/types";
   import { onDestroy } from "svelte";
+  // oxlint-disable-next-line import/no-self-import
+  import WalletTreeNode from "./WalletTreeNode.svelte";
   import { runtimeApi } from "../../runtimeApi";
 
-  export let node: GuiWalletNodeView;
-  export let depth = 0;
+  type WalletTreeNodeProps = {
+    node: GuiWalletNodeView;
+    depth?: number;
+  };
 
-  $: indentPx = depth * 14;
-  $: isFile = node.kind === "file";
-  $: displayName = isFile ? node.displayName ?? node.walletName ?? node.name.replace(/\.json$/i, "") : node.name;
+  let { node, depth = 0 }: WalletTreeNodeProps = $props();
+  let indentPx = $derived(depth * 14);
+  let isFile = $derived(node.kind === "file");
+  let displayName = $derived(
+    isFile ? node.displayName ?? node.walletName ?? node.name.replace(/\.json$/i, "") : node.name,
+  );
 
-  let expanded = false;
-  let copyFeedback = "";
-  let copyFeedbackTimeout: ReturnType<typeof setTimeout> | null = null;
+  let expanded = $state(false);
+  let copyFeedback = $state("");
+  let copyFeedbackTimeout: ReturnType<typeof setTimeout> | null = $state(null);
 
   const clearCopyFeedback = () => {
     if (copyFeedbackTimeout) {
@@ -59,6 +66,15 @@
     }
   };
 
+  const onCopyAddressClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    void copyAddress();
+  };
+
+  const onBackupClick = (event: MouseEvent) => {
+    event.stopPropagation();
+  };
+
   onDestroy(() => {
     clearCopyFeedback();
   });
@@ -70,8 +86,8 @@
       class:file-row-expanded={expanded}
       class="wallet-row wallet-row-button"
       style={`--tc-wallet-indent: ${indentPx}px`}
-      on:click={toggleExpanded}
-      on:keydown={onRowKeydown}
+      onclick={toggleExpanded}
+      onkeydown={onRowKeydown}
       role="button"
       tabindex="0"
       aria-expanded={expanded}
@@ -84,7 +100,7 @@
           class="icon-button"
           aria-label={node.address ? `Copy address for ${displayName}` : `No address available for ${displayName}`}
           title={node.address ? "Copy address" : "No address available"}
-          on:click|stopPropagation={copyAddress}
+          onclick={onCopyAddressClick}
         >
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <rect x="5" y="3" width="8" height="10" rx="1.5"></rect>
@@ -95,7 +111,7 @@
           class="backup-link"
           href={runtimeApi.walletBackupDownloadUrl(node.relativePath)}
           download={node.name}
-          on:click|stopPropagation
+          onclick={onBackupClick}
         >
           Backup
         </a>
@@ -124,7 +140,7 @@
   {#if node.kind === "directory" && node.children && node.children.length > 0}
     <ul class="wallet-tree">
       {#each node.children as child (child.relativePath)}
-        <svelte:self node={child} depth={depth + 1} />
+        <WalletTreeNode node={child} depth={depth + 1} />
       {/each}
     </ul>
   {/if}

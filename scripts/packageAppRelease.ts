@@ -78,7 +78,12 @@ const parseArgs = (argv: string[]): CliArgs => {
     version: version.trim(),
     bundleRoot,
     outputRoot,
-    targets: targets.length > 0 ? targets : resolveReleaseCompileTargets(),
+    targets: targets.length > 0
+      ? resolveReleaseCompileTargets({
+        ...process.env,
+        TRENCHCLAW_RELEASE_TARGETS: targets.join(","),
+      })
+      : resolveReleaseCompileTargets(),
   };
 };
 
@@ -215,6 +220,15 @@ const createCompileWorkspace = async (): Promise<string> => {
   const workspaceRoot = await mkdtemp(path.join(workspaceParent, "repo-"));
   for (const relativePath of RELEASE_COMPILE_WORKSPACE_PATHS) {
     await copyWorkspacePath(workspaceRoot, relativePath);
+  }
+
+  const runtimeInstancesRoot = path.join(workspaceRoot, "apps", "trenchclaw", ".runtime", "instances");
+  const runtimeEntries = await readdir(runtimeInstancesRoot, { withFileTypes: true }).catch(() => []);
+  for (const entry of runtimeEntries) {
+    if (entry.name === "00") {
+      continue;
+    }
+    await rm(path.join(runtimeInstancesRoot, entry.name), { recursive: true, force: true });
   }
 
   await run(["bun", "install", "--frozen-lockfile"], workspaceRoot);

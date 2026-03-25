@@ -115,7 +115,6 @@ export interface RuntimeChatServiceDeps {
   manageJob?: (input: RuntimeJobControlRequest) => Promise<import("../../ai").JobState>;
   logger?: RuntimeLogger;
   toolSnapshot?: RuntimeToolSnapshot;
-  capabilitySnapshot?: RuntimeToolSnapshot;
   workspaceRootDirectory?: string;
   gateway: RuntimeGateway;
 }
@@ -143,20 +142,6 @@ const resolveWorkspaceRootDirectory = (workspaceRootDirectory?: string): string 
 const isOpenRouterFreeModel = (provider: string | null | undefined, modelId: string | null | undefined): boolean =>
   provider === "openrouter" && typeof modelId === "string" && (modelId === "openrouter/free" || modelId.endsWith(":free"));
 
-const assistantMessageHasVisibleText = (message: UIMessage | undefined): boolean =>
-  Boolean(
-    message
-    && message.role === "assistant"
-    && message.parts.some((part) => part.type === "text" && part.text.trim().length > 0),
-  );
-
-const assistantMessageHasReasoning = (message: UIMessage | undefined): boolean =>
-  Boolean(
-    message
-    && message.role === "assistant"
-    && message.parts.some((part) => part.type === "reasoning" && part.text.trim().length > 0),
-  );
-
 const buildActionTools = (
   deps: RuntimeChatServiceDeps,
   enabledToolNames?: ReadonlySet<string> | null,
@@ -170,7 +155,7 @@ const buildActionTools = (
 ): Record<string, any> => {
   const tools: Record<string, any> = {};
   const toolResultCache = new Map<string, Promise<Record<string, unknown>>>();
-  const toolSnapshot = deps.toolSnapshot ?? deps.capabilitySnapshot;
+  const { toolSnapshot } = deps;
 
   for (const registered of deps.registry.list()) {
     const action = deps.registry.get(registered.name);
@@ -671,7 +656,7 @@ export const createRuntimeChatService = (
         const workspaceToolsStartedAt = Date.now();
         const workspaceRootDirectory = resolveWorkspaceRootDirectory(deps.workspaceRootDirectory);
         const workspaceToolMetadataByName = Object.fromEntries(
-          ((deps.toolSnapshot ?? deps.capabilitySnapshot)?.workspaceTools ?? []).map((toolEntry) => [
+          (deps.toolSnapshot?.workspaceTools ?? []).map((toolEntry) => [
             toolEntry.name,
             {
               description: toolEntry.toolDescription,
@@ -811,7 +796,6 @@ export const createRuntimeChatService = (
                 let firstResponseMessage: UIMessage | undefined;
                 let streamSawToolActivity = false;
                 let firstPassSawTextAfterToolActivity = false;
-                let streamSawTerminalProblem = false;
                 const bufferedTerminalProblemChunks: UIMessageChunk[] = [];
                 const observedToolCalls = new Map<string, {
                   toolName: string;
@@ -824,7 +808,6 @@ export const createRuntimeChatService = (
                     isSelectedFreeOpenRouterModel
                     && (chunk.type === "error" || chunk.type === "abort")
                   ) {
-                    streamSawTerminalProblem = true;
                     bufferedTerminalProblemChunks.push(chunk);
                     return;
                   }
@@ -953,8 +936,6 @@ export const createRuntimeChatService = (
                 const completedAssistantMessage = firstResponseMessage ?? findLatestAssistantMessage(recoveredFirstPassMessages);
                 const completedAssistantHasToolActivity = assistantMessageHasToolActivity(completedAssistantMessage);
                 const completedAssistantHasTextAfterToolActivity = assistantMessageHasTextAfterToolActivity(completedAssistantMessage);
-                const completedAssistantHasVisibleText = assistantMessageHasVisibleText(completedAssistantMessage);
-                const completedAssistantHasReasoning = assistantMessageHasReasoning(completedAssistantMessage);
                 const firstPassHadToolActivity = streamSawToolActivity || completedAssistantHasToolActivity;
 
                 const flushBufferedTerminalProblemChunks = (): void => {

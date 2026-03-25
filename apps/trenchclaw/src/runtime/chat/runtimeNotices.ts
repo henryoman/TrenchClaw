@@ -30,7 +30,7 @@ export const persistRuntimeNotice = (input: PersistRuntimeNoticeInput): boolean 
           conversation.id !== conversationId
           && (!input.instanceId || conversation.sessionId === input.instanceId),
       )
-      .sort((left, right) => right.updatedAt - left.updatedAt)[0]?.id ?? null;
+      .toSorted((left, right) => right.updatedAt - left.updatedAt)[0]?.id ?? null;
 
   if (input.dedupe !== false) {
     const latestMessage = input.stateStore.listChatMessages(conversationId, 5).at(-1);

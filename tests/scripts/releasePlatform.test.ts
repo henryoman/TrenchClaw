@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
+import { resolveReleaseCompileTargets } from "../../scripts/lib/releaseBuildPlan";
 import {
   normalizeTarget,
   resolveHostPlatformTarget,
@@ -23,5 +24,11 @@ describe("release-platform", () => {
     expect(shouldSmokeCompileTargetOnHost("bun-darwin-arm64", "darwin", "arm64")).toBe(true);
     expect(shouldSmokeCompileTargetOnHost("bun-linux-x64", "darwin", "arm64")).toBe(false);
     expect(shouldSmokeCompileTargetOnHost("bun-linux-arm64", "linux", "arm64")).toBe(true);
+  });
+
+  test("normalizes explicit host compile targets from release config", () => {
+    expect(resolveReleaseCompileTargets({ TRENCHCLAW_RELEASE_TARGETS: "host" } as NodeJS.ProcessEnv)).toEqual([
+      `bun-${process.platform}-${process.arch}`,
+    ]);
   });
 });

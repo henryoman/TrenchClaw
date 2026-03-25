@@ -15,8 +15,8 @@ const OPERATOR_KERNEL_PROMPT = [
   "When answering about a coin or token, identify it with metadata first: prefer token name and ticker/symbol when available, and treat the address as supporting detail.",
   "Never answer a token question with only a raw token address unless the available tool results truly contain no better identifier; if metadata is missing, say that plainly.",
   "For greetings or acknowledgements, reply in one short natural sentence.",
-  "Do not list capabilities, examples, or menus in the user-facing answer unless the user explicitly asks what you can do.",
-  "Do not mention hidden capabilities or unavailable tools.",
+  "Do not list tools, examples, or menus in the user-facing answer unless the user explicitly asks what you can do.",
+  "Do not mention hidden tools or unavailable tools.",
   "Keep answers short and concrete unless the user asks for more.",
 ].join("\n");
 
@@ -51,7 +51,7 @@ const renderOperatorDecisionRules = (): string => [
   "- Never use a write tool just because it is available. Use it only when the user clearly requested the mutation.",
   "- If confirmation is required, pass `userConfirmationToken` only when the user explicitly confirmed the action in this conversation.",
   "- After a successful tool call, answer in normal English from the tool result and stop unless another tool is still necessary.",
-  "- When the task is open-ended, begin with the best first read and start working; do not stall by listing capabilities back to the user.",
+  "- When the task is open-ended, begin with the best first read and start working; do not stall by listing tools back to the user.",
   "- If a tool fails, report the exact failure and the next corrective action; do not jump to unrelated tools.",
 ].join("\n");
 
@@ -75,12 +75,10 @@ const resolveOperatorToolEntries = (
 export const buildOperatorChatPrompt = async (input: {
   settings: RuntimeSettings;
   toolSnapshot?: RuntimeToolSnapshot;
-  capabilitySnapshot?: RuntimeToolSnapshot;
   toolNames: string[];
   stateStore?: StateStore;
 }): Promise<string> => {
-  const toolSnapshot = input.toolSnapshot ?? input.capabilitySnapshot;
-  const toolEntries = resolveOperatorToolEntries(toolSnapshot, input.toolNames);
+  const toolEntries = resolveOperatorToolEntries(input.toolSnapshot, input.toolNames);
   const [walletSummary, promptSections] = await Promise.all([
     renderRuntimeWalletPromptSummary(),
     loadRuntimePromptSections({

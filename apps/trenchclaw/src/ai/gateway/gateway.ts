@@ -12,7 +12,7 @@ import type {
 export const createRuntimeGateway = (
   context: GatewayContext,
 ): RuntimeGateway => {
-  const toolSnapshot = context.toolSnapshot ?? context.capabilitySnapshot;
+  const { toolSnapshot } = context;
   const laneStatuses = buildGatewayLaneStatuses({
     provider: context.resolvedModel.provider,
     model: context.resolvedModel.model,

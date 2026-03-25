@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { ActionDispatcher, ActionResult, LlmClient, RuntimeGateway } from "../../apps/trenchclaw/src/ai";
 import type { ActionContext, ActionStep } from "../../apps/trenchclaw/src/ai/contracts/types";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore, createActionContext, createRuntimeGateway } from "../../apps/trenchclaw/src/ai";
-import type { RuntimeCapabilitySnapshot } from "../../apps/trenchclaw/src/tools";
+import type { RuntimeToolSnapshot } from "../../apps/trenchclaw/src/tools";
 import { createRuntimeChatService as createRuntimeChatServiceBase } from "../../apps/trenchclaw/src/runtime/chat/service";
 import { loadRuntimeSettings, resolvePrimaryRuntimeEndpoints } from "../../apps/trenchclaw/src/runtime/settings";
 import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/solPrice";
@@ -261,11 +261,11 @@ beforeEach(async () => {
 
 const resolveDefaultToolNames = (deps: {
   registry: ActionRegistry;
-  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  toolSnapshot?: RuntimeToolSnapshot;
   workspaceToolsEnabled?: boolean;
 }): string[] => {
-  if (deps.capabilitySnapshot) {
-    return deps.capabilitySnapshot.modelTools
+  if (deps.toolSnapshot) {
+    return deps.toolSnapshot.modelTools
       .filter((toolEntry) => toolEntry.kind === "action" || (deps.workspaceToolsEnabled && toolEntry.kind === "workspace-tool"))
       .map((toolEntry) => toolEntry.name)
       .toSorted((left, right) => left.localeCompare(right));
@@ -282,7 +282,7 @@ const resolveDefaultToolNames = (deps: {
 
 const createGatewayStub = (deps: {
   registry: ActionRegistry;
-  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  toolSnapshot?: RuntimeToolSnapshot;
   workspaceToolsEnabled?: boolean;
 }): RuntimeGateway => {
   const toolNames = resolveDefaultToolNames(deps);
@@ -324,7 +324,7 @@ const createConfiguredGateway = async (input?: {
   registry?: ActionRegistry;
   eventBus?: InMemoryRuntimeEventBus;
   stateStore?: InMemoryStateStore;
-  capabilitySnapshot?: RuntimeCapabilitySnapshot;
+  toolSnapshot?: RuntimeToolSnapshot;
 }): Promise<RuntimeGateway> => {
   const settings = await loadRuntimeSettings("dangerous");
   const endpoints = resolvePrimaryRuntimeEndpoints(settings);
@@ -347,7 +347,7 @@ const createConfiguredGateway = async (input?: {
         model: "test-model",
         languageModel: {} as never,
       },
-      capabilitySnapshot: input?.capabilitySnapshot,
+      toolSnapshot: input?.toolSnapshot,
       createActionContext: (overrides) =>
         createActionContext({
           actor: overrides?.actor ?? "agent",
@@ -480,6 +480,74 @@ describe("RuntimeChatService", () => {
     const assistant = stateStore.listChatMessages("chat-fast-wallets-1", 10).find((message) => message.role === "assistant");
     expect(assistant?.content).toContain("We have 2 managed wallets");
     expect(assistant?.content).toContain("wallet_001");
+  });
+
+  test("treats 'how many wallets do we have' as a wallet inventory question", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    let streamInvocationCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async (_context: ActionContext, step: ActionStep) => {
+            expect(step.actionName).toBe("getWalletContents");
+            return {
+              results: [
+                makeActionResult({
+                  ok: true,
+                  data: {
+                    walletCount: 2,
+                    wallets: [
+                      {
+                        walletGroup: "core-wallets",
+                        walletName: "wallet_000",
+                        address: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU",
+                      },
+                      {
+                        walletGroup: "core-wallets",
+                        walletName: "wallet_001",
+                        address: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9",
+                      },
+                    ],
+                  },
+                }),
+              ],
+              policyHits: [],
+            };
+          },
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: null,
+        workspaceToolsEnabled: false,
+      },
+      {
+        streamText: (() => {
+          streamInvocationCount += 1;
+          throw new Error("model path should not be used for wallet inventory fast path");
+        }) as never,
+      },
+    );
+
+    const response = await service.stream([
+      {
+        id: "user-fast-wallets-count-1",
+        role: "user",
+        parts: [{ type: "text", text: "how many wallets do we have" }],
+      },
+    ], {
+      chatId: "chat-fast-wallets-count-1",
+    });
+
+    const body = await response.text();
+    expect(streamInvocationCount).toBe(0);
+    expect(body).toContain("We have 2 managed wallets");
+    expect(body).not.toContain("Here are the contents");
+
+    const assistant = stateStore.listChatMessages("chat-fast-wallets-count-1", 10).find((message) => message.role === "assistant");
+    expect(assistant?.content).toContain("We have 2 managed wallets");
+    expect(assistant?.content).not.toContain("Here are the contents");
   });
 
   test("bypasses the model for direct wallet contents questions", async () => {
@@ -1041,7 +1109,7 @@ describe("RuntimeChatService", () => {
     });
 
     let seenToolNames: string[] = [];
-    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+    const toolSnapshot: RuntimeToolSnapshot = {
       actions: [],
       workspaceTools: [],
       comingSoonFeatures: [],
@@ -1071,7 +1139,7 @@ describe("RuntimeChatService", () => {
         registry,
         eventBus: new InMemoryRuntimeEventBus(),
         stateStore: new InMemoryStateStore(),
-        capabilitySnapshot,
+        toolSnapshot,
         llm: {
           provider: "test",
           model: "test-model",
@@ -1103,7 +1171,7 @@ describe("RuntimeChatService", () => {
   test("forces explicit named tool use only on the first model step", async () => {
     const eventBus = new InMemoryRuntimeEventBus();
     const stateStore = new InMemoryStateStore();
-    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+    const toolSnapshot: RuntimeToolSnapshot = {
       actions: [],
       workspaceTools: [],
       comingSoonFeatures: [],
@@ -1136,7 +1204,7 @@ describe("RuntimeChatService", () => {
         registry: new ActionRegistry(),
         eventBus,
         stateStore,
-        capabilitySnapshot,
+        toolSnapshot,
       },
       {
         convertToModelMessages: async () => [],
@@ -1171,7 +1239,7 @@ describe("RuntimeChatService", () => {
   test("avoids required tool_choice forcing for OpenRouter when user broadly asks for tools", async () => {
     const eventBus = new InMemoryRuntimeEventBus();
     const stateStore = new InMemoryStateStore();
-    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+    const toolSnapshot: RuntimeToolSnapshot = {
       actions: [],
       workspaceTools: [],
       comingSoonFeatures: [],
@@ -1218,7 +1286,7 @@ describe("RuntimeChatService", () => {
         registry: new ActionRegistry(),
         eventBus,
         stateStore,
-        capabilitySnapshot,
+        toolSnapshot,
         gateway: {
           prepareChatExecution: async () => ({
             kind: "llm",
@@ -1272,7 +1340,7 @@ describe("RuntimeChatService", () => {
   test("uses OpenRouter activeTools-only forcing for an explicitly named tool", async () => {
     const eventBus = new InMemoryRuntimeEventBus();
     const stateStore = new InMemoryStateStore();
-    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+    const toolSnapshot: RuntimeToolSnapshot = {
       actions: [],
       workspaceTools: [],
       comingSoonFeatures: [],
@@ -1305,7 +1373,7 @@ describe("RuntimeChatService", () => {
         registry: new ActionRegistry(),
         eventBus,
         stateStore,
-        capabilitySnapshot,
+        toolSnapshot,
         gateway: {
           prepareChatExecution: async () => ({
             kind: "llm",
@@ -1361,7 +1429,7 @@ describe("RuntimeChatService", () => {
     const endpoints = resolvePrimaryRuntimeEndpoints(settings);
     const eventBus = new InMemoryRuntimeEventBus();
     const stateStore = new InMemoryStateStore();
-    const capabilitySnapshot: RuntimeCapabilitySnapshot = {
+    const toolSnapshot: RuntimeToolSnapshot = {
       actions: [],
       workspaceTools: [],
       comingSoonFeatures: [],
@@ -1494,7 +1562,7 @@ describe("RuntimeChatService", () => {
         model: "test-model",
         languageModel: {} as never,
       },
-      capabilitySnapshot,
+      toolSnapshot,
       createActionContext: (overrides) =>
         createActionContext({
           actor: overrides?.actor ?? "agent",
@@ -1512,7 +1580,7 @@ describe("RuntimeChatService", () => {
       eventBus,
       stateStore,
       llm: null,
-      capabilitySnapshot,
+      toolSnapshot,
       workspaceToolsEnabled: true,
       gateway,
     });
@@ -1530,7 +1598,7 @@ describe("RuntimeChatService", () => {
 
   test("lists exposed wallet mutation tools in the operator prompt summary", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -1612,7 +1680,7 @@ describe("RuntimeChatService", () => {
 
   test("operator-chat hides Ultra-only swap tools in favor of swap-agnostic surfaces", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -1673,7 +1741,7 @@ describe("RuntimeChatService", () => {
 
   test("routes flat JSON scheduled managed swaps through the operator prompt guidance", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -1773,7 +1841,7 @@ describe("RuntimeChatService", () => {
 
     const gateway = await createConfiguredGateway({
       stateStore,
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -1821,7 +1889,7 @@ describe("RuntimeChatService", () => {
 
   test("guides direct exact-price trigger orders through the operator prompt", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -1891,7 +1959,7 @@ describe("RuntimeChatService", () => {
 
   test("keeps the operator gateway prompt and tool list compact", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -1974,11 +2042,15 @@ describe("RuntimeChatService", () => {
     }
     expect(execution.toolNames.length).toBeLessThanOrEqual(12);
     expect(execution.maxToolSteps).toBe(12);
-    expect(execution.toolNames).toEqual(["queryRuntimeStore"]);
+    expect(execution.toolNames).toEqual([
+      "queryRuntimeStore",
+      "workspaceBash",
+      "workspaceReadFile",
+    ]);
     expect(execution.systemPrompt).toContain("## Command Groups");
     expect(execution.systemPrompt).toContain("### Runtime + Queue");
     expect(execution.systemPrompt).not.toContain("### RPC Data Fetch");
-    expect(execution.systemPrompt).not.toContain("### CLI + Workspace");
+    expect(execution.systemPrompt).toContain("### CLI + Workspace");
     expect(execution.systemPrompt).toContain("## Knowledge");
     expect(execution.systemPrompt).toContain("runtime-reference");
     expect(execution.systemPrompt).toContain("listKnowledgeDocs");
@@ -1986,7 +2058,7 @@ describe("RuntimeChatService", () => {
 
   test("grounds operator-chat with knowledge tools and skill aliases", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -2054,7 +2126,7 @@ describe("RuntimeChatService", () => {
 
   test("includes Dexscreener discovery and market-data actions in the normal operator payload", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],
@@ -2180,7 +2252,7 @@ describe("RuntimeChatService", () => {
 
   test("includes whale-analysis routing when holder tools are available", async () => {
     const gateway = await createConfiguredGateway({
-      capabilitySnapshot: {
+      toolSnapshot: {
         actions: [],
         workspaceTools: [],
         comingSoonFeatures: [],

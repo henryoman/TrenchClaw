@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
 import { getGatewayToolNamesForLane } from "../../apps/trenchclaw/src/ai/gateway/lanePolicy";
-import { getRuntimeCapabilitySnapshot, resolveToolVisibility } from "../../apps/trenchclaw/src/tools";
+import { getRuntimeToolSnapshot, resolveToolVisibility } from "../../apps/trenchclaw/src/tools";
 import { loadRuntimeSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { createPersistedTestInstance } from "../helpers/instanceFixtures";
 import { runtimeStatePath } from "../helpers/corePaths";
@@ -175,7 +175,7 @@ observability:
 `;
 
 const writeTempFile = async (extension: "yaml" | "json", content: string): Promise<string> => {
-  const target = `/tmp/trenchclaw-capabilities-${crypto.randomUUID()}.${extension}`;
+  const target = `/tmp/trenchclaw-tool-snapshots-${crypto.randomUUID()}.${extension}`;
   await Bun.write(target, content);
   createdFiles.push(target);
   return target;
@@ -216,7 +216,7 @@ afterEach(async () => {
 describe("runtime tool snapshot", () => {
   test("safe profile exposes read-only workspace tools but not workspace writes", async () => {
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
     expect(modelToolNames).toContain("workspaceBash");
@@ -238,7 +238,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
     expect(modelToolNames).toEqual(expect.arrayContaining([...DEXSCREENER_MODEL_TOOL_NAMES, ...HOLDER_MODEL_TOOL_NAMES]));
@@ -251,7 +251,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const latestBoosts = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerLatestTokenBoosts");
     const topBoosts = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerTopTokenBoosts");
     const tokenBatch = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getDexscreenerTokensByChain");
@@ -273,7 +273,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
     const ohlcDownloadTool = snapshot.modelTools.find((toolEntry) => toolEntry.name === "downloadGeckoTerminalOhlcv");
 
@@ -290,7 +290,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const toolEntry = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getTokenPricePerformance");
 
     expect(toolEntry).toBeDefined();
@@ -306,7 +306,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const toolEntry = snapshot.modelTools.find((toolEntry) => toolEntry.name === "getTokenLaunchTime");
 
     expect(toolEntry).toBeDefined();
@@ -324,7 +324,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
     for (const toolName of DEXSCREENER_MODEL_TOOL_NAMES) {
@@ -334,7 +334,7 @@ describe("runtime tool snapshot", () => {
 
   test("exposes transfer to the model only when wallet signing transfers are enabled", async () => {
     const defaultSettings = await loadRuntimeSettings("safe");
-    const defaultSnapshot = await getRuntimeCapabilitySnapshot(defaultSettings);
+    const defaultSnapshot = await getRuntimeToolSnapshot(defaultSettings);
     expect(defaultSnapshot.modelTools.map((toolEntry) => toolEntry.name)).not.toContain("transfer");
     expect(defaultSnapshot.modelTools.map((toolEntry) => toolEntry.name)).not.toContain("closeTokenAccount");
 
@@ -346,7 +346,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const enabledSettings = await loadRuntimeSettings("safe");
-    const enabledSnapshot = await getRuntimeCapabilitySnapshot(enabledSettings);
+    const enabledSnapshot = await getRuntimeToolSnapshot(enabledSettings);
     expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("transfer");
     expect(enabledSnapshot.modelTools.map((toolEntry) => toolEntry.name)).toContain("closeTokenAccount");
     expect(enabledSnapshot.modelTools.find((toolEntry) => toolEntry.name === "transfer")?.releaseReadinessStatus).toBe(
@@ -386,7 +386,7 @@ describe("runtime tool snapshot", () => {
 
     try {
       const settings = await loadRuntimeSettings("safe");
-      const snapshot = await getRuntimeCapabilitySnapshot(settings);
+      const snapshot = await getRuntimeToolSnapshot(settings);
       const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
       expect(modelToolNames).toContain("getTriggerOrders");
@@ -410,7 +410,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
     expect(modelToolNames).not.toContain("getTriggerOrders");
@@ -430,7 +430,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
     expect(modelToolNames).toContain("scheduleManagedSwap");
@@ -450,7 +450,7 @@ describe("runtime tool snapshot", () => {
     );
 
     const settings = await loadRuntimeSettings("dangerous");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const managedSwap = snapshot.modelTools.find((toolEntry) => toolEntry.name === "managedSwap");
 
     expect(managedSwap).toBeDefined();
@@ -460,7 +460,7 @@ describe("runtime tool snapshot", () => {
 
   test("operator-chat lane only exposes allowlisted tools that exist in the snapshot", async () => {
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const operatorNames = getGatewayToolNamesForLane(snapshot, "operator-chat");
     const snapshotNames = new Set(snapshot.modelTools.map((entry) => entry.name));
     const operatorVisibleNames = new Set(
@@ -477,7 +477,7 @@ describe("runtime tool snapshot", () => {
 
   test("workspace-agent lane exposes the full model tool list from the snapshot", async () => {
     const settings = await loadRuntimeSettings("safe");
-    const snapshot = await getRuntimeCapabilitySnapshot(settings);
+    const snapshot = await getRuntimeToolSnapshot(settings);
     const laneNames = getGatewayToolNamesForLane(snapshot, "workspace-agent").toSorted();
     const snapshotNames = snapshot.modelTools
       .filter((entry) => (entry.visibility ?? resolveToolVisibility(entry.name)).workspaceAgent)

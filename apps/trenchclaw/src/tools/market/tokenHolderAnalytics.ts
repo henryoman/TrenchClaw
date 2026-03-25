@@ -208,7 +208,7 @@ const aggregateOwners = (
     });
   }
 
-  return [...ownerMap.values()].sort((left, right) =>
+  return Array.from(ownerMap.values()).toSorted((left, right) =>
     left.amountRaw > right.amountRaw ? -1 : left.amountRaw < right.amountRaw ? 1 : 0);
 };
 
@@ -221,8 +221,7 @@ const pickBestPairForMint = (pairs: DexscreenerPairInfo[], mintAddress: string):
   }
 
   return relevantPairs
-    .slice()
-    .sort((left, right) => (right.liquidity?.usd ?? 0) - (left.liquidity?.usd ?? 0))[0] ?? null;
+    .toSorted((left, right) => (right.liquidity?.usd ?? 0) - (left.liquidity?.usd ?? 0))[0] ?? null;
 };
 
 const readTokenMetadataFromPair = (pair: DexscreenerPairInfo | null, mintAddress: string): {
@@ -402,6 +401,7 @@ export const createRankDexscreenerTopTokenBoostsByWhalesAction = (
           const mintAddress = boost.tokenAddress.trim();
           const pair = pickBestPairForMint(dexPairs, mintAddress);
           const tokenMetadata = readTokenMetadataFromPair(pair, mintAddress);
+          // oxlint-disable-next-line eslint/no-await-in-loop -- holder lookups stay sequential to avoid burst RPC fan-out.
           const holderDistribution = await loadHolderDistribution({
             rpcUrl: ctx.rpcUrl,
             mintAddress,

@@ -32,6 +32,9 @@ const OPERATOR_ALWAYS_TOOL_NAMES = new Set([
   "listKnowledgeDocs",
   "queryRuntimeStore",
   "readKnowledgeDoc",
+  "workspaceBash",
+  "workspaceListDirectory",
+  "workspaceReadFile",
 ]);
 
 const OPERATOR_ROUTED_TOOL_NAMES = new Set([
@@ -446,5 +449,3 @@ export const getRuntimeToolSnapshot = async (
     comingSoonFeatures: getRuntimeComingSoonFeatures(),
   };
 };
-
-export const getRuntimeCapabilitySnapshot = getRuntimeToolSnapshot;

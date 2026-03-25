@@ -93,7 +93,7 @@ execution when any of the following are true:
 For TrenchClaw, the default recommendation is:
 
 - use `just-bash` for model-driven shell work
-- enable only the specific capabilities you need such as network allowlists and
+- enable only the specific permissions you need such as network allowlists and
   `js-exec`
 - avoid direct host `bun run *.ts` for model work
 - keep host passthrough only for explicitly curated native binaries that

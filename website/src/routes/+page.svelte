@@ -67,7 +67,7 @@
           local state, and a GUI that talks to the runtime instead of replacing it.
         </p>
         <p class="mt-4 max-w-2xl text-sm leading-7 text-foreground-soft">
-          The important difference from thinner OpenClaw-style wrappers is the execution model: capability-gated tools,
+          The important difference from thinner OpenClaw-style wrappers is the execution model: tool-gated execution,
           settings-aware policy checks, instance-scoped state under `.runtime-state`, and a repo-tracked `.runtime`
           contract that is not treated as live mutable state.
         </p>

@@ -19,7 +19,7 @@ const USER_PROTECTED_PATH_PREFIXES = [
 type SettingsAuthorityProfile = "safe" | "dangerous" | "veryDangerous";
 
 const AGENT_EDITABLE_PATH_PREFIXES_DANGEROUS = [
-  // Keep dangerous mode focused on bot capabilities only.
+  // Keep dangerous mode focused on the narrow agent-facing settings surface.
   "agent.enabled",
 ] as const;
 

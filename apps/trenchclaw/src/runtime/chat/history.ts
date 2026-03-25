@@ -93,7 +93,7 @@ export const selectConversationHistoryMessages = (input: {
   messages: ChatMessageState[];
   estimatedTokenCount: number;
 } => {
-  const ordered = [...input.messages].sort(compareChatMessages);
+  const ordered = input.messages.toSorted(compareChatMessages);
   const limit = clampPositiveInt(input.limit, DEFAULT_CONVERSATION_HISTORY_SLICE_LIMIT);
   const tokenBudget = clampPositiveInt(input.tokenBudget, DEFAULT_CONVERSATION_HISTORY_SLICE_TOKEN_BUDGET);
   const selectedFromNewest: ChatMessageState[] = [];
@@ -115,7 +115,7 @@ export const selectConversationHistoryMessages = (input: {
   }
 
   return {
-    messages: selectedFromNewest.reverse(),
+    messages: selectedFromNewest.toReversed(),
     estimatedTokenCount,
   };
 };

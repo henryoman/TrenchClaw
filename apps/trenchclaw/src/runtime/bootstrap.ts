@@ -65,7 +65,6 @@ const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserC
 const TRADE_ACTIONS = new Set([
   "managedSwap",
   "executeSwap",
-  "ultraExecuteSwap",
   "ultraSwap",
   "managedUltraSwap",
   "managedTriggerOrder",
@@ -73,39 +72,6 @@ const TRADE_ACTIONS = new Set([
   "privacySwap",
 ]);
 const DATA_ACTION_NAME_PATTERNS = [/^query/i, /^fetch/i, /^download/i, /^scan/i, /^list/i];
-const trimOrUndefined = (value: string | undefined): string | undefined => {
-  const trimmed = value?.trim();
-  return trimmed && trimmed.length > 0 ? trimmed : undefined;
-};
-
-const envFlagEnabled = (name: string, fallback: boolean): boolean => {
-  const configured = trimOrUndefined(process.env[name]);
-  if (!configured) {
-    return fallback;
-  }
-  return configured === "1" || configured.toLowerCase() === "true";
-};
-
-const runBootstrapTask = async (
-  logger: RuntimeLogger,
-  label: string,
-  task: () => Promise<string[]>,
-): Promise<void> => {
-  try {
-    const output = (await task()).join("\n").trim();
-    if (output) {
-      logger.info("context:refresh", {
-        script: label,
-        output,
-      });
-    }
-  } catch (error) {
-    logger.warn("context:refresh_failed", {
-      script: label,
-      error: error instanceof Error ? error.message : String(error),
-    });
-  }
-};
 
 const runBootContextRefresh = async (_logger: RuntimeLogger): Promise<void> => {};
 

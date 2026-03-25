@@ -1294,7 +1294,7 @@ export class SqliteStateStore implements StateStore {
           createdAt: parsed.created_at,
         });
       })
-      .reverse();
+      .toReversed();
 
     return createConversationHistorySlice({
       conversationId: normalizedConversationId,

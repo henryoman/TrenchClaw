@@ -22,8 +22,6 @@ type TradingThrottleLaneName = keyof RuntimeSettings["runtime"]["tradingThrottle
 const ACTION_LANE_MAP: Readonly<Record<string, TradingThrottleLaneName>> = {
   managedSwap: "swapExecution",
   managedUltraSwap: "swapExecution",
-  ultraQuoteSwap: "swapExecution",
-  ultraExecuteSwap: "swapExecution",
   ultraSwap: "swapExecution",
   privacySwap: "swapExecution",
 };
@@ -63,6 +61,7 @@ export class TokenBucketLane {
       const waitMs = Math.max(spacingWaitMs, refillWaitMs);
 
       if (waitMs > 0) {
+        // oxlint-disable-next-line eslint/no-await-in-loop -- token bucket acquisition intentionally waits and retries sequentially.
         await this.sleep(waitMs);
         continue;
       }

@@ -45,8 +45,6 @@ import {
   scheduleManagedSwapAction,
   scheduleManagedUltraSwapAction,
   submitTradingRoutineAction,
-  ultraExecuteSwapAction,
-  ultraQuoteSwapAction,
   ultraSwapAction,
 } from "./trading";
 import {
@@ -199,8 +197,6 @@ const RUNTIME_ACTION_RELEASE_READINESS_BY_NAME: Record<string, RuntimeReleaseRea
   privacyAirdrop: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   privacySwap: LIMITED("Transfers, swap history, and privacy-routed wallet flows exist, but they are still narrow supported surfaces."),
   managedSwap: LIMITED("Provider-agnostic managed swap routing is available now across the configured Jupiter Ultra or Jupiter standard execution paths."),
-  ultraQuoteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
-  ultraExecuteSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   managedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   scheduleManagedUltraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
   ultraSwap: LIMITED("Jupiter Ultra swap flows are available now, but still limited surfaces with a narrower supported scope."),
@@ -1026,39 +1022,6 @@ const runtimeActionToolDefinitionsBase: readonly RuntimeActionToolDefinitionWith
   },
   {
     kind: "action",
-    action: ultraQuoteSwapAction,
-    description: "Request a Jupiter Ultra quote for a proposed swap.",
-    purpose: "Price a potential swap before execution.",
-    tags: ["swaps", "quote", "jupiter", "read"],
-    exampleInput: {
-      inputMint: "So11111111111111111111111111111111111111112",
-      outputMint: "EPjFWdd5AufqSSqeM2qvM8h1L4YFj7y2U6TQwYVCc4c",
-      amount: "1000000000",
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
-    enabledBySettings: ({ settings }) =>
-      settings.trading.enabled && settings.trading.jupiter.ultra.enabled && settings.trading.jupiter.ultra.allowQuotes,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
-    action: ultraExecuteSwapAction,
-    description: "Execute a previously prepared Jupiter Ultra swap transaction.",
-    purpose: "Finalize a swap after a quote or prepared transaction already exists.",
-    tags: ["swaps", "execution", "jupiter"],
-    exampleInput: {
-      unsignedTransactionBase64: "<prepared-transaction>",
-    },
-    includeInCatalog: ({ settings }) => settings.trading.enabled && settings.trading.jupiter.ultra.enabled,
-    enabledBySettings: ({ settings }) =>
-      settings.trading.enabled
-      && settings.trading.jupiter.ultra.enabled
-      && settings.trading.jupiter.ultra.allowExecutions,
-    requiresUserConfirmation: true,
-    chatExposed: true,
-  },
-  {
-    kind: "action",
     action: managedSwapAction,
     description: "Run a managed-wallet swap through the configured swap provider.",
     purpose: "Expose one stable managed swap surface while keeping the underlying provider swappable.",
@@ -1165,8 +1128,6 @@ export const runtimeActionToolDefinitions: readonly RuntimeActionToolDefinition[
     return Object.assign({}, definition, { releaseReadiness });
   });
 
-export const runtimeActionCapabilityDefinitions = runtimeActionToolDefinitions;
-
 export const workspaceToolDefinitions: readonly RuntimeWorkspaceToolDefinition[] = [
   {
     kind: "workspace-tool",
@@ -1233,5 +1194,3 @@ export const workspaceToolDefinitions: readonly RuntimeWorkspaceToolDefinition[]
     chatExposed: true,
   },
 ];
-
-export const workspaceToolCapabilityDefinitions = workspaceToolDefinitions;

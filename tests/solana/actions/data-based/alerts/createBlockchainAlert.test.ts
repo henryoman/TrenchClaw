@@ -4,18 +4,33 @@ import path from "node:path";
 
 import { createBlockchainAlertAction } from "../../../../../apps/trenchclaw/src/tools/market/createBlockchainAlert";
 import { createActionContext } from "../../../../../apps/trenchclaw/src/ai";
+import { resetFilesystemManifestCacheForTests } from "../../../../../apps/trenchclaw/src/runtime/security/filesystemManifest";
 import { createPersistedTestInstance } from "../../../../helpers/instanceFixtures";
 import { runtimeStatePath } from "../../../../helpers/corePaths";
 
 const createdFiles: string[] = [];
 const createdDirectories = new Set<string>();
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+const previousManifestFile = process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE;
+
+const writeTempManifest = async (yaml: string): Promise<string> => {
+  const manifestPath = `/tmp/trenchclaw-create-blockchain-alert-${crypto.randomUUID()}.yaml`;
+  await Bun.write(manifestPath, yaml);
+  createdFiles.push(manifestPath);
+  return manifestPath;
+};
 
 afterEach(async () => {
+  resetFilesystemManifestCacheForTests();
   if (previousActiveInstanceId === undefined) {
     delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
   } else {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+  }
+  if (previousManifestFile === undefined) {
+    delete process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE;
+  } else {
+    process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE = previousManifestFile;
   }
   for (const filePath of createdFiles.splice(0)) {
     await Bun.$`rm -f ${filePath}`.quiet();
@@ -36,6 +51,16 @@ describe("createBlockchainAlertAction", () => {
       `alerts-${crypto.randomUUID()}.json`,
     );
     createdFiles.push(storageFilePath);
+    process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE = await writeTempManifest(`
+version: 1
+defaults:
+  model: none
+  user: write
+  system: write
+rules:
+  - path: ${path.dirname(storageFilePath)}
+    model: write
+`);
 
     const result = await createBlockchainAlertAction.execute(
       createActionContext({ actor: "agent" }),

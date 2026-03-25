@@ -250,7 +250,7 @@ describe("getTokenLaunchTimeAction", () => {
     const result = await action.execute({} as never, {
       coinAddress: "Mint111111111111111111111111111111111111111",
       type: "unknown",
-    });
+    } as never);
 
     expect(result.ok).toBe(false);
     expect(result.retryable).toBe(false);

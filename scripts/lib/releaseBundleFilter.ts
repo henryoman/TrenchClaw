@@ -165,6 +165,74 @@ const defaultBlockedContentNeedles = (): string[] => {
   return [...new Set(needles)];
 };
 
+const BUNDLED_RUNTIME_SEED_VAULT_PATHS = new Set([
+  ".runtime/instances/00/secrets/vault.json",
+  "core/.runtime/instances/00/secrets/vault.json",
+]);
+
+const SAFE_TEMPLATE_STRING_VALUES = new Set([
+  "",
+  "custom",
+]);
+
+const findUnsafeVaultTemplateValue = (
+  value: unknown,
+  currentPath: string[] = [],
+): string | null => {
+  if (typeof value === "string") {
+    const normalized = value.trim();
+    if (!SAFE_TEMPLATE_STRING_VALUES.has(normalized)) {
+      return currentPath.join(".") || "<root>";
+    }
+    return null;
+  }
+
+  if (Array.isArray(value)) {
+    for (let index = 0; index < value.length; index += 1) {
+      const nestedViolation = findUnsafeVaultTemplateValue(value[index], [...currentPath, String(index)]);
+      if (nestedViolation) {
+        return nestedViolation;
+      }
+    }
+    return null;
+  }
+
+  if (value && typeof value === "object") {
+    for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+      const nestedViolation = findUnsafeVaultTemplateValue(nestedValue, [...currentPath, key]);
+      if (nestedViolation) {
+        return nestedViolation;
+      }
+    }
+  }
+
+  return null;
+};
+
+export const hasBlockedSeedTemplateContent = (
+  relativeBundlePath: string,
+  content: string,
+): string | null => {
+  const normalizedPath = toPosixPath(relativeBundlePath);
+  if (!BUNDLED_RUNTIME_SEED_VAULT_PATHS.has(normalizedPath)) {
+    return null;
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(content) as unknown;
+  } catch {
+    return `runtime seed vault template is not valid JSON: ${normalizedPath}`;
+  }
+
+  const unsafePath = findUnsafeVaultTemplateValue(parsed);
+  if (unsafePath) {
+    return `runtime seed vault template contains non-empty value at ${unsafePath}`;
+  }
+
+  return null;
+};
+
 export const hasBlockedBundleContent = (
   relativeBundlePath: string,
   content: string,
@@ -179,6 +247,11 @@ export const hasBlockedBundleContent = (
     if (normalizedNeedle && normalizedContent.includes(normalizedNeedle)) {
       return `host-specific absolute path leaked into bundle file ${normalizedPath}`;
     }
+  }
+
+  const seedViolation = hasBlockedSeedTemplateContent(normalizedPath, content);
+  if (seedViolation) {
+    return seedViolation;
   }
 
   return null;

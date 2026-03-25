@@ -18,7 +18,6 @@ describe("buildChatActivitySnapshot", () => {
           {
             type: "tool-workspaceBash",
             toolCallId: "tool-1",
-            toolName: "workspaceBash",
             state: "output-error",
             input: { type: "shell", command: "ls -la" },
             errorText: "{\"error\":\"Command failed\",\"details\":{\"exitCode\":2}}",

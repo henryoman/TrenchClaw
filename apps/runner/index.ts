@@ -192,6 +192,7 @@ export const resolveLayout = (env: NodeJS.ProcessEnv = process.env): ResolvedLay
 const LAYOUT = resolveLayout();
 let runtimeImportsPromise: Promise<{
   bootstrapRuntime: typeof bootstrapRuntimeType;
+  createActionContext: typeof import("../trenchclaw/src/ai/contracts/types/context").createActionContext;
   ensureInstanceLayout: (instanceId: string) => Promise<unknown>;
   resolveRuntimeSettingsProfile: () => RuntimeSettingsProfile;
   startRuntimeServer: typeof startRuntimeServerType;
@@ -866,6 +867,16 @@ const runRunnerSmokeChecks = async (input: {
   guiUrl: string;
   createActionContext: typeof import("../trenchclaw/src/ai/contracts/types/context").createActionContext;
 }): Promise<void> => {
+  type RunnerSmokeCreatedWallet = {
+    walletId?: string;
+  };
+
+  type RunnerSmokeCreateWalletsData = {
+    wallets?: RunnerSmokeCreatedWallet[];
+    files?: string[];
+    walletLibraryFilePath?: string;
+  };
+
   const [runtimeHealth, guiResponse] = await Promise.all([
     fetch(new URL("/health", input.runtimeBaseUrl)),
     fetch(input.guiUrl),
@@ -909,21 +920,22 @@ const runRunnerSmokeChecks = async (input: {
   if (!createWalletsOutput?.ok) {
     throw new Error(`Runner smoke failed to create wallets: ${createWalletsOutput?.error ?? "unknown error"}`);
   }
-  const createdWallets = Array.isArray(createWalletsOutput.data?.wallets) ? createWalletsOutput.data.wallets : [];
+  const createWalletsData = (createWalletsOutput.data ?? null) as RunnerSmokeCreateWalletsData | null;
+  const createdWallets = Array.isArray(createWalletsData?.wallets) ? createWalletsData.wallets : [];
   if (createdWallets.length !== 2) {
     throw new Error(`Runner smoke expected 2 created wallets, received ${createdWallets.length}`);
   }
-  const createdWalletIds = createdWallets.map((wallet) => String(wallet?.walletId ?? "")).toSorted();
+  const createdWalletIds = createdWallets.map((wallet: RunnerSmokeCreatedWallet) => String(wallet.walletId ?? "")).toSorted();
   if (createdWalletIds.join(",") !== "smoke-wallets.000,smoke-wallets.001") {
     throw new Error(`Runner smoke expected managed wallet ids smoke-wallets.000 and smoke-wallets.001, received ${createdWalletIds.join(", ") || "(none)"}`);
   }
-  const createdFileNames = Array.isArray(createWalletsOutput.data?.files)
-    ? createWalletsOutput.data.files.map((filePath) => path.basename(String(filePath))).toSorted()
+  const createdFileNames = Array.isArray(createWalletsData?.files)
+    ? createWalletsData.files.map((filePath: string) => path.basename(String(filePath))).toSorted()
     : [];
   if (createdFileNames.join(",") !== "000.json,001.json") {
     throw new Error(`Runner smoke expected wallet files 000.json and 001.json, received ${createdFileNames.join(", ") || "(none)"}`);
   }
-  const walletLibraryFilePath = String(createWalletsOutput.data?.walletLibraryFilePath ?? "");
+  const walletLibraryFilePath = String(createWalletsData?.walletLibraryFilePath ?? "");
   if (!walletLibraryFilePath) {
     throw new Error("Runner smoke expected createWallets to return a wallet library file path.");
   }
@@ -936,15 +948,17 @@ const runRunnerSmokeChecks = async (input: {
   if (walletLibraryIds.join(",") !== "smoke-wallets.000,smoke-wallets.001") {
     throw new Error(`Runner smoke wallet library entries were unexpected: ${walletLibraryIds.join(", ") || "(none)"}`);
   }
-  for (const entry of walletLibraryEntries) {
+  const walletLabels = await Promise.all(walletLibraryEntries.map(async (entry) => {
     const walletLabelFilePath = String(entry.walletLabelFilePath ?? "");
     if (!walletLabelFilePath) {
       throw new Error(`Runner smoke wallet library entry is missing a wallet label file path: ${JSON.stringify(entry)}`);
     }
-    const walletLabel = await Bun.file(walletLabelFilePath).json() as {
+    return await Bun.file(walletLabelFilePath).json() as {
       walletId?: string;
       walletFileName?: string;
     };
+  }));
+  for (const walletLabel of walletLabels) {
     if (!createdWalletIds.includes(String(walletLabel.walletId ?? ""))) {
       throw new Error(`Runner smoke wallet label entry was unexpected: ${JSON.stringify(walletLabel)}`);
     }
@@ -1094,7 +1108,7 @@ const configureRuntimeEnvironment = async (runtimePort: number, guiUrl: string):
     path.join(LAYOUT.coreAssetRoot, "src/ai/brain/config/safety-modes", toSettingsFileName(profile));
   process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE =
     process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE ||
-    path.join(LAYOUT.coreAssetRoot, "src/runtime/security/filesystemManifest.json");
+    path.join(LAYOUT.coreAssetRoot, "src/runtime/security/filesystem-manifest.json");
   process.env.TRENCHCLAW_KNOWLEDGE_DIR =
     process.env.TRENCHCLAW_KNOWLEDGE_DIR || path.join(bundledBrainRoot, "knowledge");
   process.env.TRENCHCLAW_KNOWLEDGE_INDEX_FILE =

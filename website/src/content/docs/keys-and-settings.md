@@ -1,132 +1,97 @@
 ---
 title: Keys and Settings
-description: The clean explanation of which keys matter, which settings matter, and what Ultra actually means in TrenchClaw.
+description: Which keys matter, which settings matter, and how to keep the default TrenchClaw setup clean.
 order: 2
 featured: true
 ---
 
-## The Only Things Most Users Need To Know
-
-There are two setup panels:
-
-- `Keys`
-- `Settings`
-
-For a normal first run, you only need to understand three things:
+For most users, there are only three rules:
 
 1. Save your AI key first.
-2. Leave private RPC blank unless you really want a private RPC.
-3. If you want swaps, use `Ultra`.
+2. Leave private RPC blank unless you already know you want it.
+3. If you want swaps, stay on `Ultra`.
 
-That is the whole setup story for most users.
+That is the clean setup story.
+
+## Recommended Defaults
+
+- AI key: `OpenRouter API Key`
+- AI provider: `OpenRouter`
+- AI model: use the default your build recommends
+- RPC: leave it alone unless you have private RPC credentials
+- Swaps: add a `Jupiter Ultra API Key` only when you want swap flows
 
 ## Keys
 
-### `OpenRouter API Key`
+| Key | Use it when | Default guidance |
+| --- | --- | --- |
+| `OpenRouter API Key` | You want the default AI path working quickly | Start here |
+| `Private RPC credential` | You want Helius, QuickNode, Chainstack, or another private RPC | Optional |
+| `Jupiter Ultra API Key` | You want Jupiter Ultra swap flows | Optional |
+| `Vercel AI Gateway API Key` | You want the Vercel AI Gateway path instead of OpenRouter | Advanced or alternative |
 
-This is the recommended first key.
-
-Use it when you want chat working with the default setup.
-
-### `Private RPC credential`
-
-This is optional.
-
-Use it only when you want:
-
-- Helius
-- QuickNode
-- Chainstack
-- another private RPC instead of the public Solana RPC
-
-If you do not know whether you need this, you probably do not need it yet.
-
-### `Jupiter Ultra API Key`
-
-This is optional.
-
-Use it only when you want swaps through Jupiter Ultra.
-
-If you are not swapping yet, leave it blank.
-
-### `Vercel AI Gateway API Key`
-
-This is an alternative AI path.
-
-Most users should ignore it and use `OpenRouter` first.
+If you do not know whether you need a key beyond `OpenRouter API Key`, you probably do not need it on day one.
 
 ## Settings
 
 ### AI
 
-For the recommended setup, use:
+For the clean default setup:
 
 - provider: `OpenRouter`
-- model: `Step 3.5 Flash Free`
+- model: use the model your build recommends
+
+If you switch providers, make sure the key in **Keys** matches the provider in **Settings**.
 
 ### RPC
 
-Only touch this if you already saved a `Private RPC credential` in `Keys`.
+Only touch RPC settings if you already saved a `Private RPC credential`.
 
-If you did not do that, leave the RPC setup alone.
+If you did not do that, leave RPC alone and use the default runtime path.
 
-### Default swap setting
+### Trading
 
-This is the swap setting that matters right now.
+If you are not trading yet, you can ignore most trading configuration.
 
-- `Ultra` is the supported path
-- the non-Ultra path is still coming soon
+If you are trading, keep the default swap path on `Ultra` unless you have a specific reason to change it.
 
-## Ultra vs The Coming-Soon Manual Path
+## What `Ultra` Means
 
-### `Ultra`
+`Ultra` is Jupiter's managed swap path. In TrenchClaw, it is the clean default for swap flows.
 
-`Ultra` means Jupiter manages the swap flow for you.
-
-The simple version:
+The short version:
 
 - TrenchClaw sends the swap through Jupiter Ultra
-- Jupiter chooses the route
-- Jupiter handles the slippage behavior
-- Jupiter handles the landing and execution path
+- Jupiter handles routing
+- Jupiter handles execution details for that flow
 
-In TrenchClaw today, `Ultra` is the supported swap path.
+If you see other swap options in a build, treat them as advanced configuration rather than the default docs path.
 
-Jupiter's current Ultra docs describe Ultra as the managed swap product and note that Jupiter handles transaction
-broadcasting, routing, and execution details through the Ultra flow. Useful references:
+Useful Jupiter references:
 
 - [Jupiter API setup](https://dev.jup.ag/docs/api-setup)
 - [Jupiter Ultra V3 update](https://dev.jup.ag/updates/ultra-v3)
 
-### The coming-soon manual path
-
-This is not the path you should think about right now.
-
-The only difference you need to understand is:
-
-- `Ultra` is the current managed Jupiter path
-- the other path is the future self-managed path
-
-Today, that other path is just a placeholder.
-
-## Recommended Default Setup
+## Safe First-Run Setup
 
 1. Save `OpenRouter API Key`.
-2. In `Settings`, choose `OpenRouter`.
-3. In `Settings`, choose `Step 3.5 Flash Free`.
-4. Leave private RPC blank unless you want a private RPC.
+2. In **Settings**, choose `OpenRouter`.
+3. Pick the recommended model from your build.
+4. Leave private RPC blank unless you already use a private RPC.
 5. If you want swaps, save `Jupiter Ultra API Key`.
-6. Keep the default swap setting on `Ultra`.
+6. Keep the swap path on `Ultra`.
 
-## What To Ignore For Now
+## What To Ignore Until You Need It
 
-You do not need to touch something just because it exists.
-
-Ignore it unless you actually need it:
-
-- `Vercel AI Gateway API Key`
-- private RPC setup
+- `Private RPC credential`
+- RPC provider settings
 - `Jupiter Ultra API Key` when you are not swapping
-- the non-Ultra swap path
+- `Vercel AI Gateway API Key` if you are already using OpenRouter
 
-That keeps the setup clean.
+Ignoring the optional surfaces is the fastest way to keep setup clean.
+
+## Troubleshooting
+
+- If chat does not work, confirm the key in **Keys** matches the provider in **Settings**.
+- If runtime reads or trading flows look wrong, run `trenchclaw doctor`.
+- If you changed files outside the GUI, reload the relevant panel before retrying.

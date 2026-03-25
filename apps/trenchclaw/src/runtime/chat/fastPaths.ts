@@ -9,6 +9,10 @@ import { createResponseMessageId, hasAnyIntentPhrase, hasWalletMutationIntent, i
 import { withChatHeaders } from "./persistence";
 
 const WALLET_INVENTORY_INTENT_PHRASES = [
+  "how many wallets do we have",
+  "how many wallets",
+  "number of wallets",
+  "wallet count",
   "what wallets do we have",
   "which wallets do we have",
   "list wallets",

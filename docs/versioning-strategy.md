@@ -3,7 +3,7 @@
 ## Current Baseline
 
 - Root version source of truth: `package.json -> version`
-- Current baseline: `0.0.0`
+- Current baseline: use the committed `package.json` version
 
 ## Increment Rules
 
@@ -16,7 +16,8 @@
   - prerelease versions must be promoted to stable before a minor bump
 
 - `beta`
-  - existing prerelease versions can still increment in place: `0.0.0-beta.4` -> `0.0.0-beta.5`
+  - prerelease numbers can start at `beta.0`
+  - existing prerelease versions can still increment in place: `0.1.0-beta.0` -> `0.1.0-beta.1`
   - beta support remains for compatibility, but it is no longer the default release flow
 
 ## Commands

@@ -375,7 +375,7 @@ profile: dangerous
     await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("cannot be parsed as a URL");
   });
 
-  test("applies capability-only agent allowlist while preserving user authority for protected keys", async () => {
+  test("applies the narrow agent settings allowlist while preserving user authority for protected keys", async () => {
     await applyDefaultEnv();
     const userSettingsPath = await writeYaml(`
 wallet:

@@ -192,7 +192,7 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
             {
               ...templateInstance,
               instance: {
-                ...(templateInstance.instance ?? {}),
+                ...templateInstance.instance,
                 name: defaultName,
                 localInstanceId: instanceId,
               },
@@ -219,10 +219,12 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
 
   const createdFiles: string[] = [];
   for (const relativePath of INSTANCE_LAYOUT_FILE_PATHS) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each seed file must be created before its defaults are merged.
     const createdFile = await copySeedFileIfMissing(relativePath);
     if (createdFile) {
       createdFiles.push(createdFile);
     }
+    // oxlint-disable-next-line eslint/no-await-in-loop -- defaults are merged per file immediately after creation.
     await mergeSeedFileDefaults(instanceRoot, relativePath);
   }
 

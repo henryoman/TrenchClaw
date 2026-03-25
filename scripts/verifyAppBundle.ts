@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import os from "node:os";
 import { readFile, readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -62,6 +63,15 @@ const walkFiles = async (root: string): Promise<string[]> => {
   return files;
 };
 
+const resolveBlockedLeakNeedles = (): string[] => {
+  const needles = [REPO_ROOT.trim(), process.cwd().trim()].filter((value) => value.length > 1);
+  const homeDirectory = os.homedir().trim();
+  if (homeDirectory.length > 1) {
+    needles.push(homeDirectory);
+  }
+  return [...new Set(needles)];
+};
+
 const run = async (): Promise<void> => {
   const { bundleRoot } = parseArgs(process.argv.slice(2));
 
@@ -83,6 +93,7 @@ const run = async (): Promise<void> => {
   ];
 
   const violations: string[] = [];
+  const blockedNeedles = resolveBlockedLeakNeedles();
 
   for (const relPath of relFiles) {
     const violation = hasBlockedBundlePath(relPath);
@@ -93,7 +104,7 @@ const run = async (): Promise<void> => {
     const absolutePath = path.join(bundleRoot, relPath);
     try {
       const content = await readFile(absolutePath, "utf8");
-      const contentViolation = hasBlockedBundleContent(relPath, content);
+      const contentViolation = hasBlockedBundleContent(relPath, content, { blockedNeedles });
       if (contentViolation) {
         violations.push(contentViolation);
       }

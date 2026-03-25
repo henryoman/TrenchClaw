@@ -1,6 +1,11 @@
 import { describe, expect, test } from "bun:test";
 
-import { hasBlockedBundleContent, hasBlockedBundlePath, shouldBundleBrainFile } from "../../scripts/lib/releaseBundleFilter";
+import {
+  hasBlockedBundleContent,
+  hasBlockedBundlePath,
+  hasBlockedSeedTemplateContent,
+  shouldBundleBrainFile,
+} from "../../scripts/lib/releaseBundleFilter";
 
 describe("release-bundle-filter", () => {
   test("excludes runtime and secrets from brain bundle", () => {
@@ -55,6 +60,46 @@ describe("release-bundle-filter", () => {
         "core/src/ai/brain/knowledge/example.md",
         "safe relative path: .runtime-state/instances/01/settings/ai.json",
         { blockedNeedles: ["/Users/example"] },
+      ),
+    ).toBeNull();
+  });
+
+  test("flags non-empty seed vault template values", () => {
+    expect(
+      hasBlockedSeedTemplateContent(
+        "core/.runtime/instances/00/secrets/vault.json",
+        JSON.stringify({
+          rpc: {
+            default: {
+              "http-url": "",
+              source: "custom",
+            },
+          },
+          llm: {
+            openrouter: {
+              "api-key": "secret",
+            },
+          },
+        }),
+      ),
+    ).toContain("runtime seed vault template contains non-empty value");
+
+    expect(
+      hasBlockedSeedTemplateContent(
+        "core/.runtime/instances/00/secrets/vault.json",
+        JSON.stringify({
+          rpc: {
+            default: {
+              "http-url": "",
+              source: "custom",
+            },
+          },
+          llm: {
+            openrouter: {
+              "api-key": "",
+            },
+          },
+        }),
       ),
     ).toBeNull();
   });

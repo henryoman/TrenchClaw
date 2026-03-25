@@ -249,6 +249,18 @@ const isRetryableRpcError = (error: unknown): boolean => {
     || /\babort(?:ed)?\b/iu.test(message);
 };
 
+const isBatchUnsupportedRpcError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b403\b/u.test(message)
+    && /batch requests?/iu.test(message)
+    && (
+      /paid plans?/iu.test(message)
+      || /upgrade/iu.test(message)
+      || /only available/iu.test(message)
+      || /-32403/u.test(message)
+    );
+};
+
 const isRpcRateLimitErrorPayload = (error: unknown): boolean => {
   if (!isRecord(error)) {
     return false;
@@ -1585,7 +1597,7 @@ const loadWalletContentsFromRpc = async (input: {
         walletErrors.push(...sequentialOutcome.walletErrors);
       }
     } catch (error) {
-      if (!isRetryableRpcError(error)) {
+      if (!isRetryableRpcError(error) && !isBatchUnsupportedRpcError(error)) {
         throw error;
       }
 
@@ -1670,7 +1682,7 @@ const buildWalletContentWarnings = (input: {
   if (input.usedSequentialFallback) {
     warnings.push({
       code: "RPC_SEQUENTIAL_FALLBACK",
-      message: "Some wallet reads fell back to sequential RPC requests after batch throttling or timeout.",
+      message: "Some wallet reads fell back to sequential RPC requests after batch throttling, timeout, or provider batch restrictions.",
     });
   }
   if (input.walletErrors.length > 0) {

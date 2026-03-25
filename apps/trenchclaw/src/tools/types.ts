@@ -13,7 +13,6 @@ export const TOOL_GROUP_IDS = [
 
 export type ToolGroupId = (typeof TOOL_GROUP_IDS)[number];
 export type ToolSideEffectLevel = "read" | "write" | "execute";
-export type CapabilitySideEffectLevel = ToolSideEffectLevel;
 export type ReleaseReadinessStatus = "shipped-now" | "limited" | "coming-soon";
 export type ToolLaneVisibility = "never" | "routed" | "always";
 
@@ -27,7 +26,6 @@ export interface RuntimeToolPredicateContext {
   settings: RuntimeSettings;
   filesystemPolicy: FilesystemPolicySummary;
 }
-export type RuntimeCapabilityPredicateContext = RuntimeToolPredicateContext;
 
 export interface RuntimeToolMetadata {
   description: string;
@@ -40,7 +38,6 @@ export interface RuntimeToolMetadata {
   group?: ToolGroupId;
   visibility?: Partial<RuntimeToolVisibility>;
 }
-export type RuntimeCapabilityMetadata = RuntimeToolMetadata;
 
 export interface RuntimeReleaseReadinessDescriptor {
   status: ReleaseReadinessStatus;
@@ -61,7 +58,6 @@ export interface RuntimeActionToolDefinition extends RuntimeToolMetadata {
   requiresUserConfirmation?: boolean;
   chatExposed?: boolean;
 }
-export type RuntimeActionCapabilityDefinition = RuntimeActionToolDefinition;
 
 export interface RuntimeWorkspaceToolDefinition extends RuntimeToolMetadata {
   kind: "workspace-tool";
@@ -69,7 +65,6 @@ export interface RuntimeWorkspaceToolDefinition extends RuntimeToolMetadata {
   enabledBySettings: (context: RuntimeToolPredicateContext) => boolean;
   chatExposed?: boolean;
 }
-export type WorkspaceToolCapabilityDefinition = RuntimeWorkspaceToolDefinition;
 
 export interface RuntimeToolSnapshotBase {
   description: string;
@@ -86,7 +81,6 @@ export interface RuntimeToolSnapshotBase {
   releaseReadinessStatus: ReleaseReadinessStatus;
   releaseReadinessNote: string;
 }
-export type RuntimeCapabilitySnapshotBase = RuntimeToolSnapshotBase;
 
 export interface RuntimeActionToolSnapshotEntry extends RuntimeToolSnapshotBase {
   kind: "action";
@@ -101,7 +95,6 @@ export interface RuntimeActionToolSnapshotEntry extends RuntimeToolSnapshotBase 
   chatExposed: boolean;
   action: Action<any, any>;
 }
-export type RuntimeActionCapabilitySnapshotEntry = RuntimeActionToolSnapshotEntry;
 
 export interface RuntimeWorkspaceToolSnapshotEntry extends RuntimeToolSnapshotBase {
   kind: "workspace-tool";
@@ -109,7 +102,6 @@ export interface RuntimeWorkspaceToolSnapshotEntry extends RuntimeToolSnapshotBa
   enabledBySettings: boolean;
   chatExposed: boolean;
 }
-export type WorkspaceToolCapabilitySnapshotEntry = RuntimeWorkspaceToolSnapshotEntry;
 
 export interface RuntimeModelToolSnapshotEntry {
   kind: "action" | "workspace-tool";
@@ -134,4 +126,3 @@ export interface RuntimeToolSnapshot {
   modelTools: RuntimeModelToolSnapshotEntry[];
   comingSoonFeatures: RuntimeComingSoonFeatureEntry[];
 }
-export type RuntimeCapabilitySnapshot = RuntimeToolSnapshot;

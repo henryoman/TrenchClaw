@@ -5,7 +5,6 @@ const TRADING_ACTION_NAMES = new Set([
   "managedSwap",
   "managedUltraSwap",
   "ultraSwap",
-  "ultraExecuteSwap",
   "privacySwap",
 ]);
 
@@ -77,7 +76,7 @@ const resolveSwapProvider = (job: JobState): string | null => {
 
   const step = findFirstTradingStep(job);
   const actionName = toNonEmptyString(step?.actionName);
-  if (actionName === "managedUltraSwap" || actionName === "ultraSwap" || actionName === "ultraExecuteSwap") {
+  if (actionName === "managedUltraSwap" || actionName === "ultraSwap") {
     return "ultra";
   }
   return null;

@@ -52,24 +52,6 @@ export const DEFAULT_TRACKER_REGISTRY: Readonly<TrackerRegistry> = Object.freeze
   trackedTokens: [],
 });
 
-const cloneTrackedWallet = (wallet: TrackedWallet): TrackedWallet => ({
-  ...wallet,
-  tags: [...wallet.tags],
-});
-
-const cloneTrackedToken = (token: TrackedToken): TrackedToken => ({
-  ...token,
-  tags: [...token.tags],
-});
-
-const cloneTrackerRegistry = (registry: TrackerRegistry): TrackerRegistry => ({
-  version: registry.version,
-  trackedWallets: registry.trackedWallets.map(cloneTrackedWallet),
-  trackedTokens: registry.trackedTokens.map(cloneTrackedToken),
-});
-
-const createDefaultTrackerRegistry = (): TrackerRegistry => cloneTrackerRegistry(DEFAULT_TRACKER_REGISTRY as TrackerRegistry);
-
 const parseTrackerRegistry = (payload: unknown, filePath: string): TrackerRegistry => {
   const parsed = trackerRegistrySchema.parse(payload);
   const walletMap = new Map<string, TrackedWallet>();

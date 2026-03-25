@@ -9,6 +9,23 @@ This file is for coding agents working in this repository.
 - Tests live mostly in the top-level `tests/` directory.
 - Bun test preloads `tests/setup.ts` via `bunfig.toml`.
 
+## Product Mental Model
+
+- TrenchClaw is a local runtime first.
+- `apps/trenchclaw` owns settings, state, tools, policy, storage, and execution.
+- `apps/frontends/gui` is a client of that runtime, not the storage authority.
+- `apps/runner` packages and launches the runtime plus GUI.
+- Runtime state is instance-scoped. Think in terms of one active instance, not one shared global workspace.
+- `.runtime/` is the tracked contract and seed area. Mutable state belongs in the runtime-state root outside normal repo editing flows.
+
+## Source Of Truth Docs
+
+- `ARCHITECTURE.md` is the canonical architecture document.
+- `website/src/content/shared/architecture.md` is generated from `ARCHITECTURE.md` by `bun run --cwd website content:sync`.
+- Authored website docs live in `website/src/content/docs/`.
+- Install bootstrap wrappers live in `website/static/install/`.
+- The canonical runtime installer logic lives in `scripts/install-trenchclaw.sh`.
+
 ## Rule Files
 
 - No repo-level `.cursorrules` file was found.
@@ -72,6 +89,14 @@ Run from repo root unless noted.
 - Website full CI pass: `bun run website:ci`
 - Website content sync only: `bun run --cwd website content:sync`
 
+## Docs Workflow
+
+- Update `ARCHITECTURE.md` when the product architecture changes.
+- Run `bun run --cwd website content:sync` after editing `ARCHITECTURE.md`.
+- Edit website-authored docs only in `website/src/content/docs/`.
+- Do not hand-edit `website/src/content/shared/architecture.md`; it is generated.
+- Keep docs concise, concrete, and product-facing. Prefer clear statements over speculative caveats or internal debate.
+
 ## Test Commands
 
 - All tests / app-focused CI / website-only: `bun run test`, `bun run appci`, `bun run website:test`
@@ -128,7 +153,7 @@ Run from repo root unless noted.
 - `camelCase` for variables, functions, and object properties.
 - `SCREAMING_SNAKE_CASE` for true constants and env-like keys.
 - Use descriptive names over abbreviations, especially in runtime, policy, wallet, and settings code.
-- Match existing domain terms exactly: `runtime`, `instance`, `managed`, `settings`, `capabilities`, `wakeup`, `schedule`, `Ultra`, `Dexscreener`, `Helius`.
+- Match existing domain terms exactly: `runtime`, `instance`, `managed`, `settings`, `tools`, `wakeup`, `schedule`, `Ultra`, `Dexscreener`, `Helius`.
 
 ## Error Handling
 
@@ -156,13 +181,13 @@ Run from repo root unless noted.
 
 - Mutable runtime state should live outside the repo; do not commit personal runtime state, wallets, vaults, or generated caches.
 - `.runtime/` is tracked contract/config, not live mutable state.
-- Public install endpoints are generated from root scripts:
-  - `scripts/install-trenchclaw.sh` -> `website/static/install`
-  - `scripts/install-required-tools.sh` -> `website/static/install-tools`
+- Public install entrypoints are the website bootstrap wrappers in `website/static/install/`, which fetch the canonical installer flow from `scripts/install-trenchclaw.sh`.
 
 ## Agent Guidance
 
 - Before editing, check whether the change belongs in core runtime, runner, GUI, website, or tests.
+- Keep the runtime-first architecture intact. Do not move storage or execution authority into the GUI.
+- When documenting the product, prefer the ideal shipped model: runtime authority, instance-scoped state, tool snapshots, and explicit execution boundaries.
 - After non-trivial TS changes, run at least lint + relevant tests + relevant typecheck.
 - After website changes, usually run: `bun run --cwd website test` and `bun run --cwd website typecheck`.
 - After Svelte changes, also run the relevant Svelte check/typecheck command.

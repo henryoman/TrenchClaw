@@ -22,12 +22,18 @@ describe("versioning", () => {
     });
   });
 
-  test("rejects invalid beta number", () => {
-    expect(() => parseVersion("0.0.0-beta.0")).toThrow();
+  test("accepts beta.0 as a valid prerelease number", () => {
+    expect(parseVersion("0.0.0-beta.0")).toEqual({
+      major: 0,
+      minor: 0,
+      patch: 0,
+      beta: 0,
+    });
   });
 
   test("beta strategy increments existing beta number", () => {
     expect(incrementVersion("0.0.0-beta.1", "beta")).toBe("0.0.0-beta.2");
+    expect(incrementVersion("0.0.0-beta.0", "beta")).toBe("0.0.0-beta.1");
   });
 
   test("beta strategy rejects stable versions", () => {

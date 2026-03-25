@@ -216,6 +216,12 @@ const copyReleaseBrainAssets = async (coreOutputRoot: string): Promise<void> => 
     ]);
     trackedFiles = raw.split("\u0000").filter((entry) => entry.length > 0);
   } catch {
+    const allowFilesystemScan = process.env.TRENCHCLAW_RELEASE_ALLOW_BRAIN_FS_SCAN?.trim() === "1";
+    if (!allowFilesystemScan) {
+      throw new Error(
+        'Release bundle refused filesystem fallback for brain assets after "git ls-files" failed. Re-run with TRENCHCLAW_RELEASE_ALLOW_BRAIN_FS_SCAN=1 only if you intentionally want to scan local files.',
+      );
+    }
     const brainRoot = path.join(REPO_ROOT, "apps/trenchclaw/src/ai/brain");
     const discoveredFiles = await listFilesRecursive(brainRoot);
     trackedFiles = discoveredFiles.map((filePath) => path.relative(REPO_ROOT, filePath));

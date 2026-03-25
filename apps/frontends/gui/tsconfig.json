@@ -7,9 +7,10 @@
     "jsx": "preserve",
     "allowJs": false,
     "checkJs": false,
-    "types": ["svelte"],
+    "types": ["svelte", "node", "bun"],
     "lib": ["ESNext", "DOM"],
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte", "src/**/*.d.ts", "vite.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.svelte", "src/**/*.d.ts"]
 }

@@ -58,10 +58,7 @@ flowchart TD
 
 - Treat [apps/trenchclaw/src/runtime/tools/types.ts](apps/trenchclaw/src/runtime/tools/types.ts), [apps/trenchclaw/src/runtime/tools/snapshot.ts](apps/trenchclaw/src/runtime/tools/snapshot.ts), [apps/trenchclaw/src/ai/gateway/lane-policy.ts](apps/trenchclaw/src/ai/gateway/lane-policy.ts), and [apps/trenchclaw/src/runtime/prompt/tool-menu.ts](apps/trenchclaw/src/runtime/prompt/tool-menu.ts) as the canonical runtime flow.
 - Keep `runtime/tools` as the only runtime tool source of truth.
-- Normalize public naming gradually:
-  - keep behavior stable
-  - remove confusing `Capability*` naming where it leaks into runtime-facing APIs
-  - prefer compatibility aliases over big-bang renames
+- Normalize public naming toward `Tool*` terminology in runtime-facing APIs and docs.
 - Keep [apps/trenchclaw/src/runtime/chat/service.ts](apps/trenchclaw/src/runtime/chat/service.ts) and [apps/trenchclaw/src/runtime/workspace-bash.ts](apps/trenchclaw/src/runtime/workspace-bash.ts) as consumers of tool metadata, not parallel metadata owners.
 
 ## Phase 2: Audit And Remove Outdated Code
@@ -69,7 +66,7 @@ flowchart TD
 - Do a focused stale-reference audit across code, tests, docs, knowledge, and release notes.
 - Prioritize real outdated references that actively confuse the codebase:
   - stale `runtime/capabilities` references in knowledge and docs
-  - stale `Capability*` naming in runtime-facing code
+  - stale runtime naming in code, tests, and docs
   - tests whose names or fixtures still describe the old structure
   - release and plan text that still describes deleted files or superseded paths
 - Distinguish cleanup classes:
@@ -126,10 +123,10 @@ flowchart TD
 ## Verification
 
 - Use the existing runtime behavior tests as the main lock throughout:
-  - [tests/runtime/capabilities.test.ts](tests/runtime/capabilities.test.ts)
+  - [tests/runtime/toolSnapshot.test.ts](tests/runtime/toolSnapshot.test.ts)
   - [tests/runtime/chat-service.test.ts](tests/runtime/chat-service.test.ts)
-  - [tests/runtime/rss-news-capability.test.ts](tests/runtime/rss-news-capability.test.ts)
-  - [tests/runtime/tracker-capability.test.ts](tests/runtime/tracker-capability.test.ts)
+  - [tests/runtime/rssNewsToolSnapshot.test.ts](tests/runtime/rssNewsToolSnapshot.test.ts)
+  - [tests/runtime/trackerToolSnapshot.test.ts](tests/runtime/trackerToolSnapshot.test.ts)
   - [tests/runtime/workspace-bash.test.ts](tests/runtime/workspace-bash.test.ts)
   - [tests/runtime/workspace-cli-tools-suite.test.ts](tests/runtime/workspace-cli-tools-suite.test.ts)
 - Add broader migration coverage where relevant:

@@ -113,17 +113,17 @@ runtime:
 storage:
   sqlite:
     enabled: false
-    path: /tmp/trenchclaw-tracker-capabilities.db
+    path: /tmp/trenchclaw-tool-snapshot-tests.db
     walMode: true
     busyTimeoutMs: 5000
   sessions:
     enabled: false
-    directory: /tmp/trenchclaw-tracker-sessions
+    directory: /tmp/trenchclaw-sessions
     agentId: test-agent
     source: tests
   memory:
     enabled: false
-    directory: /tmp/trenchclaw-tracker-memory
+    directory: /tmp/trenchclaw-memory
     longTermFile: memory.md
   retention:
     receiptsDays: 7
@@ -153,7 +153,7 @@ observability:
 `;
 
 const writeTempFile = async (extension: "yaml" | "json", content: string): Promise<string> => {
-  const target = `/tmp/trenchclaw-tracker-capabilities-${crypto.randomUUID()}.${extension}`;
+  const target = `/tmp/trenchclaw-rss-news-tool-snapshots-${crypto.randomUUID()}.${extension}`;
   await Bun.write(target, content);
   createdFiles.push(target);
   return target;
@@ -191,20 +191,37 @@ afterEach(async () => {
   await Bun.file(runtimeStatePath("instances", "active-instance.json")).delete().catch(() => {});
 });
 
-describe("tracker tool snapshot", () => {
-  test("exposes getWalletTracker as a model tool for tracked wallet discovery", async () => {
+describe("rss news tool snapshot", () => {
+  test("exposes getConfiguredNewsFeeds as a model tool for compact feed discovery", async () => {
     const settings = await loadRuntimeSettings("safe");
     const snapshot = await getRuntimeToolSnapshot(settings);
-    const toolEntry = snapshot.modelTools.find((entry) => entry.name === "getWalletTracker");
+    const toolEntry = snapshot.modelTools.find((entry) => entry.name === "getConfiguredNewsFeeds");
 
     expect(toolEntry).toMatchObject({
-      name: "getWalletTracker",
+      name: "getConfiguredNewsFeeds",
       sideEffectLevel: "read",
       enabledNow: true,
       releaseReadinessStatus: "shipped-now",
     });
-    expect(toolEntry?.toolDescription).toContain("tracked wallets");
-    expect(toolEntry?.toolDescription).toContain("token mints");
-    expect(toolEntry?.routingHint).toContain("tracked");
+    expect(toolEntry?.toolDescription).toContain("feed catalog");
+    expect(toolEntry?.toolDescription).toContain("workspace");
+    expect(toolEntry?.routingHint).toContain("configured");
+  });
+
+  test("exposes getLatestSolanaNews as a model tool with workspace download guidance", async () => {
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeToolSnapshot(settings);
+    const toolEntry = snapshot.modelTools.find((entry) => entry.name === "getLatestSolanaNews");
+
+    expect(toolEntry).toMatchObject({
+      name: "getLatestSolanaNews",
+      sideEffectLevel: "read",
+      enabledNow: true,
+      releaseReadinessStatus: "shipped-now",
+    });
+    expect(toolEntry?.toolDescription).toContain("RSS or Atom feed");
+    expect(toolEntry?.toolDescription).toContain("workspace");
+    expect(toolEntry?.toolDescription).toContain("news snapshot");
+    expect(toolEntry?.routingHint).toContain("configured RSS or Atom feed");
   });
 });

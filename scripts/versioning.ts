@@ -34,8 +34,8 @@ export const parseVersion = (value: string): ParsedVersion => {
   const betaGroup = match[4];
   const beta = typeof betaGroup === "string" ? toNumber(betaGroup, "beta") : null;
 
-  if (beta !== null && beta <= 0) {
-    throw new Error(`Invalid beta number "${beta}". Beta number must be >= 1.`);
+  if (beta !== null && beta < 0) {
+    throw new Error(`Invalid beta number "${beta}". Beta number must be >= 0.`);
   }
 
   return { major, minor, patch, beta };

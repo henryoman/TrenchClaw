@@ -49,14 +49,6 @@ const getByPath = (root: unknown, segments: string[]): unknown => {
   return current;
 };
 
-const readVaultStringByPath = (vaultData: unknown, refPath: string): string | undefined => {
-  const value = getByPath(vaultData, refPath.split("/").map((segment) => segment.trim()).filter(Boolean));
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
-};
-
-const isUnresolvedVaultRef = (value: unknown): value is string =>
-  typeof value === "string" && value.trim().startsWith("vault://");
-
 const isLikelyRelativeConfigRef = (value: string): boolean => {
   if (!value || value.startsWith("vault://")) {
     return false;

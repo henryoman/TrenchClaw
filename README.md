@@ -63,7 +63,7 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 Quick links:
 
 - [Quickstart](https://trenchclaw.vercel.app/docs)
-- [Capability Matrix](https://trenchclaw.vercel.app/docs/beta-capability-matrix)
+- [Feature Matrix](https://trenchclaw.vercel.app/docs/beta-capability-matrix)
 - [Runtime Architecture and Boundaries](#runtime-architecture-and-boundaries)
 - [Why TypeScript?](#why-typescript)
 - [Why Solana Kit](#why-solana-kit)
@@ -138,44 +138,40 @@ The external dev runtime writes a managed `.gitignore` so secrets, keypairs, dat
 
 ## Runtime Architecture and Boundaries
 
-TrenchClaw is designed as a constrained execution system, not a free-form chatbot. The architecture separates control-plane reasoning from execution-plane effects, then applies policy and filesystem constraints before any side-effecting operation.
+TrenchClaw is a constrained execution runtime, not a free-form chatbot shell.
 
-### 1) Agent control plane (typed orchestration)
+The shortest correct model is:
 
-- Runtime core (`apps/trenchclaw/src/ai/core`) composes the `ActionRegistry`, `ActionDispatcher`, `PolicyEngine`, `Scheduler`, and typed event bus.
-- Bootstrap wiring (`apps/trenchclaw/src/runtime/bootstrap.ts`) builds the runtime from normalized settings, registers only allowed actions, and injects adapters into action context.
-- Action contracts are typed (`Action<Input, Output>`) and schema-validated before execution.
-- Event emission is structured (`action:*`, `policy:block`, `queue:*`, `rpc:failover`) and persisted to SQLite/files/session logs for traceability.
+### 1) Runtime authority
 
-### 2) Execution plane (on-chain actions + off-chain helpers)
+- `apps/trenchclaw` is the source of truth.
+- `apps/frontends/gui` is a client of the runtime.
+- `apps/runner` packages and launches the runtime plus GUI.
 
-- On-chain-capable actions live under `apps/trenchclaw/src/solana/actions/wallet-based/*` (wallet ops, transfers, swaps, and some not-yet-headline privacy flows).
-- Off-chain helper actions are explicit modules under `apps/trenchclaw/src/solana/actions/data-fetch/*`:
-  - RPC reads (`getAccountInfo`, `getBalance`, `getMultipleAccounts`, `getTokenMetadata`, `getTokenPrice`, `getMarketData`)
-  - External API reads (`api/dexscreener.ts`)
-  - Runtime introspection helpers (`data-fetch/runtime/*`)
-- Adapters isolate provider specifics (`solana/lib/adapters/*`), so action logic remains provider-agnostic.
+### 2) Tool system
 
-### 3) Swap modes and execution semantics
+- Runtime tool definitions live under `apps/trenchclaw/src/tools`.
+- `src/tools/registry.ts` declares the runtime action tools and workspace tools.
+- `src/tools/snapshot.ts` builds the current tool snapshot from settings, filesystem policy, and release readiness.
+- `src/ai/gateway/lanePolicy.ts` chooses the tool subset for each lane.
+- `src/runtime/chat/service.ts` registers only that selected tool subset with the model.
 
-- Runtime settings normalize into two Jupiter profiles: `trading.jupiter.ultra` and `trading.jupiter.standard` (`apps/trenchclaw/src/runtime/load/loader.ts`).
-- Profile selection is derived from `trading.preferredSwap` / `trading.defaultSwapProfile`; Ultra enables Ultra quote/execute permissions, Standard enables standard quote/execute permissions.
-- Current runtime capability registration exposes the Ultra path (`ultraQuoteSwap`, `ultraExecuteSwap`, `ultraSwap`, `managedUltraSwap`) as the main shipped swap surface.
-- Standard RPC swap actions (`quoteSwap`, `executeSwap`) exist in `wallet-based/swap/rpc/*` as modular execution primitives, with parity wiring tracked in the roadmap.
+### 3) Execution boundaries
 
-### 4) Filesystem and secret boundaries
+- Tools are typed and schema-validated before execution.
+- Settings-aware policy checks can block or require confirmation before dangerous actions run.
+- Filesystem access is constrained by runtime manifests and instance-scoped roots.
+- Workspace escape hatches like `workspaceListDirectory`, `workspaceReadFile`, and `workspaceBash` stay available only when policy allows them.
 
-- Filesystem access is enforced by manifest, not prompt intent (`apps/trenchclaw/src/runtime/security/filesystemManifest.ts` + `src/ai/brain/protected/system/filesystem-manifest.yaml`).
-- Default model permission is deny (`model: none`), with explicit read/write allowlists for narrow runtime paths.
-- Runtime writes are scoped under the runtime-owned and instance-owned roots, with protected key material guarded by explicit policy checks (`solana/lib/wallet/protected-write-policy.ts`).
+### 4) State model
 
-### 5) Configuration authority boundaries
+- `.runtime` is the repo-tracked contract and template area.
+- `.runtime-state` is the live mutable state root.
+- Each active instance owns its own settings, vault, wallets, logs, queue state, and workspace.
 
-- Effective settings are produced through a deterministic merge pipeline (`runtime/load/loader.ts`): base safety profile -> sanitized agent overlay -> user overlay -> protected-path enforcement -> schema validation.
-- User-protected settings paths (`runtime/load/authority.ts`) prevent agent layers from silently escalating critical controls (wallet danger flags, trading limits, execution permissions, RPC/network endpoints, internet access).
-- Dangerous action execution can require explicit user confirmation tokens, enforced by runtime policy before dispatch.
+### 5) Why this matters
 
-This design treats the agent as a policy-constrained orchestrator over explicit modules, with auditable state transitions and narrow I/O boundaries.
+This design keeps the model on a narrow, explicit tool surface while still allowing enough freedom to inspect the runtime workspace and use a constrained shell when needed. The goal is a local operator runtime with auditable state transitions and deliberate machine boundaries, not a vague assistant with broad host access.
 
 ---
 
@@ -218,7 +214,7 @@ Community patterns converge on "schema as first-class value," and lots of integr
 
 ### Why systems languages underperform here
 
-This isn't about raw capability — it's about where the complexity lives.
+This isn't about raw power — it's about where the complexity lives.
 
 - **Agent orchestration is I/O-bound + integration-heavy, not CPU-bound.** Most agent loops spend time calling models, calling web APIs, waiting on DB, streaming events to UI, and validating/routing tool calls. That profile does not reward Rust/Zig/C++ the way a tight compute kernel does.
 - **The hard part is contract evolution, not execution speed.** The dominant failure modes are schema drift, tool ambiguity, partial/invalid args, and inability to safely evolve tool signatures. TS + schema-first patterns reduce drift because the schema object is colocated with the code and passed through the system as data. In systems languages the "contract as data" story becomes a build-time artifact (codegen), a separate schema file that can drift, or runtime reflection that's less ergonomic than TS + Zod — all of which increase iteration cost.
