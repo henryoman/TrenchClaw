@@ -11,9 +11,9 @@ import type {
 } from "@trenchclaw/types";
 import {
   assertInstanceSystemWritePath,
-} from "../../security/write-scope";
+} from "../../security/writeScope";
 import { ensureInstanceLayout } from "../../instance/layout";
-import { isRecord } from "../../shared/object-utils";
+import { isRecord } from "../../shared/objectUtils";
 import { persistActiveInstance } from "../../instance/state";
 import { INSTANCE_DIRECTORY } from "../constants";
 import type { RuntimeTransportContext } from "../contracts";

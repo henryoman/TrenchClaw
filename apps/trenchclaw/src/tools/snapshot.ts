@@ -4,10 +4,10 @@ import {
   runtimeActionCapabilityDefinitions,
   workspaceToolCapabilityDefinitions,
 } from "./registry";
-import { resolveJupiterTriggerApiKey } from "../solana/lib/adapters/jupiter-trigger";
+import { resolveJupiterTriggerApiKey } from "../solana/lib/jupiter/trigger";
 import type { RuntimeSettings } from "../runtime/settings";
-import { summarizeFilesystemPolicy } from "../runtime/security/filesystem-manifest";
-import { getRuntimeComingSoonFeatures } from "./release-readiness";
+import { summarizeFilesystemPolicy } from "../runtime/security/filesystemManifest";
+import { getRuntimeComingSoonFeatures } from "./releaseReadiness";
 import type {
   CapabilitySideEffectLevel,
   RuntimeActionCapabilityDefinition,

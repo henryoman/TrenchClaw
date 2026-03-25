@@ -5,9 +5,9 @@ import {
   managedWalletSelectorListSchema,
   managedWalletSelectorSchema,
   resolveManagedWalletEntriesBySelection,
-} from "../../../solana/lib/wallet/wallet-selector";
-import { readManagedWalletLibraryEntries } from "../../../solana/lib/wallet/wallet-manager";
-import { base58AddressSchema, walletGroupNameSchema, walletNameSchema } from "../../../solana/lib/wallet/wallet-types";
+} from "../../../solana/lib/wallet/walletSelector";
+import { readManagedWalletLibraryEntries } from "../../../solana/lib/wallet/walletManager";
+import { base58AddressSchema, walletGroupNameSchema, walletNameSchema } from "../../../solana/lib/wallet/walletTypes";
 
 const devnetAirdropInputSchema = z
   .object({

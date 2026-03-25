@@ -2,12 +2,12 @@ import { mkdir } from "node:fs/promises";
 import { z } from "zod";
 
 import type { Action } from "../../../ai/contracts/types/action";
-import { assertProtectedWriteAllowed } from "../../../runtime/security/protected-write-policy";
+import { assertProtectedWriteAllowed } from "../../../runtime/security/protectedWritePolicy";
 import {
   resolveWalletGroupDirectoryPath,
   resolveWalletKeypairRootPath,
-} from "../../../solana/lib/wallet/wallet-manager";
-import { walletGroupNameSchema } from "../../../solana/lib/wallet/wallet-types";
+} from "../../../solana/lib/wallet/walletManager";
+import { walletGroupNameSchema } from "../../../solana/lib/wallet/walletTypes";
 
 const createWalletGroupDirectoryInputSchema = z.object({
   walletGroup: walletGroupNameSchema,

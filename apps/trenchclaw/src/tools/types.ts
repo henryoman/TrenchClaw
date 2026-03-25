@@ -1,6 +1,6 @@
 import type { Action, ActionCategory, ActionSubcategory } from "../ai/contracts/types/action";
 import type { RuntimeSettings } from "../runtime/settings";
-import type { FilesystemPolicySummary } from "../runtime/security/filesystem-manifest";
+import type { FilesystemPolicySummary } from "../runtime/security/filesystemManifest";
 
 export const TOOL_GROUP_IDS = [
   "runtime-queue",

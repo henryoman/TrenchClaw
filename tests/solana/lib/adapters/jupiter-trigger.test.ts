@@ -4,7 +4,7 @@ import {
   createJupiterTriggerAdapter,
   createJupiterTriggerAdapterFromConfig,
   resolveJupiterTriggerApiKey,
-} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-trigger";
+} from "../../../../apps/trenchclaw/src/solana/lib/jupiter/trigger";
 
 const MUTABLE_ENV_KEYS = [
   "TRENCHCLAW_VAULT_FILE",

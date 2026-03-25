@@ -7,9 +7,9 @@ import type { StateStore } from "../../../ai/contracts/types/state";
 import {
   createJupiterTriggerAdapterFromConfig,
   type JupiterTriggerAdapter,
-} from "../../../solana/lib/adapters/jupiter-trigger";
+} from "../../../solana/lib/jupiter/trigger";
 import { resolveHeliusRpcConfig } from "../../../solana/lib/rpc/helius";
-import { findManagedWalletEntryBySelection } from "../../../solana/lib/wallet/wallet-selector";
+import { findManagedWalletEntryBySelection } from "../../../solana/lib/wallet/walletSelector";
 import {
   createActionFailure,
   createActionSuccess,

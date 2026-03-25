@@ -8,7 +8,7 @@ import {
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
   createWorkspaceBashTools,
-} from "../../apps/trenchclaw/src/tools/workspace-bash";
+} from "../../apps/trenchclaw/src/tools/workspace/bash";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const TEST_ROOT = runtimeStatePath("instances/01/workspace/.tests");

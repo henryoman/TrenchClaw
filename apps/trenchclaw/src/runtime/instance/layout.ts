@@ -2,9 +2,9 @@ import { copyFile, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { resolveInstanceDirectoryPath } from "./state";
-import { INSTANCE_LAYOUT_DIRECTORY_PATHS, INSTANCE_LAYOUT_FILE_PATHS } from "./layout-schema";
-import { RUNTIME_SEED_INSTANCE_ID, resolveRuntimeSeedInstancePath } from "../runtime-paths";
-import { assertInstanceSystemWritePath } from "../security/write-scope";
+import { INSTANCE_LAYOUT_DIRECTORY_PATHS, INSTANCE_LAYOUT_FILE_PATHS } from "./layoutSchema";
+import { RUNTIME_SEED_INSTANCE_ID, resolveRuntimeSeedInstancePath } from "../runtimePaths";
+import { assertInstanceSystemWritePath } from "../security/writeScope";
 
 export interface EnsuredInstanceLayout {
   instanceRoot: string;

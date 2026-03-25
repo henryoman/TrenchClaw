@@ -13,7 +13,7 @@ import { safeValidateUIMessages, type UIMessage } from "ai";
 import type { GatewayLane } from "../../ai/gateway";
 import { createChatMessageId } from "../../ai/contracts/types/ids";
 import { tradingPreferencesSchema } from "../settings/instance/trading";
-import { isRecord } from "../shared/object-utils";
+import { isRecord } from "../shared/objectUtils";
 import { trackerRegistrySchema } from "../instance/registries/tracker";
 import { wakeupSettingsSchema } from "../settings/instance/wakeup";
 

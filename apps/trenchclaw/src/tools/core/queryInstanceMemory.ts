@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { Action } from "../../ai/contracts/types/action";
 import type { StateStore } from "../../ai/contracts/types/state";
-import { buildInstanceMemoryBundle, normalizeFactKey, resolveInstanceId } from "./instance-memory-shared";
+import { buildInstanceMemoryBundle, normalizeFactKey, resolveInstanceId } from "./instanceMemoryShared";
 
 const maxLimit = 200;
 

@@ -1,5 +1,5 @@
 import type { Action } from "../../../ai/contracts/types/action";
-import type { JupiterUltraOrderResponse } from "../../../solana/lib/adapters/jupiter-ultra";
+import type { JupiterUltraOrderResponse } from "../../../solana/lib/jupiter/ultra";
 
 import {
   buildOrderRequest,

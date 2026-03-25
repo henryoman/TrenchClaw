@@ -1,4 +1,4 @@
-import { loadVaultData, readVaultString } from "../../../ai/llm/vault-file";
+import { loadVaultData, readVaultString } from "../../../ai/llm/vaultFile";
 const HELIUS_API_KEY_QUERY_PARAM = "api-key";
 const HELIUS_HOST_SUFFIX = "helius-rpc.com";
 const HELIUS_PLACEHOLDER_API_KEY = "YOUR_API_KEY";

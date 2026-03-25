@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { loadResolvedUserSettings } from "../../apps/trenchclaw/src/ai/llm/user-settings-loader";
+import { loadResolvedUserSettings } from "../../apps/trenchclaw/src/ai/llm/userSettingsLoader";
 import { loadRuntimeSettings, writeInstanceTradingSettings } from "../../apps/trenchclaw/src/runtime/settings";
 import { createPersistedTestInstance } from "../helpers/instance-fixtures";
 import { coreAppPath, runtimeStatePath } from "../helpers/core-paths";

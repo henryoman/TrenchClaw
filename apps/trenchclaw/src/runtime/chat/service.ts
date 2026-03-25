@@ -17,7 +17,7 @@ import { createActionContext } from "../../ai/contracts/types/context";
 import { createChatMessageId, createToolCallId } from "../../ai/contracts/types/ids";
 import type { RuntimeCapabilitySnapshot } from "../../tools";
 import type { RuntimeLogger } from "../logger";
-import { WORKSPACE_TOOL_NAMES, createWorkspaceBashTools, resolveDefaultWorkspaceBashRoot } from "../../tools/workspace-bash";
+import { WORKSPACE_TOOL_NAMES, createWorkspaceBashTools, resolveDefaultWorkspaceBashRoot } from "../../tools/workspace/bash";
 import type { RuntimeGateway } from "../../ai/gateway";
 import type {
   ActionDispatcher,
@@ -53,7 +53,7 @@ import {
   formatWalletInventoryFastPathText,
   shouldUseWalletContentsFastPath,
   shouldUseWalletInventoryFastPath,
-} from "./fast-paths";
+} from "./fastPaths";
 import {
   persistFinishedMessages,
   replaceLastAssistantMessageWithText,

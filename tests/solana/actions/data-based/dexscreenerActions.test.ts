@@ -12,7 +12,7 @@ import {
   getDexscreenerTokensByChainAction,
   getDexscreenerTopTokenBoostsAction,
   searchDexscreenerPairsAction,
-} from "../../../../apps/trenchclaw/src/tools/market/dexscreener-actions";
+} from "../../../../apps/trenchclaw/src/tools/market/dexscreener";
 
 const previousFetch = globalThis.fetch;
 

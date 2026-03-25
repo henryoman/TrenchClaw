@@ -9,8 +9,8 @@ import {
   resolveScheduledTimeUnixMs,
   scheduleDurationInputSchema,
 } from "../../../automation/triggers/time";
-import { managedWalletSelectorSchema } from "../../../solana/lib/wallet/wallet-selector";
-import { walletGroupNameSchema } from "../../../solana/lib/wallet/wallet-types";
+import { managedWalletSelectorSchema } from "../../../solana/lib/wallet/walletSelector";
+import { walletGroupNameSchema } from "../../../solana/lib/wallet/walletTypes";
 import { amountInputSchema } from "./shared";
 
 const walletNameSchema = z.string().trim().regex(/^[a-zA-Z0-9_-]+$/);

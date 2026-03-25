@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 
-import { createJupiterUltraAdapter } from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
+import { createJupiterUltraAdapter } from "../../../../apps/trenchclaw/src/solana/lib/jupiter/ultra";
 import {
   createJupiterUltraAdapterFromConfig,
   resolveJupiterUltraApiKey,
-} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
+} from "../../../../apps/trenchclaw/src/solana/lib/jupiter/ultra";
 
 describe("createJupiterUltraAdapter", () => {
   test("retries 429 responses using Retry-After before succeeding", async () => {

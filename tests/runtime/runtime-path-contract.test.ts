@@ -9,13 +9,13 @@ import { initializeDeveloperRuntime } from "../../scripts/lib/dev-runtime";
 const WORKSPACE_ROOT = path.resolve(import.meta.dir, "../..");
 const CORE_APP_ROOT = path.join(WORKSPACE_ROOT, "apps/trenchclaw");
 const RUNTIME_PATHS_MODULE = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/runtime/runtime-paths.ts"),
+  path.join(CORE_APP_ROOT, "src/runtime/runtimePaths.ts"),
 ).href;
 const AI_SETTINGS_MODULE = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/ai/llm/ai-settings-file.ts"),
+  path.join(CORE_APP_ROOT, "src/ai/llm/aiSettingsFile.ts"),
 ).href;
 const USER_SETTINGS_MODULE = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/ai/llm/user-settings-loader.ts"),
+  path.join(CORE_APP_ROOT, "src/ai/llm/userSettingsLoader.ts"),
 ).href;
 const SCHEDULER_MODULE = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/ai/core/scheduler.ts"),

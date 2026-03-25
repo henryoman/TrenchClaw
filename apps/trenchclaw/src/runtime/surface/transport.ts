@@ -5,7 +5,7 @@ import type { RuntimeEvent, RuntimeEventName } from "../../ai";
 import type { RuntimeBootstrap } from "../bootstrap";
 import type { RuntimeTransportContext } from "./contracts";
 import { createRuntimeApiRequestHandler } from "./router";
-import { RuntimeTransportSessionState } from "./session-state";
+import { RuntimeTransportSessionState } from "./sessionState";
 import { streamChat } from "./domains/chat";
 import type { UIMessage } from "ai";
 const MAX_ACTIVITY_PREVIEW_CHARS = 120;

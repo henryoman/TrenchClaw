@@ -324,9 +324,9 @@ TrenchClaw は、ランタイムジョブ、レシート、ポリシー / 判断
 スキーマは Zod ファーストで、起動時に自動同期されます。
 
 - 中央の永続化契約 + 共有プリミティブ: `src/contracts/persistence.ts`
-- ランタイム行スキーマ: `src/runtime/storage/sqlite-schema.ts`
+- ランタイム行スキーマ: `src/runtime/storage/sqliteSchema.ts`
 - ランタイム payload / state スキーマ: `src/runtime/storage/schema.ts`
-- SQL テーブル / インデックス契約 + 起動時同期 + ドリフト確認: `src/runtime/storage/sqlite-orm.ts`
+- SQL テーブル / インデックス契約 + 起動時同期 + ドリフト確認: `src/runtime/storage/sqliteOrm.ts`
 - ランタイムは起動時に、オペレーター / モデル向け文脈としてコンパクトなスキーマスナップショットを表示します
 
 ランタイムのログ / データ配置は、`src/ai/brain/db/` 配下で目的別に分かれています。

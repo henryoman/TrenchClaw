@@ -3,8 +3,8 @@ import { z } from "zod";
 
 import type { RoutinePlanner } from "../../ai/contracts/types/scheduler";
 import { resolveActiveInstanceWorkspaceRoutinesRootOrThrow } from "../../runtime/instance/workspace";
-import { actionSequenceRoutine } from "./action-sequence";
-import { createWalletsRoutine } from "./create-wallets";
+import { actionSequenceRoutine } from "./actionSequence";
+import { createWalletsRoutine } from "./createWallets";
 
 const walletInventoryScanRoutineConfigSchema = z.object({
   requestKey: z.string().min(1),

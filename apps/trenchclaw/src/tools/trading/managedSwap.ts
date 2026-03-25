@@ -11,8 +11,8 @@ import {
 } from "./ultra/managedSwap";
 import { executeSwapAction, type StandardSwapOutput } from "./rpc/executeSwap";
 import type { UltraSwapOutput } from "./ultra/swap";
-import { resolveManagedWalletSelection } from "../../solana/lib/wallet/wallet-selector";
-import { loadManagedWalletSigner } from "../../solana/lib/wallet/wallet-signer";
+import { resolveManagedWalletSelection } from "../../solana/lib/wallet/walletSelector";
+import { loadManagedWalletSigner } from "../../solana/lib/wallet/walletSigner";
 
 const managedSwapInputSchema = managedUltraSwapInputSchema.extend({
   provider: z.enum(["configured", "ultra", "standard"]).default("configured"),

@@ -3,9 +3,9 @@ import path from "node:path";
 
 import { z } from "zod";
 
-import { base58AddressSchema } from "../../../solana/lib/wallet/wallet-types";
+import { base58AddressSchema } from "../../../solana/lib/wallet/walletTypes";
 import { resolveInstanceWorkspaceTrackerPath } from "../workspace";
-import { resolveRuntimeSeedInstancePath, toRuntimeContractRelativePath } from "../../runtime-paths";
+import { resolveRuntimeSeedInstancePath, toRuntimeContractRelativePath } from "../../runtimePaths";
 
 const shortTextSchema = z.string().trim().max(160).default("");
 const nonEmptyStringSchema = z.string().trim().min(1);

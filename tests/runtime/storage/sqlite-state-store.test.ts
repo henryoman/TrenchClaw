@@ -6,9 +6,9 @@ import type { ActionResult } from "../../../apps/trenchclaw/src/ai/contracts/typ
 import {
   getSqliteTableContractViolationsSnapshot,
   inspectSqliteSchema,
-} from "../../../apps/trenchclaw/src/runtime/storage/sqlite-orm";
-import { sqliteTables } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-schema";
-import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
+} from "../../../apps/trenchclaw/src/runtime/storage/sqliteOrm";
+import { sqliteTables } from "../../../apps/trenchclaw/src/runtime/storage/sqliteSchema";
+import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/sqliteStateStore";
 import { runtimeStatePath } from "../../helpers/core-paths";
 
 const dbPaths: string[] = [];

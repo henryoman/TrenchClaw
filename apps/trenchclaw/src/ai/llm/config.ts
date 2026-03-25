@@ -1,8 +1,8 @@
 import { createGateway, type LanguageModel } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { loadAiSettings } from "./ai-settings-file";
-import { supportsAiModelProvider } from "./model-catalog";
-import { loadVaultData, readVaultString } from "./vault-file";
+import { loadAiSettings } from "./aiSettingsFile";
+import { supportsAiModelProvider } from "./modelCatalog";
+import { loadVaultData, readVaultString } from "./vaultFile";
 
 export const LLM_PROVIDERS = ["gateway", "openrouter"] as const;
 export type LlmProvider = (typeof LLM_PROVIDERS)[number];

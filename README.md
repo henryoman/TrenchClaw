@@ -165,7 +165,7 @@ TrenchClaw is designed as a constrained execution system, not a free-form chatbo
 
 ### 4) Filesystem and secret boundaries
 
-- Filesystem access is enforced by manifest, not prompt intent (`apps/trenchclaw/src/runtime/security/filesystem-manifest.ts` + `src/ai/brain/protected/system/filesystem-manifest.yaml`).
+- Filesystem access is enforced by manifest, not prompt intent (`apps/trenchclaw/src/runtime/security/filesystemManifest.ts` + `src/ai/brain/protected/system/filesystem-manifest.yaml`).
 - Default model permission is deny (`model: none`), with explicit read/write allowlists for narrow runtime paths.
 - Runtime writes are scoped under the runtime-owned and instance-owned roots, with protected key material guarded by explicit policy checks (`solana/lib/wallet/protected-write-policy.ts`).
 
@@ -347,9 +347,9 @@ TrenchClaw uses Bun's built-in SQLite (`bun:sqlite`) for runtime jobs, receipts,
 Schema is Zod-first and auto-synced on boot:
 
 - Central persistence contracts + shared primitives: `src/contracts/persistence.ts`
-- Runtime row schemas: `src/runtime/storage/sqlite-schema.ts`
+- Runtime row schemas: `src/runtime/storage/sqliteSchema.ts`
 - Runtime payload/state schemas: `src/runtime/storage/schema.ts`
-- SQL table/index contract + boot sync + drift inspection: `src/runtime/storage/sqlite-orm.ts`
+- SQL table/index contract + boot sync + drift inspection: `src/runtime/storage/sqliteOrm.ts`
 - Runtime prints a compact schema snapshot at boot for operator/model context
 
 Runtime log/data layout is split by purpose under `src/ai/brain/db/`:

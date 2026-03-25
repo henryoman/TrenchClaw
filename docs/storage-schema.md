@@ -4,9 +4,9 @@ Database file: configured by `storage.sqlite.path`.
 
 Runtime-validated TypeScript schema source:
 - `src/contracts/persistence.ts` (central persistence contracts, shared primitives, and runtime/session record schemas)
-- `src/runtime/storage/sqlite-schema.ts` (Zod row schemas for persisted SQLite rows)
+- `src/runtime/storage/sqliteSchema.ts` (Zod row schemas for persisted SQLite rows)
 - `src/runtime/storage/schema.ts` (runtime payload/input schemas layered on top)
-- `src/runtime/storage/sqlite-orm.ts` (declared SQL table/index contract, boot-time schema sync, and drift inspection)
+- `src/runtime/storage/sqliteOrm.ts` (declared SQL table/index contract, boot-time schema sync, and drift inspection)
 
 ## Runtime state
 

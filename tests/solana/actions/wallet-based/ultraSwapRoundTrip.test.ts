@@ -3,7 +3,7 @@ import { describe, expect, test } from "bun:test";
 import type {
   JupiterUltraExecuteRequest,
   JupiterUltraOrderRequest,
-} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra";
+} from "../../../../apps/trenchclaw/src/solana/lib/jupiter/ultra";
 import { ultraSwapAction } from "../../../../apps/trenchclaw/src/tools/trading/ultra/swap";
 
 const SOL_MINT = "So11111111111111111111111111111111111111112";

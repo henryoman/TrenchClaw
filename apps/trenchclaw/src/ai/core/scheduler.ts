@@ -12,7 +12,7 @@ import type {
 } from "../contracts/types";
 import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
 import { resolveInstanceQueueSqlitePath } from "../../runtime/instance/paths";
-import { RUNTIME_STATE_ROOT } from "../../runtime/runtime-paths";
+import { RUNTIME_STATE_ROOT } from "../../runtime/runtimePaths";
 import type { ActionDispatcher } from "./dispatcher";
 
 export interface SchedulerDeps {

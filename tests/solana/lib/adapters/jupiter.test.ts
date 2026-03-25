@@ -4,7 +4,7 @@ import {
   createJupiterAdapter,
   createJupiterAdapterFromConfig,
   resolveJupiterApiKey,
-} from "../../../../apps/trenchclaw/src/solana/lib/adapters/jupiter";
+} from "../../../../apps/trenchclaw/src/solana/lib/jupiter/swap";
 
 const MUTABLE_ENV_KEYS = [
   "JUPITER_API_KEY",

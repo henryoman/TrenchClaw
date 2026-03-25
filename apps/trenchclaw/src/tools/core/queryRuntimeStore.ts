@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { Action } from "../../ai/contracts/types/action";
 import type { StateStore } from "../../ai/contracts/types/state";
-import { listUpcomingTradingJobs } from "../../automation/jobs/upcoming-trading-jobs";
+import { listUpcomingTradingJobs } from "../../automation/jobs/upcomingTradingJobs";
 
 const maxLimit = 200;
 

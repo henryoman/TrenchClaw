@@ -4,17 +4,17 @@ import path from "node:path";
 
 import { generateText, stepCountIs } from "ai";
 
-import { loadAiSettings } from "../../apps/trenchclaw/src/ai/llm/ai-settings-file";
+import { loadAiSettings } from "../../apps/trenchclaw/src/ai/llm/aiSettingsFile";
 import { resolveLlmRuntimeBinding } from "../../apps/trenchclaw/src/ai/llm/client";
 import { createLanguageModel } from "../../apps/trenchclaw/src/ai/llm/config";
-import { RUNTIME_INSTANCE_ROOT } from "../../apps/trenchclaw/src/runtime/runtime-paths";
+import { RUNTIME_INSTANCE_ROOT } from "../../apps/trenchclaw/src/runtime/runtimePaths";
 import { resolveInstanceToolBinRoot } from "../../apps/trenchclaw/src/runtime/instance/paths";
 import {
   WORKSPACE_BASH_TOOL_NAME,
   WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   createWorkspaceBashTools,
-} from "../../apps/trenchclaw/src/tools/workspace-bash";
+} from "../../apps/trenchclaw/src/tools/workspace/bash";
 
 const INSTANCE_ID = "01";
 

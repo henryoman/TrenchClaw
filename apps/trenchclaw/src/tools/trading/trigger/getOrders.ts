@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 import type { Action } from "../../../ai/contracts/types/action";
-import { managedWalletSelectorSchema } from "../../../solana/lib/wallet/wallet-selector";
-import { walletGroupNameSchema, walletNameSchema } from "../../../solana/lib/wallet/wallet-types";
+import { managedWalletSelectorSchema } from "../../../solana/lib/wallet/walletSelector";
+import { walletGroupNameSchema, walletNameSchema } from "../../../solana/lib/wallet/walletTypes";
 import { normalizeCoinToMint } from "../ultra/shared";
 import { resolveTriggerAdapter, resolveWalletAddressFromInput } from "./shared";
 

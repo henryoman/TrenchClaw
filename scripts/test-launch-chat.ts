@@ -62,7 +62,7 @@ const stopProcess = async (proc: Bun.Subprocess): Promise<void> => {
     // Best effort only.
   }
   try {
-    await Bun.spawn(["pkill", "-f", "src/start-runtime-server.ts"], { stdout: "ignore", stderr: "ignore" }).exited;
+    await Bun.spawn(["pkill", "-f", "src/startRuntimeServer.ts"], { stdout: "ignore", stderr: "ignore" }).exited;
   } catch {
     // Best effort only.
   }

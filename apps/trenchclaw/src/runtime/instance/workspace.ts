@@ -1,10 +1,10 @@
 import path from "node:path";
 
 import { resolveCurrentActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./state";
-import { assertInstanceSystemWritePath } from "../security/write-scope";
-import { INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES } from "./layout-schema";
+import { assertInstanceSystemWritePath } from "../security/writeScope";
+import { INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES } from "./layoutSchema";
 
-export { INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES } from "./layout-schema";
+export { INSTANCE_WORKSPACE_LAYOUT_DIRECTORIES } from "./layoutSchema";
 
 const resolveInstanceWorkspaceChildRoot = (instanceId: string, ...segments: string[]): string => {
   const childRoot = path.join(resolveInstanceWorkspaceRoot(instanceId), ...segments);

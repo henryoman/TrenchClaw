@@ -1,4 +1,4 @@
 export * from "./types";
-export * from "./lane-policy";
-export * from "./operator-prompt";
+export * from "./lanePolicy";
+export * from "./operatorPrompt";
 export * from "./gateway";

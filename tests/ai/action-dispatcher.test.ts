@@ -2,10 +2,10 @@ import { describe, expect, test } from "bun:test";
 import { z } from "zod";
 
 import { ActionDispatcher } from "../../apps/trenchclaw/src/ai/core/dispatcher";
-import { ActionRegistry } from "../../apps/trenchclaw/src/ai/core/action-registry";
-import { InMemoryRuntimeEventBus } from "../../apps/trenchclaw/src/ai/core/event-bus";
-import { PolicyEngine } from "../../apps/trenchclaw/src/ai/core/policy-engine";
-import { InMemoryStateStore } from "../../apps/trenchclaw/src/ai/core/state-store";
+import { ActionRegistry } from "../../apps/trenchclaw/src/ai/core/actionRegistry";
+import { InMemoryRuntimeEventBus } from "../../apps/trenchclaw/src/ai/core/eventBus";
+import { PolicyEngine } from "../../apps/trenchclaw/src/ai/core/policyEngine";
+import { InMemoryStateStore } from "../../apps/trenchclaw/src/ai/core/stateStore";
 import { createActionContext } from "../../apps/trenchclaw/src/ai/contracts/types/context";
 
 describe("ActionDispatcher", () => {

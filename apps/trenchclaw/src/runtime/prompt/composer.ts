@@ -1,12 +1,12 @@
 import type { StateStore } from "../../ai/contracts/types/state";
-import { renderKnowledgePromptSummary } from "../../ai/brain/knowledge-index";
+import { renderKnowledgePromptSummary } from "../../ai/brain/knowledgeIndex";
 import type { RuntimeCapabilitySnapshot } from "../../tools";
-import { renderLiveRuntimeContextSection } from "./live-context";
+import { renderLiveRuntimeContextSection } from "./liveContext";
 import {
   renderAsyncToolBehaviorSection,
   renderCommandMenuSection,
   renderWorkspaceDirectoryMapSection,
-} from "./tool-menu";
+} from "./toolMenu";
 
 export type PromptToolEntry = RuntimeCapabilitySnapshot["modelTools"][number];
 

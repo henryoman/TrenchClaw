@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { actionSequenceRoutine } from "../../../apps/trenchclaw/src/automation/routines/action-sequence";
+import { actionSequenceRoutine } from "../../../apps/trenchclaw/src/automation/routines/actionSequence";
 import { createActionContext } from "../../../apps/trenchclaw/src/ai/contracts/types/context";
 
 describe("actionSequenceRoutine", () => {

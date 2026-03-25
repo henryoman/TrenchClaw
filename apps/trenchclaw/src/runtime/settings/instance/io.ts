@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { parseStructuredFile } from "../../../ai/llm/shared";
 import { resolveCurrentActiveInstanceIdSync } from "../../instance/state";
-import { assertInstanceSystemWritePath } from "../../security/write-scope";
+import { assertInstanceSystemWritePath } from "../../security/writeScope";
 
 export interface InstanceSettingsDocumentPayload {
   instanceId: string | null;

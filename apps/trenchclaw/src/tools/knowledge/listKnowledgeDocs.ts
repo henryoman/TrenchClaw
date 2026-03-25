@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import type { Action } from "../../ai/contracts/types/action";
-import { buildKnowledgeLookup, resolveKnowledgeRoot } from "../../ai/brain/knowledge-index";
+import { buildKnowledgeLookup, resolveKnowledgeRoot } from "../../ai/brain/knowledgeIndex";
 const maxLimit = 200;
 
 const parseJsonObject = (value: unknown): unknown => {

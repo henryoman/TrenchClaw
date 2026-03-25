@@ -2,7 +2,7 @@ import path from "node:path";
 import { z } from "zod";
 
 import type { Action } from "../../ai/contracts/types/action";
-import { buildKnowledgeLookup, resolveKnowledgeLookupEntry, resolveKnowledgeRoot } from "../../ai/brain/knowledge-index";
+import { buildKnowledgeLookup, resolveKnowledgeLookupEntry, resolveKnowledgeRoot } from "../../ai/brain/knowledgeIndex";
 const maxLines = 500;
 
 const readKnowledgeDocInputSchema = z.object({

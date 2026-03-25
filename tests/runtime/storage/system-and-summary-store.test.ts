@@ -3,9 +3,9 @@ import { Database } from "bun:sqlite";
 import path from "node:path";
 
 import { RuntimeLogger, type RuntimeLogEntry } from "../../../apps/trenchclaw/src/runtime/logger";
-import { SessionLogStore, SessionSummaryStore } from "../../../apps/trenchclaw/src/runtime/storage/session-stores";
-import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/sqlite-state-store";
-import { SummaryLogStore, SystemLogStore } from "../../../apps/trenchclaw/src/runtime/storage/log-files";
+import { SessionLogStore, SessionSummaryStore } from "../../../apps/trenchclaw/src/runtime/storage/sessionStores";
+import { SqliteStateStore } from "../../../apps/trenchclaw/src/runtime/storage/sqliteStateStore";
+import { SummaryLogStore, SystemLogStore } from "../../../apps/trenchclaw/src/runtime/storage/logFiles";
 import { runtimeStatePath } from "../../helpers/core-paths";
 
 const tmpTargets: string[] = [];

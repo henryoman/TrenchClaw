@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
-import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/session-stores";
+import { SessionLogStore } from "../../../apps/trenchclaw/src/runtime/storage/sessionStores";
 import { runtimeStatePath } from "../../helpers/core-paths";
 
 const sessionDirs: string[] = [];

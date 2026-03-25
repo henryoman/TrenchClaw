@@ -5,7 +5,7 @@ import {
   planTradingRoutineSubmission,
   tradingRoutineSpecSchema,
   type TradingRoutineSpec,
-} from "../../automation/routines/trading-routine-spec";
+} from "../../automation/routines/tradingRoutineSpec";
 
 const asRuntimeJobEnqueuer = (
   value: unknown,

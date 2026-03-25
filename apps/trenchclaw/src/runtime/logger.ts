@@ -1,5 +1,5 @@
 import type { RuntimeSettings } from "./settings";
-import { isRecord } from "./shared/object-utils";
+import { isRecord } from "./shared/objectUtils";
 
 type RuntimeLogLevel = RuntimeSettings["observability"]["logging"]["level"];
 type RuntimeLogStyle = RuntimeSettings["observability"]["logging"]["style"];

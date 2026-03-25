@@ -68,7 +68,7 @@ import {
   WORKSPACE_LIST_DIRECTORY_TOOL_NAME,
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
-} from "./workspace-bash";
+} from "./workspace/bash";
 import type {
   RuntimeActionCapabilityDefinition,
   RuntimeReleaseReadinessDescriptor,

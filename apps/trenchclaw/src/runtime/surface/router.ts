@@ -12,17 +12,17 @@ import {
   parseUpdateVaultRequest,
   parseUpsertSecretRequest,
 } from "./parsers";
-import { getAiSettings, updateAiSettings } from "./domains/ai-settings";
+import { getAiSettings, updateAiSettings } from "./domains/aiSettings";
 import { deleteConversation, streamChat, getConversationMessages, getConversations } from "./domains/chat";
 import { createInstance, listInstances, signInInstance, signOutInstance } from "./domains/instances";
-import { runLlmCheck } from "./domains/llm-check";
-import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtime-overview";
-import { getSolPrice } from "../../tools/market/sol-price";
+import { runLlmCheck } from "./domains/llmCheck";
+import { getActivity, getBootstrap, getQueue, getSchedule, streamRuntimeEvents } from "./domains/runtimeOverview";
+import { getSolPrice } from "../../tools/market/solPrice";
 import { getTracker, updateTracker } from "./domains/tracker";
 import { getTools } from "./domains/tools";
-import { getTradingSettings, updateTradingSettings } from "./domains/trading-settings";
-import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeup-settings";
-import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vault-secrets";
+import { getTradingSettings, updateTradingSettings } from "./domains/tradingSettings";
+import { getWakeupSettings, updateWakeupSettings } from "./domains/wakeupSettings";
+import { deleteSecret, getSecrets, getVault, updateVault, upsertSecret } from "./domains/vaultSecrets";
 import { listWalletTree, readWalletBackupFile } from "./domains/wallets";
 
 const RUNTIME_APP_API_BASE_PATH = "/v1/app";

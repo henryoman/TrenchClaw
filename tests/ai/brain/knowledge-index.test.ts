@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
-import { buildKnowledgeInventory, renderDirectoryTree } from "../../../apps/trenchclaw/src/ai/brain/knowledge-index";
+import { buildKnowledgeInventory, renderDirectoryTree } from "../../../apps/trenchclaw/src/ai/brain/knowledgeIndex";
 
 const createdDirectories: string[] = [];
 

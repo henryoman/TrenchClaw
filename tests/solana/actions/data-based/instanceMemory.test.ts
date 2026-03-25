@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
-import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai/core/state-store";
+import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai/core/stateStore";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import { mutateInstanceMemoryAction } from "../../../../apps/trenchclaw/src/tools/core/mutateInstanceMemory";
 import { queryInstanceMemoryAction } from "../../../../apps/trenchclaw/src/tools/core/queryInstanceMemory";

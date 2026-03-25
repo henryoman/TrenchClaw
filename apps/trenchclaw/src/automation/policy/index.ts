@@ -1,1 +1,1 @@
-export * from "./trading-throttle";
+export * from "./tradingThrottle";

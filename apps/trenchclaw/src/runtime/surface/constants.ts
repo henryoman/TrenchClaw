@@ -1,6 +1,6 @@
 import {
   RUNTIME_INSTANCE_ROOT,
-} from "../runtime-paths";
+} from "../runtimePaths";
 
 export const MAX_ACTIVITY_ITEMS = 250;
 export const GUI_QUEUE_INCLUDE_HISTORY = process.env.GUI_QUEUE_INCLUDE_HISTORY === "1";

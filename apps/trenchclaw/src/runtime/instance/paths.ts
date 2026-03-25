@@ -1,7 +1,7 @@
 import path from "node:path";
 
 import { resolveInstanceDirectoryPath } from "./state";
-import { assertInstanceSystemWritePath } from "../security/write-scope";
+import { assertInstanceSystemWritePath } from "../security/writeScope";
 
 const resolveInstanceChildPath = (instanceId: string, ...segments: string[]): string => {
   const resolvedPath = path.join(resolveInstanceDirectoryPath(instanceId), ...segments);

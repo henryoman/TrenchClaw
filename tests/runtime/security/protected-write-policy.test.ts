@@ -4,8 +4,8 @@ import {
   ProtectedWriteForbiddenError,
   assertProtectedReadAllowed,
   assertProtectedWriteAllowed,
-} from "../../../apps/trenchclaw/src/runtime/security/protected-write-policy";
-import { resetFilesystemManifestCacheForTests } from "../../../apps/trenchclaw/src/runtime/security/filesystem-manifest";
+} from "../../../apps/trenchclaw/src/runtime/security/protectedWritePolicy";
+import { resetFilesystemManifestCacheForTests } from "../../../apps/trenchclaw/src/runtime/security/filesystemManifest";
 
 const createdFiles: string[] = [];
 const previousManifestFile = process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE;

@@ -7,7 +7,7 @@ import type { Action } from "../../ai/contracts/types/action";
 import { ensureInstanceLayout } from "../../runtime/instance/layout";
 import { resolveRequiredActiveInstanceIdSync } from "../../runtime/instance/state";
 import { resolveInstanceWorkspaceGeckoTerminalOhlcvRoot } from "../../runtime/instance/workspace";
-import { toRuntimeContractRelativePath } from "../../runtime/runtime-paths";
+import { toRuntimeContractRelativePath } from "../../runtime/runtimePaths";
 import {
   getGeckoTerminalPoolOhlcv,
   isGeckoTerminalRetryableError,

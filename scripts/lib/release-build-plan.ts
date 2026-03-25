@@ -13,7 +13,7 @@ export const RELEASE_CONFIG_ASSET_PATHS = [
   "src/ai/brain/config/safety-modes/safe.json",
   "src/ai/brain/config/safety-modes/dangerous.json",
   "src/ai/brain/config/safety-modes/veryDangerous.json",
-  "src/runtime/security/filesystem-manifest.json",
+  "src/runtime/security/filesystemManifest.json",
 ] as const;
 
 export const RELEASE_RUNTIME_ASSET_PATHS = [

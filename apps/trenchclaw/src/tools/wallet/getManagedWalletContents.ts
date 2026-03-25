@@ -19,18 +19,18 @@ import {
   managedWalletSelectorListSchema,
   managedWalletSelectorSchema,
   resolveManagedWalletEntriesBySelection,
-} from "../../solana/lib/wallet/wallet-selector";
+} from "../../solana/lib/wallet/walletSelector";
 import {
   readManagedWalletLibraryEntries,
   resolveWalletKeypairRootPathForInstanceId,
-} from "../../solana/lib/wallet/wallet-manager";
+} from "../../solana/lib/wallet/walletManager";
 import {
   DEFAULT_WALLET_LIBRARY_FILE_NAME,
   walletGroupNameSchema,
   walletNameSchema,
   type ManagedWalletLibraryEntry,
-} from "../../solana/lib/wallet/wallet-types";
-import { resolveInstanceId } from "../core/instance-memory-shared";
+} from "../../solana/lib/wallet/walletTypes";
+import { resolveInstanceId } from "../core/instanceMemoryShared";
 
 const maxWalletNames = 100;
 const LAMPORTS_PER_SOL = 1_000_000_000;

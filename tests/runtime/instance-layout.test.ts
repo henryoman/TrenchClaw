@@ -10,7 +10,7 @@ const INSTANCE_LAYOUT_MODULE_URL = pathToFileURL(
   path.join(CORE_APP_ROOT, "src/runtime/instance/layout.ts"),
 ).href;
 const INSTANCE_LAYOUT_SCHEMA_MODULE_URL = pathToFileURL(
-  path.join(CORE_APP_ROOT, "src/runtime/instance/layout-schema.ts"),
+  path.join(CORE_APP_ROOT, "src/runtime/instance/layoutSchema.ts"),
 ).href;
 
 const createdRuntimeRoots: string[] = [];

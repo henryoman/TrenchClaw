@@ -23,7 +23,7 @@ import type {
   JupiterBuildInstruction,
   JupiterBuildRequest,
   JupiterSwapAdapter,
-} from "../../../solana/lib/adapters/jupiter";
+} from "../../../solana/lib/jupiter/swap";
 import { createRateLimitedSolanaRpc } from "../../../solana/lib/rpc/client";
 import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../solana/lib/rpc/urls";
 import { registerTransactionForConfirmation } from "../ultra/confirmationTracker";

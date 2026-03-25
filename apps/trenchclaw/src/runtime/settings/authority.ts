@@ -1,4 +1,4 @@
-import { deepMerge, isRecord } from "../shared/object-utils";
+import { deepMerge, isRecord } from "../shared/objectUtils";
 
 const USER_PROTECTED_PATH_PREFIXES = [
   "wallet.dangerously",

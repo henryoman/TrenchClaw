@@ -1,6 +1,6 @@
-import { loadDefaultSystemPrompt } from "../llm/prompt-loader";
-import { buildOperatorChatPrompt } from "./operator-prompt";
-import { buildGatewayLaneStatuses, getGatewayLanePolicy, getGatewayToolNamesForLane } from "./lane-policy";
+import { loadDefaultSystemPrompt } from "../llm/promptLoader";
+import { buildOperatorChatPrompt } from "./operatorPrompt";
+import { buildGatewayLaneStatuses, getGatewayLanePolicy, getGatewayToolNamesForLane } from "./lanePolicy";
 import type {
   GatewayContext,
   GatewayPreparedExecution,

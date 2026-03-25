@@ -5,22 +5,22 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "cleanup:runtime": "bun run src/tooling/clean-runtime-artifacts.ts",
-    "context:refresh": "bun run src/tooling/refresh-workspace-context.ts",
-    "knowledge:refresh": "bun run src/tooling/refresh-knowledge-index.ts",
+    "cleanup:runtime": "bun run src/tools/scripts/cleanRuntimeArtifacts.ts",
+    "context:refresh": "bun run src/tools/scripts/refreshWorkspaceContext.ts",
+    "knowledge:refresh": "bun run src/tools/scripts/refreshKnowledgeIndex.ts",
     "generate": "bun run context:refresh && bun run knowledge:refresh",
     "refresh": "bun run typecheck && bun run lint && bun run context:refresh",
     "systemd:install": "bun run ../../scripts/systemd/install.ts",
     "devnet:airdrop": "bun run src/tools/wallet/airdrop/devnetAirdrop.ts",
     "action:run": "bun run src/tools/execute.ts",
-    "runtime:start": "bun run src/start-runtime-server.ts",
+    "runtime:start": "bun run src/startRuntimeServer.ts",
     "routine:run": "bun run src/automation/routines/execute.ts",
     "typecheck": "bunx --bun tsc --noEmit -p tsconfig.json",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "test": "bun test ../../tests",
     "build": "bun build src/index.ts --target bun --outdir dist",
-    "wallet:vanity": "bun run src/tooling/create-vanity-wallet.ts"
+    "wallet:vanity": "bun run src/tools/scripts/createVanityWallet.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.3.11",

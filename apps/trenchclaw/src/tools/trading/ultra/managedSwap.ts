@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import type { Action } from "../../../ai/contracts/types/action";
-import { managedWalletSelectorSchema, resolveManagedWalletSelection } from "../../../solana/lib/wallet/wallet-selector";
-import { loadManagedWalletSigner } from "../../../solana/lib/wallet/wallet-signer";
-import { walletGroupNameSchema } from "../../../solana/lib/wallet/wallet-types";
+import { managedWalletSelectorSchema, resolveManagedWalletSelection } from "../../../solana/lib/wallet/walletSelector";
+import { loadManagedWalletSigner } from "../../../solana/lib/wallet/walletSigner";
+import { walletGroupNameSchema } from "../../../solana/lib/wallet/walletTypes";
 import { ultraQuoteInputSchema } from "./shared";
 import { ultraSwapAction, type UltraSwapOutput } from "./swap";
 

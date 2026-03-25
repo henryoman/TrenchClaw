@@ -6,18 +6,18 @@ import {
   assertProtectedWriteAllowed,
   assertWithinBrainProtectedDirectory,
   resolveAbsolutePath,
-} from "../../../runtime/security/protected-write-policy";
+} from "../../../runtime/security/protectedWritePolicy";
 import {
   readManagedWalletLibraryEntries,
   resolveWalletLibraryFilePath,
   resolveWalletLabelFilePath,
   rewriteManagedWalletLibraryEntries,
-} from "../../../solana/lib/wallet/wallet-manager";
+} from "../../../solana/lib/wallet/walletManager";
 import {
   type ManagedWalletLibraryEntry,
   toWalletId,
   walletGroupNameSchema,
-} from "../../../solana/lib/wallet/wallet-types";
+} from "../../../solana/lib/wallet/walletTypes";
 
 const walletNameSchema = z
   .string()

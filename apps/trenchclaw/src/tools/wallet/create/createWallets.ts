@@ -8,20 +8,20 @@ import type { RuntimeActor } from "../../../ai/contracts/types/context";
 import {
   assertProtectedWriteAllowed,
   assertWithinBrainProtectedDirectory,
-} from "../../../runtime/security/protected-write-policy";
+} from "../../../runtime/security/protectedWritePolicy";
 import {
   appendManagedWalletLibraryEntries,
   resolveWalletLibraryFilePath,
   resolveWalletGroupDirectoryPath,
   resolveWalletKeypairRootPath,
   resolveWalletLabelFilePath,
-} from "../../../solana/lib/wallet/wallet-manager";
+} from "../../../solana/lib/wallet/walletManager";
 import {
   type ManagedWalletLibraryEntry,
   toWalletId,
   walletGroupNameSchema,
   type WalletLabelFile,
-} from "../../../solana/lib/wallet/wallet-types";
+} from "../../../solana/lib/wallet/walletTypes";
 
 const MAX_WALLETS_PER_GROUP = 100;
 const walletSegmentSchema = z

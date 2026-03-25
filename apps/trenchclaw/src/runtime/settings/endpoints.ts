@@ -1,4 +1,4 @@
-import type { RuntimeSettings } from "./runtime-schema";
+import type { RuntimeSettings } from "./runtimeSchema";
 
 export interface ResolvedRuntimeEndpoints {
   endpointName: string;

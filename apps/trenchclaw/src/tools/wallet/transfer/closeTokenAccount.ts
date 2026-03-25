@@ -20,9 +20,9 @@ import type { Action, ActionResult } from "../../../ai/contracts/types/action";
 import type { ActionContext } from "../../../ai/contracts/types/context";
 import { createRateLimitedSolanaRpc } from "../../../solana/lib/rpc/client";
 import { MISSING_RPC_URL_ERROR, resolveRequiredRpcUrl } from "../../../solana/lib/rpc/urls";
-import { managedWalletSelectorSchema, resolveManagedWalletSelection } from "../../../solana/lib/wallet/wallet-selector";
-import { loadManagedWalletSigner } from "../../../solana/lib/wallet/wallet-signer";
-import { walletGroupNameSchema, walletNameSchema } from "../../../solana/lib/wallet/wallet-types";
+import { managedWalletSelectorSchema, resolveManagedWalletSelection } from "../../../solana/lib/wallet/walletSelector";
+import { loadManagedWalletSigner } from "../../../solana/lib/wallet/walletSigner";
+import { walletGroupNameSchema, walletNameSchema } from "../../../solana/lib/wallet/walletTypes";
 
 const ASSOCIATED_TOKEN_PROGRAM_ID = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 const TOKEN_PROGRAM_ID = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";

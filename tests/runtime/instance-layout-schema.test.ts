@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   INSTANCE_LAYOUT_DIRECTORY_PATHS,
   INSTANCE_LAYOUT_FILE_PATHS,
-} from "../../apps/trenchclaw/src/runtime/instance/layout-schema";
+} from "../../apps/trenchclaw/src/runtime/instance/layoutSchema";
 import { coreAppPath } from "../helpers/core-paths";
 
 const VOLATILE_RUNTIME_FILE_PATTERNS = [

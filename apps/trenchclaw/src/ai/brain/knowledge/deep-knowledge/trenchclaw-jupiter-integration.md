@@ -16,18 +16,18 @@ implementation seams live.
 
 ## Important Files
 
-- Swap V2 adapter: `apps/trenchclaw/src/solana/lib/adapters/jupiter.ts`
-- Trigger V1 adapter: `apps/trenchclaw/src/solana/lib/adapters/jupiter-trigger.ts`
-- Legacy Ultra adapter: `apps/trenchclaw/src/solana/lib/adapters/jupiter-ultra.ts`
+- Swap V2 adapter: `apps/trenchclaw/src/solana/lib/jupiter/swap.ts`
+- Trigger V1 adapter: `apps/trenchclaw/src/solana/lib/jupiter/trigger.ts`
+- Legacy Ultra adapter: `apps/trenchclaw/src/solana/lib/jupiter/ultra.ts`
 - Managed swap action: `apps/trenchclaw/src/solana/actions/wallet-based/swap/managedSwap.ts`
 - Managed Swap V2 execution path: `apps/trenchclaw/src/solana/actions/wallet-based/swap/rpc/executeSwap.ts`
 - Managed Swap V2 quote path: `apps/trenchclaw/src/solana/actions/wallet-based/swap/rpc/quoteSwap.ts`
 - Trigger order creation: `apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/createOrder.ts`
 - Trigger order reads: `apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/getOrders.ts`
 - Trigger order cancellation: `apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/cancelOrders.ts`
-- Managed wallet signer: `apps/trenchclaw/src/solana/lib/wallet/wallet-signer.ts`
-- Base signer implementation: `apps/trenchclaw/src/solana/lib/adapters/ultra-signer.ts`
-- Operator prompt guidance: `apps/trenchclaw/src/ai/gateway/operator-prompt.ts`
+- Managed wallet signer: `apps/trenchclaw/src/solana/lib/wallet/walletSigner.ts`
+- Base signer implementation: `apps/trenchclaw/src/solana/lib/jupiter/ultraSigner.ts`
+- Operator prompt guidance: `apps/trenchclaw/src/ai/gateway/operatorPrompt.ts`
 - Capability catalog: `apps/trenchclaw/src/runtime/capabilities/action-definitions.ts`
 
 ## How The Model Should Route Requests
@@ -117,7 +117,7 @@ When touching Jupiter integrations in this repo, make sure these docs remain acc
 
 - `apps/trenchclaw/src/ai/brain/knowledge/deep-knowledge/jupiter-ai-docs.md`
 - `apps/trenchclaw/src/ai/brain/knowledge/deep-knowledge/trenchclaw-jupiter-integration.md`
-- `apps/trenchclaw/src/ai/gateway/operator-prompt.ts`
+- `apps/trenchclaw/src/ai/gateway/operatorPrompt.ts`
 - `apps/trenchclaw/src/runtime/capabilities/action-definitions.ts`
 
 ## Future Cleanup Ideas

@@ -4,8 +4,8 @@ import path from "node:path";
 
 import type { RuntimeApiInstanceProfileView } from "@trenchclaw/types";
 
-import { assertInstanceSystemWritePath } from "../security/write-scope";
-import { resolveActiveInstanceStateFile, resolveRuntimeInstanceRoot } from "../runtime-paths";
+import { assertInstanceSystemWritePath } from "../security/writeScope";
+import { resolveActiveInstanceStateFile, resolveRuntimeInstanceRoot } from "../runtimePaths";
 
 const INSTANCE_ID_PATTERN = /^\d{2}$/u;
 const INSTANCE_DIRECTORY_PATTERN = /^\d{2}$/u;

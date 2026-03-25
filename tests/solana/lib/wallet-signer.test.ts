@@ -3,7 +3,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 
 import { createWalletsAction } from "../../../apps/trenchclaw/src/tools/wallet/create/createWallets";
-import { loadManagedWalletSigner } from "../../../apps/trenchclaw/src/solana/lib/wallet/wallet-signer";
+import { loadManagedWalletSigner } from "../../../apps/trenchclaw/src/solana/lib/wallet/walletSigner";
 import { createPersistedTestInstance } from "../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../helpers/core-paths";
 

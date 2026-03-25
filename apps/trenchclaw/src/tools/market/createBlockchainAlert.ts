@@ -6,8 +6,8 @@ import type { Action } from "../../ai/contracts/types/action";
 import {
   assertModelFilesystemReadAllowed,
   assertModelFilesystemWriteAllowed,
-} from "../../runtime/security/filesystem-manifest";
-import { resolveRuntimeContractPath } from "../../runtime/runtime-paths";
+} from "../../runtime/security/filesystemManifest";
+import { resolveRuntimeContractPath } from "../../runtime/runtimePaths";
 
 const alertConditionSchema = z.discriminatedUnion("type", [
   z.object({

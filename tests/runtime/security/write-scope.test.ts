@@ -4,7 +4,7 @@ import {
   assertInstanceSystemWritePath,
   assertRuntimeSystemWritePath,
   WriteScopeViolationError,
-} from "../../../apps/trenchclaw/src/runtime/security/write-scope";
+} from "../../../apps/trenchclaw/src/runtime/security/writeScope";
 import { coreAppPath, runtimeStatePath } from "../../helpers/core-paths";
 
 describe("write-scope policy", () => {

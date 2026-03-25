@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Action } from "../../ai/contracts/types/action";
 import { createFactId, createIdempotencyKey } from "../../ai/contracts/types/ids";
 import type { StateStore } from "../../ai/contracts/types/state";
-import { normalizeFactKey, resolveInstanceId } from "./instance-memory-shared";
+import { normalizeFactKey, resolveInstanceId } from "./instanceMemoryShared";
 
 const profilePatchSchema = z.object({
   displayName: z.string().trim().min(1).max(120).optional(),

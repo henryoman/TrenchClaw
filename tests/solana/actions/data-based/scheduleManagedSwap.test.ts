@@ -4,7 +4,7 @@ import { zodSchema } from "ai";
 import { InMemoryStateStore } from "../../../../apps/trenchclaw/src/ai";
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import type { JobState } from "../../../../apps/trenchclaw/src/ai/contracts/types/state";
-import { listUpcomingTradingJobs } from "../../../../apps/trenchclaw/src/automation/jobs/upcoming-trading-jobs";
+import { listUpcomingTradingJobs } from "../../../../apps/trenchclaw/src/automation/jobs/upcomingTradingJobs";
 import { scheduleManagedSwapAction } from "../../../../apps/trenchclaw/src/tools/trading/scheduleManagedSwap";
 
 describe("scheduleManagedSwapAction", () => {

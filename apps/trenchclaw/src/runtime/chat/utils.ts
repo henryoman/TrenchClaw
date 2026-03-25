@@ -1,8 +1,8 @@
 import { isToolUIPart, type UIMessage } from "ai";
 import { createChatMessageId, createConversationId } from "../../ai/contracts/types/ids";
-import { isRecord } from "../shared/object-utils";
+import { isRecord } from "../shared/objectUtils";
 
-export { isRecord } from "../shared/object-utils";
+export { isRecord } from "../shared/objectUtils";
 
 const WALLET_MUTATION_INTENT_TOKENS = [
   "transfer",

@@ -6,7 +6,7 @@ import {
   FilesystemPermissionDeniedError,
   assertFilesystemAccessAllowed,
   resetFilesystemManifestCacheForTests,
-} from "../../../apps/trenchclaw/src/runtime/security/filesystem-manifest";
+} from "../../../apps/trenchclaw/src/runtime/security/filesystemManifest";
 
 const createdFiles: string[] = [];
 const previousManifestFile = process.env.TRENCHCLAW_FILESYSTEM_MANIFEST_FILE;

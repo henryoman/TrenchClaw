@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
-import { getConfiguredNewsFeedsAction } from "../../../../apps/trenchclaw/src/tools/market/news-feed-registry-actions";
+import { getConfiguredNewsFeedsAction } from "../../../../apps/trenchclaw/src/tools/market/newsFeedRegistry";
 import {
   DEFAULT_SOLANA_NEWS_FEED_URL,
   getLatestSolanaNewsAction,
-} from "../../../../apps/trenchclaw/src/tools/market/rss-news-actions";
+} from "../../../../apps/trenchclaw/src/tools/market/rssNews";
 import { createPersistedTestInstance } from "../../../helpers/instance-fixtures";
 import { runtimeStatePath } from "../../../helpers/core-paths";
 

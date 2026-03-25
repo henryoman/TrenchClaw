@@ -5,7 +5,7 @@ import type { UIMessage } from "ai";
 import { ActionRegistry, InMemoryRuntimeEventBus, InMemoryStateStore } from "../../apps/trenchclaw/src/ai";
 import type { RuntimeBootstrap } from "../../apps/trenchclaw/src/runtime/bootstrap";
 import { RuntimeTransport } from "../../apps/trenchclaw/src/runtime/surface";
-import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/sol-price";
+import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/solPrice";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const buildRuntime = (input?: {

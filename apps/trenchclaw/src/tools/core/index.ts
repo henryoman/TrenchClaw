@@ -1,5 +1,5 @@
 export * from "./enqueueRuntimeJob";
-export * from "./instance-memory-shared";
+export * from "./instanceMemoryShared";
 export * from "./manageRuntimeJob";
 export * from "./mutateInstanceMemory";
 export * from "./pingRuntime";

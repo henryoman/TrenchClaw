@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { Action } from "../../../ai/contracts/types/action";
 import type { ActionContext } from "../../../ai/contracts/types/context";
-import type { JupiterBuildRequest, JupiterSwapAdapter } from "../../../solana/lib/adapters/jupiter";
+import type { JupiterBuildRequest, JupiterSwapAdapter } from "../../../solana/lib/jupiter/swap";
 import {
   createActionFailure,
   createActionSuccess,

@@ -3,7 +3,7 @@
 import { mkdir, readlink, symlink, unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { RUNTIME_INSTANCE_ROOT } from "../apps/trenchclaw/src/runtime/runtime-paths";
+import { RUNTIME_INSTANCE_ROOT } from "../apps/trenchclaw/src/runtime/runtimePaths";
 import { resolveInstanceToolBinRoot } from "../apps/trenchclaw/src/runtime/instance/paths";
 
 const INSTANCE_ID = "01";
@@ -68,7 +68,7 @@ const stopProcess = async (proc: Bun.Subprocess): Promise<void> => {
     // Best effort only.
   }
   try {
-    await Bun.spawn(["pkill", "-f", "src/start-runtime-server.ts"], { stdout: "ignore", stderr: "ignore" }).exited;
+    await Bun.spawn(["pkill", "-f", "src/startRuntimeServer.ts"], { stdout: "ignore", stderr: "ignore" }).exited;
   } catch {
     // Best effort only.
   }

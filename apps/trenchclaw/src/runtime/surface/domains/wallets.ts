@@ -2,7 +2,7 @@ import type { RuntimeApiWalletsResponse } from "@trenchclaw/types";
 import {
   listManagedWalletTree,
   readManagedWalletBackupFile,
-} from "../../../solana/lib/wallet/wallet-manager";
+} from "../../../solana/lib/wallet/walletManager";
 import type { RuntimeTransportContext } from "../contracts";
 
 export const listWalletTree = async (_context: RuntimeTransportContext): Promise<RuntimeApiWalletsResponse> => {

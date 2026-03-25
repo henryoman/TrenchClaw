@@ -1,7 +1,7 @@
 import { generateText, streamText, type LanguageModel } from "ai";
-import { loadAiSettings } from "./ai-settings-file";
+import { loadAiSettings } from "./aiSettingsFile";
 import { createLanguageModel, resolveLlmProviderConfig } from "./config";
-import { loadSystemPromptPayload } from "./prompt-loader";
+import { loadSystemPromptPayload } from "./promptLoader";
 import type {
   LlmClient,
   LlmClientConfig,

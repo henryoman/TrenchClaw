@@ -22,11 +22,11 @@ import {
   type LlmGenerateInput,
   type LlmGenerateResult,
 } from "../ai";
-import { createJupiterTriggerAdapterFromConfig } from "../solana/lib/adapters/jupiter-trigger";
-import { createJupiterAdapterFromConfig } from "../solana/lib/adapters/jupiter";
-import { createJupiterUltraAdapterFromConfig } from "../solana/lib/adapters/jupiter-ultra";
-import { createTokenAccountAdapter } from "../solana/lib/rpc/token-account";
-import { createUltraSignerAdapterFromVault } from "../solana/lib/adapters/ultra-signer";
+import { createJupiterTriggerAdapterFromConfig } from "../solana/lib/jupiter/trigger";
+import { createJupiterAdapterFromConfig } from "../solana/lib/jupiter/swap";
+import { createJupiterUltraAdapterFromConfig } from "../solana/lib/jupiter/ultra";
+import { createTokenAccountAdapter } from "../solana/lib/rpc/tokenAccount";
+import { createUltraSignerAdapterFromVault } from "../solana/lib/jupiter/ultraSigner";
 import { loadRoutinePlanner } from "../automation/routines/load";
 import {
   getRuntimeActionCatalog,
@@ -42,7 +42,7 @@ import {
   type RuntimeSettings,
 } from "./settings";
 import { createRuntimeLogger, type RuntimeLogger } from "./logger";
-import { createRuntimeActionThrottle } from "../automation/policy/trading-throttle";
+import { createRuntimeActionThrottle } from "../automation/policy/tradingThrottle";
 import {
   LiveLogStore,
   MemoryLogStore,
@@ -57,8 +57,8 @@ import {
 import { createRuntimeChatService, type RuntimeChatService } from "./chat/service";
 import { ensureInstanceLayout } from "./instance/layout";
 import { resolveCurrentActiveInstanceIdSync, resolveRequiredActiveInstanceIdSync, resolveInstanceDirectoryPath } from "./instance/state";
-import { isRecord } from "./shared/object-utils";
-import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./chat/runtime-notices";
+import { isRecord } from "./shared/objectUtils";
+import { persistRuntimeNotice as persistRuntimeNoticeEntry } from "./chat/runtimeNotices";
 import { syncManagedWakeupJob } from "../automation/triggers/wakeup";
 
 const DANGEROUS_ACTIONS_REQUIRING_CONFIRMATION = getRuntimeActionsRequiringUserConfirmation();

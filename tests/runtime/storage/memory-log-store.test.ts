@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import path from "node:path";
 
-import { MemoryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/memory-store";
+import { MemoryLogStore } from "../../../apps/trenchclaw/src/runtime/storage/memoryStore";
 import { runtimeStatePath } from "../../helpers/core-paths";
 
 const tmpTargets: string[] = [];

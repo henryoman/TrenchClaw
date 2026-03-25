@@ -2,13 +2,13 @@ import { z } from "zod";
 
 import type { Action } from "../../ai/contracts/types/action";
 import { scheduleDurationInputSchema } from "../../automation/triggers/time";
-import { managedWalletSelectorSchema } from "../../solana/lib/wallet/wallet-selector";
+import { managedWalletSelectorSchema } from "../../solana/lib/wallet/walletSelector";
 import {
   walletGroupNameSchema,
   walletNameSchema,
-} from "../../solana/lib/wallet/wallet-types";
-import type { TradingManagedSwap, TradingRoutineSpec } from "../../automation/routines/trading-routine-spec";
-import { tradingSwapProviderPreferenceSchema } from "../../automation/routines/trading-routine-spec";
+} from "../../solana/lib/wallet/walletTypes";
+import type { TradingManagedSwap, TradingRoutineSpec } from "../../automation/routines/tradingRoutineSpec";
+import { tradingSwapProviderPreferenceSchema } from "../../automation/routines/tradingRoutineSpec";
 import {
   submitTradingRoutineAction,
   type SubmitTradingRoutineOutput,

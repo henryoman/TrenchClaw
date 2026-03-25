@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, readFile, rm, symlink, unlink } from "node:fs/promises";
 import path from "node:path";
 
-import { RUNTIME_INSTANCE_ROOT } from "../../apps/trenchclaw/src/runtime/runtime-paths";
+import { RUNTIME_INSTANCE_ROOT } from "../../apps/trenchclaw/src/runtime/runtimePaths";
 import { resolveInstanceToolBinRoot } from "../../apps/trenchclaw/src/runtime/instance/paths";
 import {
   WORKSPACE_BASH_TOOL_NAME,
@@ -10,7 +10,7 @@ import {
   WORKSPACE_READ_FILE_TOOL_NAME,
   WORKSPACE_WRITE_FILE_TOOL_NAME,
   createWorkspaceBashTools,
-} from "../../apps/trenchclaw/src/tools/workspace-bash";
+} from "../../apps/trenchclaw/src/tools/workspace/bash";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const TEST_ROOT = runtimeStatePath("instances/01/workspace/.tests");

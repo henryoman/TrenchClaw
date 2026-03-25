@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { loadSystemPromptPayload, resetPromptLoaderCache } from "../../apps/trenchclaw/src/ai/llm/prompt-loader";
-import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/sol-price";
+import { loadSystemPromptPayload, resetPromptLoaderCache } from "../../apps/trenchclaw/src/ai/llm/promptLoader";
+import { resetSolPriceCacheForTests } from "../../apps/trenchclaw/src/tools/market/solPrice";
 import { runtimeStatePath } from "../helpers/core-paths";
 
 const ENV_KEYS = [

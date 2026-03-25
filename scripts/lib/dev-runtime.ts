@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import {
   INSTANCE_LAYOUT_DIRECTORY_PATHS,
   INSTANCE_LAYOUT_FILE_PATHS,
-} from "../../apps/trenchclaw/src/runtime/instance/layout-schema";
+} from "../../apps/trenchclaw/src/runtime/instance/layoutSchema";
 
 const REPO_ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const CORE_APP_ROOT = path.join(REPO_ROOT, "apps", "trenchclaw");
