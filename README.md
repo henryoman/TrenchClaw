@@ -21,7 +21,7 @@
   <a href="https://bun.sh/docs/api/sqlite"><img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" /></a>
 </p>
 
-## gud tek built by a long-time solami dev
+## gud tek built by a long-time solami dev team
 
 Please give us a star if you're interested in seeing this project get fully built out. It will help me gauge interest. Thank you.
 
