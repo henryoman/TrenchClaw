@@ -5,7 +5,7 @@
 <p align="center">
   <a href="https://github.com/henryoman/trenchclaw/releases/latest"><img src="https://img.shields.io/github/v/release/henryoman/trenchclaw?sort=semver&display_name=tag&style=for-the-badge&label=Release" alt="Latest release" /></a>
   <a href="https://bun.sh"><img src="https://img.shields.io/badge/Bun-1.3.11-000000?style=for-the-badge&logo=bun&logoColor=white" alt="Bun 1.3.11" /></a>
-  <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/badge/AI%20SDK-111827?style=for-the-badge" alt="AI SDK" /></a>
+  <a href="https://ai-sdk.dev/"><img src="https://img.shields.io/npm/v/ai?style=for-the-badge&label=AI%20SDK&color=111827" alt="AI SDK version" /></a>
   <a href="https://x.com/mert"><img src="https://img.shields.io/badge/Teachings%20of%20Mert-000000?style=for-the-badge&logo=x&logoColor=white" alt="Teachings of Mert" /></a>
   <a href="https://phantom.app/"><img src="https://img.shields.io/badge/Phantom-AB9FF2?style=for-the-badge&logo=phantom&logoColor=white" alt="Phantom" /></a>
   <a href="https://anza.xyz/"><img src="https://img.shields.io/badge/Anza-1F5F3A?style=for-the-badge&logoColor=F5F5DC&labelColor=1F5F3A&color=1F5F3A" alt="Anza" /></a>
@@ -17,6 +17,10 @@
   <a href="https://streamdown.ai/"><img src="https://img.shields.io/badge/Streamdown-0F172A?style=for-the-badge" alt="Streamdown" /></a>
   <a href="https://www.meteora.ag/"><img src="https://img.shields.io/badge/Meteora-FC030F?style=for-the-badge" alt="Meteora" /></a>
   <a href="https://ai-sdk.dev/tools-registry/bash-tool"><img src="https://img.shields.io/badge/Bash%20Tool-111827?style=for-the-badge&logo=gnu-bash&logoColor=white" alt="Bash Tool" /></a>
+  <a href="https://www.browserbase.com/"><img src="https://img.shields.io/npm/v/%40browserbasehq%2Fstagehand?style=for-the-badge&label=Browserbase&color=000000" alt="Browserbase Stagehand version" /></a>
+  <a href="https://vite.dev/"><img src="https://img.shields.io/npm/v/vite?style=for-the-badge&label=Vite%2B&color=646CFF" alt="Vite version" /></a>
+  <a href="https://jsonrender.com/"><img src="https://img.shields.io/npm/v/%40json-render%2Fcore?style=for-the-badge&label=JSON%20Render&color=0EA5E9" alt="JSON Render version" /></a>
+  <a href="https://www.npmjs.com/package/@googleworkspace/cli"><img src="https://img.shields.io/npm/v/%40googleworkspace%2Fcli?style=for-the-badge&label=Google%20Workspace%20CLI&color=34A853" alt="Google Workspace CLI version" /></a>
   <a href="https://svelte.dev/"><img src="https://img.shields.io/badge/Svelte-FF3E00?style=for-the-badge&logo=svelte&logoColor=white" alt="Svelte" /></a>
   <a href="https://bun.sh/docs/api/sqlite"><img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite" /></a>
 </p>
