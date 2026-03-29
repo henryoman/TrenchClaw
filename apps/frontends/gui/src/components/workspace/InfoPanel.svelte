@@ -9,19 +9,14 @@
       description: "Boot the runtime, connect keys, and get the first safe path working.",
     },
     {
-      label: "AI + vault setup",
-      href: `${docsBaseUrl}/docs/ai-and-vault-setup`,
-      description: "Set up OpenRouter or Gateway keys and the minimum runtime config.",
+      label: "Keys + settings",
+      href: `${docsBaseUrl}/docs/keys-and-settings`,
+      description: "Set up provider keys, RPC settings, and the minimum runtime configuration.",
     },
     {
-      label: "Current limitations",
-      href: `${docsBaseUrl}/docs/troubleshooting-and-current-limitations`,
-      description: "Read the rough edges before trusting this build with anything important.",
-    },
-    {
-      label: "Instances + safety",
-      href: `${docsBaseUrl}/docs/instances-and-safety-profiles`,
-      description: "Understand how instance state and safety profiles gate behavior.",
+      label: "Architecture",
+      href: `${docsBaseUrl}/docs/architecture`,
+      description: "Understand runtime authority, instance state, and the boundary between GUI and core.",
     },
   ] as const;
 </script>

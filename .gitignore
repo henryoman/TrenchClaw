@@ -19,16 +19,29 @@ apps/trenchclaw/.runtime-state/
 apps/trenchclaw/.trenchclaw-generated/
 
 # Runtime instance data - tracked seed/reference only
-apps/trenchclaw/.runtime/instances/[0-9][0-9]/
-!apps/trenchclaw/.runtime/instances/01/
-apps/trenchclaw/.runtime/instances/01/*
-!apps/trenchclaw/.runtime/instances/01/WAKEUP.md
-!apps/trenchclaw/.runtime/instances/01/instance.json
-!apps/trenchclaw/.runtime/instances/01/settings/
-apps/trenchclaw/.runtime/instances/01/settings/*
-!apps/trenchclaw/.runtime/instances/01/settings/ai.json
-!apps/trenchclaw/.runtime/instances/01/settings/settings.json
-!apps/trenchclaw/.runtime/instances/01/settings/trading.json
+apps/trenchclaw/.runtime/instances/*/
+!apps/trenchclaw/.runtime/instances/00/
+apps/trenchclaw/.runtime/instances/00/*
+!apps/trenchclaw/.runtime/instances/00/instance.json
+!apps/trenchclaw/.runtime/instances/00/secrets/
+apps/trenchclaw/.runtime/instances/00/secrets/*
+!apps/trenchclaw/.runtime/instances/00/secrets/vault.json
+!apps/trenchclaw/.runtime/instances/00/settings/
+apps/trenchclaw/.runtime/instances/00/settings/*
+!apps/trenchclaw/.runtime/instances/00/settings/ai.json
+!apps/trenchclaw/.runtime/instances/00/settings/settings.json
+!apps/trenchclaw/.runtime/instances/00/settings/trading.json
+!apps/trenchclaw/.runtime/instances/00/settings/wakeup.json
+!apps/trenchclaw/.runtime/instances/00/workspace/
+apps/trenchclaw/.runtime/instances/00/workspace/*
+!apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/
+apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/*
+!apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/.gitkeep
+!apps/trenchclaw/.runtime/instances/00/workspace/configs/
+apps/trenchclaw/.runtime/instances/00/workspace/configs/*
+!apps/trenchclaw/.runtime/instances/00/workspace/configs/.gitkeep
+!apps/trenchclaw/.runtime/instances/00/workspace/configs/news-feeds.json
+!apps/trenchclaw/.runtime/instances/00/workspace/configs/tracker.json
 
 # Runtime data (Bun SQLite)
 *.db

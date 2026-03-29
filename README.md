@@ -67,7 +67,7 @@ Full architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 Quick links:
 
 - [Quickstart](https://trenchclaw.vercel.app/docs)
-- [Feature Matrix](https://trenchclaw.vercel.app/docs/beta-capability-matrix)
+- [Keys and Settings](https://trenchclaw.vercel.app/docs/keys-and-settings)
 - [Runtime Architecture and Boundaries](#runtime-architecture-and-boundaries)
 - [Why TypeScript?](#why-typescript)
 - [Why Solana Kit](#why-solana-kit)

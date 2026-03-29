@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "feeds": [
+    {
+      "alias": "solana-cryptopotato",
+      "title": "CryptoPotato Solana",
+      "feedUrl": "https://cryptopotato.com/tag/solana/feed/",
+      "description": "CryptoPotato Solana tag RSS feed.",
+      "tags": [
+        "solana",
+        "rss",
+        "news"
+      ],
+      "enabled": true
+    }
+  ]
+}

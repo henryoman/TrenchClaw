@@ -14,9 +14,9 @@
     "lint:fix": "oxlint -c ../../../.oxlintrc.json --fix ."
   },
   "dependencies": {
-    "@ai-sdk/svelte": "^4.0.138",
+    "@ai-sdk/svelte": "^4.0.141",
     "@trenchclaw/types": "workspace:*",
-    "ai": "^6.0.138",
+    "ai": "^6.0.141",
     "marked": "^17.0.5"
   },
   "devDependencies": {

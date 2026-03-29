@@ -1,0 +1,7 @@
+{
+  "configVersion": 1,
+  "wakeup": {
+    "intervalMinutes": 0,
+    "prompt": ""
+  }
+}
