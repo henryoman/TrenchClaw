@@ -748,8 +748,12 @@ describe("Runtime v1 API", () => {
       expect(initialPayload.settings.provider).toBe("openrouter");
       expect(initialPayload.settings.model).toBe("stepfun/step-3.5-flash:free");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(initialPayload.options.map((option) => option.id)).toEqual(["stepfun/step-3.5-flash:free"]);
+      expect(initialPayload.options.map((option) => option.id)).toEqual([
+        "stepfun/step-3.5-flash:free",
+        "minimax/minimax-m2.5:free",
+      ]);
       expect(initialPayload.options.find((option) => option.id === "stepfun/step-3.5-flash:free")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.5:free")?.providers).toEqual(["openrouter"]);
 
       const updateResponse = await handler(new Request("http://localhost/v1/app/ai-settings", {
         method: "PUT",
@@ -757,7 +761,7 @@ describe("Runtime v1 API", () => {
         body: JSON.stringify({
           settings: {
             provider: "openrouter",
-            model: "anything-else-gets-normalized",
+            model: "minimax/minimax-m2.5:free",
             defaultMode: "primary",
             temperature: 0.4,
             maxOutputTokens: 2048,
@@ -771,10 +775,13 @@ describe("Runtime v1 API", () => {
         settings: { provider: string; model: string; maxOutputTokens: number | null };
       };
       expect(updatePayload.settings.provider).toBe("openrouter");
-      expect(updatePayload.settings.model).toBe("stepfun/step-3.5-flash:free");
+      expect(updatePayload.settings.model).toBe("minimax/minimax-m2.5:free");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
-      expect(updatePayload.options.map((option) => option.id)).toEqual(["stepfun/step-3.5-flash:free"]);
+      expect(updatePayload.options.map((option) => option.id)).toEqual([
+        "stepfun/step-3.5-flash:free",
+        "minimax/minimax-m2.5:free",
+      ]);
     } finally {
       if (previous === undefined) {
         delete process.env.TRENCHCLAW_AI_SETTINGS_FILE;

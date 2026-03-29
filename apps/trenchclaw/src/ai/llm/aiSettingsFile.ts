@@ -6,6 +6,7 @@ import { resolveRuntimeSeedInstancePath } from "../../runtime/runtimePaths";
 import { assertInstanceSystemWritePath } from "../../runtime/security/writeScope";
 import { ensureSeededJsonDocument, writeJsonDocument } from "../../runtime/settings/instance/io";
 import type { AiModelProvider } from "./modelCatalog";
+import { findAiModelCatalogEntry } from "./modelCatalog";
 import { parseStructuredFile } from "./shared";
 
 export const DEFAULT_LLM_MODEL = "stepfun/step-3.5-flash:free";
@@ -16,6 +17,9 @@ const AI_SETTINGS_TEMPLATE_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_TEMPLATE_FILE";
 const NO_ACTIVE_INSTANCE_AI_SETTINGS_MESSAGE =
   "No active instance selected. AI settings are instance-scoped. Sign in before accessing AI settings.";
 
+const normalizeAiModel = (model: string): string =>
+  findAiModelCatalogEntry(model) ? model : DEFAULT_LLM_MODEL;
+
 export const aiSettingsSchema = z.object({
   provider: z.enum(["gateway", "openrouter"]).default(DEFAULT_LLM_PROVIDER),
   model: z.string().trim().optional().default(DEFAULT_LLM_MODEL),
@@ -24,7 +28,7 @@ export const aiSettingsSchema = z.object({
   maxOutputTokens: z.number().int().positive().max(64_000).nullable().default(null),
 }).transform((settings) => ({
   ...settings,
-  model: DEFAULT_LLM_MODEL,
+  model: normalizeAiModel(settings.model),
 }));
 
 export type AiSettings = z.output<typeof aiSettingsSchema>;

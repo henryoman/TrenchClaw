@@ -137,6 +137,32 @@ describe("resolveLlmProviderConfigFromVault", () => {
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
+  test("preserves the configured MiniMax free model on OpenRouter", async () => {
+    process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
+      provider: "openrouter",
+      model: "minimax/minimax-m2.5:free",
+      defaultMode: "primary",
+      temperature: null,
+      maxOutputTokens: null,
+    });
+    process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+      llm: {
+        gateway: {
+          "api-key": "gateway-key",
+        },
+        openrouter: {
+          "api-key": "openrouter-key",
+        },
+      },
+    });
+
+    const resolved = await resolveLlmProviderConfigFromVault();
+
+    expect(resolved?.provider).toBe("openrouter");
+    expect(resolved?.model).toBe("minimax/minimax-m2.5:free");
+    expect(resolved?.apiKey).toBe("openrouter-key");
+  });
+
   test("uses OpenRouter when the selected model is OpenRouter-only", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",

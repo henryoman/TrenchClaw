@@ -33,6 +33,11 @@ export const AI_MODEL_CATALOG = [
     label: "Step 3.5 Flash Free",
     providers: OPENROUTER_ONLY,
   },
+  {
+    id: "minimax/minimax-m2.5:free",
+    label: "MiniMax M2.5 Free",
+    providers: OPENROUTER_ONLY,
+  },
 ] as const satisfies readonly AiModelCatalogEntry[];
 
 export const listAiModelCatalog = (): readonly AiModelCatalogEntry[] => AI_MODEL_CATALOG;
