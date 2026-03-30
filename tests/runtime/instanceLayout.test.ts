@@ -87,6 +87,7 @@ describe("ensureInstanceLayout", () => {
     expect(result.first.createdFiles.map((filePath) => path.basename(filePath)).toSorted()).toEqual([
       ".gitkeep",
       ".gitkeep",
+      ".gitkeep",
       "ai.json",
       "instance.json",
       "news-feeds.json",
