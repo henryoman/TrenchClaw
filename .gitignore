@@ -37,6 +37,9 @@ apps/trenchclaw/.runtime/instances/00/workspace/*
 !apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/
 apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/*
 !apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/.gitkeep
+!apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/skills/
+apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/skills/*
+!apps/trenchclaw/.runtime/instances/00/workspace/added-knowledge/skills/.gitkeep
 !apps/trenchclaw/.runtime/instances/00/workspace/configs/
 apps/trenchclaw/.runtime/instances/00/workspace/configs/*
 !apps/trenchclaw/.runtime/instances/00/workspace/configs/.gitkeep

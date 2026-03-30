@@ -31,6 +31,7 @@ export const RELEASE_RUNTIME_SEED_ASSET_PATHS = [
   ".runtime/instances/00/workspace/configs/news-feeds.json",
   ".runtime/instances/00/workspace/configs/tracker.json",
   ".runtime/instances/00/workspace/added-knowledge/.gitkeep",
+  ".runtime/instances/00/workspace/added-knowledge/skills/.gitkeep",
 ] as const;
 
 export const RELEASE_PLACEHOLDER_ASSET_PATHS = [

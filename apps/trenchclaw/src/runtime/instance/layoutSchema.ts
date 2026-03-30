@@ -30,7 +30,9 @@ const workspaceChildren = {
   }),
   "added-knowledge": directory({
     ".gitkeep": file(),
-    skills: directory({}),
+    skills: directory({
+      ".gitkeep": file(),
+    }),
   }),
 } satisfies Record<string, InstanceLayoutNode>;
 
