@@ -94,6 +94,7 @@ describe("trading settings layering", () => {
     expect(settings.trading.preferences.defaultSwapProvider).toBe("ultra");
     expect(settings.trading.preferences.defaultSwapMode).toBe("ExactIn");
     expect(settings.trading.preferences.defaultAmountUnit).toBe("ui");
+    expect(settings.trading.preferences.walletRpcBatchingEnabled).toBe(false);
     expect(settings.trading.preferences.scheduleActionName).toBe("scheduleManagedUltraSwap");
     expect(settings.trading.preferences.quickBuyPresets).toEqual([]);
     expect(settings.trading.preferences.customPresets).toEqual([]);
@@ -117,6 +118,7 @@ describe("trading settings layering", () => {
           defaultSwapProvider: "standard",
           defaultSwapMode: "ExactOut",
           defaultAmountUnit: "percent",
+          walletRpcBatchingEnabled: true,
           scheduleActionName: "scheduleManagedUltraSwap",
           quickBuyPresets: [
             {
@@ -146,6 +148,7 @@ describe("trading settings layering", () => {
     expect(settings.trading.preferences.defaultSwapProvider).toBe("standard");
     expect(settings.trading.preferences.defaultSwapMode).toBe("ExactOut");
     expect(settings.trading.preferences.defaultAmountUnit).toBe("percent");
+    expect(settings.trading.preferences.walletRpcBatchingEnabled).toBe(true);
     expect(settings.trading.jupiter.standard.enabled).toBe(true);
     expect(settings.trading.jupiter.standard.allowQuotes).toBe(true);
     expect(settings.trading.jupiter.standard.allowExecutions).toBe(true);
@@ -167,6 +170,7 @@ describe("trading settings layering", () => {
           defaultSwapProvider: "ultra",
           defaultSwapMode: "ExactIn",
           defaultAmountUnit: "ui",
+          walletRpcBatchingEnabled: false,
           scheduleActionName: "scheduleManagedUltraSwap",
           quickBuyPresets: [],
           customPresets: [],
@@ -186,6 +190,7 @@ describe("trading settings layering", () => {
           defaultSwapProvider: "ultra",
           defaultSwapMode: "ExactIn",
           defaultAmountUnit: "ui",
+          walletRpcBatchingEnabled: false,
           scheduleActionName: "scheduleManagedUltraSwap",
           quickBuyPresets: [],
           customPresets: [],

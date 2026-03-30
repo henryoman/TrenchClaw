@@ -407,6 +407,7 @@ export interface GuiTradingSettingsView {
   defaultSwapProvider: GuiTradingSwapProvider;
   defaultSwapMode: GuiTradingSwapMode;
   defaultAmountUnit: GuiTradingAmountUnit;
+  walletRpcBatchingEnabled: boolean;
   scheduleActionName: string;
   quickBuyPresets: GuiTradingPresetView[];
   customPresets: GuiTradingPresetView[];

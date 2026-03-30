@@ -31,6 +31,11 @@ import {
   type ManagedWalletLibraryEntry,
 } from "../../solana/lib/wallet/walletTypes";
 import { resolveInstanceId } from "../core/instanceMemoryShared";
+import {
+  DEFAULT_TRADING_PREFERENCES,
+  instanceTradingSettingsSchema,
+  loadInstanceTradingSettings,
+} from "../../runtime/settings/instance/trading";
 
 const maxWalletNames = 100;
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -222,6 +227,7 @@ interface ManagedWalletContentsLoadOutcome {
   wallets: ManagedWalletContentsWallet[];
   walletErrors: ManagedWalletContentsWalletError[];
   usedSequentialFallback: boolean;
+  dataSource: ManagedWalletContentsDataSource;
 }
 
 interface WalletScanReuseResult {
@@ -356,6 +362,7 @@ const buildWalletScanRequestKey = (input: {
   instanceId: string;
   includeZeroBalances: boolean;
   useHeliusDas: boolean;
+  useRpcBatchingEnabled: boolean;
   entries: ManagedWalletLibraryEntry[];
 }): string => {
   const digest = createHash("sha256")
@@ -363,6 +370,7 @@ const buildWalletScanRequestKey = (input: {
       instanceId: input.instanceId,
       includeZeroBalances: input.includeZeroBalances,
       provider: input.useHeliusDas ? "helius-das" : "rpc",
+      useRpcBatchingEnabled: input.useRpcBatchingEnabled,
       walletIds: input.entries.map((entry) => entry.walletId),
     }))
     .digest("hex")
@@ -864,30 +872,77 @@ const postRpcBatchDetailed = async (
   };
 };
 
-const postRpcBatch = async (
-  rpcUrl: string,
-  requests: JsonRpcBatchRequest[],
-  options: RpcRequestSchedulingOptions = {},
-): Promise<Map<string, unknown>> => {
-  const detailed = await postRpcBatchDetailed(rpcUrl, requests, options);
-  const firstError = detailed.errors.entries().next();
-  if (!firstError.done) {
-    const [requestId, error] = firstError.value;
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error(`RPC ${requestId} failed: ${formatRpcError(error)}`);
-  }
-  return detailed.results;
-};
-
 const postRpcSingle = async (
   rpcUrl: string,
   request: JsonRpcBatchRequest,
   options: RpcRequestSchedulingOptions = {},
 ): Promise<unknown> => {
-  const results = await postRpcBatch(rpcUrl, [request], options);
-  return getRpcBatchResult(results, request.id);
+  const scheduling = resolveRpcSchedulingOptions(rpcUrl, [request], options);
+  let response: Response;
+  try {
+    response = await scheduleRateLimitedRpcRequest(
+      rpcUrl,
+      async () =>
+        await fetch(rpcUrl, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify(request),
+          signal: createRpcRequestSignal(),
+        }),
+      scheduling,
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/timed out|timeout|abort/iu.test(message)) {
+      throw new Error(`RPC request timed out after ${RPC_REQUEST_TIMEOUT_MS}ms`, { cause: error });
+    }
+    throw error;
+  }
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    if (response.status === 429) {
+      applyRpcRateLimitCooldown(
+        rpcUrl,
+        parseRetryAfterMs(response.headers.get("retry-after")) ?? DEFAULT_RPC_RATE_LIMIT_COOLDOWN_MS,
+        scheduling,
+      );
+    }
+    throw new Error(
+      `RPC request failed with status ${response.status}${responseText ? `: ${responseText.slice(0, 300)}` : ""}`,
+    );
+  }
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(responseText);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`RPC response was not valid JSON: ${message}`, { cause: error });
+  }
+
+  const entry = Array.isArray(payload)
+    ? payload.find((candidate) => isRecord(candidate) && String(candidate.id ?? "") === request.id) ?? payload[0]
+    : payload;
+  if (!isRecord(entry)) {
+    throw new Error("RPC response was not an object");
+  }
+  if ("error" in entry && entry.error !== undefined) {
+    if (isRpcRateLimitErrorPayload(entry.error)) {
+      applyRpcRateLimitCooldown(
+        rpcUrl,
+        extractRetryAfterMsFromError(entry.error) ?? DEFAULT_RPC_RATE_LIMIT_COOLDOWN_MS,
+        scheduling,
+      );
+    }
+    throw new Error(`RPC ${request.id} failed: ${formatRpcError(entry.error)}`);
+  }
+  if (!("result" in entry)) {
+    throw new Error(`RPC ${request.id} returned no result`);
+  }
+  return entry.result;
 };
 
 const buildWalletResult = (input: {
@@ -1051,12 +1106,14 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
   entries: ManagedWalletLibraryEntry[];
   includeZeroBalances: boolean;
   lane?: RpcRequestLane;
+  usedSequentialFallback?: boolean;
 }): Promise<ManagedWalletContentsLoadOutcome> => {
   if (input.entries.length === 0) {
     return {
       wallets: [],
       walletErrors: [],
       usedSequentialFallback: false,
+      dataSource: "rpc-sequential",
     };
   }
 
@@ -1164,7 +1221,8 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
   return {
     wallets,
     walletErrors,
-    usedSequentialFallback: true,
+    usedSequentialFallback: input.usedSequentialFallback ?? false,
+    dataSource: "rpc-sequential",
   };
 };
 
@@ -1270,6 +1328,7 @@ const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
       wallets: [],
       walletErrors: [],
       usedSequentialFallback: false,
+      dataSource: "helius-das",
     };
   }
 
@@ -1361,6 +1420,7 @@ const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
     wallets,
     walletErrors,
     usedSequentialFallback: false,
+    dataSource: "helius-das",
   };
 };
 
@@ -1450,6 +1510,7 @@ const loadWalletsWithLoader = async (
     ),
     walletErrors: [],
     usedSequentialFallback: false,
+    dataSource: "rpc-sequential",
   };
 };
 
@@ -1537,12 +1598,14 @@ const loadWalletContentsFromRpc = async (input: {
   entries: ManagedWalletLibraryEntry[];
   includeZeroBalances: boolean;
   lane?: RpcRequestLane;
+  useBatchRequests: boolean;
 }): Promise<ManagedWalletContentsLoadOutcome> => {
   if (input.entries.length === 0) {
     return {
       wallets: [],
       walletErrors: [],
       usedSequentialFallback: false,
+      dataSource: "rpc-sequential",
     };
   }
 
@@ -1564,56 +1627,77 @@ const loadWalletContentsFromRpc = async (input: {
     uncachedEntries.push(entry);
   }
 
-  const entryChunks = chunkEntries(uncachedEntries, walletBatchLimit);
   const fetchedWallets = new Map<string, ManagedWalletContentsWallet>();
   const walletErrors: ManagedWalletContentsWalletError[] = [];
   let usedSequentialFallback = false;
+  let dataSource: ManagedWalletContentsDataSource = "rpc-sequential";
 
-  // Process chunks in order so retry fallback behavior stays predictable per batch.
-  for (const entryChunk of entryChunks) {
-    try {
-      // eslint-disable-next-line no-await-in-loop
-      const chunkWallets = await loadWalletContentsBatchFromRpc({
-        entries: entryChunk,
-        rpcUrl,
-        includeZeroBalances: input.includeZeroBalances,
-        lane: input.lane,
-      });
-      for (const wallet of chunkWallets.wallets) {
-        fetchedWallets.set(wallet.walletId, wallet);
-      }
-      if (chunkWallets.failedEntries.length > 0) {
+  if (input.useBatchRequests) {
+    const entryChunks = chunkEntries(uncachedEntries, walletBatchLimit);
+
+    // Process chunks in order so retry fallback behavior stays predictable per batch.
+    for (const entryChunk of entryChunks) {
+      try {
         // eslint-disable-next-line no-await-in-loop
-        const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
-          entries: chunkWallets.failedEntries,
+        const chunkWallets = await loadWalletContentsBatchFromRpc({
+          entries: entryChunk,
           rpcUrl,
           includeZeroBalances: input.includeZeroBalances,
           lane: input.lane,
         });
+        for (const wallet of chunkWallets.wallets) {
+          fetchedWallets.set(wallet.walletId, wallet);
+        }
+        if (chunkWallets.failedEntries.length > 0) {
+          // eslint-disable-next-line no-await-in-loop
+          const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
+            entries: chunkWallets.failedEntries,
+            rpcUrl,
+            includeZeroBalances: input.includeZeroBalances,
+            lane: input.lane,
+            usedSequentialFallback: true,
+          });
+          usedSequentialFallback = true;
+          dataSource = sequentialOutcome.dataSource;
+          for (const wallet of sequentialOutcome.wallets) {
+            fetchedWallets.set(wallet.walletId, wallet);
+          }
+          walletErrors.push(...sequentialOutcome.walletErrors);
+        }
+      } catch (error) {
+        if (!isRetryableRpcError(error) && !isBatchUnsupportedRpcError(error)) {
+          throw error;
+        }
+
+        // eslint-disable-next-line no-await-in-loop
+        const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
+          entries: entryChunk,
+          rpcUrl,
+          includeZeroBalances: input.includeZeroBalances,
+          lane: input.lane,
+          usedSequentialFallback: true,
+        });
         usedSequentialFallback = true;
+        dataSource = sequentialOutcome.dataSource;
         for (const wallet of sequentialOutcome.wallets) {
           fetchedWallets.set(wallet.walletId, wallet);
         }
         walletErrors.push(...sequentialOutcome.walletErrors);
       }
-    } catch (error) {
-      if (!isRetryableRpcError(error) && !isBatchUnsupportedRpcError(error)) {
-        throw error;
-      }
-
-      // eslint-disable-next-line no-await-in-loop
-      const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
-        entries: entryChunk,
-        rpcUrl,
-        includeZeroBalances: input.includeZeroBalances,
-        lane: input.lane,
-      });
-      usedSequentialFallback = true;
-      for (const wallet of sequentialOutcome.wallets) {
-        fetchedWallets.set(wallet.walletId, wallet);
-      }
-      walletErrors.push(...sequentialOutcome.walletErrors);
     }
+  } else {
+    const sequentialOutcome = await loadWalletContentsSequentiallyFromRpc({
+      entries: uncachedEntries,
+      rpcUrl,
+      includeZeroBalances: input.includeZeroBalances,
+      lane: input.lane,
+      usedSequentialFallback: false,
+    });
+    dataSource = sequentialOutcome.dataSource;
+    for (const wallet of sequentialOutcome.wallets) {
+      fetchedWallets.set(wallet.walletId, wallet);
+    }
+    walletErrors.push(...sequentialOutcome.walletErrors);
   }
 
   for (const wallet of fetchedWallets.values()) {
@@ -1634,6 +1718,7 @@ const loadWalletContentsFromRpc = async (input: {
     wallets,
     walletErrors,
     usedSequentialFallback,
+    dataSource,
   };
 };
 
@@ -1717,6 +1802,14 @@ const loadPreferredRpcUrl = async (input: {
   return heliusConfig.rpcUrl ?? input.ctx.rpcUrl;
 };
 
+const loadWalletRpcBatchingEnabled = async (instanceId: string): Promise<boolean> => {
+  const payload = await loadInstanceTradingSettings({ instanceId });
+  const parsed = instanceTradingSettingsSchema.safeParse(payload.resolvedSettings);
+  return parsed.success
+    ? parsed.data.trading.preferences.walletRpcBatchingEnabled
+    : DEFAULT_TRADING_PREFERENCES.walletRpcBatchingEnabled;
+};
+
 const executeWalletContentsRpcOnly = async (input: {
   ctx: ActionContext;
   actionInput: GetWalletContentsInput;
@@ -1749,11 +1842,13 @@ const executeWalletContentsRpcOnly = async (input: {
       walletLibrary.entries,
       input.actionInput as GetManagedWalletContentsInput,
     );
+    const walletRpcBatchingEnabled = await loadWalletRpcBatchingEnabled(instanceId);
     const requestLane = getWalletContentsRequestLane(input.ctx);
     const requestKey = buildWalletScanRequestKey({
       instanceId,
       includeZeroBalances: input.actionInput.includeZeroBalances,
       useHeliusDas: false,
+      useRpcBatchingEnabled: walletRpcBatchingEnabled,
       entries: filteredEntries,
     });
     const readMode = classifySimpleWalletContentsRead({
@@ -1834,6 +1929,7 @@ const executeWalletContentsRpcOnly = async (input: {
           rpcUrl: preferredRpcUrl,
           includeZeroBalances: input.actionInput.includeZeroBalances,
           lane: requestLane,
+          useBatchRequests: walletRpcBatchingEnabled,
         });
 
     const wallets = loadOutcome.wallets;
@@ -1849,7 +1945,7 @@ const executeWalletContentsRpcOnly = async (input: {
         walletLibraryFilePath,
         invalidLibraryLineCount: walletLibrary.invalidLineCount,
         includeZeroBalances: input.actionInput.includeZeroBalances,
-        dataSource: loadOutcome.usedSequentialFallback ? "rpc-sequential" : "rpc-batch",
+        dataSource: loadOutcome.dataSource,
         loadOutcome,
         warnings: buildWalletContentWarnings({
           usedSequentialFallback: loadOutcome.usedSequentialFallback,
@@ -1915,6 +2011,7 @@ export const createGetManagedWalletContentsAction = (
           rpcUrl: ctx.rpcUrl,
           requireSelectedProvider: true,
         });
+        const walletRpcBatchingEnabled = await loadWalletRpcBatchingEnabled(instanceId);
 
         const useHeliusDas = Boolean(heliusConfig?.rpcUrl);
         const requestLane = getWalletContentsRequestLane(ctx);
@@ -1922,6 +2019,7 @@ export const createGetManagedWalletContentsAction = (
           instanceId,
           includeZeroBalances: input.includeZeroBalances,
           useHeliusDas,
+          useRpcBatchingEnabled: walletRpcBatchingEnabled,
           entries: filteredEntries,
         });
         const readMode = classifyWalletContentsRead({
@@ -1988,7 +2086,7 @@ export const createGetManagedWalletContentsAction = (
           }
         }
 
-        let dataSource: ManagedWalletContentsDataSource = "rpc-batch";
+        let dataSource: ManagedWalletContentsDataSource = "rpc-sequential";
         let fellBackFromHeliusDas = false;
         let loadOutcome = deps.loadWalletContents
           ? await loadWalletsWithLoader(filteredEntries, deps.loadWalletContents, {
@@ -2007,6 +2105,7 @@ export const createGetManagedWalletContentsAction = (
                 rpcUrl: ctx.rpcUrl,
                 includeZeroBalances: input.includeZeroBalances,
                 lane: requestLane,
+                useBatchRequests: walletRpcBatchingEnabled,
               });
         if (useHeliusDas && heliusConfig?.rpcUrl && loadOutcome.wallets.length === 0 && loadOutcome.walletErrors.length > 0) {
           fellBackFromHeliusDas = true;
@@ -2015,14 +2114,15 @@ export const createGetManagedWalletContentsAction = (
             rpcUrl: heliusConfig.rpcUrl,
             includeZeroBalances: input.includeZeroBalances,
             lane: requestLane,
+            useBatchRequests: walletRpcBatchingEnabled,
           });
         }
         if (useHeliusDas) {
           dataSource = fellBackFromHeliusDas
-            ? (loadOutcome.usedSequentialFallback ? "rpc-sequential" : "rpc-batch")
+            ? loadOutcome.dataSource
             : "helius-das";
-        } else if (loadOutcome.usedSequentialFallback) {
-          dataSource = "rpc-sequential";
+        } else {
+          dataSource = loadOutcome.dataSource;
         }
 
         const wallets = loadOutcome.wallets;

@@ -278,8 +278,8 @@ describe("runtime tool snapshot", () => {
     const ohlcDownloadTool = snapshot.modelTools.find((toolEntry) => toolEntry.name === "downloadGeckoTerminalOhlcv");
 
     expect(modelToolNames).toEqual(expect.arrayContaining(GECKOTERMINAL_MODEL_TOOL_NAMES));
-    expect(ohlcDownloadTool?.toolDescription).toContain("raw Solana candle data saved to the runtime workspace");
-    expect(ohlcDownloadTool?.toolDescription).toContain("later research");
+    expect(ohlcDownloadTool?.toolDescription).toContain("one tiny JSON surface");
+    expect(ohlcDownloadTool?.toolDescription).toContain("main liquidity pool");
     expect(ohlcDownloadTool?.releaseReadinessStatus).toBe("shipped-now");
   });
 

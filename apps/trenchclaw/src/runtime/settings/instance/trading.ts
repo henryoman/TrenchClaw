@@ -28,6 +28,7 @@ const createDefaultTradingPreferences = () => ({
   defaultSwapProvider: "ultra" as const,
   defaultSwapMode: "ExactIn" as const,
   defaultAmountUnit: "ui" as const,
+  walletRpcBatchingEnabled: false,
   scheduleActionName: SUPPORTED_SCHEDULE_ACTION,
   quickBuyPresets: [],
   customPresets: [],
@@ -60,6 +61,7 @@ export const tradingPreferencesSchema = z.object({
   defaultSwapProvider: tradingSwapProviderSchema.default("ultra"),
   defaultSwapMode: tradingSwapModeSchema.default("ExactIn"),
   defaultAmountUnit: tradingPresetAmountUnitSchema.default("ui"),
+  walletRpcBatchingEnabled: z.boolean().default(false),
   scheduleActionName: z
     .string()
     .trim()

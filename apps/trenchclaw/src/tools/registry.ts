@@ -572,12 +572,12 @@ const runtimeActionToolDefinitionsBase: readonly RuntimeActionToolDefinitionWith
   {
     kind: "action",
     action: downloadGeckoTerminalOhlcvAction,
-    description: "Download raw GeckoTerminal OHLC JSON for a Solana pool into the active instance workspace.",
-    purpose: "Persist long OHLC payloads as JSON artifacts under workspace output so later research can read the exact downloaded market data instead of re-querying every time.",
-    routingHint: "you need raw Solana candle data saved to the runtime workspace for later research, charting, or offline inspection",
+    description: "Download raw GeckoTerminal OHLC JSON for a Solana token into the active instance workspace.",
+    purpose: "Give the model one tiny JSON surface for requests like 'download candles for this token' while the runtime resolves the token's main liquidity pool, fetches OHLC from that pool, and persists the raw payload as a JSON artifact under workspace output.",
+    routingHint: "you need raw Solana candle data saved to the runtime workspace for later research, charting, or offline inspection and you only know the token mint",
     tags: ["geckoterminal", "ohlc", "market-data", "json", "workspace", "download"],
     exampleInput: {
-      poolAddress: "Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE",
+      coinAddress: "So11111111111111111111111111111111111111112",
       timeframe: "minute",
       aggregate: 5,
       limit: 100,

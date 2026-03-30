@@ -16,6 +16,32 @@ const tempInstanceDirectories: string[] = [];
 const previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
 const previousFetch = globalThis.fetch;
 
+const parseRpcBody = (init?: RequestInit): unknown => init?.body ? JSON.parse(String(init.body)) : null;
+
+const expectSingleRpcRequest = (body: unknown): { id: string; method: string } => {
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    throw new Error("Expected a single JSON-RPC request body");
+  }
+  return body as { id: string; method: string };
+};
+
+const writeWalletBatchSetting = async (instanceId: string, enabled: boolean): Promise<void> => {
+  const settingsDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId, "settings");
+  await mkdir(settingsDirectory, { recursive: true });
+  await writeFile(
+    path.join(settingsDirectory, "trading.json"),
+    `${JSON.stringify({
+      configVersion: 1,
+      trading: {
+        preferences: {
+          walletRpcBatchingEnabled: enabled,
+        },
+      },
+    }, null, 2)}\n`,
+    "utf8",
+  );
+};
+
 afterEach(async () => {
   resetWalletContentsCachesForTests();
   for (const directoryPath of tempInstanceDirectories.splice(0)) {
@@ -378,6 +404,7 @@ describe("getManagedWalletContentsAction", () => {
       "utf8",
     );
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+    await writeWalletBatchSetting(instanceId, true);
 
     let seenRpcBody: unknown;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -669,7 +696,7 @@ describe("getManagedWalletContentsAction", () => {
     );
 
     expect(seenUrl).toBe("https://mainnet.helius-rpc.com/?api-key=test-helius-key");
-    expect(seenRpcBody).toEqual([
+    expect(seenRpcBody).toEqual(
       expect.objectContaining({
         method: "getAssetsByOwner",
         id: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:helius-das:1",
@@ -684,7 +711,7 @@ describe("getManagedWalletContentsAction", () => {
           },
         },
       }),
-    ]);
+    );
 
     expect(result.ok).toBe(true);
     const payload = result.data as {
@@ -757,9 +784,9 @@ describe("getManagedWalletContentsAction", () => {
 
     let requestCount = 0;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const body = init?.body ? JSON.parse(String(init.body)) as unknown[] : [];
+      const body = parseRpcBody(init);
       requestCount += 1;
-      if (body.length > 1) {
+      if (Array.isArray(body) && body.length > 1) {
         return new Response(
           JSON.stringify([
             {
@@ -778,7 +805,7 @@ describe("getManagedWalletContentsAction", () => {
         );
       }
 
-      const request = body[0] as { id: string };
+      const request = expectSingleRpcRequest(body);
       const responses: Record<string, unknown> = {
         "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance": {
           jsonrpc: "2.0",
@@ -833,12 +860,13 @@ describe("getManagedWalletContentsAction", () => {
         },
       };
 
-      return new Response(JSON.stringify([responses[request.id]]), {
+      return new Response(JSON.stringify(responses[request.id]), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
     }) as unknown as typeof fetch;
 
+    await writeWalletBatchSetting(instanceId, true);
     const action = createGetManagedWalletContentsAction();
     const result = await action.execute(
       createActionContext({
@@ -896,8 +924,15 @@ describe("getManagedWalletContentsAction", () => {
     let sawHeliusDasRequest = false;
     let sawRawRpcBatch = false;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const body = init?.body ? JSON.parse(String(init.body)) as Array<{ id: string; method: string }> : [];
-      if (body.some((request) => request.method === "getAssetsByOwner")) {
+      const body = parseRpcBody(init);
+      if (Array.isArray(body) && body.some((request) => request.method === "getAssetsByOwner")) {
+        sawHeliusDasRequest = true;
+        return new Response("rate limited", {
+          status: 429,
+          headers: { "content-type": "text/plain" },
+        });
+      }
+      if (!Array.isArray(body) && expectSingleRpcRequest(body).method === "getAssetsByOwner") {
         sawHeliusDasRequest = true;
         return new Response("rate limited", {
           status: 429,
@@ -905,25 +940,13 @@ describe("getManagedWalletContentsAction", () => {
         });
       }
 
-      sawRawRpcBatch = body.length > 1;
+      sawRawRpcBatch = Array.isArray(body);
       return new Response(
-        JSON.stringify([
-          {
-            jsonrpc: "2.0",
-            id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance",
-            result: { value: 40_010_000 },
-          },
-          {
-            jsonrpc: "2.0",
-            id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:spl",
-            result: { value: [] },
-          },
-          {
-            jsonrpc: "2.0",
-            id: "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:token2022",
-            result: { value: [] },
-          },
-        ]),
+        JSON.stringify({
+          jsonrpc: "2.0",
+          id: expectSingleRpcRequest(body).id,
+          result: expectSingleRpcRequest(body).id.endsWith(":balance") ? { value: 40_010_000 } : { value: [] },
+        }),
         {
           status: 200,
           headers: { "content-type": "application/json" },
@@ -945,12 +968,12 @@ describe("getManagedWalletContentsAction", () => {
 
     expect(result.ok).toBe(true);
     expect(sawHeliusDasRequest).toBe(true);
-    expect(sawRawRpcBatch).toBe(true);
+    expect(sawRawRpcBatch).toBe(false);
     const payload = result.data as {
       dataSource: string;
       wallets: Array<{ walletName: string; balanceLamports: string }>;
     };
-    expect(payload.dataSource).toBe("rpc-batch");
+    expect(payload.dataSource).toBe("rpc-sequential");
     expect(payload.wallets).toEqual([
       expect.objectContaining({
         walletName: "wallet_000",
@@ -985,14 +1008,14 @@ describe("getManagedWalletContentsAction", () => {
     let requestCount = 0;
     let sawTimeoutSignal = false;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const body = init?.body ? JSON.parse(String(init.body)) as unknown[] : [];
+      const body = parseRpcBody(init);
       requestCount += 1;
-      if (body.length > 1) {
+      if (Array.isArray(body) && body.length > 1) {
         sawTimeoutSignal = Boolean(init?.signal);
         throw new Error("request timed out waiting for RPC response");
       }
 
-      const request = body[0] as { id: string };
+      const request = expectSingleRpcRequest(body);
       const responses: Record<string, unknown> = {
         "2gqBXk9VWimPKtin5Ks6286ToKp2cJzSKWcQEX3Fm9WU:balance": {
           jsonrpc: "2.0",
@@ -1011,12 +1034,13 @@ describe("getManagedWalletContentsAction", () => {
         },
       };
 
-      return new Response(JSON.stringify([responses[request.id]]), {
+      return new Response(JSON.stringify(responses[request.id]), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
     }) as typeof fetch;
 
+    await writeWalletBatchSetting(instanceId, true);
     const action = createGetManagedWalletContentsAction();
     const result = await action.execute(
       createActionContext({
@@ -1077,18 +1101,7 @@ describe("getManagedWalletContentsAction", () => {
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
 
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const body = init?.body ? JSON.parse(String(init.body)) as Array<{ id: string }> : [];
-      if (body.length > 1) {
-        return new Response("rate limited", {
-          status: 429,
-          headers: { "content-type": "text/plain" },
-        });
-      }
-
-      const request = body[0];
-      if (!request) {
-        throw new Error("Expected a single RPC request body entry");
-      }
+      const request = expectSingleRpcRequest(parseRpcBody(init));
       if (request.id.startsWith("3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:")) {
         return new Response("rate limited", {
           status: 429,
@@ -1114,7 +1127,7 @@ describe("getManagedWalletContentsAction", () => {
         },
       };
 
-      return new Response(JSON.stringify([responses[request.id]]), {
+      return new Response(JSON.stringify(responses[request.id]), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -1186,9 +1199,9 @@ describe("getManagedWalletContentsAction", () => {
     );
     process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
 
-    let seenRpcBody: unknown;
+    const seenRpcBodies: unknown[] = [];
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      seenRpcBody = init?.body ? JSON.parse(String(init.body)) : null;
+      seenRpcBodies.push(parseRpcBody(init));
       return new Response(
         JSON.stringify([
           {
@@ -1226,7 +1239,7 @@ describe("getManagedWalletContentsAction", () => {
       },
     );
 
-    expect(seenRpcBody).toEqual([
+    expect(seenRpcBodies).toEqual([
       expect.objectContaining({
         id: "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance",
       }),
@@ -1353,9 +1366,9 @@ describe("getManagedWalletContentsAction", () => {
 
     let requestCount = 0;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const body = init?.body ? JSON.parse(String(init.body)) as Array<{ id: string }> : [];
+      const body = parseRpcBody(init);
       requestCount += 1;
-      if (body.length > 1) {
+      if (Array.isArray(body) && body.length > 1) {
         return new Response(
           JSON.stringify({
             jsonrpc: "2.0",
@@ -1371,7 +1384,7 @@ describe("getManagedWalletContentsAction", () => {
         );
       }
 
-      const request = body[0] as { id: string };
+      const request = expectSingleRpcRequest(body);
       const responses: Record<string, unknown> = {
         "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:balance": {
           jsonrpc: "2.0",
@@ -1390,12 +1403,13 @@ describe("getManagedWalletContentsAction", () => {
         },
       };
 
-      return new Response(JSON.stringify([responses[request.id]]), {
+      return new Response(JSON.stringify(responses[request.id]), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
     }) as typeof fetch;
 
+    await writeWalletBatchSetting(instanceId, true);
     const action = createGetWalletContentsAction();
     const result = await action.execute(
       createActionContext({
@@ -1502,7 +1516,7 @@ describe("getManagedWalletContentsAction", () => {
 
     expect(firstResult.ok).toBe(true);
     expect(secondResult.ok).toBe(true);
-    expect(requestCount).toBe(1);
+    expect(requestCount).toBe(3);
   });
 
   test("falls back only the failed wallet chunk entries for getWalletContents", async () => {
@@ -1538,9 +1552,9 @@ describe("getManagedWalletContentsAction", () => {
 
     let requestCount = 0;
     globalThis.fetch = (async (_input: RequestInfo | URL, init?: RequestInit) => {
-      const body = init?.body ? JSON.parse(String(init.body)) as Array<{ id: string }> : [];
+      const body = parseRpcBody(init);
       requestCount += 1;
-      if (body.length > 3) {
+      if (Array.isArray(body) && body.length > 3) {
         return new Response(
           JSON.stringify([
             {
@@ -1581,7 +1595,7 @@ describe("getManagedWalletContentsAction", () => {
         );
       }
 
-      const request = body[0] as { id: string };
+      const request = expectSingleRpcRequest(body);
       const responses: Record<string, unknown> = {
         "3B7c1TwdECT9WRBCPieNQqed3JqmZJTZuhVNikMG5yj9:balance": {
           jsonrpc: "2.0",
@@ -1600,12 +1614,13 @@ describe("getManagedWalletContentsAction", () => {
         },
       };
 
-      return new Response(JSON.stringify([responses[request.id]]), {
+      return new Response(JSON.stringify(responses[request.id]), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
     }) as typeof fetch;
 
+    await writeWalletBatchSetting(instanceId, true);
     const action = createGetWalletContentsAction();
     const result = await action.execute(
       createActionContext({

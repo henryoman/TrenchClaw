@@ -819,12 +819,17 @@ describe("Runtime v1 API", () => {
       const initialPayload = (await initialResponse.json()) as {
         instanceId: string | null;
         filePath: string | null;
-        settings: { defaultSwapProvider: string; defaultSwapMode: string };
+        settings: {
+          defaultSwapProvider: string;
+          defaultSwapMode: string;
+          walletRpcBatchingEnabled: boolean;
+        };
       };
       expect(initialPayload.instanceId).toBe(instanceId);
       expect(initialPayload.filePath).toContain(`/instances/${instanceId}/settings/trading.json`);
       expect(initialPayload.settings.defaultSwapProvider).toBe("ultra");
       expect(initialPayload.settings.defaultSwapMode).toBe("ExactIn");
+      expect(initialPayload.settings.walletRpcBatchingEnabled).toBe(false);
 
       const updateResponse = await handler(new Request("http://localhost/v1/app/trading-settings", {
         method: "PUT",
@@ -834,6 +839,7 @@ describe("Runtime v1 API", () => {
             defaultSwapProvider: "standard",
             defaultSwapMode: "ExactOut",
             defaultAmountUnit: "percent",
+            walletRpcBatchingEnabled: true,
             scheduleActionName: "scheduleManagedUltraSwap",
             quickBuyPresets: [],
             customPresets: [],
@@ -848,6 +854,7 @@ describe("Runtime v1 API", () => {
           defaultSwapProvider: string;
           defaultSwapMode: string;
           defaultAmountUnit: string;
+          walletRpcBatchingEnabled: boolean;
           scheduleActionName: string;
         };
       };
@@ -856,6 +863,7 @@ describe("Runtime v1 API", () => {
       expect(updatePayload.settings.defaultSwapProvider).toBe("standard");
       expect(updatePayload.settings.defaultSwapMode).toBe("ExactOut");
       expect(updatePayload.settings.defaultAmountUnit).toBe("percent");
+      expect(updatePayload.settings.walletRpcBatchingEnabled).toBe(true);
       expect(updatePayload.settings.scheduleActionName).toBe("scheduleManagedUltraSwap");
     } finally {
       if (previousActiveInstanceId === undefined) {

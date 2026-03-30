@@ -29,7 +29,7 @@ Exact CLI form:
 TRENCHCLAW_RUNTIME_STATE_ROOT="/absolute/path/to/trenchclaw-runtime-state" \
 TRENCHCLAW_ACTIVE_INSTANCE_ID="01" \
 bun run "src/tools/execute.ts" downloadGeckoTerminalOhlcv \
-  --input-json '{"poolAddress":"Czfq3xZZDmsdGdUyrNLtRhGc47cXcZtLG4crryfu44zE","timeframe":"minute","aggregate":5,"limit":5}'
+  --input-json '{"coinAddress":"So11111111111111111111111111111111111111112","timeframe":"minute","aggregate":5,"limit":5}'
 ```
 
 Treat that CLI form as a trusted local or internal automation path. For
@@ -38,7 +38,7 @@ over direct host-shell execution.
 
 Required input fields:
 
-- `poolAddress` GeckoTerminal Solana pool address
+- `coinAddress` Solana token mint address
 - `timeframe` one of `minute`, `hour`, `day`
 
 Optional input fields:
@@ -48,7 +48,12 @@ Optional input fields:
 - `limit` integer, max `1000`, default `100`
 - `currency` one of `usd`, `token`
 - `includeEmptyIntervals` boolean, default `false`
-- `token` one of `base`, `quote`, or a token address
+
+Under the hood the runtime:
+
+- loads top pools for the token from GeckoTerminal
+- picks the current main liquidity pool
+- requests OHLC for that pool while pinning the token address on the OHLC call
 
 Timeframe and aggregate rules enforced by the runtime action:
 
@@ -67,11 +72,11 @@ Runtime output location:
 
 Example real output path:
 
-- `.runtime-state/instances/01/workspace/output/research/market-data/geckoterminal/ohlcv/czfq3xzzdmsdgduyrnltrhgc47cxcztlg4crryfu44ze-minute-agg-5-2026-03-22T07-52-35-942Z.json`
+- `.runtime-state/instances/01/workspace/output/research/market-data/geckoterminal/ohlcv/so11111111111111111111111111111111111111112-czfq3xzzdmsdgduyrnltrhgc47cxcztlg4crryfu44ze-minute-agg-5-2026-03-22T07-52-35-942Z.json`
 
 Saved filename pattern:
 
-- `{sanitized-pool-address}-{timeframe}-agg-{aggregate-or-default}-{downloadedAtIso}.json`
+- `{sanitized-coin-address}-{sanitized-selected-pool-address}-{timeframe}-agg-{aggregate-or-default}-{downloadedAtIso}.json`
 
 Command return payload includes:
 
@@ -90,6 +95,7 @@ Saved JSON artifact shape:
 
 - top-level metadata such as `artifactType`, `source`, `network`, `downloadedAt`
 - a `request` object containing the exact normalized input used
+- a `poolResolution` object containing the selected main pool and token metadata
 - `requestUrl`
 - full GeckoTerminal `response`
 

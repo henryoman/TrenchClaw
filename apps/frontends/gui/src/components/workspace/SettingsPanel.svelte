@@ -77,6 +77,7 @@
     defaultSwapProvider: "ultra",
     defaultSwapMode: "ExactIn",
     defaultAmountUnit: "ui",
+    walletRpcBatchingEnabled: false,
     scheduleActionName: "scheduleManagedUltraSwap",
     quickBuyPresets: [],
     customPresets: [],
@@ -253,6 +254,7 @@
     if (signature !== tradingSettingsHydrationSignature) {
       tradingSettingsDraft = tradingSettings
         ? {
+            ...DEFAULT_TRADING_SETTINGS,
             ...tradingSettings,
             quickBuyPresets: [...tradingSettings.quickBuyPresets],
             customPresets: [...tradingSettings.customPresets],
@@ -440,6 +442,27 @@
             <option value="standard">Standard RPC</option>
           </RetroSelect>
         </RetroField>
+
+        <RetroField label="Wallet RPC batching">
+          <p class="section-description field-hint">
+            Batch reads stay available in the runtime, but stay off unless you enable them here.
+          </p>
+          <RetroSelect
+            value={tradingSettingsDraft.walletRpcBatchingEnabled ? "enabled" : "disabled"}
+            indicatorShape="triangle"
+            chevronColor="var(--tc-color-lime)"
+            disabled={tradingSettingsBusy}
+            on:valueChange={(event) => {
+              onTradingSettingChange(
+                "walletRpcBatchingEnabled",
+                (event as ValueInputEvent).detail.value === "enabled",
+              );
+            }}
+          >
+            <option value="disabled">Disabled</option>
+            <option value="enabled">Enabled</option>
+          </RetroSelect>
+        </RetroField>
       </div>
     </section>
 
@@ -509,6 +532,12 @@
     color: var(--tc-color-gray-2);
     font-size: 0.85rem;
     line-height: 1.4;
+  }
+
+  .field-hint {
+    margin: 0 0 var(--tc-space-2);
+    text-transform: none;
+    letter-spacing: normal;
   }
 
   .settings-grid {
