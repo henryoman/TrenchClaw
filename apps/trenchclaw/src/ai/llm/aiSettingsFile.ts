@@ -9,7 +9,7 @@ import type { AiModelProvider } from "./modelCatalog";
 import { findAiModelCatalogEntry } from "./modelCatalog";
 import { parseStructuredFile } from "./shared";
 
-export const DEFAULT_LLM_MODEL = "stepfun/step-3.5-flash:free";
+export const DEFAULT_LLM_MODEL = "qwen/qwen3.6-plus-preview:free";
 export const DEFAULT_LLM_PROVIDER: AiModelProvider = "openrouter";
 
 const AI_SETTINGS_FILE_ENV = "TRENCHCLAW_AI_SETTINGS_FILE";

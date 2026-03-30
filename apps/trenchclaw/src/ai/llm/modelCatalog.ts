@@ -34,6 +34,11 @@ export const AI_MODEL_CATALOG = [
     providers: OPENROUTER_ONLY,
   },
   {
+    id: "qwen/qwen3.6-plus-preview:free",
+    label: "Qwen 3.6 Plus Preview Free",
+    providers: OPENROUTER_ONLY,
+  },
+  {
     id: "minimax/minimax-m2.5:free",
     label: "MiniMax M2.5 Free",
     providers: OPENROUTER_ONLY,

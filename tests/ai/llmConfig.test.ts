@@ -111,7 +111,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
     expect(resolved).toBeNull();
   });
 
-  test("normalizes non-StepFun models back to StepFun on OpenRouter", async () => {
+  test("normalizes unknown models back to the default OpenRouter model", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
       model: "anything-else-gets-normalized",
@@ -133,7 +133,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("stepfun/step-3.5-flash:free");
+    expect(resolved?.model).toBe("qwen/qwen3.6-plus-preview:free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
@@ -160,6 +160,32 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
     expect(resolved?.provider).toBe("openrouter");
     expect(resolved?.model).toBe("minimax/minimax-m2.5:free");
+    expect(resolved?.apiKey).toBe("openrouter-key");
+  });
+
+  test("preserves the configured Qwen preview free model on OpenRouter", async () => {
+    process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
+      provider: "openrouter",
+      model: "qwen/qwen3.6-plus-preview:free",
+      defaultMode: "primary",
+      temperature: null,
+      maxOutputTokens: null,
+    });
+    process.env.TRENCHCLAW_VAULT_FILE = await writeJson({
+      llm: {
+        gateway: {
+          "api-key": "gateway-key",
+        },
+        openrouter: {
+          "api-key": "openrouter-key",
+        },
+      },
+    });
+
+    const resolved = await resolveLlmProviderConfigFromVault();
+
+    expect(resolved?.provider).toBe("openrouter");
+    expect(resolved?.model).toBe("qwen/qwen3.6-plus-preview:free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
