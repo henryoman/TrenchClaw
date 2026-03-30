@@ -291,7 +291,7 @@
       <h3>AI</h3>
       <div class="field-list">
         {#each aiFields as field (field.id)}
-          <article class="secret-card">
+          <div class="secret-row">
             <RetroField label={field.label}>
               <input
                 value={currentDraftValueFor(field.id)}
@@ -313,7 +313,7 @@
                 Clear
               </RetroButton>
             </div>
-          </article>
+          </div>
         {/each}
       </div>
     </section>
@@ -324,7 +324,7 @@
       <h3>Blockchain</h3>
       <div class="field-list">
         {#each blockchainFields as field (field.id)}
-          <article class="secret-card">
+          <div class="secret-row">
             {#if field.supportsPublicRpc}
               <RetroField label="RPC provider">
                 <div class="native-select-wrap">
@@ -371,7 +371,7 @@
                 Clear
               </RetroButton>
             </div>
-          </article>
+          </div>
         {/each}
       </div>
     </section>
@@ -424,16 +424,24 @@
 
   .field-list {
     display: grid;
-    gap: var(--tc-space-2);
+    gap: 0;
+    min-width: 0;
   }
 
-  .secret-card {
+  .secret-row {
     display: grid;
     gap: var(--tc-space-2);
     min-width: 0;
-    border: var(--tc-row-box-border);
-    background: var(--tc-row-box-bg);
-    padding: var(--tc-row-box-padding);
+    padding: var(--tc-space-2) 0;
+    border-bottom: var(--tc-border-muted);
+  }
+
+  .secret-row:last-child {
+    border-bottom: none;
+  }
+
+  .secret-row:first-child {
+    padding-top: 0;
   }
 
   .row-actions {

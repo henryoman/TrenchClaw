@@ -199,9 +199,6 @@
         }}
       ></textarea>
     </RetroField>
-    <p class="hint">
-      Write the prompt like conditional operator logic. Example: “IF a pending job is safe to resume, explain it.”
-    </p>
 
     <RetroSectionHeader title="Timeline Preview" />
     <p class="hint">

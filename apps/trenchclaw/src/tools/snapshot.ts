@@ -47,6 +47,7 @@ const OPERATOR_ROUTED_TOOL_NAMES = new Set([
   "getDexscreenerPairByChainAndPairId",
   "getDexscreenerTokenPairsByChain",
   "getDexscreenerTokensByChain",
+  "downloadGeckoTerminalOhlcv",
   "getTokenLaunchTime",
   "getTokenPricePerformance",
   "getTokenHolderDistribution",

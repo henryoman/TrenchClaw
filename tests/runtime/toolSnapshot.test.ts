@@ -281,6 +281,7 @@ describe("runtime tool snapshot", () => {
     expect(ohlcDownloadTool?.toolDescription).toContain("one tiny JSON surface");
     expect(ohlcDownloadTool?.toolDescription).toContain("main liquidity pool");
     expect(ohlcDownloadTool?.releaseReadinessStatus).toBe("shipped-now");
+    expect(ohlcDownloadTool?.visibility?.operatorChat).toBe("routed");
   });
 
   test("exposes managed token price performance with minimal-input guidance when trading is enabled", async () => {
@@ -473,6 +474,23 @@ describe("runtime tool snapshot", () => {
       expect(operatorVisibleNames.has(name)).toBe(true);
       expect(snapshotNames.has(name)).toBe(true);
     }
+  });
+
+  test("operator-chat routes GeckoTerminal OHLC download for candle-oriented prompts when trading is enabled", async () => {
+    process.env.TRENCHCLAW_SETTINGS_BASE_FILE = await writeTempFile(
+      "yaml",
+      TEST_SAFE_SETTINGS_YAML.replace("trading:\n  enabled: false", "trading:\n  enabled: true"),
+    );
+
+    const settings = await loadRuntimeSettings("safe");
+    const snapshot = await getRuntimeToolSnapshot(settings);
+    const operatorNames = getGatewayToolNamesForLane(
+      snapshot,
+      "operator-chat",
+      "download ohlcv candles for this token and save the geckoterminal json",
+    );
+
+    expect(operatorNames).toContain("downloadGeckoTerminalOhlcv");
   });
 
   test("workspace-agent lane exposes the full model tool list from the snapshot", async () => {
