@@ -1,11 +1,10 @@
-import { address } from "@solana/kit";
 import { z } from "zod";
 
 import type { Action } from "../../ai/contracts/types/action";
 import { getDexscreenerTokensByChain, getDexscreenerTopTokenBoosts, type DexscreenerPairInfo, type DexscreenerTokenBoost } from "../../solana/lib/clients/dexscreener";
 import { getMultipleAccounts } from "../../solana/lib/rpc/getMultipleAccounts";
-import { createRateLimitedSolanaRpc } from "../../solana/lib/rpc/client";
-import { resolveRequiredRpcUrl } from "../../solana/lib/rpc/urls";
+import { getTokenLargestAccounts } from "../../solana/lib/rpc/getTokenLargestAccounts";
+import { getTokenSupply } from "../../solana/lib/rpc/getTokenSupply";
 
 const DEFAULT_WHALE_THRESHOLD_PERCENT = 1;
 const DEFAULT_ANALYZED_TOKEN_LIMIT = 10;
@@ -22,6 +21,12 @@ const tokenHolderDistributionInputSchema = z.object({
   topOwnersLimit: z.number().int().min(1).max(MAX_RETURNED_OWNERS).optional(),
 });
 
+const tokenBiggestHoldersInputSchema = z.object({
+  mintAddress: nonEmptyStringSchema,
+  limit: z.number().int().min(1).max(MAX_RETURNED_OWNERS).default(10),
+  whaleThresholdPercent: z.number().positive().max(100).optional(),
+});
+
 const rankBoostedTokensByWhalesInputSchema = z.object({
   limit: z.number().int().min(1).max(MAX_ANALYZED_TOKEN_LIMIT).optional(),
   whaleThresholdPercent: z.number().positive().max(100).optional(),
@@ -29,6 +34,7 @@ const rankBoostedTokensByWhalesInputSchema = z.object({
 });
 
 type TokenHolderDistributionInput = z.output<typeof tokenHolderDistributionInputSchema>;
+type TokenBiggestHoldersInput = z.output<typeof tokenBiggestHoldersInputSchema>;
 type RankBoostedTokensByWhalesInput = z.output<typeof rankBoostedTokensByWhalesInputSchema>;
 
 interface LargestTokenAccountEntry {
@@ -89,6 +95,26 @@ export interface RankedBoostedTokensByWhalesResult {
   analyzedTokenCount: number;
   ranking: RankedBoostedTokenWhaleEntry[];
   winner: RankedBoostedTokenWhaleEntry | null;
+}
+
+export interface TokenBiggestHoldersResult {
+  mintAddress: string;
+  decimals: number;
+  totalSupplyRaw: string;
+  totalSupplyUiString: string;
+  analyzedLargestAccountCount: number;
+  distinctOwnerCount: number;
+  returned: number;
+  holders: TokenHolderOwnerSummary[];
+  concentration: {
+    whaleThresholdPercent: number;
+    whaleOwnerCount: number;
+    whaleOwnerCountAtOnePercent: number;
+    whaleOwnerCountAtFivePercent: number;
+    top1OwnerShareFraction: number;
+    top5OwnerShareFraction: number;
+    top10OwnerShareFraction: number;
+  };
 }
 
 interface GetTokenHolderDistributionDeps {
@@ -152,27 +178,6 @@ const toShareFraction = (amountRaw: bigint, totalSupplyRaw: bigint): number => {
 
 const sumFractions = (values: readonly number[]): number =>
   values.reduce((sum, value) => sum + value, 0);
-
-const parseLargestTokenAccounts = (value: unknown): LargestTokenAccountEntry[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.flatMap((entry) => {
-    if (!isRecord(entry) || typeof entry.address !== "string" || typeof entry.amount !== "string") {
-      return [];
-    }
-
-    try {
-      return [{
-        address: entry.address,
-        amountRaw: BigInt(entry.amount),
-      }];
-    } catch {
-      return [];
-    }
-  });
-};
 
 const extractOwnerAddress = (account: unknown): string | null => {
   if (!isRecord(account) || !isRecord(account.data)) {
@@ -250,33 +255,32 @@ export const analyzeTokenHolderDistribution = async (input: {
   whaleThresholdPercent?: number;
   topOwnersLimit?: number;
 }): Promise<TokenHolderDistribution> => {
-  const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
   const mintAddress = input.mintAddress.trim();
   const whaleThresholdPercent = normalizePositiveNumber(input.whaleThresholdPercent, DEFAULT_WHALE_THRESHOLD_PERCENT);
   const topOwnersLimit = Math.min(
     Math.max(1, Math.trunc(normalizePositiveNumber(input.topOwnersLimit, 5))),
     MAX_RETURNED_OWNERS,
   );
-  const rpc = createRateLimitedSolanaRpc(rpcUrl);
-  const mint = address(mintAddress);
 
   const [tokenSupplyResponse, largestAccountsResponse] = await Promise.all([
-    rpc.getTokenSupply(mint).send(),
-    rpc.getTokenLargestAccounts(mint).send(),
+    getTokenSupply({
+      rpcUrl: input.rpcUrl,
+      mintAddress,
+    }),
+    getTokenLargestAccounts({
+      rpcUrl: input.rpcUrl,
+      mintAddress,
+    }),
   ]);
 
-  const tokenSupplyRecord = isRecord(tokenSupplyResponse) && isRecord(tokenSupplyResponse.value)
-    ? tokenSupplyResponse.value
-    : null;
-  const totalSupplyRaw = typeof tokenSupplyRecord?.amount === "string" ? BigInt(tokenSupplyRecord.amount) : 0n;
-  const decimals = typeof tokenSupplyRecord?.decimals === "number" ? tokenSupplyRecord.decimals : 0;
-
-  const largestAccountsRecord = isRecord(largestAccountsResponse) && Array.isArray(largestAccountsResponse.value)
-    ? largestAccountsResponse.value
-    : [];
-  const largestTokenAccounts = parseLargestTokenAccounts(largestAccountsRecord);
+  const totalSupplyRaw = tokenSupplyResponse.amountRaw;
+  const decimals = tokenSupplyResponse.decimals;
+  const largestTokenAccounts = largestAccountsResponse.accounts.map((entry) => ({
+    address: entry.address,
+    amountRaw: entry.amountRaw,
+  }));
   const multipleAccounts = await getMultipleAccounts({
-    rpcUrl,
+    rpcUrl: input.rpcUrl,
     accounts: largestTokenAccounts.map((entry) => entry.address),
     encoding: "jsonParsed",
     chunkSize: SAFE_GET_MULTIPLE_ACCOUNTS_CHUNK_SIZE,
@@ -318,6 +322,29 @@ export const analyzeTokenHolderDistribution = async (input: {
   };
 };
 
+const toBiggestHoldersResult = (
+  distribution: TokenHolderDistribution,
+  limit: number,
+): TokenBiggestHoldersResult => ({
+  mintAddress: distribution.mintAddress,
+  decimals: distribution.decimals,
+  totalSupplyRaw: distribution.totalSupplyRaw,
+  totalSupplyUiString: distribution.totalSupplyUiString,
+  analyzedLargestAccountCount: distribution.analyzedLargestAccountCount,
+  distinctOwnerCount: distribution.distinctOwnerCount,
+  returned: Math.min(limit, distribution.topOwners.length),
+  holders: distribution.topOwners.slice(0, limit),
+  concentration: {
+    whaleThresholdPercent: distribution.whaleThresholdPercent,
+    whaleOwnerCount: distribution.whaleOwnerCount,
+    whaleOwnerCountAtOnePercent: distribution.whaleOwnerCountAtOnePercent,
+    whaleOwnerCountAtFivePercent: distribution.whaleOwnerCountAtFivePercent,
+    top1OwnerShareFraction: distribution.top1OwnerShareFraction,
+    top5OwnerShareFraction: distribution.top5OwnerShareFraction,
+    top10OwnerShareFraction: distribution.top10OwnerShareFraction,
+  },
+});
+
 export const createGetTokenHolderDistributionAction = (
   deps: GetTokenHolderDistributionDeps = {},
 ): Action<TokenHolderDistributionInput, TokenHolderDistribution> => {
@@ -354,6 +381,51 @@ export const createGetTokenHolderDistributionAction = (
           retryable: isRetryableRpcError(error),
           error: error instanceof Error ? error.message : String(error),
           code: isRetryableRpcError(error) ? "GET_TOKEN_HOLDER_DISTRIBUTION_RATE_LIMITED" : "GET_TOKEN_HOLDER_DISTRIBUTION_FAILED",
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      }
+    },
+  };
+};
+
+export const createGetTokenBiggestHoldersAction = (
+  deps: GetTokenHolderDistributionDeps = {},
+): Action<TokenBiggestHoldersInput, TokenBiggestHoldersResult> => {
+  const loadHolderDistribution = deps.loadHolderDistribution ?? analyzeTokenHolderDistribution;
+
+  return {
+    name: "getTokenBiggestHolders",
+    category: "data-based",
+    subcategory: "read-only",
+    inputSchema: tokenBiggestHoldersInputSchema,
+    async execute(ctx, input) {
+      const startedAt = Date.now();
+      const idempotencyKey = crypto.randomUUID();
+
+      try {
+        const distribution = await loadHolderDistribution({
+          rpcUrl: ctx.rpcUrl,
+          mintAddress: input.mintAddress,
+          whaleThresholdPercent: input.whaleThresholdPercent,
+          topOwnersLimit: input.limit,
+        });
+
+        return {
+          ok: true,
+          retryable: false,
+          data: toBiggestHoldersResult(distribution, input.limit),
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          retryable: isRetryableRpcError(error),
+          error: error instanceof Error ? error.message : String(error),
+          code: isRetryableRpcError(error) ? "GET_TOKEN_BIGGEST_HOLDERS_RATE_LIMITED" : "GET_TOKEN_BIGGEST_HOLDERS_FAILED",
           durationMs: Date.now() - startedAt,
           timestamp: Date.now(),
           idempotencyKey,
@@ -465,4 +537,5 @@ export const createRankDexscreenerTopTokenBoostsByWhalesAction = (
 };
 
 export const getTokenHolderDistributionAction = createGetTokenHolderDistributionAction();
+export const getTokenBiggestHoldersAction = createGetTokenBiggestHoldersAction();
 export const rankDexscreenerTopTokenBoostsByWhalesAction = createRankDexscreenerTopTokenBoostsByWhalesAction();

@@ -40,7 +40,16 @@ const OPERATOR_ALWAYS_TOOL_NAMES = new Set([
 const OPERATOR_ROUTED_TOOL_NAMES = new Set([
   "getManagedWalletContents",
   "getManagedWalletSolBalances",
+  "getRpcBalance",
+  "getRpcAccountInfo",
+  "getRpcMultipleAccounts",
+  "getRpcTokenAccountsByOwner",
+  "getRpcTokenSupply",
+  "getRpcTokenLargestAccounts",
+  "getRpcSignaturesForAddress",
+  "getRpcTransaction",
   "getSwapHistory",
+  "getTokenBiggestHolders",
   "getDexscreenerLatestTokenProfiles",
   "getDexscreenerLatestTokenBoosts",
   "getDexscreenerTopTokenBoosts",
@@ -70,7 +79,16 @@ const OPERATOR_ROUTED_TOOL_NAMES = new Set([
 const isRpcDataFetchTool = (toolName: string): boolean =>
   toolName === "getManagedWalletContents"
   || toolName === "getManagedWalletSolBalances"
-  || toolName === "getSwapHistory";
+  || toolName === "getRpcBalance"
+  || toolName === "getRpcAccountInfo"
+  || toolName === "getRpcMultipleAccounts"
+  || toolName === "getRpcTokenAccountsByOwner"
+  || toolName === "getRpcTokenSupply"
+  || toolName === "getRpcTokenLargestAccounts"
+  || toolName === "getRpcSignaturesForAddress"
+  || toolName === "getRpcTransaction"
+  || toolName === "getSwapHistory"
+  || toolName === "getTokenBiggestHolders";
 
 const isMarketNewsTool = (toolName: string): boolean =>
   toolName === "getConfiguredNewsFeeds"

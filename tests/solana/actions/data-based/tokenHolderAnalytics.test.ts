@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 
 import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contracts/types/context";
 import {
+  createGetTokenBiggestHoldersAction,
   createGetTokenHolderDistributionAction,
   createRankDexscreenerTopTokenBoostsByWhalesAction,
   type TokenHolderDistribution,
@@ -161,6 +162,65 @@ describe("token holder analytics actions", () => {
       volume24hUsd: 125_000,
       marketCapUsd: 700_000,
       fdvUsd: 900_000,
+    }));
+  });
+
+  test("getTokenBiggestHolders returns a compact top-holder view", async () => {
+    const action = createGetTokenBiggestHoldersAction({
+      loadHolderDistribution: async ({ mintAddress, whaleThresholdPercent, topOwnersLimit }) => {
+        expect(mintAddress).toBe("MintTop");
+        expect(whaleThresholdPercent).toBe(1);
+        expect(topOwnersLimit).toBe(1);
+        return SAMPLE_DISTRIBUTION({
+          mintAddress,
+          whaleThresholdPercent: whaleThresholdPercent ?? 1,
+          topOwners: [
+            {
+              ownerAddress: "OwnerTop",
+              amountRaw: "250000000",
+              amountUiString: "250",
+              shareFraction: 0.25,
+              sharePercent: 25,
+              tokenAccountCount: 2,
+              tokenAccounts: ["TokenAcc1", "TokenAcc2"],
+            },
+            {
+              ownerAddress: "OwnerSecond",
+              amountRaw: "100000000",
+              amountUiString: "100",
+              shareFraction: 0.1,
+              sharePercent: 10,
+              tokenAccountCount: 1,
+              tokenAccounts: ["TokenAcc3"],
+            },
+          ],
+        });
+      },
+    });
+
+    const result = await action.execute(createActionContext({
+      actor: "agent",
+      rpcUrl: "https://rpc.example",
+    }), {
+      mintAddress: "MintTop",
+      limit: 1,
+      whaleThresholdPercent: 1,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toEqual(expect.objectContaining({
+      mintAddress: "MintTop",
+      returned: 1,
+      holders: [
+        expect.objectContaining({
+          ownerAddress: "OwnerTop",
+          sharePercent: 25,
+        }),
+      ],
+      concentration: expect.objectContaining({
+        whaleThresholdPercent: 1,
+        whaleOwnerCount: 4,
+      }),
     }));
   });
 });

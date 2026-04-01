@@ -1,5 +1,7 @@
 import { address } from "@solana/kit";
 import { createRateLimitedSolanaRpc } from "../rpc/client";
+import { getTokenAccountsByOwner } from "../rpc/getTokenAccountsByOwner";
+import { getTokenSupply } from "../rpc/getTokenSupply";
 import { resolveRequiredRpcUrl } from "../rpc/urls";
 
 const LAMPORTS_PER_SOL = 1_000_000_000;
@@ -29,19 +31,15 @@ export const createTokenAccountAdapter = (
     },
 
     async getTokenBalance(walletAddress: string, mintAddress: string): Promise<number> {
-      const response = await (rpc as any)
-        .getTokenAccountsByOwner(
-          address(walletAddress),
-          {
-            mint: address(mintAddress),
-          },
-          {
-            encoding: "jsonParsed",
-          },
-        )
-        .send();
-
-      const entries: unknown[] = Array.isArray(response?.value) ? response.value : [];
+      const response = await getTokenAccountsByOwner({
+        rpcUrl,
+        ownerAddress: walletAddress,
+        mintAddress,
+        encoding: "jsonParsed",
+      });
+      const entries = response.accounts.map((entry) => ({
+        account: entry.account,
+      }));
       let totalUiAmount = 0;
 
       for (const entry of entries) {
@@ -79,20 +77,13 @@ export const createTokenAccountAdapter = (
     },
 
     async hasTokenAccount(walletAddress: string, mintAddress: string): Promise<boolean> {
-      const response = await (rpc as any)
-        .getTokenAccountsByOwner(
-          address(walletAddress),
-          {
-            mint: address(mintAddress),
-          },
-          {
-            encoding: "jsonParsed",
-          },
-        )
-        .send();
-
-      const entries: unknown[] = Array.isArray(response?.value) ? response.value : [];
-      return entries.length > 0;
+      const response = await getTokenAccountsByOwner({
+        rpcUrl,
+        ownerAddress: walletAddress,
+        mintAddress,
+        encoding: "jsonParsed",
+      });
+      return response.accounts.length > 0;
     },
 
     async getDecimals(mintAddress: string): Promise<number> {
@@ -101,9 +92,11 @@ export const createTokenAccountAdapter = (
         return cached;
       }
 
-      const response = await (rpc as any).getTokenSupply(address(mintAddress)).send();
-      const decimalsRaw = response?.value?.decimals;
-      const decimals = typeof decimalsRaw === "number" ? decimalsRaw : 0;
+      const response = await getTokenSupply({
+        rpcUrl,
+        mintAddress,
+      });
+      const decimals = response.decimals;
       decimalsCache.set(mintAddress, decimals);
       return decimals;
     },

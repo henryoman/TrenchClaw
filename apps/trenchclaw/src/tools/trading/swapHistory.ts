@@ -4,7 +4,8 @@ import { createHelius } from "helius-sdk";
 import type { Action } from "../../ai/contracts/types/action";
 import { resolveHeliusRpcConfig } from "../../solana/lib/rpc/helius";
 
-const HELIUS_SWAP_HISTORY_LIMIT = 20;
+const DEFAULT_HELIUS_SWAP_HISTORY_LIMIT = 10;
+const MAX_HELIUS_SWAP_HISTORY_LIMIT = 20;
 const HELIUS_CONTINUATION_RETRY_LIMIT = 10;
 const HELIUS_CONTINUATION_SIGNATURE_REGEX = /before(?:-signature|Signature)\s*(?:parameter)?\s*(?:set to)?\s*([1-9A-HJ-NP-Za-km-z]{32,})/i;
 
@@ -12,7 +13,7 @@ const base58AddressSchema = z.string().trim().min(32).max(44).regex(/^[1-9A-HJ-N
 
 const swapHistoryInputSchema = z.object({
   walletAddress: base58AddressSchema,
-  limit: z.number().int().positive().max(HELIUS_SWAP_HISTORY_LIMIT).default(HELIUS_SWAP_HISTORY_LIMIT),
+  limit: z.number().int().positive().max(MAX_HELIUS_SWAP_HISTORY_LIMIT).default(DEFAULT_HELIUS_SWAP_HISTORY_LIMIT),
 });
 
 type SwapHistoryInput = z.output<typeof swapHistoryInputSchema>;
@@ -282,35 +283,45 @@ export const getSwapHistory = async (rawInput: SwapHistoryInput): Promise<SwapHi
   };
 };
 
-export const getSwapHistoryAction: Action<SwapHistoryInput, SwapHistoryOutput> = {
-  name: "getSwapHistory",
-  category: "data-based",
-  inputSchema: swapHistoryInputSchema,
-  async execute(_ctx, rawInput) {
-    const startedAt = Date.now();
-    const idempotencyKey = crypto.randomUUID();
+export const createGetSwapHistoryAction = (
+  deps: {
+    loadSwapHistory?: (input: SwapHistoryInput) => Promise<SwapHistoryOutput>;
+  } = {},
+): Action<SwapHistoryInput, SwapHistoryOutput> => {
+  const loadSwapHistory = deps.loadSwapHistory ?? getSwapHistory;
 
-    try {
-      const data = await getSwapHistory(rawInput);
-      return {
-        ok: true,
-        retryable: false,
-        data,
-        durationMs: Date.now() - startedAt,
-        timestamp: Date.now(),
-        idempotencyKey,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return {
-        ok: false,
-        retryable: false,
-        error: message,
-        code: "SWAP_HISTORY_FAILED",
-        durationMs: Date.now() - startedAt,
-        timestamp: Date.now(),
-        idempotencyKey,
-      };
-    }
-  },
+  return {
+    name: "getSwapHistory",
+    category: "data-based",
+    inputSchema: swapHistoryInputSchema,
+    async execute(_ctx, rawInput) {
+      const startedAt = Date.now();
+      const idempotencyKey = crypto.randomUUID();
+
+      try {
+        const data = await loadSwapHistory(rawInput);
+        return {
+          ok: true,
+          retryable: false,
+          data,
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+          ok: false,
+          retryable: false,
+          error: message,
+          code: "SWAP_HISTORY_FAILED",
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      }
+    },
+  };
 };
+
+export const getSwapHistoryAction = createGetSwapHistoryAction();

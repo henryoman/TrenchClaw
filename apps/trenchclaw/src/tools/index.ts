@@ -3,6 +3,7 @@ export * from "./execute";
 export * from "./knowledge";
 export * from "./market";
 export * from "./model";
+export * from "./rpc";
 export * from "./registry";
 export * from "./releaseReadiness";
 export * from "./snapshot";

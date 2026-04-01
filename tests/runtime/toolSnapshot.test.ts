@@ -21,8 +21,20 @@ const DEXSCREENER_MODEL_TOOL_NAMES = [
 ] as const;
 
 const HOLDER_MODEL_TOOL_NAMES = [
+  "getTokenBiggestHolders",
   "getTokenHolderDistribution",
   "rankDexscreenerTopTokenBoostsByWhales",
+] as const;
+
+const RPC_MODEL_TOOL_NAMES = [
+  "getRpcBalance",
+  "getRpcAccountInfo",
+  "getRpcMultipleAccounts",
+  "getRpcTokenAccountsByOwner",
+  "getRpcTokenSupply",
+  "getRpcTokenLargestAccounts",
+  "getRpcSignaturesForAddress",
+  "getRpcTransaction",
 ] as const;
 
 const GECKOTERMINAL_MODEL_TOOL_NAMES = [
@@ -241,7 +253,11 @@ describe("runtime tool snapshot", () => {
     const snapshot = await getRuntimeToolSnapshot(settings);
     const modelToolNames = snapshot.modelTools.map((toolEntry) => toolEntry.name);
 
-    expect(modelToolNames).toEqual(expect.arrayContaining([...DEXSCREENER_MODEL_TOOL_NAMES, ...HOLDER_MODEL_TOOL_NAMES]));
+    expect(modelToolNames).toEqual(expect.arrayContaining([
+      ...DEXSCREENER_MODEL_TOOL_NAMES,
+      ...HOLDER_MODEL_TOOL_NAMES,
+      ...RPC_MODEL_TOOL_NAMES,
+    ]));
   });
 
   test("describes Dexscreener tools clearly enough for ranking versus recency selection", async () => {
