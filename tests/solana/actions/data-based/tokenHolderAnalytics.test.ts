@@ -10,18 +10,24 @@ import {
 
 const SAMPLE_DISTRIBUTION = (overrides: Partial<TokenHolderDistribution> = {}): TokenHolderDistribution => ({
   mintAddress: "Mint111111111111111111111111111111111111111",
+  analysisScope: "largest-token-accounts-window",
   decimals: 6,
   totalSupplyRaw: "1000000000",
   totalSupplyUiString: "1000",
   analyzedLargestAccountCount: 20,
   distinctOwnerCount: 12,
+  analyzedOwnerShareFraction: 0.61,
+  analyzedOwnerSharePercent: 61,
   whaleThresholdPercent: 1,
   whaleOwnerCount: 4,
   whaleOwnerCountAtOnePercent: 4,
   whaleOwnerCountAtFivePercent: 1,
   top1OwnerShareFraction: 0.15,
+  top1OwnerSharePercent: 15,
   top5OwnerShareFraction: 0.34,
+  top5OwnerSharePercent: 34,
   top10OwnerShareFraction: 0.49,
+  top10OwnerSharePercent: 49,
   topOwners: [
     {
       ownerAddress: "Owner111",
@@ -64,8 +70,11 @@ describe("token holder analytics actions", () => {
     expect(result.retryable).toBe(false);
     expect(result.data).toEqual(expect.objectContaining({
       mintAddress: "Mint111",
+      analysisScope: "largest-token-accounts-window",
+      analyzedOwnerSharePercent: 61,
       whaleThresholdPercent: 2,
       top10OwnerShareFraction: 0.49,
+      top10OwnerSharePercent: 49,
     }));
   });
 
@@ -210,6 +219,8 @@ describe("token holder analytics actions", () => {
     expect(result.ok).toBe(true);
     expect(result.data).toEqual(expect.objectContaining({
       mintAddress: "MintTop",
+      analysisScope: "largest-token-accounts-window",
+      analyzedOwnerSharePercent: 61,
       returned: 1,
       holders: [
         expect.objectContaining({
@@ -220,6 +231,7 @@ describe("token holder analytics actions", () => {
       concentration: expect.objectContaining({
         whaleThresholdPercent: 1,
         whaleOwnerCount: 4,
+        top10OwnerSharePercent: 49,
       }),
     }));
   });

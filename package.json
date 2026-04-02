@@ -2,7 +2,7 @@
   "name": "@trenchclaw/monorepo",
   "version": "0.1.0-beta.1",
   "devDependencies": {
-    "turbo": "^2.8.21"
+    "turbo": "^2.9.3"
   },
   "engines": {
     "bun": ">=1.3.11"
@@ -55,6 +55,7 @@
     "lint:fix": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run lint:fix",
     "test": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run test",
     "test:rpc-reads-live": "bun run scripts/manualTestRpcReads.ts",
+    "test:analytics-live": "bun run scripts/manualTestAnalyticsRoutines.ts",
     "test:launch-chat": "bun run scripts/testLaunchChat.ts",
     "test:runtime-chat": "bun test tests/runtime/chatService.test.ts tests/frontends/transport.test.ts",
     "generate": "bun run --cwd apps/trenchclaw generate",

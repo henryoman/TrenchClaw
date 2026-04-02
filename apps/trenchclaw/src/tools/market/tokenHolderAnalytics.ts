@@ -60,18 +60,24 @@ export interface TokenHolderOwnerSummary {
 
 export interface TokenHolderDistribution {
   mintAddress: string;
+  analysisScope: "largest-token-accounts-window";
   decimals: number;
   totalSupplyRaw: string;
   totalSupplyUiString: string;
   analyzedLargestAccountCount: number;
   distinctOwnerCount: number;
+  analyzedOwnerShareFraction: number;
+  analyzedOwnerSharePercent: number;
   whaleThresholdPercent: number;
   whaleOwnerCount: number;
   whaleOwnerCountAtOnePercent: number;
   whaleOwnerCountAtFivePercent: number;
   top1OwnerShareFraction: number;
+  top1OwnerSharePercent: number;
   top5OwnerShareFraction: number;
+  top5OwnerSharePercent: number;
   top10OwnerShareFraction: number;
+  top10OwnerSharePercent: number;
   topOwners: TokenHolderOwnerSummary[];
 }
 
@@ -99,11 +105,14 @@ export interface RankedBoostedTokensByWhalesResult {
 
 export interface TokenBiggestHoldersResult {
   mintAddress: string;
+  analysisScope: "largest-token-accounts-window";
   decimals: number;
   totalSupplyRaw: string;
   totalSupplyUiString: string;
   analyzedLargestAccountCount: number;
   distinctOwnerCount: number;
+  analyzedOwnerShareFraction: number;
+  analyzedOwnerSharePercent: number;
   returned: number;
   holders: TokenHolderOwnerSummary[];
   concentration: {
@@ -112,8 +121,11 @@ export interface TokenBiggestHoldersResult {
     whaleOwnerCountAtOnePercent: number;
     whaleOwnerCountAtFivePercent: number;
     top1OwnerShareFraction: number;
+    top1OwnerSharePercent: number;
     top5OwnerShareFraction: number;
+    top5OwnerSharePercent: number;
     top10OwnerShareFraction: number;
+    top10OwnerSharePercent: number;
   };
 }
 
@@ -178,6 +190,8 @@ const toShareFraction = (amountRaw: bigint, totalSupplyRaw: bigint): number => {
 
 const sumFractions = (values: readonly number[]): number =>
   values.reduce((sum, value) => sum + value, 0);
+
+const toPercent = (fraction: number): number => fraction * 100;
 
 const extractOwnerAddress = (account: unknown): string | null => {
   if (!isRecord(account) || !isRecord(account.data)) {
@@ -303,21 +317,31 @@ export const analyzeTokenHolderDistribution = async (input: {
 
   const ownerShareFractions = aggregatedOwners.map((owner) => toShareFraction(owner.amountRaw, totalSupplyRaw));
   const whaleThresholdFraction = whaleThresholdPercent / 100;
+  const analyzedOwnerShareFraction = sumFractions(ownerShareFractions);
+  const top1OwnerShareFraction = sumFractions(ownerShareFractions.slice(0, 1));
+  const top5OwnerShareFraction = sumFractions(ownerShareFractions.slice(0, 5));
+  const top10OwnerShareFraction = sumFractions(ownerShareFractions.slice(0, 10));
 
   return {
     mintAddress,
+    analysisScope: "largest-token-accounts-window",
     decimals,
     totalSupplyRaw: totalSupplyRaw.toString(),
     totalSupplyUiString: formatUiAmount(totalSupplyRaw, decimals),
     analyzedLargestAccountCount: largestTokenAccounts.length,
     distinctOwnerCount: aggregatedOwners.length,
+    analyzedOwnerShareFraction,
+    analyzedOwnerSharePercent: toPercent(analyzedOwnerShareFraction),
     whaleThresholdPercent,
     whaleOwnerCount: ownerShareFractions.filter((share) => share >= whaleThresholdFraction).length,
     whaleOwnerCountAtOnePercent: ownerShareFractions.filter((share) => share >= 0.01).length,
     whaleOwnerCountAtFivePercent: ownerShareFractions.filter((share) => share >= 0.05).length,
-    top1OwnerShareFraction: sumFractions(ownerShareFractions.slice(0, 1)),
-    top5OwnerShareFraction: sumFractions(ownerShareFractions.slice(0, 5)),
-    top10OwnerShareFraction: sumFractions(ownerShareFractions.slice(0, 10)),
+    top1OwnerShareFraction,
+    top1OwnerSharePercent: toPercent(top1OwnerShareFraction),
+    top5OwnerShareFraction,
+    top5OwnerSharePercent: toPercent(top5OwnerShareFraction),
+    top10OwnerShareFraction,
+    top10OwnerSharePercent: toPercent(top10OwnerShareFraction),
     topOwners,
   };
 };
@@ -327,11 +351,14 @@ const toBiggestHoldersResult = (
   limit: number,
 ): TokenBiggestHoldersResult => ({
   mintAddress: distribution.mintAddress,
+  analysisScope: distribution.analysisScope,
   decimals: distribution.decimals,
   totalSupplyRaw: distribution.totalSupplyRaw,
   totalSupplyUiString: distribution.totalSupplyUiString,
   analyzedLargestAccountCount: distribution.analyzedLargestAccountCount,
   distinctOwnerCount: distribution.distinctOwnerCount,
+  analyzedOwnerShareFraction: distribution.analyzedOwnerShareFraction,
+  analyzedOwnerSharePercent: distribution.analyzedOwnerSharePercent,
   returned: Math.min(limit, distribution.topOwners.length),
   holders: distribution.topOwners.slice(0, limit),
   concentration: {
@@ -340,8 +367,11 @@ const toBiggestHoldersResult = (
     whaleOwnerCountAtOnePercent: distribution.whaleOwnerCountAtOnePercent,
     whaleOwnerCountAtFivePercent: distribution.whaleOwnerCountAtFivePercent,
     top1OwnerShareFraction: distribution.top1OwnerShareFraction,
+    top1OwnerSharePercent: distribution.top1OwnerSharePercent,
     top5OwnerShareFraction: distribution.top5OwnerShareFraction,
+    top5OwnerSharePercent: distribution.top5OwnerSharePercent,
     top10OwnerShareFraction: distribution.top10OwnerShareFraction,
+    top10OwnerSharePercent: distribution.top10OwnerSharePercent,
   },
 });
 
