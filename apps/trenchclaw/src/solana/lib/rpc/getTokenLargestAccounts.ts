@@ -2,6 +2,7 @@ import { address } from "@solana/kit";
 import type { Commitment } from "@solana/kit";
 
 import { createRateLimitedSolanaRpc } from "./client";
+import { compactRpcRequestConfig } from "./requestConfig";
 import { resolveRequiredRpcUrl } from "./urls";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -53,10 +54,11 @@ export async function getTokenLargestAccounts(
   params: GetTokenLargestAccountsParams,
 ): Promise<GetTokenLargestAccountsResult> {
   const rpc = createRateLimitedSolanaRpc(params.rpcUrl ?? resolveRequiredRpcUrl(), params.rpcConfig);
+  const requestConfig = compactRpcRequestConfig({
+    commitment: params.commitment,
+  });
   const response = await (rpc as any)
-    .getTokenLargestAccounts(address(params.mintAddress), {
-      commitment: params.commitment,
-    })
+    .getTokenLargestAccounts(address(params.mintAddress), requestConfig)
     .send();
 
   const context = isRecord(response) && isRecord(response.context) ? response.context : null;

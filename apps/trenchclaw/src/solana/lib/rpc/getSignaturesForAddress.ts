@@ -2,6 +2,7 @@ import { address } from "@solana/kit";
 import type { Commitment, Slot } from "@solana/kit";
 
 import { createRateLimitedSolanaRpc } from "./client";
+import { compactRpcRequestConfig } from "./requestConfig";
 import { resolveRequiredRpcUrl } from "./urls";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -48,14 +49,15 @@ export async function getSignaturesForAddress(
   params: GetSignaturesForAddressParams,
 ): Promise<GetSignaturesForAddressResult> {
   const rpc = createRateLimitedSolanaRpc(params.rpcUrl ?? resolveRequiredRpcUrl(), params.rpcConfig);
+  const requestConfig = compactRpcRequestConfig({
+    before: params.before,
+    until: params.until,
+    limit: params.limit,
+    commitment: params.commitment,
+    minContextSlot: params.minContextSlot,
+  });
   const response = await (rpc as any)
-    .getSignaturesForAddress(address(params.account), {
-      before: params.before,
-      until: params.until,
-      limit: params.limit,
-      commitment: params.commitment,
-      minContextSlot: params.minContextSlot,
-    })
+    .getSignaturesForAddress(address(params.account), requestConfig)
     .send();
 
   const values = Array.isArray(response) ? response : [];

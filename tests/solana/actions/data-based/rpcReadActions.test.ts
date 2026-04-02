@@ -79,6 +79,19 @@ describe("rpc read actions", () => {
           account: {
             lamports: 10,
             owner: "Owner111",
+            executable: false,
+            data: {
+              parsed: {
+                type: "mint",
+                info: {
+                  decimals: 6,
+                  supply: "1234500000",
+                  mintAuthority: "MintAuth111",
+                  freezeAuthority: "FreezeAuth111",
+                  isInitialized: true,
+                },
+              },
+            },
           },
         };
       },
@@ -101,7 +114,35 @@ describe("rpc read actions", () => {
       accountInfo: {
         lamports: 10,
         owner: "Owner111",
+        executable: false,
+        data: {
+          parsed: {
+            type: "mint",
+            info: {
+              decimals: 6,
+              supply: "1234500000",
+              mintAuthority: "MintAuth111",
+              freezeAuthority: "FreezeAuth111",
+              isInitialized: true,
+            },
+          },
+        },
       },
+      summary: expect.objectContaining({
+        address: ACCOUNT_ONE,
+        ownerProgramId: "Owner111",
+        lamports: "10",
+        executable: false,
+        parsedType: "mint",
+        parsedTokenMint: expect.objectContaining({
+          decimals: 6,
+          supplyRaw: "1234500000",
+          supplyUiString: "1234.5",
+          mintAuthority: "MintAuth111",
+          freezeAuthority: "FreezeAuth111",
+          isInitialized: true,
+        }),
+      }),
     }));
   });
 
@@ -112,7 +153,28 @@ describe("rpc read actions", () => {
         return {
           contextSlot: 900n,
           accounts: [
-            { address: ACCOUNT_ONE, account: { executable: false } },
+            {
+              address: ACCOUNT_ONE,
+              account: {
+                owner: "Tokenkeg111",
+                executable: false,
+                data: {
+                  parsed: {
+                    type: "account",
+                    info: {
+                      mint: MINT_ADDRESS,
+                      owner: OWNER_ADDRESS,
+                      tokenAmount: {
+                        amount: "2500",
+                        decimals: 6,
+                        uiAmount: 0.0025,
+                        uiAmountString: "0.0025",
+                      },
+                    },
+                  },
+                },
+              },
+            },
             { address: ACCOUNT_TWO, account: null },
           ],
         };
@@ -133,8 +195,29 @@ describe("rpc read actions", () => {
       returned: 2,
       contextSlot: "900",
       accounts: [
-        { address: ACCOUNT_ONE, account: { executable: false } },
-        { address: ACCOUNT_TWO, account: null },
+        expect.objectContaining({
+          address: ACCOUNT_ONE,
+          account: expect.anything(),
+          summary: expect.objectContaining({
+            address: ACCOUNT_ONE,
+            ownerProgramId: "Tokenkeg111",
+            parsedType: "account",
+            parsedTokenAccount: expect.objectContaining({
+              address: ACCOUNT_ONE,
+              mintAddress: MINT_ADDRESS,
+              ownerAddress: OWNER_ADDRESS,
+              tokenAmountRaw: "2500",
+              tokenAmountUi: 0.0025,
+              tokenAmountUiString: "0.0025",
+              decimals: 6,
+            }),
+          }),
+        }),
+        expect.objectContaining({
+          address: ACCOUNT_TWO,
+          account: null,
+          summary: null,
+        }),
       ],
     }));
   });
@@ -148,7 +231,28 @@ describe("rpc read actions", () => {
         return {
           contextSlot: 901n,
           accounts: [
-            { address: ACCOUNT_ONE, account: { parsed: true } },
+            {
+              address: ACCOUNT_ONE,
+              account: {
+                owner: "Tokenkeg111",
+                data: {
+                  parsed: {
+                    type: "account",
+                    info: {
+                      mint: MINT_ADDRESS,
+                      owner: OWNER_ADDRESS,
+                      state: "initialized",
+                      tokenAmount: {
+                        amount: "4200000",
+                        decimals: 6,
+                        uiAmount: 4.2,
+                        uiAmountString: "4.2",
+                      },
+                    },
+                  },
+                },
+              },
+            },
           ],
         };
       },
@@ -169,6 +273,40 @@ describe("rpc read actions", () => {
       filter: { mintAddress: MINT_ADDRESS },
       contextSlot: "901",
       returned: 1,
+      accounts: [
+        expect.objectContaining({
+          address: ACCOUNT_ONE,
+          summary: expect.objectContaining({
+            mintAddress: MINT_ADDRESS,
+            ownerAddress: OWNER_ADDRESS,
+            state: "initialized",
+            tokenAmountRaw: "4200000",
+            tokenAmountUi: 4.2,
+            tokenAmountUiString: "4.2",
+            decimals: 6,
+          }),
+        }),
+      ],
+      parsedTokenAccounts: [
+        expect.objectContaining({
+          address: ACCOUNT_ONE,
+          mintAddress: MINT_ADDRESS,
+          ownerAddress: OWNER_ADDRESS,
+          tokenAmountRaw: "4200000",
+          tokenAmountUi: 4.2,
+          tokenAmountUiString: "4.2",
+          decimals: 6,
+        }),
+      ],
+      parsedTokenTotalsByMint: [
+        {
+          mintAddress: MINT_ADDRESS,
+          decimals: 6,
+          accountCount: 1,
+          totalAmountRaw: "4200000",
+          totalAmountUiString: "4.2",
+        },
+      ],
     }));
   });
 

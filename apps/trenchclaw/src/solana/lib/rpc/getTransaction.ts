@@ -1,6 +1,7 @@
 import type { Commitment } from "@solana/kit";
 
 import { createRateLimitedSolanaRpc } from "./client";
+import { compactRpcRequestConfig } from "./requestConfig";
 import { resolveRequiredRpcUrl } from "./urls";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -40,12 +41,13 @@ export interface GetTransactionResult {
 
 export async function getTransaction(params: GetTransactionParams): Promise<GetTransactionResult> {
   const rpc = createRateLimitedSolanaRpc(params.rpcUrl ?? resolveRequiredRpcUrl(), params.rpcConfig);
+  const requestConfig = compactRpcRequestConfig({
+    commitment: params.commitment,
+    encoding: params.encoding ?? "jsonParsed",
+    maxSupportedTransactionVersion: params.maxSupportedTransactionVersion ?? 0,
+  });
   const response = await (rpc as any)
-    .getTransaction(params.signature, {
-      commitment: params.commitment,
-      encoding: params.encoding ?? "jsonParsed",
-      maxSupportedTransactionVersion: params.maxSupportedTransactionVersion ?? 0,
-    })
+    .getTransaction(params.signature, requestConfig)
     .send();
 
   const value = isRecord(response) ? response : null;

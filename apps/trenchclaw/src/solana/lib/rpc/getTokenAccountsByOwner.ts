@@ -2,6 +2,7 @@ import { address } from "@solana/kit";
 import type { Commitment, Slot } from "@solana/kit";
 
 import { createRateLimitedSolanaRpc } from "./client";
+import { compactRpcRequestConfig } from "./requestConfig";
 import { resolveRequiredRpcUrl } from "./urls";
 
 export type TokenAccountsByOwnerEncoding = "base64" | "jsonParsed";
@@ -56,13 +57,14 @@ export async function getTokenAccountsByOwner(
   if (!filter) {
     throw new Error("Either `mintAddress` or `programId` is required.");
   }
+  const requestConfig = compactRpcRequestConfig({
+    commitment: params.commitment,
+    encoding: params.encoding ?? "jsonParsed",
+    minContextSlot: params.minContextSlot,
+  });
 
   const response = await (rpc as any)
-    .getTokenAccountsByOwner(address(params.ownerAddress), filter, {
-      commitment: params.commitment,
-      encoding: params.encoding ?? "jsonParsed",
-      minContextSlot: params.minContextSlot,
-    })
+    .getTokenAccountsByOwner(address(params.ownerAddress), filter, requestConfig)
     .send();
 
   const context = isRecord(response) && isRecord(response.context) ? response.context : null;

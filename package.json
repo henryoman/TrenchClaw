@@ -54,6 +54,7 @@
     "lint": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run lint",
     "lint:fix": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run lint:fix",
     "test": "TURBO_TELEMETRY_DISABLED=1 bunx --bun turbo run test",
+    "test:rpc-reads-live": "bun run scripts/manualTestRpcReads.ts",
     "test:launch-chat": "bun run scripts/testLaunchChat.ts",
     "test:runtime-chat": "bun test tests/runtime/chatService.test.ts tests/frontends/transport.test.ts",
     "generate": "bun run --cwd apps/trenchclaw generate",

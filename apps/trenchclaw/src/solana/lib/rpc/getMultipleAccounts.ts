@@ -1,6 +1,7 @@
 import { address } from "@solana/kit";
 import type { Commitment, DataSlice, Slot } from "@solana/kit";
 import { createRateLimitedSolanaRpc } from "./client";
+import { compactRpcRequestConfig } from "./requestConfig";
 import { resolveRequiredRpcUrl } from "./urls";
 
 const MAX_GET_MULTIPLE_ACCOUNTS_BATCH_SIZE = 100;
@@ -51,22 +52,24 @@ export async function getMultipleAccounts(
   );
   const uniqueInputAccounts = uniqueAccounts(params.accounts);
   const inputChunks = chunkArray(uniqueInputAccounts, chunkSize);
+  const jsonParsedRequestConfig = compactRpcRequestConfig({
+    commitment: params.commitment,
+    encoding: "jsonParsed" as const,
+    minContextSlot: params.minContextSlot,
+  });
+  const base64RequestConfig = compactRpcRequestConfig({
+    commitment: params.commitment,
+    dataSlice: params.dataSlice,
+    encoding: "base64" as const,
+    minContextSlot: params.minContextSlot,
+  });
 
   const chunkResponses = await Promise.all(
     inputChunks.map(async (chunk) => {
       const chunkAddresses = chunk.map((item) => address(item));
       const response = await (encoding === "jsonParsed"
-        ? rpc.getMultipleAccounts(chunkAddresses, {
-            commitment: params.commitment,
-            encoding: "jsonParsed",
-            minContextSlot: params.minContextSlot,
-          })
-        : rpc.getMultipleAccounts(chunkAddresses, {
-            commitment: params.commitment,
-            dataSlice: params.dataSlice,
-            encoding: "base64",
-            minContextSlot: params.minContextSlot,
-          })).send();
+        ? rpc.getMultipleAccounts(chunkAddresses, jsonParsedRequestConfig)
+        : rpc.getMultipleAccounts(chunkAddresses, base64RequestConfig)).send();
       return { chunk, response };
     }),
   );

@@ -2,6 +2,7 @@ import { address } from "@solana/kit";
 import type { Commitment, Slot } from "@solana/kit";
 
 import { createRateLimitedSolanaRpc } from "./client";
+import { compactRpcRequestConfig } from "./requestConfig";
 import { resolveRequiredRpcUrl } from "./urls";
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -47,11 +48,12 @@ export interface GetTokenSupplyResult {
 
 export async function getTokenSupply(params: GetTokenSupplyParams): Promise<GetTokenSupplyResult> {
   const rpc = createRateLimitedSolanaRpc(params.rpcUrl ?? resolveRequiredRpcUrl(), params.rpcConfig);
+  const requestConfig = compactRpcRequestConfig({
+    commitment: params.commitment,
+    minContextSlot: params.minContextSlot,
+  });
   const response = await (rpc as any)
-    .getTokenSupply(address(params.mintAddress), {
-      commitment: params.commitment,
-      minContextSlot: params.minContextSlot,
-    })
+    .getTokenSupply(address(params.mintAddress), requestConfig)
     .send();
 
   const context = isRecord(response) && isRecord(response.context) ? response.context : null;

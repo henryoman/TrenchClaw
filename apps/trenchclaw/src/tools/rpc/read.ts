@@ -26,12 +26,268 @@ const dataSliceSchema = z.object({
   length: z.number().int().min(0),
 });
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+const toStringOrNull = (value: unknown): string | null =>
+  typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+
+const toBooleanOrNull = (value: unknown): boolean | null =>
+  typeof value === "boolean" ? value : null;
+
+const toFiniteNumberOrNull = (value: unknown): number | null =>
+  typeof value === "number" && Number.isFinite(value) ? value : null;
+
+const toIntegerOrNull = (value: unknown): number | null =>
+  typeof value === "number" && Number.isInteger(value) ? value : null;
+
+const toBigIntOrNull = (value: unknown): bigint | null => {
+  if (typeof value === "bigint") {
+    return value;
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return BigInt(Math.trunc(value));
+  }
+  if (typeof value === "string" && value.trim().length > 0) {
+    try {
+      return BigInt(value);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const formatUiAmountStringFromRaw = (amountRaw: bigint, decimals: number): string => {
+  if (decimals <= 0) {
+    return amountRaw.toString();
+  }
+
+  const isNegative = amountRaw < 0n;
+  const normalized = isNegative ? -amountRaw : amountRaw;
+  const scale = 10n ** BigInt(decimals);
+  const whole = normalized / scale;
+  const fraction = normalized % scale;
+  const fractionText = fraction.toString().padStart(decimals, "0").replace(/0+$/u, "");
+  const prefix = isNegative ? "-" : "";
+  return fractionText.length > 0 ? `${prefix}${whole.toString()}.${fractionText}` : `${prefix}${whole.toString()}`;
+};
+
+const summarizeTokenAmount = (value: unknown): {
+  amountRaw: string | null;
+  decimals: number | null;
+  uiAmount: number | null;
+  uiAmountString: string | null;
+} | null => {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  const amountRaw = toBigIntOrNull(value.amount);
+  const decimals = toIntegerOrNull(value.decimals);
+  const uiAmountString = toStringOrNull(value.uiAmountString)
+    ?? (typeof value.uiAmount === "number" && Number.isFinite(value.uiAmount) ? String(value.uiAmount) : null);
+  const uiAmount =
+    toFiniteNumberOrNull(value.uiAmount)
+    ?? (uiAmountString ? Number(uiAmountString) : null);
+
+  return {
+    amountRaw: amountRaw?.toString() ?? null,
+    decimals,
+    uiAmount: uiAmount !== null && Number.isFinite(uiAmount) ? uiAmount : null,
+    uiAmountString,
+  };
+};
+
+const summarizeParsedTokenAccount = (
+  account: unknown,
+  fallbackAddress?: string,
+): {
+  address: string | null;
+  ownerProgramId: string | null;
+  mintAddress: string | null;
+  ownerAddress: string | null;
+  state: string | null;
+  isNative: boolean | null;
+  tokenAmountRaw: string | null;
+  tokenAmountUi: number | null;
+  tokenAmountUiString: string | null;
+  decimals: number | null;
+} | null => {
+  const entry = isRecord(account) ? account : null;
+  const address = toStringOrNull(entry?.pubkey) ?? toStringOrNull(entry?.address) ?? fallbackAddress ?? null;
+  const innerAccount =
+    entry && "account" in entry
+      ? (isRecord(entry.account) ? entry.account : null)
+      : entry;
+  if (!isRecord(innerAccount)) {
+    return null;
+  }
+
+  const data = isRecord(innerAccount.data) ? innerAccount.data : null;
+  const parsed = isRecord(data?.parsed) ? data.parsed : null;
+  const info = isRecord(parsed?.info) ? parsed.info : null;
+  if (!info) {
+    return null;
+  }
+
+  const tokenAmount = summarizeTokenAmount(info.tokenAmount);
+  const mintAddress = toStringOrNull(info.mint);
+  const ownerAddress = toStringOrNull(info.owner);
+  const hasTokenShape = mintAddress !== null || ownerAddress !== null || tokenAmount !== null;
+  if (!hasTokenShape) {
+    return null;
+  }
+
+  return {
+    address,
+    ownerProgramId: toStringOrNull(innerAccount.owner),
+    mintAddress,
+    ownerAddress,
+    state: toStringOrNull(info.state),
+    isNative: toBooleanOrNull(info.isNative),
+    tokenAmountRaw: tokenAmount?.amountRaw ?? null,
+    tokenAmountUi: tokenAmount?.uiAmount ?? null,
+    tokenAmountUiString: tokenAmount?.uiAmountString ?? null,
+    decimals: tokenAmount?.decimals ?? null,
+  };
+};
+
+const summarizeParsedTokenMint = (account: unknown): {
+  ownerProgramId: string | null;
+  decimals: number | null;
+  supplyRaw: string | null;
+  supplyUiString: string | null;
+  mintAuthority: string | null;
+  freezeAuthority: string | null;
+  isInitialized: boolean | null;
+} | null => {
+  const entry = isRecord(account) ? account : null;
+  const innerAccount =
+    entry && "account" in entry
+      ? (isRecord(entry.account) ? entry.account : null)
+      : entry;
+  if (!isRecord(innerAccount)) {
+    return null;
+  }
+
+  const data = isRecord(innerAccount.data) ? innerAccount.data : null;
+  const parsed = isRecord(data?.parsed) ? data.parsed : null;
+  const info = isRecord(parsed?.info) ? parsed.info : null;
+  const parsedType = toStringOrNull(parsed?.type);
+  if (parsedType !== "mint" || !info) {
+    return null;
+  }
+
+  const decimals = toIntegerOrNull(info.decimals);
+  const supplyRaw = toBigIntOrNull(info.supply);
+  return {
+    ownerProgramId: toStringOrNull(innerAccount.owner),
+    decimals,
+    supplyRaw: supplyRaw?.toString() ?? null,
+    supplyUiString: supplyRaw !== null && decimals !== null ? formatUiAmountStringFromRaw(supplyRaw, decimals) : null,
+    mintAuthority: toStringOrNull(info.mintAuthority),
+    freezeAuthority: toStringOrNull(info.freezeAuthority),
+    isInitialized: toBooleanOrNull(info.isInitialized),
+  };
+};
+
+const summarizeAccountInfo = (
+  account: unknown,
+  fallbackAddress?: string,
+): {
+  address: string | null;
+  ownerProgramId: string | null;
+  lamports: string | null;
+  executable: boolean | null;
+  space: number | null;
+  parsedType: string | null;
+  parsedTokenAccount: ReturnType<typeof summarizeParsedTokenAccount>;
+  parsedTokenMint: ReturnType<typeof summarizeParsedTokenMint>;
+} | null => {
+  const entry = isRecord(account) ? account : null;
+  const address = toStringOrNull(entry?.pubkey) ?? toStringOrNull(entry?.address) ?? fallbackAddress ?? null;
+  const innerAccount =
+    entry && "account" in entry
+      ? (isRecord(entry.account) ? entry.account : null)
+      : entry;
+  if (!isRecord(innerAccount)) {
+    return null;
+  }
+
+  const data = isRecord(innerAccount.data) ? innerAccount.data : null;
+  const parsed = isRecord(data?.parsed) ? data.parsed : null;
+  return {
+    address,
+    ownerProgramId: toStringOrNull(innerAccount.owner),
+    lamports: toBigIntOrNull(innerAccount.lamports)?.toString() ?? null,
+    executable: toBooleanOrNull(innerAccount.executable),
+    space: toIntegerOrNull(innerAccount.space),
+    parsedType: toStringOrNull(parsed?.type),
+    parsedTokenAccount: summarizeParsedTokenAccount(account, fallbackAddress),
+    parsedTokenMint: summarizeParsedTokenMint(account),
+  };
+};
+
+const summarizeParsedTokenAccounts = (
+  accounts: Array<{ address: string; account: unknown | null }>,
+): {
+  parsedTokenAccounts: Array<NonNullable<ReturnType<typeof summarizeParsedTokenAccount>>>;
+  totalsByMint: Array<{
+    mintAddress: string;
+    decimals: number | null;
+    accountCount: number;
+    totalAmountRaw: string;
+    totalAmountUiString: string | null;
+  }>;
+} => {
+  const parsedTokenAccounts = accounts
+    .map((entry) => summarizeParsedTokenAccount(entry, entry.address))
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+  const totals = new Map<string, { mintAddress: string; decimals: number | null; accountCount: number; totalAmountRaw: bigint }>();
+  for (const entry of parsedTokenAccounts) {
+    const mintAddress = entry.mintAddress;
+    const amountRaw = toBigIntOrNull(entry.tokenAmountRaw);
+    if (!mintAddress || amountRaw === null) {
+      continue;
+    }
+    const key = `${mintAddress}:${entry.decimals ?? "unknown"}`;
+    const existing = totals.get(key);
+    if (existing) {
+      existing.accountCount += 1;
+      existing.totalAmountRaw += amountRaw;
+      continue;
+    }
+    totals.set(key, {
+      mintAddress,
+      decimals: entry.decimals,
+      accountCount: 1,
+      totalAmountRaw: amountRaw,
+    });
+  }
+
+  return {
+    parsedTokenAccounts,
+    totalsByMint: Array.from(totals.values()).map((entry) => ({
+      mintAddress: entry.mintAddress,
+      decimals: entry.decimals,
+      accountCount: entry.accountCount,
+      totalAmountRaw: entry.totalAmountRaw.toString(),
+      totalAmountUiString:
+        entry.decimals !== null ? formatUiAmountStringFromRaw(entry.totalAmountRaw, entry.decimals) : null,
+    })),
+  };
+};
+
 const isRetryableRpcError = (error: unknown): boolean => {
   const message = error instanceof Error ? error.message : String(error);
   return /\b429\b/u.test(message)
     || /\b403\b/u.test(message)
     || /rate limit/iu.test(message)
     || /too many requests/iu.test(message)
+    || /overload(?:ed)?/iu.test(message)
+    || /please try again/iu.test(message)
     || /\b503\b/u.test(message)
     || /\b504\b/u.test(message)
     || /temporarily unavailable/iu.test(message)
@@ -219,6 +475,7 @@ export const createGetRpcAccountInfoAction = (
             encoding: input.encoding,
             contextSlot: result.contextSlot.toString(),
             accountInfo: result.account,
+            summary: summarizeAccountInfo(result.account, input.account),
           },
         });
       } catch (error) {
@@ -260,7 +517,10 @@ export const createGetRpcMultipleAccountsAction = (
             requested: input.accounts.length,
             returned: result.accounts.length,
             contextSlot: result.contextSlot.toString(),
-            accounts: result.accounts,
+            accounts: result.accounts.map((entry) => ({
+              ...entry,
+              summary: summarizeAccountInfo(entry, entry.address),
+            })),
           },
         });
       } catch (error) {
@@ -295,6 +555,7 @@ export const createGetRpcTokenAccountsByOwnerAction = (
           minContextSlot: input.minContextSlot === undefined ? undefined : BigInt(input.minContextSlot),
         });
 
+        const summarized = summarizeParsedTokenAccounts(result.accounts);
         return createSuccess({
           startedAt,
           idempotencyKey,
@@ -306,7 +567,12 @@ export const createGetRpcTokenAccountsByOwnerAction = (
             encoding: input.encoding,
             contextSlot: result.contextSlot.toString(),
             returned: result.accounts.length,
-            accounts: result.accounts.slice(0, MAX_TOKEN_ACCOUNT_RESULTS),
+            accounts: result.accounts.slice(0, MAX_TOKEN_ACCOUNT_RESULTS).map((entry) => ({
+              ...entry,
+              summary: summarizeParsedTokenAccount(entry, entry.address),
+            })),
+            parsedTokenAccounts: summarized.parsedTokenAccounts.slice(0, MAX_TOKEN_ACCOUNT_RESULTS),
+            parsedTokenTotalsByMint: summarized.totalsByMint,
           },
         });
       } catch (error) {
