@@ -16,9 +16,9 @@ const swapHistoryInputSchema = z.object({
   limit: z.number().int().positive().max(MAX_HELIUS_SWAP_HISTORY_LIMIT).default(DEFAULT_HELIUS_SWAP_HISTORY_LIMIT),
 });
 
-type SwapHistoryInput = z.output<typeof swapHistoryInputSchema>;
+export type SwapHistoryInput = z.output<typeof swapHistoryInputSchema>;
 
-interface HeliusTokenTransfer {
+export interface HeliusTokenTransfer {
   mint?: string;
   tokenAmount?: number;
   tokenStandard?: string;
@@ -26,7 +26,7 @@ interface HeliusTokenTransfer {
   toTokenAccount?: string;
 }
 
-interface HeliusSwapEvent {
+export interface HeliusSwapEvent {
   nativeInput?: {
     amount?: string;
     account?: string;
@@ -55,7 +55,7 @@ interface HeliusSwapEvent {
   }>;
 }
 
-interface HeliusEnhancedTransaction {
+export interface HeliusEnhancedTransaction {
   signature: string;
   description?: string;
   type?: string;
@@ -68,7 +68,7 @@ interface HeliusEnhancedTransaction {
   };
 }
 
-interface SwapHistoryItem {
+export interface SwapHistoryItem {
   signature: string;
   description: string | null;
   source: string | null;
@@ -118,7 +118,7 @@ interface SwapHistoryItem {
   } | null;
 }
 
-interface SwapHistoryOutput {
+export interface SwapHistoryOutput {
   walletAddress: string;
   limit: number;
   backendTimezone: "UTC";
@@ -158,7 +158,7 @@ const isRetryableSwapHistoryError = (error: unknown): boolean => {
     || /\babort(?:ed)?\b/iu.test(message);
 };
 
-const formatUiAmountString = (amountRaw: string | undefined, decimals: number | undefined): string | null => {
+export const formatUiAmountString = (amountRaw: string | undefined, decimals: number | undefined): string | null => {
   if (!amountRaw || typeof decimals !== "number" || !Number.isInteger(decimals) || decimals < 0) {
     return null;
   }
@@ -203,7 +203,7 @@ const pacificDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
   timeZoneName: "short",
 });
 
-const resolveHeliusApiKey = async (): Promise<string> => {
+export const resolveHeliusApiKey = async (): Promise<string> => {
   const { apiKey } = await resolveHeliusRpcConfig();
   if (apiKey) {
     return apiKey;
@@ -329,8 +329,10 @@ const mapTransaction = (transaction: HeliusEnhancedTransaction): SwapHistoryItem
   };
 };
 
-const fetchRecentSwapTransactions = async (
-  input: SwapHistoryInput,
+export const fetchRecentSwapTransactionsByAddress = async (input: {
+  address: string;
+  limit: number;
+},
   beforeSignature?: string,
   continuationRetries = 0,
 ): Promise<HeliusEnhancedTransaction[]> => {
@@ -339,7 +341,7 @@ const fetchRecentSwapTransactions = async (
 
   try {
     const transactions = await helius.enhanced.getTransactionsByAddress({
-      address: input.walletAddress,
+      address: input.address,
       limit: input.limit,
       sortOrder: "desc",
       type: "SWAP",
@@ -356,7 +358,7 @@ const fetchRecentSwapTransactions = async (
       throw new Error(`Unable to resolve recent swap history after ${HELIUS_CONTINUATION_RETRY_LIMIT} continuation retries.`, { cause: error });
     }
 
-    return fetchRecentSwapTransactions(input, continuationSignature, continuationRetries + 1);
+    return fetchRecentSwapTransactionsByAddress(input, continuationSignature, continuationRetries + 1);
   }
 };
 
@@ -364,7 +366,10 @@ export const getSwapHistory = async (rawInput: SwapHistoryInput): Promise<SwapHi
   const input = swapHistoryInputSchema.parse(rawInput);
   const transactions = await (async (): Promise<HeliusEnhancedTransaction[]> => {
     try {
-      return await fetchRecentSwapTransactions(input);
+      return await fetchRecentSwapTransactionsByAddress({
+        address: input.walletAddress,
+        limit: input.limit,
+      });
     } catch (error) {
       if (isNotFoundSwapHistoryError(error)) {
         return [];

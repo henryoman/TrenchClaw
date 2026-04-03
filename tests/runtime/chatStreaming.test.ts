@@ -51,4 +51,56 @@ describe("chat streaming adapters", () => {
       { type: "finish", finishReason: "stop" },
     ]);
   });
+
+  test("strips a leading tool-narration sentence from the first assistant text chunk", async () => {
+    const chunks: UIMessageChunk[] = [];
+
+    await pipeModelFullStreamToUIMessageStream(
+      (async function* () {
+        yield { type: "start" };
+        yield { type: "text-start", id: "text-1" };
+        yield { type: "text-delta", id: "text-1", text: "I'll fetch the current holdings and USD value for that wallet. Wallet " };
+        yield { type: "text-delta", id: "text-1", text: "ABC has 4.2 SOL." };
+        yield { type: "text-end", id: "text-1" };
+        yield { type: "finish", finishReason: "stop" };
+      })(),
+      (chunk) => {
+        chunks.push(chunk);
+      },
+    );
+
+    expect(chunks).toEqual([
+      { type: "start", messageId: expect.any(String) },
+      { type: "text-start", id: "text-1" },
+      { type: "text-delta", id: "text-1", delta: "Wallet " },
+      { type: "text-delta", id: "text-1", delta: "ABC has 4.2 SOL." },
+      { type: "text-end", id: "text-1" },
+      { type: "finish", finishReason: "stop" },
+    ]);
+  });
+
+  test("preserves first assistant text when it starts directly with the answer", async () => {
+    const chunks: UIMessageChunk[] = [];
+
+    await pipeModelFullStreamToUIMessageStream(
+      (async function* () {
+        yield { type: "start" };
+        yield { type: "text-start", id: "text-2" };
+        yield { type: "text-delta", id: "text-2", text: "Wallet ABC holds 4.2 SOL." };
+        yield { type: "text-end", id: "text-2" };
+        yield { type: "finish", finishReason: "stop" };
+      })(),
+      (chunk) => {
+        chunks.push(chunk);
+      },
+    );
+
+    expect(chunks).toEqual([
+      { type: "start", messageId: expect.any(String) },
+      { type: "text-start", id: "text-2" },
+      { type: "text-delta", id: "text-2", delta: "Wallet ABC holds 4.2 SOL." },
+      { type: "text-end", id: "text-2" },
+      { type: "finish", finishReason: "stop" },
+    ]);
+  });
 });

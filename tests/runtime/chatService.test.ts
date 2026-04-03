@@ -688,6 +688,61 @@ describe("RuntimeChatService", () => {
     expect(assistant?.content).toContain("Job #12 is currently pending");
   });
 
+  test("does not use the managed-wallet fast path for explicit external wallet addresses", async () => {
+    const registry = new ActionRegistry();
+    const stateStore = new InMemoryStateStore();
+    let dispatchInvocationCount = 0;
+    let streamInvocationCount = 0;
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => {
+            dispatchInvocationCount += 1;
+            return {
+              results: [makeActionResult({ ok: true, data: { wallets: [] } })],
+              policyHits: [],
+            };
+          },
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore,
+        llm: {
+          provider: "test",
+          model: "test-model",
+          defaultSystemPrompt: "test system prompt",
+          defaultMode: "test",
+          generate: async () => ({ text: "ok", finishReason: "stop" }),
+          stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
+        } as unknown as LlmClient,
+        workspaceToolsEnabled: false,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: (() => {
+          streamInvocationCount += 1;
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([
+      {
+        id: "user-external-wallet-1",
+        role: "user",
+        parts: [{ type: "text", text: "what does wallet JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 hold right now?" }],
+      },
+    ], {
+      chatId: "chat-external-wallet-1",
+    });
+
+    expect(dispatchInvocationCount).toBe(0);
+    expect(streamInvocationCount).toBe(1);
+  });
+
   test("bypasses the model for varied plain-English wallet questions", async () => {
     const registry = new ActionRegistry();
     const stateStore = new InMemoryStateStore();
@@ -2329,6 +2384,136 @@ describe("RuntimeChatService", () => {
     expect(execution.systemPrompt).toContain("When batch reads are available, prefer one valid batch call over many duplicate tiny calls.");
   });
 
+  test("includes explicit external-wallet holdings-vs-analysis guidance for wallet intel prompts", async () => {
+    const gateway = await createConfiguredGateway({
+      toolSnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "getExternalWalletHoldings",
+            description: "external wallet holdings",
+            purpose: "inspect one external wallet's current holdings",
+            routingHint: "read one exact wallet's current holdings without recent trades",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { walletAddress: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4" },
+            toolDescription: "external wallet holdings",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+          {
+            kind: "action",
+            name: "getExternalWalletAnalysis",
+            description: "external wallet analysis",
+            purpose: "inspect one external wallet's current holdings plus recent swaps",
+            routingHint: "read one exact wallet's holdings plus recent trades",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { walletAddress: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", tradeLimit: 5 },
+            toolDescription: "external wallet analysis",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-wallet-intel-1",
+          role: "user",
+          parts: [{ type: "text", text: "analyze wallet JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 and show holdings plus the last few trades" }],
+        },
+      ],
+      userMessage: "analyze wallet JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 and show holdings plus the last few trades",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.toolNames).toEqual(["getExternalWalletHoldings", "getExternalWalletAnalysis"]);
+    expect(execution.systemPrompt).toContain("enabled command groups: RPC Data Fetch");
+    expect(execution.systemPrompt).toContain("For one exact external wallet address, prefer `getExternalWalletHoldings` for holdings-only questions and `getExternalWalletAnalysis` when recent swaps are also requested.");
+    expect(execution.systemPrompt).toContain("For one exact external wallet address when the user asks for current SOL balance plus a USD estimate or current wallet value, prefer `getExternalWalletHoldings` over raw `getRpcBalance` because it already includes live SOL/USD context.");
+    expect(execution.systemPrompt).toContain("use `getExternalWalletAnalysis` for one exact external wallet address when you need holdings plus recent swaps");
+    expect(execution.systemPrompt).toContain("use `getExternalWalletHoldings` for one exact external wallet address when you only need current holdings");
+    expect(execution.systemPrompt).toContain("use `getExternalWalletHoldings` instead of `getRpcBalance` when one exact external wallet address needs SOL balance plus USD value");
+    expect(execution.systemPrompt).toContain("Do not preface answers with tool narration like 'I'll check', 'Let me look', or 'I'll fetch'.");
+    expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
+  });
+
+  test("includes explicit recent-buyer routing guidance for buyer-flow prompts", async () => {
+    const gateway = await createConfiguredGateway({
+      toolSnapshot: {
+        actions: [],
+        workspaceTools: [],
+        comingSoonFeatures: [],
+        modelTools: [
+          {
+            kind: "action",
+            name: "getTokenRecentBuyers",
+            description: "recent token buyers",
+            purpose: "inspect recent buyers for one exact token mint",
+            routingHint: "find recent buyers for one exact mint",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { mintAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", recentSwapWindow: 20 },
+            toolDescription: "recent token buyers",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+          {
+            kind: "action",
+            name: "getTokenHolderDistribution",
+            description: "token holder distribution",
+            purpose: "inspect holder concentration for one exact token mint",
+            routingHint: "inspect holder concentration and whale ownership for one exact mint",
+            sideEffectLevel: "read",
+            enabledNow: true,
+            requiresConfirmation: false,
+            exampleInput: { mintAddress: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN" },
+            toolDescription: "token holder distribution",
+            releaseReadinessStatus: "shipped-now",
+            releaseReadinessNote: "Shipped now.",
+          },
+        ],
+      },
+    });
+
+    const execution = await gateway.prepareChatExecution({
+      lane: "operator-chat",
+      messages: [
+        {
+          id: "user-recent-buyers-1",
+          role: "user",
+          parts: [{ type: "text", text: "who are the recent buyers of JUP and what have they been spending?" }],
+        },
+      ],
+      userMessage: "who are the recent buyers of JUP and what have they been spending?",
+    });
+
+    expect(execution.kind).toBe("llm");
+    if (execution.kind !== "llm") {
+      return;
+    }
+
+    expect(execution.toolNames).toEqual(["getTokenRecentBuyers", "getTokenHolderDistribution"]);
+    expect(execution.systemPrompt).toContain("enabled command groups: Market + News");
+    expect(execution.systemPrompt).toContain("For one exact token mint when the user asks who bought recently or whether buyers are coming in, prefer `getTokenRecentBuyers` over holder-distribution tools.");
+    expect(execution.systemPrompt).toContain("Do not preface answers with tool narration like 'I'll check', 'Let me look', or 'I'll fetch'.");
+    expect(execution.systemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
+  });
+
   test("includes a compact wallet summary in the system prompt", async () => {
     const registry = new ActionRegistry();
     const eventBus = new InMemoryRuntimeEventBus();
@@ -2393,6 +2578,105 @@ describe("RuntimeChatService", () => {
     expect(capturedSystemPrompt).toContain(`- active instance wallet scope: ${instanceId}`);
     expect(capturedSystemPrompt).toContain("managed wallet count: 1");
     expect(capturedSystemPrompt).toContain("fixture-wallets/fixture001=11111111111111111111111111111111");
+  });
+
+  test("passes routed wallet-intel tools and live SOL context into the model call", async () => {
+    const toolSnapshot: RuntimeToolSnapshot = {
+      actions: [],
+      workspaceTools: [],
+      comingSoonFeatures: [],
+      modelTools: [
+        {
+          kind: "action",
+          name: "getExternalWalletHoldings",
+          description: "external wallet holdings",
+          purpose: "inspect one external wallet's current holdings",
+          routingHint: "read one exact wallet's current holdings without recent trades",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { walletAddress: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4" },
+          toolDescription: "external wallet holdings",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+        {
+          kind: "action",
+          name: "getExternalWalletAnalysis",
+          description: "external wallet analysis",
+          purpose: "inspect one external wallet's current holdings plus recent swaps",
+          routingHint: "read one exact wallet's holdings plus recent trades",
+          sideEffectLevel: "read",
+          enabledNow: true,
+          requiresConfirmation: false,
+          exampleInput: { walletAddress: "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4", tradeLimit: 5 },
+          toolDescription: "external wallet analysis",
+          releaseReadinessStatus: "shipped-now",
+          releaseReadinessNote: "Shipped now.",
+        },
+      ],
+    };
+
+    const registry = new ActionRegistry();
+    registry.register({
+      name: "getExternalWalletHoldings",
+      category: "data-based",
+      inputSchema: z.object({ walletAddress: z.string() }),
+      execute: async () => makeActionResult({ ok: true, data: { analysisScope: "current-wallet-holdings" } }),
+    });
+    registry.register({
+      name: "getExternalWalletAnalysis",
+      category: "data-based",
+      inputSchema: z.object({ walletAddress: z.string() }),
+      execute: async () => makeActionResult({ ok: true, data: { analysisScope: "wallet-holdings-plus-recent-swaps" } }),
+    });
+
+    const gateway = await createConfiguredGateway({ toolSnapshot });
+    let capturedSystemPrompt = "";
+    let seenToolNames: string[] = [];
+    const service = createRuntimeChatService(
+      {
+        dispatcher: {
+          dispatchStep: async () => ({ results: [makeActionResult({ ok: true })], policyHits: [] }),
+        } as unknown as ActionDispatcher,
+        registry,
+        eventBus: new InMemoryRuntimeEventBus(),
+        stateStore: new InMemoryStateStore(),
+        gateway,
+        toolSnapshot,
+        llm: {
+          provider: "test",
+          model: "test-model",
+          defaultSystemPrompt: "test system prompt",
+          defaultMode: "test",
+          generate: async () => ({ text: "ok", finishReason: "stop" }),
+          stream: async () => ({ textStream: (async function* () {})(), consumeText: async () => "" }),
+        } as unknown as LlmClient,
+      },
+      {
+        resolveStreamingModel: () => ({}) as never,
+        convertToModelMessages: async () => [],
+        streamText: ((args: { system?: string; tools?: Record<string, { execute: (input: unknown) => Promise<unknown> }> }) => {
+          capturedSystemPrompt = args.system ?? "";
+          seenToolNames = Object.keys(args.tools ?? {}).toSorted((left, right) => left.localeCompare(right));
+          return {
+            toUIMessageStreamResponse: () => new Response("ok"),
+          };
+        }) as never,
+      },
+    );
+
+    await service.stream([
+      {
+        id: "user-wallet-intel-stream-1",
+        role: "user",
+        parts: [{ type: "text", text: "what does wallet JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4 hold right now and what is its SOL worth in USD?" }],
+      },
+    ]);
+
+    expect(seenToolNames).toEqual(["getExternalWalletAnalysis", "getExternalWalletHoldings"]);
+    expect(capturedSystemPrompt).toContain("shared backend SOL/USD snapshot: $141.25");
+    expect(capturedSystemPrompt).toContain("For one exact external wallet address, prefer `getExternalWalletHoldings` for holdings-only questions and `getExternalWalletAnalysis` when recent swaps are also requested.");
   });
 
   test("states missing managed wallet libraries directly in the wallet summary", async () => {

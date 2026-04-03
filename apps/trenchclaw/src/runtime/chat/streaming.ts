@@ -2,6 +2,10 @@ import type { UIMessage, UIMessageChunk } from "ai";
 import { createUiTextPartId } from "../../ai/contracts/types/ids";
 import { createResponseMessageId, toRuntimeChatErrorMessage } from "./utils";
 
+const LEADING_TOOL_NARRATION_PREFIX_PATTERN = /^\s*(?:I['’]?ll|I will|I['’]?m going to|I am going to|Let me)\b/i;
+const LEADING_TOOL_NARRATION_SENTENCE_PATTERN = /^\s*(?:(?:I['’]?ll|I will|I['’]?m going to|I am going to|Let me)\s+(?:check|fetch|get|look(?:\s+into)?|pull|review|inspect|analyze)\b[^.!?\n]{0,180}[.!?]\s*)+/i;
+const MAX_LEADING_TOOL_NARRATION_BUFFER_CHARS = 240;
+
 export const uiChunkHasVisibleText = (chunk: UIMessageChunk): boolean => {
   if (chunk.type === "text-delta") {
     return chunk.delta.trim().length > 0;
@@ -38,6 +42,117 @@ export const isRecoverableToolOnlyStreamError = (error: unknown): boolean => {
     || message.includes("Received text-delta for missing text part");
 };
 
+const sanitizeLeadingAssistantText = (input: {
+  text: string;
+  force: boolean;
+}): {
+  decided: boolean;
+  text: string;
+} => {
+  if (!LEADING_TOOL_NARRATION_PREFIX_PATTERN.test(input.text)) {
+    return {
+      decided: true,
+      text: input.text,
+    };
+  }
+
+  const strippedText = input.text.replace(LEADING_TOOL_NARRATION_SENTENCE_PATTERN, "");
+  if (strippedText !== input.text) {
+    return {
+      decided: true,
+      text: strippedText,
+    };
+  }
+
+  if (
+    !input.force
+    && input.text.length < MAX_LEADING_TOOL_NARRATION_BUFFER_CHARS
+    && !/[.!?\n]/.test(input.text)
+  ) {
+    return {
+      decided: false,
+      text: "",
+    };
+  }
+
+  return {
+    decided: true,
+    text: input.text,
+  };
+};
+
+const createLeadingAssistantTextChunkWriter = (input: {
+  writeChunk: (chunk: UIMessageChunk) => void;
+  observeChunk?: (chunk: UIMessageChunk) => void;
+}): ((chunk: UIMessageChunk) => void) => {
+  let initialTextPartId: string | null = null;
+  let initialTextBuffer = "";
+  let initialTextPartStarted = false;
+  let emittedVisibleAssistantText = false;
+
+  const emit = (chunk: UIMessageChunk): void => {
+    input.observeChunk?.(chunk);
+    input.writeChunk(chunk);
+  };
+
+  const flushInitialTextBuffer = (force: boolean): void => {
+    if (!initialTextPartId) {
+      return;
+    }
+
+    const sanitized = sanitizeLeadingAssistantText({
+      text: initialTextBuffer,
+      force,
+    });
+    if (!sanitized.decided) {
+      return;
+    }
+
+    initialTextBuffer = sanitized.text;
+    if (initialTextBuffer.length === 0) {
+      return;
+    }
+
+    if (!initialTextPartStarted) {
+      emit({ type: "text-start", id: initialTextPartId });
+      initialTextPartStarted = true;
+    }
+
+    emit({ type: "text-delta", id: initialTextPartId, delta: initialTextBuffer });
+    initialTextBuffer = "";
+    emittedVisibleAssistantText = true;
+  };
+
+  return (chunk: UIMessageChunk): void => {
+    if (chunk.type === "text-start" && !emittedVisibleAssistantText && initialTextPartId === null) {
+      initialTextPartId = chunk.id;
+      initialTextBuffer = "";
+      initialTextPartStarted = false;
+      return;
+    }
+
+    if (chunk.type === "text-delta" && !emittedVisibleAssistantText && initialTextPartId === chunk.id) {
+      initialTextBuffer += chunk.delta;
+      flushInitialTextBuffer(false);
+      return;
+    }
+
+    if (chunk.type === "text-end" && initialTextPartId === chunk.id) {
+      if (!emittedVisibleAssistantText) {
+        flushInitialTextBuffer(true);
+      }
+      if (initialTextPartStarted) {
+        emit(chunk);
+      }
+      initialTextPartId = null;
+      initialTextBuffer = "";
+      return;
+    }
+
+    emit(chunk);
+  };
+};
+
 export const pipeModelFullStreamToUIMessageStream = async (
   stream: AsyncIterable<Record<string, unknown>>,
   writeChunk: (chunk: UIMessageChunk) => void,
@@ -46,6 +161,10 @@ export const pipeModelFullStreamToUIMessageStream = async (
   const responseMessageId = createResponseMessageId();
   const activeTextPartIds = new Set<string>();
   const activeReasoningPartIds = new Set<string>();
+  const emitChunk = createLeadingAssistantTextChunkWriter({
+    writeChunk,
+    observeChunk,
+  });
   for await (const part of stream) {
     const partType = typeof part.type === "string" ? part.type : "";
     let chunk: UIMessageChunk | null = null;
@@ -55,11 +174,9 @@ export const pipeModelFullStreamToUIMessageStream = async (
         if (!text) break;
         const id = typeof part.id === "string" && part.id.length > 0 ? part.id : createUiTextPartId();
         chunk = { type: "text-start", id };
-        observeChunk?.(chunk);
-        writeChunk(chunk);
+        emitChunk(chunk);
         chunk = { type: "text-delta", id, delta: text };
-        observeChunk?.(chunk);
-        writeChunk(chunk);
+        emitChunk(chunk);
         chunk = { type: "text-end", id };
         activeTextPartIds.delete(id);
         break;
@@ -68,11 +185,9 @@ export const pipeModelFullStreamToUIMessageStream = async (
         const text = typeof part.text === "string" ? part.text : "";
         const id = typeof part.id === "string" && part.id.length > 0 ? part.id : createUiTextPartId();
         chunk = { type: "reasoning-start", id };
-        observeChunk?.(chunk);
-        writeChunk(chunk);
+        emitChunk(chunk);
         chunk = { type: "reasoning-delta", id, delta: text };
-        observeChunk?.(chunk);
-        writeChunk(chunk);
+        emitChunk(chunk);
         chunk = { type: "reasoning-end", id };
         activeReasoningPartIds.delete(id);
         break;
@@ -211,8 +326,7 @@ export const pipeModelFullStreamToUIMessageStream = async (
         break;
     }
     if (!chunk) continue;
-    observeChunk?.(chunk);
-    writeChunk(chunk);
+    emitChunk(chunk);
   }
 };
 
@@ -221,6 +335,10 @@ export const pipeUIMessageStream = async (
   writeChunk: (chunk: UIMessageChunk) => void,
   observeChunk?: (chunk: UIMessageChunk) => void,
 ): Promise<void> => {
+  const emitChunk = createLeadingAssistantTextChunkWriter({
+    writeChunk,
+    observeChunk,
+  });
   const reader = stream.getReader();
   try {
     while (true) {
@@ -228,8 +346,7 @@ export const pipeUIMessageStream = async (
       // eslint-disable-next-line no-await-in-loop
       const { done, value } = await reader.read();
       if (done) return;
-      observeChunk?.(value);
-      writeChunk(value);
+      emitChunk(value);
     }
   } finally {
     reader.releaseLock();

@@ -5,11 +5,20 @@ import { getDexscreenerTokensByChain, getDexscreenerTopTokenBoosts, type Dexscre
 import { getMultipleAccounts } from "../../solana/lib/rpc/getMultipleAccounts";
 import { getTokenLargestAccounts } from "../../solana/lib/rpc/getTokenLargestAccounts";
 import { getTokenSupply } from "../../solana/lib/rpc/getTokenSupply";
+import {
+  fetchRecentSwapTransactionsByAddress,
+  formatUiAmountString,
+  type HeliusEnhancedTransaction,
+} from "../trading/swapHistory";
 
 const DEFAULT_WHALE_THRESHOLD_PERCENT = 1;
 const DEFAULT_ANALYZED_TOKEN_LIMIT = 10;
 const MAX_ANALYZED_TOKEN_LIMIT = 20;
 const MAX_RETURNED_OWNERS = 10;
+const DEFAULT_RECENT_BUYER_LIMIT = 10;
+const MAX_RECENT_BUYER_LIMIT = 20;
+const DEFAULT_RECENT_SWAP_WINDOW = 40;
+const MAX_RECENT_SWAP_WINDOW = 100;
 const SAFE_GET_MULTIPLE_ACCOUNTS_CHUNK_SIZE = 10;
 const SHARE_SCALE = 1_000_000n;
 
@@ -26,6 +35,11 @@ const tokenBiggestHoldersInputSchema = z.object({
   limit: z.number().int().min(1).max(MAX_RETURNED_OWNERS).default(10),
   whaleThresholdPercent: z.number().positive().max(100).optional(),
 });
+const tokenRecentBuyersInputSchema = z.object({
+  mintAddress: nonEmptyStringSchema,
+  limit: z.number().int().min(1).max(MAX_RECENT_BUYER_LIMIT).default(DEFAULT_RECENT_BUYER_LIMIT),
+  recentSwapWindow: z.number().int().min(1).max(MAX_RECENT_SWAP_WINDOW).default(DEFAULT_RECENT_SWAP_WINDOW),
+});
 
 const rankBoostedTokensByWhalesInputSchema = z.object({
   limit: z.number().int().min(1).max(MAX_ANALYZED_TOKEN_LIMIT).optional(),
@@ -35,6 +49,7 @@ const rankBoostedTokensByWhalesInputSchema = z.object({
 
 type TokenHolderDistributionInput = z.output<typeof tokenHolderDistributionInputSchema>;
 type TokenBiggestHoldersInput = z.output<typeof tokenBiggestHoldersInputSchema>;
+type TokenRecentBuyersInput = z.output<typeof tokenRecentBuyersInputSchema>;
 type RankBoostedTokensByWhalesInput = z.output<typeof rankBoostedTokensByWhalesInputSchema>;
 
 interface LargestTokenAccountEntry {
@@ -129,6 +144,47 @@ export interface TokenBiggestHoldersResult {
   };
 }
 
+export interface TokenRecentBuyerSummary {
+  walletAddress: string;
+  buyCountInWindow: number;
+  receivedAmountRaw: string;
+  receivedAmountUiString: string | null;
+  decimals: number | null;
+  mostRecentBuySignature: string;
+  mostRecentBuyAtUnixSecondsUtc: number | null;
+  mostRecentBuyAtUtcIso: string | null;
+  lastSource: string | null;
+  lastSpentMint: string | null;
+  lastSpentAmountRaw: string | null;
+  lastSpentAmountUiString: string | null;
+}
+
+export interface TokenRecentBuyEvent {
+  walletAddress: string;
+  signature: string;
+  source: string | null;
+  timestampUnixSecondsUtc: number | null;
+  timestampUtcIso: string | null;
+  receivedAmountRaw: string;
+  receivedAmountUiString: string | null;
+  decimals: number | null;
+  spentMint: string | null;
+  spentAmountRaw: string | null;
+  spentAmountUiString: string | null;
+}
+
+export interface TokenRecentBuyersResult {
+  mintAddress: string;
+  analysisScope: "recent-swap-outputs-window";
+  returned: number;
+  recentSwapWindow: number;
+  scannedSwapCount: number;
+  uniqueBuyerCountInWindow: number;
+  sources: Array<{ source: string | null; count: number }>;
+  buyers: TokenRecentBuyerSummary[];
+  recentBuys: TokenRecentBuyEvent[];
+}
+
 interface GetTokenHolderDistributionDeps {
   loadHolderDistribution?: (input: {
     rpcUrl?: string;
@@ -141,6 +197,13 @@ interface GetTokenHolderDistributionDeps {
 interface RankBoostedTokensByWhalesDeps extends GetTokenHolderDistributionDeps {
   loadTopTokenBoosts?: () => Promise<DexscreenerTokenBoost[]>;
   loadTokenPairs?: (input: { tokenAddresses: string[] }) => Promise<DexscreenerPairInfo[]>;
+}
+
+interface GetTokenRecentBuyersDeps {
+  loadRecentSwapTransactions?: (input: {
+    address: string;
+    limit: number;
+  }) => Promise<HeliusEnhancedTransaction[]>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -158,6 +221,22 @@ const isRetryableRpcError = (error: unknown): boolean => {
     || /timed out/iu.test(message)
     || /\btimeout\b/iu.test(message)
     || /\babort(?:ed)?\b/iu.test(message);
+};
+
+const isRetryableRecentBuyerError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return /\b429\b/u.test(message)
+    || /\b403\b/u.test(message)
+    || /rate limit/iu.test(message)
+    || /too many requests/iu.test(message)
+    || /\b503\b/u.test(message)
+    || /\b504\b/u.test(message)
+    || /temporarily unavailable/iu.test(message)
+    || /timed out/iu.test(message)
+    || /\btimeout\b/iu.test(message)
+    || /\babort(?:ed)?\b/iu.test(message)
+    || /overload(?:ed)?/iu.test(message)
+    || /please try again/iu.test(message);
 };
 
 const normalizePositiveNumber = (value: number | undefined, fallback: number): number =>
@@ -192,6 +271,18 @@ const sumFractions = (values: readonly number[]): number =>
   values.reduce((sum, value) => sum + value, 0);
 
 const toPercent = (fraction: number): number => fraction * 100;
+
+const addRawAmountStrings = (left: string, right: string): string => (BigInt(left) + BigInt(right)).toString();
+
+const trimToNull = (value: string | null | undefined): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const WRAPPED_SOL_MINT = "So11111111111111111111111111111111111111112";
 
 const extractOwnerAddress = (account: unknown): string | null => {
   if (!isRecord(account) || !isRecord(account.data)) {
@@ -260,6 +351,182 @@ const readTokenMetadataFromPair = (pair: DexscreenerPairInfo | null, mintAddress
   return {
     tokenName: tokenSide?.name ?? null,
     tokenSymbol: tokenSide?.symbol ?? null,
+  };
+};
+
+const summarizeSources = (transactions: HeliusEnhancedTransaction[]): Array<{ source: string | null; count: number }> =>
+  Array.from(
+    transactions.reduce((counts, transaction) => {
+      const source = trimToNull(transaction.source);
+      const key = source ?? "__null__";
+      counts.set(key, {
+        source,
+        count: (counts.get(key)?.count ?? 0) + 1,
+      });
+      return counts;
+    }, new Map<string, { source: string | null; count: number }>()),
+  ).map(([, value]) => value).toSorted((left, right) => right.count - left.count);
+
+const selectSpentSideForBuy = (input: {
+  swap: NonNullable<NonNullable<HeliusEnhancedTransaction["events"]>["swap"]>;
+  walletAddress: string;
+  targetMintAddress: string;
+}): {
+  spentMint: string | null;
+  spentAmountRaw: string | null;
+  spentAmountUiString: string | null;
+} | null => {
+  const matchingNonTargetInput = (input.swap.tokenInputs ?? []).find((entry) =>
+    trimToNull(entry.userAccount) === input.walletAddress
+    && trimToNull(entry.mint) !== null
+    && trimToNull(entry.mint) !== input.targetMintAddress);
+
+  if (matchingNonTargetInput) {
+    return {
+      spentMint: trimToNull(matchingNonTargetInput.mint),
+      spentAmountRaw: matchingNonTargetInput.rawTokenAmount?.tokenAmount ?? null,
+      spentAmountUiString: formatUiAmountString(
+        matchingNonTargetInput.rawTokenAmount?.tokenAmount,
+        matchingNonTargetInput.rawTokenAmount?.decimals,
+      ),
+    };
+  }
+
+  const matchingSameMintInput = (input.swap.tokenInputs ?? []).find((entry) =>
+    trimToNull(entry.userAccount) === input.walletAddress
+    && trimToNull(entry.mint) === input.targetMintAddress);
+  if (matchingSameMintInput) {
+    return null;
+  }
+
+  if (trimToNull(input.swap.nativeInput?.amount)) {
+    return {
+      spentMint: WRAPPED_SOL_MINT,
+      spentAmountRaw: input.swap.nativeInput?.amount ?? null,
+      spentAmountUiString: formatUiAmountString(input.swap.nativeInput?.amount, 9),
+    };
+  }
+
+  return {
+    spentMint: null,
+    spentAmountRaw: null,
+    spentAmountUiString: null,
+  };
+};
+
+export const analyzeTokenRecentBuyers = async (input: {
+  mintAddress: string;
+  limit?: number;
+  recentSwapWindow?: number;
+  loadRecentSwapTransactions?: (input: {
+    address: string;
+    limit: number;
+  }) => Promise<HeliusEnhancedTransaction[]>;
+}): Promise<TokenRecentBuyersResult> => {
+  const mintAddress = input.mintAddress.trim();
+  const limit = Math.min(
+    Math.max(1, Math.trunc(normalizePositiveNumber(input.limit, DEFAULT_RECENT_BUYER_LIMIT))),
+    MAX_RECENT_BUYER_LIMIT,
+  );
+  const recentSwapWindow = Math.min(
+    Math.max(1, Math.trunc(normalizePositiveNumber(input.recentSwapWindow, DEFAULT_RECENT_SWAP_WINDOW))),
+    MAX_RECENT_SWAP_WINDOW,
+  );
+  const loadRecentSwapTransactions = input.loadRecentSwapTransactions ?? fetchRecentSwapTransactionsByAddress;
+  const transactions = await loadRecentSwapTransactions({
+    address: mintAddress,
+    limit: recentSwapWindow,
+  });
+
+  const buyerMap = new Map<string, TokenRecentBuyerSummary>();
+  const recentBuys: TokenRecentBuyEvent[] = [];
+
+  for (const transaction of transactions) {
+    const swap = transaction.events?.swap;
+    if (!swap) {
+      continue;
+    }
+
+    const matchingOutputs = (swap.tokenOutputs ?? []).filter((entry) =>
+      trimToNull(entry.mint) === mintAddress && trimToNull(entry.userAccount) !== null);
+
+    if (matchingOutputs.length === 0) {
+      continue;
+    }
+
+    for (const output of matchingOutputs) {
+      const walletAddress = trimToNull(output.userAccount);
+      const receivedAmountRaw = output.rawTokenAmount?.tokenAmount ?? null;
+      const decimals = typeof output.rawTokenAmount?.decimals === "number" ? output.rawTokenAmount.decimals : null;
+      if (!walletAddress || !receivedAmountRaw) {
+        continue;
+      }
+
+      const receivedAmountUiString = formatUiAmountString(receivedAmountRaw, decimals ?? undefined);
+      const spentSide = selectSpentSideForBuy({
+        swap,
+        walletAddress,
+        targetMintAddress: mintAddress,
+      });
+      if (spentSide === null) {
+        continue;
+      }
+
+      recentBuys.push({
+        walletAddress,
+        signature: transaction.signature,
+        source: trimToNull(transaction.source),
+        timestampUnixSecondsUtc: typeof transaction.timestamp === "number" ? transaction.timestamp : null,
+        timestampUtcIso: typeof transaction.timestamp === "number" ? new Date(transaction.timestamp * 1000).toISOString() : null,
+        receivedAmountRaw,
+        receivedAmountUiString,
+        decimals,
+        spentMint: spentSide.spentMint,
+        spentAmountRaw: spentSide.spentAmountRaw,
+        spentAmountUiString: spentSide.spentAmountUiString,
+      });
+
+      const existing = buyerMap.get(walletAddress);
+      if (existing) {
+        existing.buyCountInWindow += 1;
+        existing.receivedAmountRaw = addRawAmountStrings(existing.receivedAmountRaw, receivedAmountRaw);
+        existing.receivedAmountUiString = formatUiAmountString(existing.receivedAmountRaw, existing.decimals ?? undefined);
+        continue;
+      }
+
+      buyerMap.set(walletAddress, {
+        walletAddress,
+        buyCountInWindow: 1,
+        receivedAmountRaw,
+        receivedAmountUiString,
+        decimals,
+        mostRecentBuySignature: transaction.signature,
+        mostRecentBuyAtUnixSecondsUtc: typeof transaction.timestamp === "number" ? transaction.timestamp : null,
+        mostRecentBuyAtUtcIso: typeof transaction.timestamp === "number" ? new Date(transaction.timestamp * 1000).toISOString() : null,
+        lastSource: trimToNull(transaction.source),
+        lastSpentMint: spentSide.spentMint,
+        lastSpentAmountRaw: spentSide.spentAmountRaw,
+        lastSpentAmountUiString: spentSide.spentAmountUiString,
+      });
+    }
+  }
+
+  const buyers = Array.from(buyerMap.values())
+    .toSorted((left, right) =>
+      (right.mostRecentBuyAtUnixSecondsUtc ?? 0) - (left.mostRecentBuyAtUnixSecondsUtc ?? 0)
+      || right.buyCountInWindow - left.buyCountInWindow)
+    .slice(0, limit);
+
+  return {
+    mintAddress,
+    analysisScope: "recent-swap-outputs-window",
+    returned: buyers.length,
+    recentSwapWindow,
+    scannedSwapCount: transactions.length,
+    uniqueBuyerCountInWindow: buyerMap.size,
+    sources: summarizeSources(transactions),
+    buyers,
+    recentBuys: recentBuys.slice(0, Math.max(limit, DEFAULT_RECENT_BUYER_LIMIT)),
   };
 };
 
@@ -465,6 +732,50 @@ export const createGetTokenBiggestHoldersAction = (
   };
 };
 
+export const createGetTokenRecentBuyersAction = (
+  deps: GetTokenRecentBuyersDeps = {},
+): Action<TokenRecentBuyersInput, TokenRecentBuyersResult> => {
+  const loadRecentSwapTransactions = deps.loadRecentSwapTransactions ?? fetchRecentSwapTransactionsByAddress;
+
+  return {
+    name: "getTokenRecentBuyers",
+    category: "data-based",
+    subcategory: "read-only",
+    inputSchema: tokenRecentBuyersInputSchema,
+    async execute(_ctx, input) {
+      const startedAt = Date.now();
+      const idempotencyKey = crypto.randomUUID();
+
+      try {
+        const data = await analyzeTokenRecentBuyers({
+          mintAddress: input.mintAddress,
+          limit: input.limit,
+          recentSwapWindow: input.recentSwapWindow,
+          loadRecentSwapTransactions,
+        });
+        return {
+          ok: true,
+          retryable: false,
+          data,
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          retryable: isRetryableRecentBuyerError(error),
+          error: error instanceof Error ? error.message : String(error),
+          code: isRetryableRecentBuyerError(error) ? "GET_TOKEN_RECENT_BUYERS_RATE_LIMITED" : "GET_TOKEN_RECENT_BUYERS_FAILED",
+          durationMs: Date.now() - startedAt,
+          timestamp: Date.now(),
+          idempotencyKey,
+        };
+      }
+    },
+  };
+};
+
 export const createRankDexscreenerTopTokenBoostsByWhalesAction = (
   deps: RankBoostedTokensByWhalesDeps = {},
 ): Action<RankBoostedTokensByWhalesInput, RankedBoostedTokensByWhalesResult> => {
@@ -568,4 +879,5 @@ export const createRankDexscreenerTopTokenBoostsByWhalesAction = (
 
 export const getTokenHolderDistributionAction = createGetTokenHolderDistributionAction();
 export const getTokenBiggestHoldersAction = createGetTokenBiggestHoldersAction();
+export const getTokenRecentBuyersAction = createGetTokenRecentBuyersAction();
 export const rankDexscreenerTopTokenBoostsByWhalesAction = createRankDexscreenerTopTokenBoostsByWhalesAction();

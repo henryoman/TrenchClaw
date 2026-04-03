@@ -48,9 +48,28 @@ const WALLET_CONTENTS_INTENT_PHRASES = [
   "wallet status",
 ] as const;
 
+const EXTERNAL_WALLET_BYPASS_INTENT_PHRASES = [
+  "recent trade",
+  "recent trades",
+  "recent swap",
+  "recent swaps",
+  "last few trades",
+  "last few swaps",
+  "external wallet",
+] as const;
+
+const POSSIBLE_SOLANA_ADDRESS_PATTERN = /\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/u;
+
+const shouldBypassManagedWalletFastPath = (userMessage: string, normalized: string): boolean =>
+  POSSIBLE_SOLANA_ADDRESS_PATTERN.test(userMessage)
+  || hasAnyIntentPhrase(normalized, EXTERNAL_WALLET_BYPASS_INTENT_PHRASES);
+
 export const shouldUseWalletInventoryFastPath = (userMessage: string): boolean => {
   const normalized = normalizeIntentText(userMessage);
   if (!/\bwallets?\b/u.test(normalized) || hasWalletMutationIntent(normalized)) {
+    return false;
+  }
+  if (shouldBypassManagedWalletFastPath(userMessage, normalized)) {
     return false;
   }
 
@@ -62,6 +81,9 @@ export const shouldUseWalletInventoryFastPath = (userMessage: string): boolean =
 export const shouldUseWalletContentsFastPath = (userMessage: string): boolean => {
   const normalized = normalizeIntentText(userMessage);
   if (!/\bwallets?\b/u.test(normalized) || hasWalletMutationIntent(normalized)) {
+    return false;
+  }
+  if (shouldBypassManagedWalletFastPath(userMessage, normalized)) {
     return false;
   }
 

@@ -9,7 +9,7 @@ import type { GatewayLane, GatewayLanePolicy, GatewayLaneStatus } from "./types"
 const OPERATOR_GROUP_MATCHERS: Record<ToolGroupId, RegExp> = {
   "runtime-queue": /\b(runtime|job|jobs|queue|queued|schedule|scheduled|wakeup|sleep|memory|conversation|history)\b/iu,
   "rpc-data-fetch": /\b(wallet|wallets|balance|balances|holding|holdings|portfolio|contents|inventory|tracker|swap history)\b/iu,
-  "market-news": /\b(news|headline|headlines|sentiment|trend|trending|market|markets|token|tokens|coin|coins|pair|pairs|dex|dexscreener|gecko|geckoterminal|launch|price|prices|boost|boosts|meme|memes|whale|whales|holder|holders|ohlc|ohlcv|candle|candles|candlestick|candlesticks)\b/iu,
+  "market-news": /\b(news|headline|headlines|sentiment|trend|trending|market|markets|token|tokens|coin|coins|pair|pairs|dex|dexscreener|gecko|geckoterminal|launch|price|prices|boost|boosts|meme|memes|whale|whales|holder|holders|buyer|buyers|ohlc|ohlcv|candle|candles|candlestick|candlesticks)\b/iu,
   "wallet-execution": /\b(transfer|send|swap|buy|sell|trigger|cancel|close token|close account|rename wallet|rename wallets|create wallet|create wallets|order|orders|dca)\b/iu,
   "workspace-cli": /\b(workspace|file|files|folder|folders|directory|directories|path|paths|readme|config|configs|json|bash|shell|cli|command|commands|search|rg|grep|which|version|help)\b|(?:^|[\s"'`])(\/|\.\.?\/)/iu,
   knowledge: /\b(doc|docs|documentation|knowledge|reference|references|guide|guidance|skill|skills|how to|how do)\b/iu,

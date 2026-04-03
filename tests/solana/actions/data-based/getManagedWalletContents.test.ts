@@ -751,6 +751,155 @@ describe("getManagedWalletContentsAction", () => {
     ]);
   });
 
+  test("suppresses Helius protected-token pricing when the claimed identity does not match a trusted mint", async () => {
+    const instanceId = "97";
+    const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);
+    const keypairsDirectory = path.join(instanceDirectory, "keypairs");
+    tempInstanceDirectories.push(instanceDirectory);
+    await mkdir(keypairsDirectory, { recursive: true });
+
+    await writeFile(
+      path.join(keypairsDirectory, "wallet-library.jsonl"),
+      JSON.stringify({
+        walletId: "core-wallets.wallet_000",
+        walletGroup: "core-wallets",
+        walletName: "wallet_000",
+        address: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1",
+        keypairFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.json"),
+        walletLabelFilePath: path.join(instanceDirectory, "keypairs/core-wallets/wallet_000.label.json"),
+      }),
+      "utf8",
+    );
+    await mkdir(path.join(instanceDirectory, "secrets"), { recursive: true });
+    await writeFile(
+      path.join(instanceDirectory, "secrets", "vault.json"),
+      `${JSON.stringify({
+        rpc: {
+          default: {
+            "provider-id": "helius",
+            "api-key": "test-helius-key",
+            "http-url": "https://mainnet.helius-rpc.com/?api-key=test-helius-key",
+          },
+        },
+      }, null, 2)}\n`,
+      "utf8",
+    );
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = instanceId;
+
+    globalThis.fetch = (async () => {
+      return new Response(
+        JSON.stringify([
+          {
+            jsonrpc: "2.0",
+            id: "4Yx6R5aLho3n6vfg8VgA4dpoPfxVJr2f4U1F7tW8fgH1:helius-das:1",
+            result: {
+              nativeBalance: {
+                lamports: 2_000_000_000,
+              },
+              items: [
+                {
+                  id: "HVsTZQBmomA6PvRbHfqFs897ApeLTdjKDE41CDNx6Pxk",
+                  interface: "FungibleToken",
+                  content: {
+                    metadata: {
+                      name: "Ethereum",
+                      symbol: "ETH",
+                    },
+                    links: {
+                      image: "https://example.test/eth.png",
+                    },
+                  },
+                  token_info: {
+                    balance: "9857485000000000",
+                    decimals: 9,
+                    token_program: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                    associated_token_address: "AtaFakeEth11111111111111111111111111111111",
+                    price_info: {
+                      price_per_token: 2005.1022,
+                      total_price: 19765264592.35168,
+                    },
+                  },
+                },
+                {
+                  id: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                  interface: "FungibleToken",
+                  content: {
+                    metadata: {
+                      name: "USD Coin",
+                      symbol: "USDC",
+                    },
+                  },
+                  token_info: {
+                    balance: "2000000",
+                    decimals: 6,
+                    token_program: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                    associated_token_address: "AtaUsdc11111111111111111111111111111111111",
+                    price_info: {
+                      price_per_token: 1,
+                      total_price: 2,
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        ]),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      );
+    }) as unknown as typeof fetch;
+
+    const action = createGetManagedWalletContentsAction();
+    const result = await action.execute(
+      createActionContext({
+        actor: "agent",
+        rpcUrl: "https://rpc.example.test",
+      }),
+      {
+        walletGroup: "core-wallets",
+        includeZeroBalances: false,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    const payload = result.data as {
+      totalPricedTokenUsd: number | null;
+      warnings: Array<{ code: string }>;
+      wallets: Array<{
+        tokenBalances: Array<{
+          mintAddress: string;
+          symbol?: string | null;
+          name?: string | null;
+          priceUsd?: number | null;
+          valueUsd?: number | null;
+        }>;
+      }>;
+    };
+
+    expect(payload.totalPricedTokenUsd).toBe(2);
+    expect(payload.warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        code: "HELIUS_UNTRUSTED_TOKEN_IDENTITY",
+      }),
+    ]));
+    expect(payload.wallets[0]?.tokenBalances).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        mintAddress: "HVsTZQBmomA6PvRbHfqFs897ApeLTdjKDE41CDNx6Pxk",
+        symbol: null,
+        name: null,
+        priceUsd: null,
+        valueUsd: null,
+      }),
+      expect.objectContaining({
+        mintAddress: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        symbol: "USDC",
+        valueUsd: 2,
+      }),
+    ]));
+  });
+
   test("falls back to sequential raw RPC reads after batch rate limiting", async () => {
     const instanceId = "96";
     const instanceDirectory = path.join(RUNTIME_INSTANCE_DIRECTORY, instanceId);

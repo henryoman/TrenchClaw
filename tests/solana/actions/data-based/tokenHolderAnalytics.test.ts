@@ -4,6 +4,7 @@ import { createActionContext } from "../../../../apps/trenchclaw/src/ai/contract
 import {
   createGetTokenBiggestHoldersAction,
   createGetTokenHolderDistributionAction,
+  createGetTokenRecentBuyersAction,
   createRankDexscreenerTopTokenBoostsByWhalesAction,
   type TokenHolderDistribution,
 } from "../../../../apps/trenchclaw/src/tools/market/tokenHolderAnalytics";
@@ -233,6 +234,199 @@ describe("token holder analytics actions", () => {
         whaleOwnerCount: 4,
         top10OwnerSharePercent: 49,
       }),
+    }));
+  });
+
+  test("getTokenRecentBuyers returns buyer summaries with explicit recent-window metadata", async () => {
+    const action = createGetTokenRecentBuyersAction({
+      loadRecentSwapTransactions: async ({ address, limit }) => {
+        expect(address).toBe("MintRecent");
+        expect(limit).toBe(20);
+        return [
+          {
+            signature: "sig-newest",
+            source: "JUPITER",
+            timestamp: 1_700_000_020,
+            events: {
+              swap: {
+                tokenInputs: [
+                  {
+                    userAccount: "BuyerA",
+                    mint: "So11111111111111111111111111111111111111112",
+                    rawTokenAmount: {
+                      tokenAmount: "120000000",
+                      decimals: 9,
+                    },
+                  },
+                ],
+                tokenOutputs: [
+                  {
+                    userAccount: "BuyerA",
+                    mint: "MintRecent",
+                    rawTokenAmount: {
+                      tokenAmount: "2500000",
+                      decimals: 6,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+          {
+            signature: "sig-older",
+            source: "PUMP_FUN",
+            timestamp: 1_700_000_000,
+            events: {
+              swap: {
+                tokenInputs: [
+                  {
+                    userAccount: "BuyerB",
+                    mint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+                    rawTokenAmount: {
+                      tokenAmount: "3000000",
+                      decimals: 6,
+                    },
+                  },
+                ],
+                tokenOutputs: [
+                  {
+                    userAccount: "BuyerA",
+                    mint: "MintRecent",
+                    rawTokenAmount: {
+                      tokenAmount: "500000",
+                      decimals: 6,
+                    },
+                  },
+                  {
+                    userAccount: "BuyerB",
+                    mint: "MintRecent",
+                    rawTokenAmount: {
+                      tokenAmount: "1000000",
+                      decimals: 6,
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ] as any;
+      },
+    });
+
+    const result = await action.execute(createActionContext({ actor: "agent" }), {
+      mintAddress: "MintRecent",
+      limit: 2,
+      recentSwapWindow: 20,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toEqual(expect.objectContaining({
+      mintAddress: "MintRecent",
+      analysisScope: "recent-swap-outputs-window",
+      returned: 2,
+      recentSwapWindow: 20,
+      scannedSwapCount: 2,
+      uniqueBuyerCountInWindow: 2,
+      sources: [
+        { source: "JUPITER", count: 1 },
+        { source: "PUMP_FUN", count: 1 },
+      ],
+    }));
+    expect(result.data?.buyers[0]).toEqual(expect.objectContaining({
+      walletAddress: "BuyerA",
+      buyCountInWindow: 2,
+      receivedAmountRaw: "3000000",
+      receivedAmountUiString: "3",
+      lastSpentMint: "So11111111111111111111111111111111111111112",
+      lastSpentAmountUiString: "0.12",
+    }));
+    expect(result.data?.buyers[1]).toEqual(expect.objectContaining({
+      walletAddress: "BuyerB",
+      buyCountInWindow: 1,
+      receivedAmountUiString: "1",
+      lastSpentMint: "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      lastSpentAmountUiString: "3",
+    }));
+    expect(result.data?.recentBuys[0]).toEqual(expect.objectContaining({
+      walletAddress: "BuyerA",
+      signature: "sig-newest",
+      receivedAmountUiString: "2.5",
+    }));
+  });
+
+  test("getTokenRecentBuyers marks retryable upstream failures", async () => {
+    const action = createGetTokenRecentBuyersAction({
+      loadRecentSwapTransactions: async () => {
+        throw new Error("503 temporarily unavailable");
+      },
+    });
+
+    const result = await action.execute(createActionContext({ actor: "agent" }), {
+      mintAddress: "MintRetry",
+      limit: 5,
+      recentSwapWindow: 20,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.retryable).toBe(true);
+    expect(result.code).toBe("GET_TOKEN_RECENT_BUYERS_RATE_LIMITED");
+  });
+
+  test("getTokenRecentBuyers does not attribute another wallet's input token as the buyer's spend", async () => {
+    const action = createGetTokenRecentBuyersAction({
+      loadRecentSwapTransactions: async () => [
+        {
+          signature: "sig-cross-wallet",
+          source: "JUPITER",
+          timestamp: 1_700_000_100,
+          events: {
+            swap: {
+              tokenInputs: [
+                {
+                  userAccount: "WalletOther",
+                  mint: "USDCMint",
+                  rawTokenAmount: {
+                    tokenAmount: "150000000",
+                    decimals: 6,
+                  },
+                },
+              ],
+              tokenOutputs: [
+                {
+                  userAccount: "WalletBuyer",
+                  mint: "MintRecent",
+                  rawTokenAmount: {
+                    tokenAmount: "42000000",
+                    decimals: 6,
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ] as any,
+    });
+
+    const result = await action.execute(createActionContext({ actor: "agent" }), {
+      mintAddress: "MintRecent",
+      limit: 5,
+      recentSwapWindow: 20,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data?.buyers).toEqual([
+      expect.objectContaining({
+        walletAddress: "WalletBuyer",
+        lastSpentMint: null,
+        lastSpentAmountRaw: null,
+        lastSpentAmountUiString: null,
+      }),
+    ]);
+    expect(result.data?.recentBuys[0]).toEqual(expect.objectContaining({
+      walletAddress: "WalletBuyer",
+      spentMint: null,
+      spentAmountRaw: null,
+      spentAmountUiString: null,
     }));
   });
 });

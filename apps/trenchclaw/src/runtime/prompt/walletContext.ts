@@ -94,6 +94,9 @@ Do not ask follow-up questions before giving that direct answer unless the user 
     `- WALLET_GROUPS=${groups.join(", ") || "(none)"}`,
     `- WALLET_INVALID_LIBRARY_LINES=${invalidLineCount}`,
     "- For questions about token balances of managed wallets, call `getWalletContents` instead of using workspaceBash.",
+    "- For one explicit external wallet address when the user wants holdings plus recent swaps, call `getExternalWalletAnalysis`.",
+    "- For one explicit external wallet address when the user only wants current holdings, call `getExternalWalletHoldings`.",
+    "- For one explicit external wallet address when the user asks for SOL balance plus USD value, call `getExternalWalletHoldings` instead of raw RPC balance tools.",
     "- Large wallet inventory reads may queue a background job; use `queryRuntimeStore` if you need the status of a queued scan.",
     "- For SOL-only balance summaries of managed wallets, call `getManagedWalletSolBalances`.",
   ];
@@ -200,6 +203,9 @@ export const renderRuntimeWalletPromptSummary = async (
       `- managed wallet status: missing library file (${DEFAULT_WALLET_LIBRARY_FILE_NAME})`,
       "- use `getWalletContents` for SOL and token balances",
       "- use `getManagedWalletContents` only when you specifically need the broader inventory-style output",
+      "- use `getExternalWalletAnalysis` for one exact external wallet address when you need holdings plus recent swaps",
+      "- use `getExternalWalletHoldings` for one exact external wallet address when you only need current holdings",
+      "- use `getExternalWalletHoldings` instead of `getRpcBalance` when one exact external wallet address needs SOL balance plus USD value",
       "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
       "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
     ].join("\n");
@@ -227,6 +233,9 @@ export const renderRuntimeWalletPromptSummary = async (
     "- use `createWallets` for wallet creation and `renameWallets` for label changes",
     "- use `getWalletContents` for SOL and token balances",
     "- use `getManagedWalletContents` only when you specifically need the broader inventory-style output",
+    "- use `getExternalWalletAnalysis` for one exact external wallet address when you need holdings plus recent swaps",
+    "- use `getExternalWalletHoldings` for one exact external wallet address when you only need current holdings",
+    "- use `getExternalWalletHoldings` instead of `getRpcBalance` when one exact external wallet address needs SOL balance plus USD value",
     "- use `getManagedWalletSolBalances` for SOL-only balance summaries",
     "- never read or edit vaults, keypairs, or wallet-library files directly with file tools",
   ].join("\n");

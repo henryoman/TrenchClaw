@@ -65,6 +65,33 @@ const INLINE_SIMPLE_WALLET_LIMIT = 24;
 const WALLET_INVENTORY_SCAN_ROUTINE_NAME = "walletInventoryScan";
 const WALLET_CONTENTS_SCAN_ROUTINE_NAME = "walletContentsScan";
 const WALLET_BALANCE_CACHE_TTL_MS = 15_000;
+const WRAPPED_SOL_MINT = "So11111111111111111111111111111111111111112";
+const CANONICAL_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const CANONICAL_USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
+const CANONICAL_JUP_MINT = "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN";
+
+const PROTECTED_HELIUS_TOKEN_IDENTITIES = [
+  {
+    aliases: ["SOL", "WRAPPEDSOL", "WRAPPEDSOLANA"],
+    trustedMints: new Set([WRAPPED_SOL_MINT]),
+  },
+  {
+    aliases: ["USDC", "USDCOIN"],
+    trustedMints: new Set([CANONICAL_USDC_MINT]),
+  },
+  {
+    aliases: ["USDT", "TETHER", "TETHERUSD"],
+    trustedMints: new Set([CANONICAL_USDT_MINT]),
+  },
+  {
+    aliases: ["JUP", "JUPITER"],
+    trustedMints: new Set([CANONICAL_JUP_MINT]),
+  },
+  {
+    aliases: ["ETH", "ETHEREUM"],
+    trustedMints: new Set<string>(),
+  },
+] as const;
 
 const getManagedWalletContentsInputSchema = z.object({
   instanceId: z.string().trim().min(1).max(64).optional(),
@@ -84,9 +111,9 @@ const getWalletContentsInputSchema = z.object({
 
 type GetWalletContentsInput = z.output<typeof getWalletContentsInputSchema>;
 type TokenProgramLabel = "spl-token" | "token-2022";
-type ManagedWalletContentsDataSource = "helius-das" | "rpc-batch" | "rpc-sequential";
+export type ManagedWalletContentsDataSource = "helius-das" | "rpc-batch" | "rpc-sequential";
 
-interface WalletContentWarning {
+export interface WalletContentWarning {
   code: string;
   message: string;
 }
@@ -196,6 +223,7 @@ interface ParsedTokenAccountBalance {
   imageUrl?: string | null;
   priceUsd?: number | null;
   valueUsd?: number | null;
+  heliusPricingSuppressed?: boolean;
 }
 
 interface JsonRpcBatchRequest {
@@ -212,9 +240,10 @@ interface WalletContentsAccumulator {
   assetCount: number;
   collectibleCount: number;
   compressedCollectibleCount: number;
+  suppressedHeliusPricedTokenCount: number;
 }
 
-interface ManagedWalletContentsWalletError {
+export interface ManagedWalletContentsWalletError {
   walletId: string;
   walletGroup: string;
   walletName: string;
@@ -228,6 +257,7 @@ interface ManagedWalletContentsLoadOutcome {
   walletErrors: ManagedWalletContentsWalletError[];
   usedSequentialFallback: boolean;
   dataSource: ManagedWalletContentsDataSource;
+  suppressedHeliusPricedTokenCount: number;
 }
 
 interface WalletScanReuseResult {
@@ -240,6 +270,42 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const sleep = async (delayMs: number): Promise<void> => {
   await new Promise((resolve) => setTimeout(resolve, delayMs));
+};
+
+const normalizeProtectedTokenAlias = (value: string | null | undefined): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/gu, "");
+  return normalized.length > 0 ? normalized : null;
+};
+
+const shouldSuppressHeliusProtectedTokenIdentity = (input: {
+  mintAddress: string;
+  symbol: string | null;
+  name: string | null;
+}): boolean => {
+  const normalizedLabels = [
+    normalizeProtectedTokenAlias(input.symbol),
+    normalizeProtectedTokenAlias(input.name),
+  ].filter((value): value is string => value !== null);
+
+  if (normalizedLabels.length === 0) {
+    return false;
+  }
+
+  for (const entry of PROTECTED_HELIUS_TOKEN_IDENTITIES) {
+    const aliases = entry.aliases as readonly string[];
+    if (!normalizedLabels.some((label) => aliases.includes(label))) {
+      continue;
+    }
+    return !entry.trustedMints.has(input.mintAddress);
+  }
+
+  return false;
 };
 
 const isRetryableRpcError = (error: unknown): boolean => {
@@ -1114,6 +1180,7 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
       walletErrors: [],
       usedSequentialFallback: false,
       dataSource: "rpc-sequential",
+      suppressedHeliusPricedTokenCount: 0,
     };
   }
 
@@ -1223,6 +1290,7 @@ const loadWalletContentsSequentiallyFromRpc = async (input: {
     walletErrors,
     usedSequentialFallback: input.usedSequentialFallback ?? false,
     dataSource: "rpc-sequential",
+    suppressedHeliusPricedTokenCount: 0,
   };
 };
 
@@ -1263,6 +1331,13 @@ const parseHeliusFungibleAsset = (entry: unknown): ParsedTokenAccountBalance | n
     ? toTrimmedStringOrNull(tokenInfo.token_program) ?? TOKEN_PROGRAM_ID
     : TOKEN_PROGRAM_ID;
   const priceInfo = tokenInfo && isRecord(tokenInfo.price_info) ? tokenInfo.price_info : null;
+  const symbol = metadata ? toTrimmedStringOrNull(metadata.symbol) : null;
+  const name = metadata ? toTrimmedStringOrNull(metadata.name) : null;
+  const suppressProtectedIdentity = shouldSuppressHeliusProtectedTokenIdentity({
+    mintAddress: assetId,
+    symbol,
+    name,
+  });
 
   return {
     mintAddress: assetId,
@@ -1272,11 +1347,12 @@ const parseHeliusFungibleAsset = (entry: unknown): ParsedTokenAccountBalance | n
     decimals,
     tokenAccountAddress: tokenInfo ? toTrimmedStringOrNull(tokenInfo.associated_token_address) : null,
     assetId,
-    symbol: metadata ? toTrimmedStringOrNull(metadata.symbol) : null,
-    name: metadata ? toTrimmedStringOrNull(metadata.name) : null,
-    imageUrl: links ? toTrimmedStringOrNull(links.image) : null,
-    priceUsd: priceInfo ? toFiniteNumberOrNull(priceInfo.price_per_token) : null,
-    valueUsd: priceInfo ? toFiniteNumberOrNull(priceInfo.total_price) : null,
+    symbol: suppressProtectedIdentity ? null : symbol,
+    name: suppressProtectedIdentity ? null : name,
+    imageUrl: suppressProtectedIdentity ? null : links ? toTrimmedStringOrNull(links.image) : null,
+    priceUsd: suppressProtectedIdentity ? null : priceInfo ? toFiniteNumberOrNull(priceInfo.price_per_token) : null,
+    valueUsd: suppressProtectedIdentity ? null : priceInfo ? toFiniteNumberOrNull(priceInfo.total_price) : null,
+    heliusPricingSuppressed: suppressProtectedIdentity,
   };
 };
 
@@ -1299,6 +1375,9 @@ const mergeHeliusDasPage = (
   for (const item of items) {
     const fungibleToken = parseHeliusFungibleAsset(item);
     if (fungibleToken) {
+      if (fungibleToken.heliusPricingSuppressed) {
+        accumulator.suppressedHeliusPricedTokenCount += 1;
+      }
       accumulator.tokenBalances.push(fungibleToken);
       continue;
     }
@@ -1329,11 +1408,13 @@ const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
       walletErrors: [],
       usedSequentialFallback: false,
       dataSource: "helius-das",
+      suppressedHeliusPricedTokenCount: 0,
     };
   }
 
   const wallets: ManagedWalletContentsWallet[] = [];
   const walletErrors: ManagedWalletContentsWalletError[] = [];
+  let suppressedHeliusPricedTokenCount = 0;
 
   for (const [walletIndex, entry] of input.entries.entries()) {
     const accumulator: WalletContentsAccumulator = {
@@ -1343,6 +1424,7 @@ const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
       assetCount: 0,
       collectibleCount: 0,
       compressedCollectibleCount: 0,
+      suppressedHeliusPricedTokenCount: 0,
     };
     let page = 1;
     let walletFailed = false;
@@ -1396,6 +1478,7 @@ const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
     }
 
     if (!walletFailed) {
+      suppressedHeliusPricedTokenCount += accumulator.suppressedHeliusPricedTokenCount;
       const tokenBalances = aggregateTokenBalances(accumulator.tokenBalances, input.includeZeroBalances);
       wallets.push(
         buildWalletResult({
@@ -1421,6 +1504,7 @@ const loadWalletContentsSequentiallyFromHeliusDas = async (input: {
     walletErrors,
     usedSequentialFallback: false,
     dataSource: "helius-das",
+    suppressedHeliusPricedTokenCount,
   };
 };
 
@@ -1511,6 +1595,7 @@ const loadWalletsWithLoader = async (
     walletErrors: [],
     usedSequentialFallback: false,
     dataSource: "rpc-sequential",
+    suppressedHeliusPricedTokenCount: 0,
   };
 };
 
@@ -1606,6 +1691,7 @@ const loadWalletContentsFromRpc = async (input: {
       walletErrors: [],
       usedSequentialFallback: false,
       dataSource: "rpc-sequential",
+      suppressedHeliusPricedTokenCount: 0,
     };
   }
 
@@ -1719,6 +1805,7 @@ const loadWalletContentsFromRpc = async (input: {
     walletErrors,
     usedSequentialFallback,
     dataSource,
+    suppressedHeliusPricedTokenCount: 0,
   };
 };
 
@@ -1762,6 +1849,7 @@ const buildManagedWalletContentsPayload = (input: {
 const buildWalletContentWarnings = (input: {
   usedSequentialFallback: boolean;
   walletErrors: ManagedWalletContentsWalletError[];
+  suppressedHeliusPricedTokenCount: number;
 }): WalletContentWarning[] => {
   const warnings: WalletContentWarning[] = [];
   if (input.usedSequentialFallback) {
@@ -1776,7 +1864,114 @@ const buildWalletContentWarnings = (input: {
       message: `Wallet contents were only partially available for ${input.walletErrors.length} wallet${input.walletErrors.length === 1 ? "" : "s"}.`,
     });
   }
+  if (input.suppressedHeliusPricedTokenCount > 0) {
+    warnings.push({
+      code: "HELIUS_UNTRUSTED_TOKEN_IDENTITY",
+      message: `Suppressed provider label and USD valuation for ${input.suppressedHeliusPricedTokenCount} token${input.suppressedHeliusPricedTokenCount === 1 ? "" : "s"} because the claimed protected token identity did not match a trusted mint.`,
+    });
+  }
   return warnings;
+};
+
+export interface DirectWalletContentsOutput {
+  address: string;
+  balanceLamports: string;
+  balanceSol: number;
+  tokenCount: number;
+  tokenBalances: ManagedWalletTokenBalance[];
+  assetCount: number;
+  collectibleCount: number;
+  compressedCollectibleCount: number;
+  pricedTokenTotalUsd: number | null;
+  dataSource: ManagedWalletContentsDataSource;
+  partial: boolean;
+  warnings: WalletContentWarning[];
+  walletErrors: ManagedWalletContentsWalletError[];
+}
+
+const createSyntheticManagedWalletEntry = (address: string): ManagedWalletLibraryEntry => ({
+  walletId: `external.${address.slice(0, 12)}`,
+  walletGroup: "external",
+  walletName: `addr_${address.slice(0, 12)}`,
+  address,
+  keypairFilePath: `/external/${address}.json`,
+  walletLabelFilePath: `/external/${address}.label.json`,
+  createdAt: "1970-01-01T00:00:00.000Z",
+  updatedAt: "1970-01-01T00:00:00.000Z",
+});
+
+export const loadDirectWalletContents = async (input: {
+  address: string;
+  rpcUrl?: string;
+  includeZeroBalances: boolean;
+  lane?: RpcRequestLane;
+  useBatchRequests?: boolean;
+  useHeliusDas?: boolean;
+}): Promise<DirectWalletContentsOutput> => {
+  const entry = createSyntheticManagedWalletEntry(input.address);
+  const rpcUrl = resolveRequiredRpcUrl(input.rpcUrl);
+
+  let loadOutcome: ManagedWalletContentsLoadOutcome;
+  let dataSource: ManagedWalletContentsDataSource;
+
+  if (input.useHeliusDas) {
+    loadOutcome = await loadWalletContentsSequentiallyFromHeliusDas({
+      entries: [entry],
+      rpcUrl,
+      includeZeroBalances: input.includeZeroBalances,
+      lane: input.lane,
+    });
+
+    if (loadOutcome.wallets.length === 0 && loadOutcome.walletErrors.length > 0) {
+      loadOutcome = await loadWalletContentsFromRpc({
+        entries: [entry],
+        rpcUrl,
+        includeZeroBalances: input.includeZeroBalances,
+        lane: input.lane,
+        useBatchRequests: input.useBatchRequests ?? true,
+      });
+      dataSource = loadOutcome.dataSource;
+    } else {
+      dataSource = "helius-das";
+    }
+  } else {
+    loadOutcome = await loadWalletContentsFromRpc({
+      entries: [entry],
+      rpcUrl,
+      includeZeroBalances: input.includeZeroBalances,
+      lane: input.lane,
+      useBatchRequests: input.useBatchRequests ?? true,
+    });
+    dataSource = loadOutcome.dataSource;
+  }
+
+  const wallet = loadOutcome.wallets[0];
+  if (!wallet && loadOutcome.walletErrors.length > 0) {
+    throw new Error(loadOutcome.walletErrors[0]?.error ?? `Wallet contents read failed for ${input.address}.`);
+  }
+  if (!wallet) {
+    throw new Error(`Wallet contents read returned no wallet row for ${input.address}.`);
+  }
+
+  return {
+    address: wallet.address,
+    balanceLamports: wallet.balanceLamports,
+    balanceSol: wallet.balanceSol,
+    tokenCount: wallet.tokenCount,
+    tokenBalances: wallet.tokenBalances,
+    assetCount: wallet.assetCount,
+    collectibleCount: wallet.collectibleCount,
+    compressedCollectibleCount: wallet.compressedCollectibleCount,
+    pricedTokenTotalUsd: wallet.pricedTokenTotalUsd,
+    dataSource,
+    partial: loadOutcome.walletErrors.length > 0,
+    warnings: buildWalletContentWarnings({
+      usedSequentialFallback: loadOutcome.usedSequentialFallback,
+      walletErrors: loadOutcome.walletErrors,
+      suppressedHeliusPricedTokenCount: loadOutcome.suppressedHeliusPricedTokenCount,
+    }),
+    walletErrors: loadOutcome.walletErrors,
+  };
 };
 
 const classifySimpleWalletContentsRead = (input: {
@@ -1950,6 +2145,7 @@ const executeWalletContentsRpcOnly = async (input: {
         warnings: buildWalletContentWarnings({
           usedSequentialFallback: loadOutcome.usedSequentialFallback,
           walletErrors: loadOutcome.walletErrors,
+          suppressedHeliusPricedTokenCount: loadOutcome.suppressedHeliusPricedTokenCount,
         }),
       }),
       durationMs: Date.now() - startedAt,
@@ -2140,6 +2336,11 @@ export const createGetManagedWalletContentsAction = (
             includeZeroBalances: input.includeZeroBalances,
             dataSource,
             loadOutcome,
+            warnings: buildWalletContentWarnings({
+              usedSequentialFallback: loadOutcome.usedSequentialFallback,
+              walletErrors: loadOutcome.walletErrors,
+              suppressedHeliusPricedTokenCount: loadOutcome.suppressedHeliusPricedTokenCount,
+            }),
           }),
           durationMs: Date.now() - startedAt,
           timestamp: Date.now(),

@@ -17,6 +17,7 @@ const OPERATOR_KERNEL_PROMPT = [
   "For greetings or acknowledgements, reply in one short natural sentence.",
   "Do not list tools, examples, or menus in the user-facing answer unless the user explicitly asks what you can do.",
   "Do not mention hidden tools or unavailable tools.",
+  "Do not preface answers with tool narration like 'I'll check', 'Let me look', or 'I'll fetch'. Start with the answer once you have the tool result.",
   "Keep answers short and concrete unless the user asks for more.",
 ].join("\n");
 
@@ -41,6 +42,9 @@ const renderOperatorDecisionRules = (): string => [
   "- For wallet state, use wallet tools first; for market data, use market tools first; for runtime state, use runtime tools first.",
   "- If the user gives only a symbol, nickname, or fuzzy token reference, start with discovery before making a deeper market call.",
   "- If the user already gave an exact address, pair, wallet, or mint, skip discovery and go straight to the most specific tool.",
+  "- For one exact external wallet address, prefer `getExternalWalletHoldings` for holdings-only questions and `getExternalWalletAnalysis` when recent swaps are also requested.",
+  "- For one exact external wallet address when the user asks for current SOL balance plus a USD estimate or current wallet value, prefer `getExternalWalletHoldings` over raw `getRpcBalance` because it already includes live SOL/USD context.",
+  "- For one exact token mint when the user asks who bought recently or whether buyers are coming in, prefer `getTokenRecentBuyers` over holder-distribution tools.",
   "- For coin or token answers, prefer `name (symbol)` or equivalent metadata first and use the address only as secondary context.",
   "- When batch reads are available, prefer one valid batch call over many duplicate tiny calls.",
   "- For wallet writes, read first only when wallet identity, balance, or another required live input is ambiguous.",

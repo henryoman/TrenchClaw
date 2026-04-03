@@ -23,6 +23,7 @@ const DEXSCREENER_MODEL_TOOL_NAMES = [
 const HOLDER_MODEL_TOOL_NAMES = [
   "getTokenBiggestHolders",
   "getTokenHolderDistribution",
+  "getTokenRecentBuyers",
   "rankDexscreenerTopTokenBoostsByWhales",
 ] as const;
 

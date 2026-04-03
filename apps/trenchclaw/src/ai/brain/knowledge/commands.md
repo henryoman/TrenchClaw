@@ -8,7 +8,7 @@ deeper docs.
 - current runtime state, jobs, or older chat context
   - use `queryRuntimeStore`
 - wallet balances or holdings
-  - use `getManagedWalletSolBalances` or `getManagedWalletContents`
+  - use `getManagedWalletSolBalances`, `getManagedWalletContents`, `getExternalWalletHoldings`, or `getExternalWalletAnalysis`
 - swap or trigger order
   - open `swap` or `trigger-orders`
 - wallet creation, naming, or transfer
@@ -32,10 +32,17 @@ deeper docs.
 
 - `getManagedWalletContents`
   - use for wallet balances, holdings, token inventory
+- `getExternalWalletHoldings`
+  - use for one exact external wallet address when you only need current holdings
+  - use this instead of raw RPC balance tools when the user asks for that wallet's SOL balance plus USD value
+- `getExternalWalletAnalysis`
+  - use for one exact external wallet address when you need current holdings plus recent swaps
 - `getManagedWalletSolBalances`
   - use for SOL balances across managed wallets
 - `getSwapHistory`
   - use for recent swap activity
+- `getTokenRecentBuyers`
+  - use for one exact token mint when you need recent buyers from a recent swap window
 - market/news tools
   - use Dexscreener/news/sentiment/holder tools for current external data
 

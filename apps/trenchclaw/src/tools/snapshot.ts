@@ -38,6 +38,8 @@ const OPERATOR_ALWAYS_TOOL_NAMES = new Set([
 ]);
 
 const OPERATOR_ROUTED_TOOL_NAMES = new Set([
+  "getExternalWalletAnalysis",
+  "getExternalWalletHoldings",
   "getManagedWalletContents",
   "getManagedWalletSolBalances",
   "getRpcBalance",
@@ -50,6 +52,7 @@ const OPERATOR_ROUTED_TOOL_NAMES = new Set([
   "getRpcTransaction",
   "getSwapHistory",
   "getTokenBiggestHolders",
+  "getTokenRecentBuyers",
   "getDexscreenerLatestTokenProfiles",
   "getDexscreenerLatestTokenBoosts",
   "getDexscreenerTopTokenBoosts",
@@ -77,7 +80,9 @@ const OPERATOR_ROUTED_TOOL_NAMES = new Set([
 ]);
 
 const isRpcDataFetchTool = (toolName: string): boolean =>
-  toolName === "getManagedWalletContents"
+  toolName === "getExternalWalletAnalysis"
+  || toolName === "getExternalWalletHoldings"
+  || toolName === "getManagedWalletContents"
   || toolName === "getManagedWalletSolBalances"
   || toolName === "getRpcBalance"
   || toolName === "getRpcAccountInfo"
@@ -101,6 +106,7 @@ const isMarketNewsTool = (toolName: string): boolean =>
   || toolName === "getTokenLaunchTime"
   || toolName === "getTokenPricePerformance"
   || toolName === "getTokenHolderDistribution"
+  || toolName === "getTokenRecentBuyers"
   || toolName === "rankDexscreenerTopTokenBoostsByWhales"
   || toolName === "downloadGeckoTerminalOhlcv"
   || toolName === "getLatestSolanaNews"
