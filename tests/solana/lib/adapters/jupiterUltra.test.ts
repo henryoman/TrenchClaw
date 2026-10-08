@@ -7,6 +7,59 @@ import {
 } from "../../../../apps/trenchclaw/src/solana/lib/jupiter/ultra";
 
 describe("createJupiterUltraAdapter", () => {
+  test("uses Swap V2 managed landing and forwards optional referral fees", async () => {
+    const requests: Array<{ url: URL; init?: RequestInit }> = [];
+    const adapter = createJupiterUltraAdapter({
+      apiKey: "test-key",
+      fetchImpl: (async (url, init) => {
+        requests.push({ url: new URL(String(url)), init });
+        return Response.json(requests.length === 1
+          ? { requestId: "req-v2", transaction: null, feeBps: 50, feeMint: "fee-mint" }
+          : { status: "Success", signature: "swap-signature", totalOutputAmount: "123" });
+      }) as typeof fetch,
+    });
+
+    const order = await adapter.getOrder({
+      inputMint: "input-mint",
+      outputMint: "output-mint",
+      amount: 1000n,
+      taker: "wallet",
+      referralAccount: "referral-account",
+      referralFee: 50,
+    });
+    expect(requests[0]!.url.origin + requests[0]!.url.pathname).toBe("https://api.jup.ag/swap/v2/order");
+    expect(requests[0]?.url.searchParams.get("referralAccount")).toBe("referral-account");
+    expect(requests[0]?.url.searchParams.get("referralFee")).toBe("50");
+    expect(requests[0]?.url.searchParams.get("amount")).toBe("1000");
+    const headers = new Headers(requests[0]?.init?.headers);
+    expect(headers.get("x-api-key")).toBe("test-key");
+    expect(headers.has("x-ultra-api-key")).toBe(false);
+    expect(order.feeBps).toBe(50);
+    expect(order.feeMint).toBe("fee-mint");
+
+    const result = await adapter.executeOrder({ requestId: "req-v2", signedTransaction: "signed-tx" });
+    expect(requests[1]?.url.href).toBe("https://api.jup.ag/swap/v2/execute");
+    expect(requests[1]?.init?.method).toBe("POST");
+    expect(JSON.parse(String(requests[1]?.init?.body))).toEqual({ requestId: "req-v2", signedTransaction: "signed-tx" });
+    expect(result.status).toBe("Success");
+    expect(result.totalOutputAmount).toBe("123");
+  });
+
+  test("does not add referral fees by default", async () => {
+    let requestedUrl = "";
+    const adapter = createJupiterUltraAdapter({
+      apiKey: "test-key",
+      fetchImpl: (async (url) => {
+        requestedUrl = String(url);
+        return Response.json({ requestId: "req-no-fee", transaction: null });
+      }) as typeof fetch,
+    });
+    await adapter.getOrder({ inputMint: "input", outputMint: "output", amount: 1000n });
+    const params = new URL(requestedUrl).searchParams;
+    expect(params.has("referralAccount")).toBe(false);
+    expect(params.has("referralFee")).toBe(false);
+  });
+
   test("retries 429 responses using Retry-After before succeeding", async () => {
     const sleeps: number[] = [];
     const responses = [
@@ -143,7 +196,7 @@ describe("jupiter ultra vault config", () => {
 
     const adapter = await createJupiterUltraAdapterFromConfig();
     expect(adapter).toBeDefined();
-    expect(adapter?.baseUrl).toBe("https://api.jup.ag/ultra/v1");
+    expect(adapter?.baseUrl).toBe("https://api.jup.ag/swap/v2");
   });
 
   test("ignores env variables and stays vault-only", async () => {

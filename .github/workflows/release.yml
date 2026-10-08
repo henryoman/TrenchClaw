@@ -91,7 +91,11 @@ jobs:
           RELEASE_TAG: ${{ steps.release_plan.outputs.release_tag }}
         run: |
           mkdir -p "$(dirname "$RELEASE_NOTES_PATH")"
-          bun run release:notes -- --version "$RELEASE_TAG" --output "$RELEASE_NOTES_PATH"
+          if [[ -f "$RELEASE_NOTES_PATH" ]]; then
+            echo "Using existing release notes: $RELEASE_NOTES_PATH"
+          else
+            bun run release:notes -- --version "$RELEASE_TAG" --output "$RELEASE_NOTES_PATH"
+          fi
 
       - name: Commit release metadata
         run: |

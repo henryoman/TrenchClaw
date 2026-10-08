@@ -1,17 +1,14 @@
 import {
+  createKeyPairFromBytes,
   createKeyPairFromPrivateKeyBytes,
   getAddressFromPublicKey,
 } from "@solana/kit";
 import {
   getBase64EncodedWireTransaction,
   getTransactionDecoder,
-  signTransaction,
-  type Transaction,
-  type TransactionWithBlockhashLifetime,
+  partiallySignTransaction,
 } from "@solana/transactions";
 import { loadVaultData, readVaultString } from "../../../ai/llm/vaultFile";
-import { createRateLimitedSolanaRpc } from "../rpc/client";
-import { resolveRequiredRpcUrl } from "../rpc/urls";
 
 export interface UltraSignerAdapter {
   address: string;
@@ -22,9 +19,9 @@ export const createUltraSignerAdapter = async (config: {
   privateKey: Uint8Array;
   rpcUrl?: string;
 }): Promise<UltraSignerAdapter> => {
-  const rpcUrl = resolveRequiredRpcUrl(config.rpcUrl);
-  const rpc = createRateLimitedSolanaRpc(rpcUrl);
-  const keyPair = await createKeyPairFromPrivateKeyBytes(config.privateKey);
+  const keyPair = config.privateKey.length === 64
+    ? await createKeyPairFromBytes(config.privateKey)
+    : await createKeyPairFromPrivateKeyBytes(config.privateKey);
   const signerAddress = await getAddressFromPublicKey(keyPair.publicKey);
 
   return {
@@ -32,8 +29,9 @@ export const createUltraSignerAdapter = async (config: {
     async signBase64Transaction(base64Transaction: string): Promise<string> {
       const transactionBytes = Buffer.from(base64Transaction, "base64");
       const parsedTransaction = getTransactionDecoder().decode(transactionBytes);
-      const transaction = await ensureBlockhashLifetime(parsedTransaction, rpc);
-      const signedTransaction = await signTransaction([keyPair], transaction);
+      // JupiterZ adds its market maker signature during /execute. Preserve the
+      // quoted message and sign only our slot without requiring every signature.
+      const signedTransaction = await partiallySignTransaction([keyPair], parsedTransaction);
       return getBase64EncodedWireTransaction(signedTransaction);
     },
   };
@@ -95,23 +93,4 @@ function parsePrivateKey(value: string, encoding: string): Uint8Array {
   }
 
   return new Uint8Array(Buffer.from(normalized, "base64"));
-}
-
-async function ensureBlockhashLifetime(
-  transaction: Transaction,
-  rpc: ReturnType<typeof createRateLimitedSolanaRpc>,
-): Promise<Transaction & TransactionWithBlockhashLifetime> {
-  if ("lifetimeConstraint" in transaction) {
-    return transaction as Transaction & TransactionWithBlockhashLifetime;
-  }
-
-  const latestBlockhash = await rpc.getLatestBlockhash().send();
-
-  return {
-    ...transaction,
-    lifetimeConstraint: {
-      blockhash: latestBlockhash.value.blockhash,
-      lastValidBlockHeight: latestBlockhash.value.lastValidBlockHeight,
-    },
-  } as Transaction & TransactionWithBlockhashLifetime;
 }

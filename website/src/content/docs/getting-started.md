@@ -139,7 +139,7 @@ Use it when you want to see what just happened without reading the full transcri
 - Set AI provider to `OpenRouter`.
 - Pick the model your build recommends.
 - Leave private RPC settings alone unless you already have private RPC credentials.
-- Add a `Jupiter Ultra API Key` only when you want swap flows.
+- Add a `Jupiter API Key` only when you want swap flows.
 
 That gets you to the clean first-run configuration.
 

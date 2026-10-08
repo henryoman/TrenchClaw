@@ -372,7 +372,7 @@ profile: dangerous
         },
       },
     });
-    await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("cannot be parsed as a URL");
+    await expect(loadRuntimeSettings("dangerous")).rejects.toThrow("Runtime endpoint \"network.rpc.endpoints.primary.url\" is invalid:");
   });
 
   test("applies the narrow agent settings allowlist while preserving user authority for protected keys", async () => {

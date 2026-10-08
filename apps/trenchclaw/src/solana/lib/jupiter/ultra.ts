@@ -7,7 +7,8 @@ import {
 } from "../jupiter/parsing";
 import { resolveJupiterApiKey } from "./swap";
 
-const DEFAULT_JUPITER_ULTRA_BASE_URL = "https://api.jup.ag/ultra/v1";
+// Keep the Ultra adapter contract for saved tools/settings; execution uses Swap V2.
+const DEFAULT_JUPITER_MANAGED_SWAP_BASE_URL = "https://api.jup.ag/swap/v2";
 
 export interface JupiterUltraAdapterConfig {
   apiKey: string;
@@ -117,7 +118,7 @@ const computeBackoffMs = (input: {
 };
 
 export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => {
-  const baseUrl = config.baseUrl ?? DEFAULT_JUPITER_ULTRA_BASE_URL;
+  const baseUrl = config.baseUrl ?? DEFAULT_JUPITER_MANAGED_SWAP_BASE_URL;
   const fetchImpl = config.fetchImpl ?? fetch;
   const maxAttempts = Math.max(1, Math.trunc(config.rateLimitRetry?.maxAttempts ?? 4));
   const baseDelayMs = Math.max(0, Math.trunc(config.rateLimitRetry?.baseDelayMs ?? 500));
@@ -129,7 +130,6 @@ export const createJupiterUltraAdapter = (config: JupiterUltraAdapterConfig) => 
     const headers = new Headers(init?.headers);
     headers.set("content-type", "application/json");
     headers.set("x-api-key", config.apiKey);
-    headers.set("x-ultra-api-key", config.apiKey);
 
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- rate-limit retries must stay sequential.

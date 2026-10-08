@@ -47,6 +47,12 @@ This is the packaged launcher.
 
 In release installs it starts the runtime and serves the GUI together.
 
+## Solana And Swaps
+
+The runtime uses Solana Kit for RPC, transaction construction, and signing. Jupiter managed swaps use Swap V2 `/order` and `/execute`; the saved `ultra` provider name remains compatible with existing instance settings and tools. The runtime signs the wallet's transaction slot, preserves the quoted message, and leaves market maker signatures to Jupiter during execution.
+
+The `standard` provider uses Swap V2 `/build` with runtime-controlled submission. Optional managed referral fees are passed only when supplied by the caller; the runtime adds no referral fee by default.
+
 ## Boot And Authority
 
 The runtime boots in `apps/trenchclaw/src/runtime/bootstrap.ts`.
