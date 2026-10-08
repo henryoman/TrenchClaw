@@ -258,7 +258,7 @@ describe("instance discovery", () => {
       path.join(runtimeRoot, "instances/01/settings/ai.json"),
       `${JSON.stringify({
         provider: "openrouter",
-        model: "stepfun/step-3.5-flash:free",
+        model: "nvidia/nemotron-3-ultra-550b-a55b:free",
         defaultMode: "primary",
         temperature: null,
         maxOutputTokens: null,

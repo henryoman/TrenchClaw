@@ -29,18 +29,18 @@ export const AI_PROVIDER_OPTIONS = [
 
 export const AI_MODEL_CATALOG = [
   {
-    id: "stepfun/step-3.5-flash:free",
-    label: "Step 3.5 Flash Free",
+    id: "openrouter/free",
+    label: "OpenRouter Free Models Router",
     providers: OPENROUTER_ONLY,
   },
   {
-    id: "qwen/qwen3.6-plus-preview:free",
-    label: "Qwen 3.6 Plus Preview Free",
+    id: "nvidia/nemotron-3-ultra-550b-a55b:free",
+    label: "Nemotron 3 Ultra Free",
     providers: OPENROUTER_ONLY,
   },
   {
-    id: "minimax/minimax-m2.5:free",
-    label: "MiniMax M2.5 Free",
+    id: "google/gemma-4-31b-it:free",
+    label: "Gemma 4 31B Free",
     providers: OPENROUTER_ONLY,
   },
 ] as const satisfies readonly AiModelCatalogEntry[];

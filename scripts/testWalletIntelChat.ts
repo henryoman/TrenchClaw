@@ -26,9 +26,9 @@ const DEFAULT_RECENT_BUYER_MINT_CANDIDATES = [
 ] as const;
 const FALLBACK_CHAT_MODELS = [
   process.env.TRENCHCLAW_WALLET_INTEL_CHAT_MODEL?.trim(),
-  "stepfun/step-3.5-flash:free",
-  "minimax/minimax-m2.5:free",
-  "qwen/qwen3.6-plus-preview:free",
+  "openrouter/free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "google/gemma-4-31b-it:free",
 ].filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index);
 
 interface ActionResult<TData> {

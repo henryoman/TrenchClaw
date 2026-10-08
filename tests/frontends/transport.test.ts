@@ -746,16 +746,16 @@ describe("Runtime v1 API", () => {
       };
       expect(initialPayload.filePath).toContain("trenchclaw-ai-settings-");
       expect(initialPayload.settings.provider).toBe("openrouter");
-      expect(initialPayload.settings.model).toBe("qwen/qwen3.6-plus-preview:free");
+      expect(initialPayload.settings.model).toBe("openrouter/free");
       expect(initialPayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
       expect(initialPayload.options.map((option) => option.id)).toEqual([
-        "stepfun/step-3.5-flash:free",
-        "qwen/qwen3.6-plus-preview:free",
-        "minimax/minimax-m2.5:free",
+        "openrouter/free",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "google/gemma-4-31b-it:free",
       ]);
-      expect(initialPayload.options.find((option) => option.id === "stepfun/step-3.5-flash:free")?.providers).toEqual(["openrouter"]);
-      expect(initialPayload.options.find((option) => option.id === "qwen/qwen3.6-plus-preview:free")?.providers).toEqual(["openrouter"]);
-      expect(initialPayload.options.find((option) => option.id === "minimax/minimax-m2.5:free")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.find((option) => option.id === "nvidia/nemotron-3-ultra-550b-a55b:free")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.find((option) => option.id === "openrouter/free")?.providers).toEqual(["openrouter"]);
+      expect(initialPayload.options.find((option) => option.id === "google/gemma-4-31b-it:free")?.providers).toEqual(["openrouter"]);
 
       const updateResponse = await handler(new Request("http://localhost/v1/app/ai-settings", {
         method: "PUT",
@@ -763,7 +763,7 @@ describe("Runtime v1 API", () => {
         body: JSON.stringify({
           settings: {
             provider: "openrouter",
-            model: "minimax/minimax-m2.5:free",
+            model: "google/gemma-4-31b-it:free",
             defaultMode: "primary",
             temperature: 0.4,
             maxOutputTokens: 2048,
@@ -777,13 +777,13 @@ describe("Runtime v1 API", () => {
         settings: { provider: string; model: string; maxOutputTokens: number | null };
       };
       expect(updatePayload.settings.provider).toBe("openrouter");
-      expect(updatePayload.settings.model).toBe("minimax/minimax-m2.5:free");
+      expect(updatePayload.settings.model).toBe("google/gemma-4-31b-it:free");
       expect(updatePayload.settings.maxOutputTokens).toBe(2048);
       expect(updatePayload.providerOptions.map((option) => option.id)).toEqual(["openrouter", "gateway"]);
       expect(updatePayload.options.map((option) => option.id)).toEqual([
-        "stepfun/step-3.5-flash:free",
-        "qwen/qwen3.6-plus-preview:free",
-        "minimax/minimax-m2.5:free",
+        "openrouter/free",
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "google/gemma-4-31b-it:free",
       ]);
     } finally {
       if (previous === undefined) {

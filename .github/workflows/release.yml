@@ -76,6 +76,7 @@ jobs:
 
       - name: Validate workspace
         run: |
+          bun run models:check
           bun run idl:check
           bun run lint
           bun run typecheck

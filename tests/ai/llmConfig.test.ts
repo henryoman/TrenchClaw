@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 
 import { resolveLlmProviderConfigFromEnv, resolveLlmProviderConfigFromVault } from "../../apps/trenchclaw/src/ai/llm/config";
+import { normalizeAiSettingsInput } from "../../apps/trenchclaw/src/ai/llm/aiSettingsFile";
 
 const ENV_KEYS = [
   "TRENCHCLAW_AI_PROVIDER",
@@ -53,7 +54,7 @@ describe("resolveLlmProviderConfigFromEnv", () => {
   test("ignores provider env overrides", () => {
     process.env.TRENCHCLAW_AI_PROVIDER = "gateway";
     process.env.TRENCHCLAW_AI_API_KEY = "gateway-key";
-    process.env.TRENCHCLAW_AI_MODEL = "stepfun/step-3.5-flash:free";
+    process.env.TRENCHCLAW_AI_MODEL = "nvidia/nemotron-3-ultra-550b-a55b:free";
 
     const resolved = resolveLlmProviderConfigFromEnv();
 
@@ -62,10 +63,21 @@ describe("resolveLlmProviderConfigFromEnv", () => {
 });
 
 describe("resolveLlmProviderConfigFromVault", () => {
+  test.each([
+    "qwen/qwen3.6-plus-preview:free",
+    "stepfun/step-3.5-flash:free",
+    "minimax/minimax-m2.5:free",
+  ])("migrates retired model %s to the free models router", (model) => {
+    expect(normalizeAiSettingsInput({ provider: "openrouter", model })).toMatchObject({
+      provider: "openrouter",
+      model: "openrouter/free",
+    });
+  });
+
   test("uses the configured model from ai.json and the OpenRouter key from vault.json", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "stepfun/step-3.5-flash:free",
+      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
       defaultMode: "primary",
       temperature: 0.2,
       maxOutputTokens: 2048,
@@ -82,12 +94,12 @@ describe("resolveLlmProviderConfigFromVault", () => {
 
     expect(resolved).not.toBeNull();
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("stepfun/step-3.5-flash:free");
+    expect(resolved?.model).toBe("nvidia/nemotron-3-ultra-550b-a55b:free");
     expect(resolved?.baseURL).toBe("https://openrouter.ai/api/v1");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
-  test("does not fall back when gateway is selected for the StepFun-only model", async () => {
+  test("does not fall back when gateway is selected for the OpenRouter-only model", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "gateway",
       model: "some-other-model",
@@ -133,14 +145,14 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("qwen/qwen3.6-plus-preview:free");
+    expect(resolved?.model).toBe("openrouter/free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
-  test("preserves the configured MiniMax free model on OpenRouter", async () => {
+  test("preserves the configured Gemma free model on OpenRouter", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "minimax/minimax-m2.5:free",
+      model: "google/gemma-4-31b-it:free",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -159,14 +171,14 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("minimax/minimax-m2.5:free");
+    expect(resolved?.model).toBe("google/gemma-4-31b-it:free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
-  test("preserves the configured Qwen preview free model on OpenRouter", async () => {
+  test("preserves the configured free models router on OpenRouter", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "qwen/qwen3.6-plus-preview:free",
+      model: "openrouter/free",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -185,14 +197,14 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("qwen/qwen3.6-plus-preview:free");
+    expect(resolved?.model).toBe("openrouter/free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 
   test("uses OpenRouter when the selected model is OpenRouter-only", async () => {
     process.env.TRENCHCLAW_AI_SETTINGS_FILE = await writeJson({
       provider: "openrouter",
-      model: "stepfun/step-3.5-flash:free",
+      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
       defaultMode: "primary",
       temperature: null,
       maxOutputTokens: null,
@@ -211,7 +223,7 @@ describe("resolveLlmProviderConfigFromVault", () => {
     const resolved = await resolveLlmProviderConfigFromVault();
 
     expect(resolved?.provider).toBe("openrouter");
-    expect(resolved?.model).toBe("stepfun/step-3.5-flash:free");
+    expect(resolved?.model).toBe("nvidia/nemotron-3-ultra-550b-a55b:free");
     expect(resolved?.apiKey).toBe("openrouter-key");
   });
 });

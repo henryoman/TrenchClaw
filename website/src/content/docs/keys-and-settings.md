@@ -17,7 +17,7 @@ That is the clean setup story.
 
 - AI key: `OpenRouter API Key`
 - AI provider: `OpenRouter`
-- AI model: use the default your build recommends
+- AI model: `OpenRouter Free Models Router` (`openrouter/free`)
 - RPC: leave it alone unless you have private RPC credentials
 - Swaps: add a `Jupiter API Key` only when you want swap flows
 
@@ -39,7 +39,9 @@ If you do not know whether you need a key beyond `OpenRouter API Key`, you proba
 For the clean default setup:
 
 - provider: `OpenRouter`
-- model: use the model your build recommends
+- model: `OpenRouter Free Models Router` (`openrouter/free`)
+
+The default routes to currently available free models that support the request, including tool calling. The underlying model can vary between requests. You can also select the shipped Nemotron or Gemma free options for a fixed model. Older Qwen, StepFun, and MiniMax preview/free selections resolve to the new default when loaded.
 
 If you switch providers, make sure the key in **Keys** matches the provider in **Settings**.
 

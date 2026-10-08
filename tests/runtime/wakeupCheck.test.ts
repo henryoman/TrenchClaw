@@ -36,7 +36,7 @@ const createWakeupSettingsFile = async (input: {
 
 const createLlm = (text: string): LlmClient => ({
   provider: "openrouter",
-  model: "stepfun/step-3.5-flash:free",
+  model: "nvidia/nemotron-3-ultra-550b-a55b:free",
   defaultSystemPrompt: "test",
   generate: async () => ({
     text,
@@ -175,7 +175,7 @@ describe("runWakeupCheckAction", () => {
     const calls: Array<{ system?: string; prompt: string; mode?: string }> = [];
     const llm: LlmClient = {
       provider: "openrouter",
-      model: "stepfun/step-3.5-flash:free",
+      model: "nvidia/nemotron-3-ultra-550b-a55b:free",
       defaultSystemPrompt: "test",
       generate: async (input) => {
         calls.push({

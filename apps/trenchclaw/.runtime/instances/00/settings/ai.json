@@ -1,6 +1,6 @@
 {
   "provider": "openrouter",
-  "model": "qwen/qwen3.6-plus-preview:free",
+  "model": "openrouter/free",
   "defaultMode": "primary",
   "temperature": null,
   "maxOutputTokens": null
