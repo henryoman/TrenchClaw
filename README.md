@@ -314,7 +314,7 @@ const tx = pipe(
 const signed = await signTransactionMessageWithSigners(tx);
 ```
 
-**No more hand-rolled instruction builders.** Program interactions use generated clients from [Codama](https://github.com/codama-idl/codama) IDL files. Drop an IDL JSON in `lib/client/idl/`, run codegen, get typed instruction builders, account decoders, PDA helpers, and error enums. TrenchClaw imports from these generated clients — never constructs instructions manually.
+**Program interface references.** Official Anchor IDLs and [Codama](https://github.com/codama-idl/codama) trees live in `idl/`, with pinned source revisions and checksums in `idl/sources.json`. Run `bun run idl:update` to refresh current upstream interfaces and `bun run idl:check` to validate the catalog. These are reference schemas; this checkout does not generate or import program clients from them. Runtime swaps use Jupiter's REST adapters and Solana Kit transaction signing.
 
 ---
 
@@ -373,7 +373,7 @@ Solana Kit, Jupiter integration, and Codama-generated clients are all TypeScript
 - Composes explicit action sequences, queued jobs, and narrow scheduled swap flows without a broad trigger framework
 - Persists runtime state, chat history, and receipts in Bun SQLite so local sessions survive restarts
 - Uses RPC, Jupiter, and token-account adapters so the runtime stays provider-agnostic
-- Generates typed program clients from Anchor IDLs via [Codama](https://github.com/codama-idl/codama) instead of hand-rolled instruction builders
+- Maintains official Anchor IDLs and Codama interface trees with source provenance and validation
 
 The current public release does not promise a broad autonomous strategy engine yet. Scheduling and queued jobs are the current automation surface; broader strategy automation and non-Ultra public swap paths are still coming.
 

@@ -27,6 +27,9 @@ jobs:
       - name: Test
         run: bun run test
 
+      - name: Verify program interfaces
+        run: bun run idl:check
+
       - name: Build app bundle
         run: bun run app:build
 

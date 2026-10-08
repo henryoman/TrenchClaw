@@ -55,6 +55,8 @@ The runtime uses Solana Kit for RPC, transaction construction, and signing. Jupi
 
 The `standard` provider uses Swap V2 `/build` with runtime-controlled submission. Optional managed referral fees are passed only when supplied by the caller; the runtime adds no referral fee by default.
 
+The repository's `idl/` catalog contains official program interface references with pinned source revisions and checksums. CI and release validation check their formats and program addresses. The runtime does not currently generate or import clients from this catalog; live swaps use the Jupiter adapters above.
+
 ## Boot And Authority
 
 The runtime boots in `apps/trenchclaw/src/runtime/bootstrap.ts`.

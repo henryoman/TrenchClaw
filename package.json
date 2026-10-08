@@ -19,6 +19,8 @@
   "packageManager": "bun@1.3.11",
   "private": true,
   "scripts": {
+    "idl:check": "bun run scripts/syncIdls.ts --check",
+    "idl:update": "bun run scripts/syncIdls.ts --update",
     "app:build": "bun run scripts/buildApp.ts",
     "bundle:verify": "bun run scripts/verifyAppBundle.ts",
     "app:start": "bun --cwd apps/runner index.ts",

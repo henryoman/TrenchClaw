@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "file": "pump-fun.json",
+      "repository": "pump-fun/pump-public-docs",
+      "branch": "main",
+      "path": "idl/pump.json",
+      "revision": "8cda1fa30ea658b20909d8aedf002047119388d2",
+      "sha256": "38b8abcc5b279bda85cf473e7c6f67bd15eb89df658cf93434687a43c88ad937",
+      "format": "anchor",
+      "programAddress": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
+      "status": "current"
+    },
+    {
+      "file": "pump-amm.json",
+      "repository": "pump-fun/pump-public-docs",
+      "branch": "main",
+      "path": "idl/pump_amm.json",
+      "revision": "8cda1fa30ea658b20909d8aedf002047119388d2",
+      "sha256": "b7d8c57a4d9c4dd0109a9ab893052352333252d4eedced10ac091d4d66cab89b",
+      "format": "anchor",
+      "programAddress": "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
+      "status": "current"
+    },
+    {
+      "file": "pump-fees.json",
+      "repository": "pump-fun/pump-public-docs",
+      "branch": "main",
+      "path": "idl/pump_fees.json",
+      "revision": "8cda1fa30ea658b20909d8aedf002047119388d2",
+      "sha256": "f111d2e5c9aa3d4e64d6a4e6b6f34300ccb1eaf6abc46834fe491836dc90aa74",
+      "format": "anchor",
+      "programAddress": "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ",
+      "status": "current"
+    },
+    {
+      "file": "spl-token.json",
+      "repository": "solana-program/token",
+      "branch": "main",
+      "path": "idl.json",
+      "revision": "8185db13640f0df038266c7cf4306c212d81380a",
+      "sha256": "33add106ed36fead9222bfd882f1b364f3c4714346becefd5fa6068652b0cc33",
+      "format": "codama",
+      "programAddress": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "status": "current"
+    },
+    {
+      "file": "spl-token-2022.json",
+      "repository": "solana-program/token-2022",
+      "branch": "main",
+      "path": "idl.json",
+      "revision": "d9ffb9787187b6bc29adda1a6b389b9931377e03",
+      "sha256": "13cbda7213599f3312e1b7ffd1c7f176f36ebd74dba9feabe6e9a6874dc1d5d2",
+      "format": "codama",
+      "programAddress": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+      "status": "current"
+    },
+    {
+      "file": "jupiter.json",
+      "repository": "jup-ag/rfq-v2-sdk",
+      "branch": "main",
+      "path": "fill-decoder/idls/aggregator.json",
+      "revision": "f3f30ff2af48f63c11f326a486b8b0eb9611714f",
+      "sha256": "30bc8470bb67fdac80e0a368aaff29fcb34476d453cf14bd9861fb968a2d4925",
+      "format": "anchor",
+      "programAddress": "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
+      "status": "current"
+    },
+    {
+      "file": "mpl-token-metadata.json",
+      "repository": "metaplex-foundation/mpl-token-metadata",
+      "branch": "main",
+      "path": "trees/codama.json",
+      "revision": "353d01be4af3018e1daf49d0cd35ba9f731d9c9c",
+      "sha256": "9a29b92c612beafac1ae594b079300502b85aa140291b4d6c7fba1c522df5141",
+      "format": "codama",
+      "programAddress": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
+      "status": "current"
+    },
+    {
+      "file": "raydium-clmm.json",
+      "repository": "raydium-io/raydium-idl",
+      "branch": "master",
+      "path": "raydium_clmm/raydium_clmm.json",
+      "revision": "e7e0c96fe77bcf6a020b84a44c47a722aac8e359",
+      "sha256": "040a8c4866317fa028be8a81db54325ce6d9b92aeb10582d89992855bbbce5c1",
+      "format": "anchor",
+      "programAddress": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
+      "status": "current"
+    },
+    {
+      "file": "raydium-cpmm.json",
+      "repository": "raydium-io/raydium-idl",
+      "branch": "master",
+      "path": "raydium_cpmm/raydium_cp_swap.json",
+      "revision": "e7e0c96fe77bcf6a020b84a44c47a722aac8e359",
+      "sha256": "1202f6dc8e1c3216598f2ad5c620b9aa8c64ac584563fafed68125c27fb6df81",
+      "format": "anchor",
+      "programAddress": "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C",
+      "status": "current"
+    },
+    {
+      "file": "raydium-amm.json",
+      "repository": "raydium-io/raydium-idl",
+      "branch": "master",
+      "path": "raydium_amm/idl.json",
+      "revision": "6123104304ebcb42be175cc297a2c221ac96bb96",
+      "sha256": "95a95969042353634a7a5ba4d9b75dcd019aeccec2168b08281afc1f55420a09",
+      "format": "anchor-legacy",
+      "programAddress": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
+      "status": "archived"
+    }
+  ]
+}
