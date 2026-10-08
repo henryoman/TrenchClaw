@@ -75,9 +75,11 @@ jobs:
           bun run release:validate -- --version "${{ steps.release_plan.outputs.release_tag }}" --prerelease "${{ steps.release_plan.outputs.prerelease }}"
 
       - name: Validate workspace
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           bun run models:check
-          bun run idl:check
+          bun run idl:check:upstream
           bun run lint
           bun run typecheck
           bun run test
@@ -198,6 +200,14 @@ jobs:
           pattern: release-*
           merge-multiple: true
           path: dist/release
+
+      - name: Package program interface catalog
+        env:
+          RELEASE_TAG: ${{ needs.prepare_release.outputs.release_tag }}
+        run: |
+          bun run idl:check
+          tar -czf "dist/release/trenchclaw-${RELEASE_TAG}-idls.tar.gz" idl
+          sha256sum "dist/release/trenchclaw-${RELEASE_TAG}-idls.tar.gz" > "dist/release/trenchclaw-${RELEASE_TAG}-idls.tar.gz.sha256"
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "sources": [
     {
       "file": "pump-fun.json",
@@ -10,7 +10,8 @@
       "sha256": "38b8abcc5b279bda85cf473e7c6f67bd15eb89df658cf93434687a43c88ad937",
       "format": "anchor",
       "programAddress": "6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P",
-      "status": "current"
+      "status": "current",
+      "kind": "download"
     },
     {
       "file": "pump-amm.json",
@@ -21,7 +22,8 @@
       "sha256": "b7d8c57a4d9c4dd0109a9ab893052352333252d4eedced10ac091d4d66cab89b",
       "format": "anchor",
       "programAddress": "pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA",
-      "status": "current"
+      "status": "current",
+      "kind": "download"
     },
     {
       "file": "pump-fees.json",
@@ -32,7 +34,8 @@
       "sha256": "f111d2e5c9aa3d4e64d6a4e6b6f34300ccb1eaf6abc46834fe491836dc90aa74",
       "format": "anchor",
       "programAddress": "pfeeUxB6jkeY1Hxd7CsFCAjcbHA9rWtchMGdZ6VojVZ",
-      "status": "current"
+      "status": "current",
+      "kind": "download"
     },
     {
       "file": "spl-token.json",
@@ -43,7 +46,8 @@
       "sha256": "33add106ed36fead9222bfd882f1b364f3c4714346becefd5fa6068652b0cc33",
       "format": "codama",
       "programAddress": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-      "status": "current"
+      "status": "current",
+      "kind": "download"
     },
     {
       "file": "spl-token-2022.json",
@@ -54,7 +58,8 @@
       "sha256": "13cbda7213599f3312e1b7ffd1c7f176f36ebd74dba9feabe6e9a6874dc1d5d2",
       "format": "codama",
       "programAddress": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
-      "status": "current"
+      "status": "current",
+      "kind": "download"
     },
     {
       "file": "jupiter.json",
@@ -65,7 +70,8 @@
       "sha256": "30bc8470bb67fdac80e0a368aaff29fcb34476d453cf14bd9861fb968a2d4925",
       "format": "anchor",
       "programAddress": "JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4",
-      "status": "current"
+      "status": "current",
+      "kind": "download"
     },
     {
       "file": "mpl-token-metadata.json",
@@ -76,29 +82,34 @@
       "sha256": "9a29b92c612beafac1ae594b079300502b85aa140291b4d6c7fba1c522df5141",
       "format": "codama",
       "programAddress": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
-      "status": "current"
+      "status": "current",
+      "kind": "download"
     },
     {
       "file": "raydium-clmm.json",
-      "repository": "raydium-io/raydium-idl",
+      "repository": "raydium-io/raydium-clmm",
       "branch": "master",
-      "path": "raydium_clmm/raydium_clmm.json",
-      "revision": "e7e0c96fe77bcf6a020b84a44c47a722aac8e359",
-      "sha256": "040a8c4866317fa028be8a81db54325ce6d9b92aeb10582d89992855bbbce5c1",
+      "path": "programs/amm",
+      "revision": "ed1eb41519d5355755f7df52b43fa9610938b60b",
+      "sha256": "aa9b86e7151805a479d9144c0c387bec29b6e326c821cddd8dcf5a289978b081",
       "format": "anchor",
       "programAddress": "CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK",
-      "status": "current"
+      "status": "current",
+      "kind": "anchor-build",
+      "generator": "anchor-lang-idl@0.1.4"
     },
     {
       "file": "raydium-cpmm.json",
-      "repository": "raydium-io/raydium-idl",
+      "repository": "raydium-io/raydium-cp-swap",
       "branch": "master",
-      "path": "raydium_cpmm/raydium_cp_swap.json",
-      "revision": "e7e0c96fe77bcf6a020b84a44c47a722aac8e359",
-      "sha256": "1202f6dc8e1c3216598f2ad5c620b9aa8c64ac584563fafed68125c27fb6df81",
+      "path": "programs/cp-swap",
+      "revision": "b3187ae53a1b95a201f855a59024a12ca8f5b51a",
+      "sha256": "7d3be8e3d21657720c9b859803b1fbe7f702ca5321045c58869a740d5ee690ea",
       "format": "anchor",
       "programAddress": "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C",
-      "status": "current"
+      "status": "current",
+      "kind": "anchor-build",
+      "generator": "anchor-lang-idl@0.1.4"
     }
   ]
 }

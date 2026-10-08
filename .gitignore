@@ -64,3 +64,6 @@ website/build/
 # Release artifacts
 *.tgz
 .vercel
+
+# Rust IDL generator output
+scripts/idl-builder/target/

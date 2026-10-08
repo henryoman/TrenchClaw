@@ -8,6 +8,92 @@
   },
   "instructions": [
     {
+      "name": "close_creator_fee_share",
+      "docs": [
+        "Close a custom creator fee share account, the creator fee split falls back to the",
+        "rate configured on the amm config afterwards.",
+        "Must be called by the admin or the creator fee share owner.",
+        "",
+        "# Arguments",
+        "",
+        "* `ctx`- The context of accounts",
+        ""
+      ],
+      "discriminator": [
+        74,
+        166,
+        82,
+        58,
+        13,
+        215,
+        255,
+        66
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "creator"
+        },
+        {
+          "name": "amm_config",
+          "docs": [
+            "The amm config the custom share rate applies to"
+          ]
+        },
+        {
+          "name": "creator_fee_share",
+          "docs": [
+            "The custom share account to close, the creator fee falls back to the rate",
+            "configured on `amm_config` afterwards"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  101,
+                  97,
+                  116,
+                  111,
+                  114,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "amm_config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "close_permission_pda",
       "docs": [
         "Close a permission account",
@@ -31,8 +117,7 @@
         {
           "name": "owner",
           "writable": true,
-          "signer": true,
-          "address": "GThUX1Atko4tqhN2NaiTazWSeFWMuiUvfFnyJyUghFMJ"
+          "signer": true
         },
         {
           "name": "permission_authority"
@@ -63,6 +148,75 @@
               {
                 "kind": "account",
                 "path": "permission_authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "close_support_mint_associated",
+      "docs": [
+        "Close support token22 mint account which can create pool and send rewards while ignoring unsupported extensions."
+      ],
+      "discriminator": [
+        96,
+        136,
+        183,
+        99,
+        72,
+        152,
+        54,
+        131
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "Address to be set as protocol owner."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_mint",
+          "docs": [
+            "Support token mint"
+          ]
+        },
+        {
+          "name": "support_mint_associated",
+          "docs": [
+            "Initialize support mint state account to store support mint address and bump."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  117,
+                  112,
+                  112,
+                  111,
+                  114,
+                  116,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
               }
             ]
           }
@@ -326,6 +480,432 @@
             "To create a new program account"
           ],
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "creator_fee_share",
+          "docs": [
+            "Must always be passed but is not required to exist, in which case the rate",
+            "configured on `amm_config` applies."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  101,
+                  97,
+                  116,
+                  111,
+                  114,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "amm_config"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "collect_creator_fee_permissionless",
+      "docs": [
+        "Collect the creator fee, anyone can call it since the fee is always sent to the",
+        "pool creator, the payer only funds the creation of the creator's token accounts.",
+        "",
+        "# Arguments",
+        "",
+        "* `ctx` - The context of accounts",
+        ""
+      ],
+      "discriminator": [
+        202,
+        202,
+        34,
+        83,
+        226,
+        122,
+        145,
+        229
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Anyone can trigger the collection since the fee is always sent to the pool creator,",
+            "the payer only funds the creation of the creator's token accounts if they don't exist yet."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "creator",
+          "docs": [
+            "The pool creator that receives the collected creator fees"
+          ]
+        },
+        {
+          "name": "authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  110,
+                  100,
+                  95,
+                  108,
+                  112,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  95,
+                  115,
+                  101,
+                  101,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "pool_state",
+          "docs": [
+            "Pool state stores accumulated creator fee amount"
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_0_vault",
+          "docs": [
+            "The address that holds pool tokens for token_0"
+          ],
+          "writable": true
+        },
+        {
+          "name": "token_1_vault",
+          "docs": [
+            "The address that holds pool tokens for token_1"
+          ],
+          "writable": true
+        },
+        {
+          "name": "vault_0_mint",
+          "docs": [
+            "The mint of token_0 vault"
+          ]
+        },
+        {
+          "name": "vault_1_mint",
+          "docs": [
+            "The mint of token_1 vault"
+          ]
+        },
+        {
+          "name": "creator_token_0",
+          "docs": [
+            "The address that receives the collected token_0 creator fees"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "token_0_program"
+              },
+              {
+                "kind": "account",
+                "path": "vault_0_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "creator_token_1",
+          "docs": [
+            "The address that receives the collected token_1 creator fees"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "token_1_program"
+              },
+              {
+                "kind": "account",
+                "path": "vault_1_mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_0_program",
+          "docs": [
+            "Spl token program or token program 2022"
+          ]
+        },
+        {
+          "name": "token_1_program",
+          "docs": [
+            "Spl token program or token program 2022"
+          ]
+        },
+        {
+          "name": "associated_token_program",
+          "docs": [
+            "Program to create an ATA for receiving the creator fee"
+          ],
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "docs": [
+            "To create a new program account"
+          ],
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "amm_config",
+          "docs": [
+            "Amm config account stores the default share of the creator fee retained by the protocol"
+          ]
+        },
+        {
+          "name": "creator_fee_share",
+          "docs": [
+            "Must always be passed but is not required to exist, in which case the rate",
+            "configured on `amm_config` applies."
+          ],
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  101,
+                  97,
+                  116,
+                  111,
+                  114,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "amm_config"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "collect_excess_lamports",
+      "docs": [
+        "Collect excess lamports, including accounts for SPL tokens owned by authority and Program PDA accounts."
+      ],
+      "discriminator": [
+        28,
+        189,
+        19,
+        40,
+        164,
+        176,
+        118,
+        17
+      ],
+      "accounts": [
+        {
+          "name": "collect_lamports_wallet",
+          "docs": [
+            "Only admin or collect_lamports can collect lamports"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116,
+                  95,
+                  97,
+                  110,
+                  100,
+                  95,
+                  108,
+                  112,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  95,
+                  115,
+                  101,
+                  101,
+                  100
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program",
+          "docs": [
+            "The SPL program to perform token transfers"
+          ],
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "token_program_2022",
+          "docs": [
+            "The SPL program 2022 to perform token transfers"
+          ],
+          "address": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb"
         }
       ],
       "args": []
@@ -721,6 +1301,99 @@
       ]
     },
     {
+      "name": "create_creator_fee_share",
+      "docs": [
+        "Create a custom creator fee share account for a (creator, amm_config) pair.",
+        "While it exists it overrides `AmmConfig::creator_fee_share_rate` when the",
+        "creator fee of a pool created by `creator` on `amm_config` is collected.",
+        "Must be called by the admin or the creator fee share owner.",
+        "",
+        "# Arguments",
+        "",
+        "* `ctx`- The context of accounts",
+        "* `share_rate` - The share of the creator fee retained by the protocol,",
+        "denominated in hundredths of a bip (10^-6)",
+        ""
+      ],
+      "discriminator": [
+        127,
+        31,
+        188,
+        119,
+        171,
+        236,
+        128,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "creator"
+        },
+        {
+          "name": "amm_config",
+          "docs": [
+            "The amm config the custom share rate applies to"
+          ]
+        },
+        {
+          "name": "creator_fee_share",
+          "docs": [
+            "Stores the custom share of the creator fee retained by the protocol"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  114,
+                  101,
+                  97,
+                  116,
+                  111,
+                  114,
+                  95,
+                  102,
+                  101,
+                  101,
+                  95,
+                  115,
+                  104,
+                  97,
+                  114,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "account",
+                "path": "amm_config"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "share_rate",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "create_permission_pda",
       "docs": [
         "Create a permission account",
@@ -744,8 +1417,7 @@
         {
           "name": "owner",
           "writable": true,
-          "signer": true,
-          "address": "GThUX1Atko4tqhN2NaiTazWSeFWMuiUvfFnyJyUghFMJ"
+          "signer": true
         },
         {
           "name": "permission_authority"
@@ -776,6 +1448,75 @@
               {
                 "kind": "account",
                 "path": "permission_authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_support_mint_associated",
+      "docs": [
+        "Create support token22 mint account which can create pool and send rewards while ignoring unsupported extensions."
+      ],
+      "discriminator": [
+        17,
+        251,
+        65,
+        92,
+        136,
+        242,
+        14,
+        169
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "Address to be set as protocol owner."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "token_mint",
+          "docs": [
+            "Support token mint"
+          ]
+        },
+        {
+          "name": "support_mint_associated",
+          "docs": [
+            "Initialize support mint state account to store support mint address and bump."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  117,
+                  112,
+                  112,
+                  111,
+                  114,
+                  116,
+                  95,
+                  109,
+                  105,
+                  110,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "token_mint"
               }
             ]
           }
@@ -2102,7 +2843,10 @@
         "* `fund_fee_rate`- The new fund fee rate of amm config, be set when `param` is 2",
         "* `new_owner`- The config's new owner, be set when `param` is 3",
         "* `new_fund_owner`- The config's new fund owner, be set when `param` is 4",
-        "* `param`- The value can be 0 | 1 | 2 | 3 | 4, otherwise will report a error",
+        "* `creator_fee_rate`- The new creator fee rate of amm config, be set when `param` is 7",
+        "* `creator_fee_share_rate`- The new share of the creator fee retained by the",
+        "protocol, be set when `param` is 8",
+        "* `param`- The value can be 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8, otherwise will report a error",
         ""
       ],
       "discriminator": [
@@ -2366,6 +3110,19 @@
       ]
     },
     {
+      "name": "CreatorFeeShare",
+      "discriminator": [
+        30,
+        235,
+        98,
+        252,
+        26,
+        197,
+        66,
+        86
+      ]
+    },
+    {
       "name": "ObservationState",
       "discriminator": [
         122,
@@ -2402,6 +3159,19 @@
         195,
         222,
         70
+      ]
+    },
+    {
+      "name": "SupportMintAssociated",
+      "discriminator": [
+        134,
+        40,
+        183,
+        79,
+        12,
+        112,
+        162,
+        53
       ]
     }
   ],
@@ -2508,6 +3278,11 @@
       "code": 6014,
       "name": "NoFeeCollect",
       "msg": "Fee is zero"
+    },
+    {
+      "code": 6015,
+      "name": "LamportsCalculateError",
+      "msg": "Lamports calculate error"
     }
   ],
   "types": [
@@ -2590,6 +3365,15 @@
             "type": "u64"
           },
           {
+            "name": "creator_fee_share_rate",
+            "docs": [
+              "The share of the creator fee retained by the protocol, denominated in",
+              "hundredths of a bip (10^-6). Zero means the creator receives the whole creator fee.",
+              "Overridden by a `CreatorFeeShare` account when one exists for the pool creator."
+            ],
+            "type": "u64"
+          },
+          {
             "name": "padding",
             "docs": [
               "padding"
@@ -2597,7 +3381,7 @@
             "type": {
               "array": [
                 "u64",
-                15
+                14
               ]
             }
           }
@@ -2617,6 +3401,59 @@
           },
           {
             "name": "OnlyToken1"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreatorFeeShare",
+      "docs": [
+        "Custom protocol share rate of the creator fee for a given (creator, amm_config) pair.",
+        "When this account exists it overrides `AmmConfig::creator_fee_share_rate`."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "docs": [
+              "Bump to identify PDA"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "creator",
+            "docs": [
+              "The pool creator this share rate applies to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "amm_config",
+            "docs": [
+              "The amm config this share rate applies to"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "share_rate",
+            "docs": [
+              "The share of the creator fee retained by the protocol,",
+              "denominated in hundredths of a bip (10^-6)"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "padding",
+            "docs": [
+              "padding"
+            ],
+            "type": {
+              "array": [
+                "u64",
+                8
+              ]
+            }
           }
         ]
       }
@@ -3003,6 +3840,40 @@
               "array": [
                 "u64",
                 28
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SupportMintAssociated",
+      "docs": [
+        "Holds the current owner of the factory"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "docs": [
+              "Bump to identify PDA"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "mint",
+            "docs": [
+              "Address of the supported token22 mint"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "padding",
+            "type": {
+              "array": [
+                "u64",
+                8
               ]
             }
           }

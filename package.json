@@ -1,6 +1,6 @@
 {
   "name": "@trenchclaw/monorepo",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "devDependencies": {
     "turbo": "^2.9.3"
   },
@@ -89,7 +89,8 @@
     "ci": "bun run lint && bun run typecheck && bun run test && bun run build",
     "check:all": "bun run lint && bun run typecheck && bun run test && bun run build:all && bun run app:build && bun run deps:dupes",
     "check:all:with-chat": "bun run check:all && bun run test:launch-chat",
-    "wallet:vanity": "bun run --cwd apps/trenchclaw wallet:vanity"
+    "wallet:vanity": "bun run --cwd apps/trenchclaw wallet:vanity",
+    "idl:check:upstream": "bun run scripts/syncIdls.ts --check-upstream"
   },
   "type": "module",
   "workspaces": [

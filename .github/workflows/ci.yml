@@ -28,7 +28,9 @@ jobs:
         run: bun run test
 
       - name: Verify program interfaces
-        run: bun run idl:check
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bun run idl:check:upstream
 
       - name: Build app bundle
         run: bun run app:build
