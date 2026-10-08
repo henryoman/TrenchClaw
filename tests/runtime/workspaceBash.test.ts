@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 
@@ -13,8 +13,19 @@ import { runtimeStatePath } from "../helpers/corePaths";
 
 const TEST_ROOT = runtimeStatePath("instances/01/workspace/.tests");
 const createdPaths: string[] = [];
+let previousActiveInstanceId: string | undefined;
+
+beforeEach(() => {
+  previousActiveInstanceId = process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+  process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = "01";
+});
 
 afterEach(async () => {
+  if (previousActiveInstanceId === undefined) {
+    delete process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID;
+  } else {
+    process.env.TRENCHCLAW_ACTIVE_INSTANCE_ID = previousActiveInstanceId;
+  }
   for (const target of createdPaths.splice(0)) {
     await rm(target, { recursive: true, force: true });
   }
