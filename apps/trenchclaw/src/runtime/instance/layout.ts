@@ -147,15 +147,18 @@ export const ensureInstanceLayout = async (instanceId: string): Promise<EnsuredI
     }
   };
 
-  const createdDirectories = (await Promise.all(
-    INSTANCE_LAYOUT_DIRECTORY_PATHS.map(async (relativePath) => {
-      const directoryPath = path.join(instanceRoot, relativePath);
-      assertInstanceSystemWritePath(directoryPath, `initialize instance directory ${relativePath}`);
-      const existed = await directoryExists(directoryPath);
-      await mkdir(directoryPath, { recursive: true });
-      return existed ? null : directoryPath;
-    }),
-  )).filter((directoryPath): directoryPath is string => directoryPath != null);
+  const createdDirectories: string[] = [];
+  for (const relativePath of INSTANCE_LAYOUT_DIRECTORY_PATHS) {
+    const directoryPath = path.join(instanceRoot, relativePath);
+    assertInstanceSystemWritePath(directoryPath, `initialize instance directory ${relativePath}`);
+    // oxlint-disable-next-line eslint/no-await-in-loop -- inspect parents before child creation can create them implicitly.
+    const existed = await directoryExists(directoryPath);
+    // oxlint-disable-next-line eslint/no-await-in-loop -- create parent and child directories in contract order.
+    await mkdir(directoryPath, { recursive: true });
+    if (!existed) {
+      createdDirectories.push(directoryPath);
+    }
+  }
 
   const fileExists = async (filePath: string): Promise<boolean> => {
     try {
