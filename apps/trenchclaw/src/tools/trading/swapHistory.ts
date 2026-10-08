@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { createHelius } from "helius-sdk";
+import { getHeliusEnhancedTransactionsByAddress } from "../../solana/lib/clients/heliusEnhanced";
 
 import type { Action } from "../../ai/contracts/types/action";
 import { resolveHeliusRpcConfig } from "../../solana/lib/rpc/helius";
@@ -337,10 +337,10 @@ export const fetchRecentSwapTransactionsByAddress = async (input: {
   continuationRetries = 0,
 ): Promise<HeliusEnhancedTransaction[]> => {
   const apiKey = await resolveHeliusApiKey();
-  const helius = createHelius({ apiKey });
 
   try {
-    const transactions = await helius.enhanced.getTransactionsByAddress({
+    const transactions = await getHeliusEnhancedTransactionsByAddress({
+      apiKey,
       address: input.address,
       limit: input.limit,
       sortOrder: "desc",

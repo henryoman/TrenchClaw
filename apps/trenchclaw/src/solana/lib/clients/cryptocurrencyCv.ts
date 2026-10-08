@@ -209,7 +209,8 @@ export const getCryptoNewsLatest = async (input: {
     path: "/api/news",
     query: {
       page: input.page,
-      perPage: input.perPage,
+      per_page: input.perPage,
+      limit: input.perPage,
       lang: input.lang,
       category: input.category,
     },
@@ -222,24 +223,27 @@ export const searchCryptoNews = async (input: {
   perPage?: number;
   lang?: string;
   options?: CryptocurrencyCvRequestOptions;
-}): Promise<CryptocurrencyCvJsonResponse> =>
-  fetchCryptocurrencyCvJson({
+}): Promise<CryptocurrencyCvJsonResponse> => {
+  if (input.page !== undefined && input.page !== 1) {
+    throw new Error("Crypto News API search does not support pagination; use page 1.");
+  }
+  return fetchCryptocurrencyCvJson({
     path: "/api/search",
     query: {
       q: assertNonEmptyParam("query", input.query),
-      page: input.page,
-      perPage: input.perPage,
+      limit: input.perPage,
       lang: input.lang,
     },
     options: input.options,
   });
+};
 
 export const getCryptoAssetSentiment = async (input: {
   asset: string;
   options?: CryptocurrencyCvRequestOptions;
 }): Promise<CryptocurrencyCvJsonResponse> =>
   fetchCryptocurrencyCvJson({
-    path: "/api/ai/sentiment",
+    path: "/api/sentiment",
     query: {
       asset: assertNonEmptyParam("asset", input.asset),
     },
@@ -250,7 +254,7 @@ export const getCryptoFearGreedIndex = async (input: {
   options?: CryptocurrencyCvRequestOptions;
 } = {}): Promise<CryptocurrencyCvJsonResponse> =>
   fetchCryptocurrencyCvJson({
-    path: "/api/market/fear-greed",
+    path: "/api/fear-greed",
     options: input.options,
   });
 

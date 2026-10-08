@@ -1,27 +1,27 @@
 # Jupiter AI Docs + API Quick Ops
 
-Last verified: 2026-03-23
+Swap guidance verified: 2026-10-08
 
 Use this file when the task involves Jupiter docs discovery, AI-agent integration,
 or shell-first Jupiter API workflows. This is especially useful for `curl`/`jq`
 flows because Jupiter exposes AI-friendly REST endpoints, raw markdown exports,
 `llms.txt`, and an MCP server.
 
-## Current Product Posture
+## Why This Matters
 
-- For new swap work, prefer `Swap API V2` at `https://api.jup.ag/swap/v2`.
-- Keep `Trigger V1` for non-JWT trigger orders when that is an explicit product choice.
-- Treat `Ultra` as a compatibility surface: its concepts still appear in docs, but new swap integrations should move to `Swap API V2 /order + /execute`.
-- All Jupiter API surfaces in normal production use require `x-api-key` from `portal.jup.ag`.
+- Jupiter is explicitly built for AI-agent workflows.
+- Basic usage does not require a Solana RPC node for the documented REST flows.
+- TrenchClaw reads the Jupiter Portal API key from the active instance vault at `integrations/jupiter/api-key`; it sends the key in `x-api-key`.
+- The docs expose structured discovery surfaces that are good for shell tooling and local knowledge ingestion.
 
 ## Best Discovery Sources
 
 Start with these before opening deeper docs:
 
-- Docs index: `https://dev.jup.ag/llms.txt`
-- Full-context docs: `https://dev.jup.ag/llms-full.txt`
-- AI docs overview: `https://dev.jup.ag/ai/llms-txt`
-- Jupiter MCP endpoint: `https://dev.jup.ag/mcp`
+- Docs index: `https://developers.jup.ag/docs/llms.txt`
+- Full-context docs: `https://developers.jup.ag/docs/llms-full.txt`
+- AI docs overview: `https://developers.jup.ag/docs/ai/llms-txt`
+- Jupiter MCP endpoint: `https://developers.jup.ag/docs/mcp`
 
 Use `llms.txt` for lightweight page discovery and routing.
 
@@ -39,14 +39,14 @@ local indexing, and agent-side ingestion.
 Append `.md` to a docs URL:
 
 ```bash
-curl -sS --fail https://dev.jup.ag/docs/swap/v2/order-and-execute.md
-curl -sS --fail https://dev.jup.ag/docs/trigger/v1/create-order.md
+curl -sS --fail https://developers.jup.ag/docs/swap.md
+curl -sS --fail https://developers.jup.ag/docs/swap/order-and-execute.md
 ```
 
 Or request markdown via the `Accept` header:
 
 ```bash
-curl -sS --fail -H "Accept: text/markdown" https://dev.jup.ag/docs/swap/v2/order-and-execute
+curl -sS --fail -H "Accept: text/markdown" https://developers.jup.ag/docs/swap
 ```
 
 For shell scripts, prefer `curl -sS --fail` and pipe into `jq` only after
@@ -57,7 +57,7 @@ confirming the endpoint returns JSON.
 Jupiter exposes a Mintlify-native MCP server:
 
 ```text
-https://dev.jup.ag/mcp
+https://developers.jup.ag/docs/mcp
 ```
 
 What MCP gives an agent:
@@ -73,7 +73,7 @@ For Cursor-style config:
 {
   "mcpServers": {
     "jupiter": {
-      "url": "https://dev.jup.ag/mcp"
+      "url": "https://developers.jup.ag/docs/mcp"
     }
   }
 }
@@ -84,70 +84,70 @@ Operational rule: prefer MCP for targeted in-editor doc queries, and prefer
 
 ## Quick REST Commands
 
+These are the high-value shell commands from Jupiter's AI docs.
+
+Treat them as trusted operator or internal automation examples. For
+model-triggered shell execution, prefer a lightweight isolated shell runtime
+with allowlisted network access and execution limits.
+
 Search for a token:
 
 ```bash
-curl -sS --fail -H "x-api-key: $JUPITER_API_KEY" \
-  "https://api.jup.ag/tokens/v2/search?query=SOL"
+curl -sS --fail -H "x-api-key: YOUR_JUPITER_API_KEY" "https://api.jup.ag/tokens/v2/search?query=SOL"
 ```
 
 Get a price:
 
 ```bash
-curl -sS --fail -H "x-api-key: $JUPITER_API_KEY" \
-  "https://api.jup.ag/price/v3?ids=So11111111111111111111111111111111111111112"
+curl -sS --fail -H "x-api-key: YOUR_JUPITER_API_KEY" "https://api.jup.ag/price/v3?ids=So11111111111111111111111111111111111111112"
 ```
 
-Get a managed swap order:
+Get a swap quote/order:
 
 ```bash
-curl -sS --fail -H "x-api-key: $JUPITER_API_KEY" \
-  "https://api.jup.ag/swap/v2/order?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=10000000&taker=yourWalletAddress"
+curl -sS --fail -H "x-api-key: YOUR_JUPITER_API_KEY" "https://api.jup.ag/swap/v2/order?inputMint=So11111111111111111111111111111111111111112&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=10000000&taker=yourWalletAddress"
 ```
 
-Execute a signed managed swap:
+Execute a signed swap:
 
 ```bash
 curl -sS --fail "https://api.jup.ag/swap/v2/execute" \
   -X POST \
-  -H "x-api-key: $JUPITER_API_KEY" \
   -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_JUPITER_API_KEY" \
   -d '{"signedTransaction":"signedTransaction","requestId":"requestId"}'
 ```
 
-Create a Trigger V1 order:
+Important:
 
-```bash
-curl -sS --fail "https://api.jup.ag/trigger/v1/createOrder" \
-  -X POST \
-  -H "x-api-key: $JUPITER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","maker":"yourWalletAddress","payer":"yourWalletAddress","params":{"makingAmount":"10000000","takingAmount":"1700000"},"computeUnitPrice":"auto"}'
-```
+- The saved `ultra` provider uses Swap V2 `/order` and `/execute`. Use `managedSwap` with `provider: "configured"` for the normal runtime flow.
+- Sign with Solana Kit's `partiallySignTransaction`: JupiterZ adds its market maker signature during `/execute`. Preserve the quoted transaction message.
+- Optional `referralAccount` and `referralFee` collect integrator fees after referral accounts are initialized. `referralFee` is in basis points. No referral fee is added by default.
 
-## Working Rules For TrenchClaw
+- `swap/v2/order` returns the data needed for execution.
+- `swap/v2/execute` requires a locally signed transaction plus the `requestId`
+  from the order response.
+- Do not describe Jupiter as eliminating wallet signing; it eliminates the need
+  for direct RPC handling in the basic documented flow.
 
-- For swaps in this app, prefer `Swap API V2 /order + /execute`.
-- Keep `Trigger V1` on `/trigger/v1/*` because the app intentionally avoids the JWT-based Trigger V2 flow.
-- If a swap order returns no `transaction` but includes `errorCode` or `errorMessage`, surface that response directly instead of masking it with a generic parser error.
-- Do not describe Jupiter as removing wallet signing. Jupiter manages routing and execution, but the client still signs.
-- Prefer `@solana/kit` partial signing behavior when a Jupiter-managed swap can include additional downstream signatures.
+## Trigger Orders
+
+The runtime uses `/trigger/v1` for noncustodial create, execute, cancel, and order history. Jupiter still supports V1 with no scheduled deprecation. Trigger V2 is the newest service, but introduces Privy-managed custodial vaults, challenge/JWT authentication, and USD-price triggers. Integrate it as a separate product flow; changing the URL breaks the existing contract. See <https://developers.jup.ag/docs/trigger>.
 
 ## Shell Notes
 
 - Prefer `jq` for JSON extraction in scripts.
 - Prefer reading `llms.txt` first when you do not yet know the right Jupiter doc page.
 - Prefer raw markdown export for one-page ingestion instead of scraping rendered HTML.
-- Prefer REST endpoints for token search, pricing, quote discovery, and managed swap execution before dropping to lower-level Solana tooling.
+- Prefer REST endpoints for token search, pricing, and quote discovery before dropping to lower-level Solana tooling.
 
 ## Source Links
 
 - AI overview: <https://github.com/jup-ag/docs/blob/main/ai/index.mdx>
-- AI docs index: <https://dev.jup.ag/ai/llms-txt>
-- Docs discovery index: <https://dev.jup.ag/llms.txt>
-- Full docs context: <https://dev.jup.ag/llms-full.txt>
-- Swap API V2 order+execute: <https://dev.jup.ag/docs/swap/v2/order-and-execute>
-- Trigger V1 create order: <https://dev.jup.ag/docs/trigger/v1/create-order>
-- Trigger V1 cancel order: <https://dev.jup.ag/docs/trigger/v1/cancel-order>
-- Trigger V1 get orders: <https://dev.jup.ag/docs/trigger/v1/get-trigger-orders>
-- MCP docs: <https://dev.jup.ag/ai/mcp>
+- AI docs index: <https://developers.jup.ag/docs/ai/llms-txt>
+- Docs discovery index: <https://developers.jup.ag/docs/llms.txt>
+- Full docs context: <https://developers.jup.ag/docs/llms-full.txt>
+- MCP docs: <https://developers.jup.ag/docs/ai/mcp>
+
+- Managed swap migration: <https://developers.jup.ag/docs/swap/migration/ultra-to-order>
+- Managed swap execution and fees: <https://developers.jup.ag/docs/swap/order-and-execute>

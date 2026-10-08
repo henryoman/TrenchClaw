@@ -1,6 +1,6 @@
 # Jupiter Tool Usage In TrenchClaw
 
-Last verified: 2026-03-23
+Last verified: 2026-10-08
 
 This document explains how to use each Jupiter-related trading tool exposed by
 TrenchClaw, what inputs the model should pass, and when each tool should be
@@ -32,8 +32,8 @@ Behavior:
 
 - `provider: "configured"` means use the user's preferred swap provider.
 - If omitted or set to `configured`, this is the best default surface.
-- Use `provider: "ultra"` only when the user explicitly wants that path.
-- Use `provider: "standard"` only when the user explicitly wants the Swap API V2 path or a non-Ultra path.
+- `provider: "ultra"` uses Swap V2 order/execute with Jupiter-managed landing.
+- `provider: "standard"` uses Swap V2 build with local RPC submission.
 
 Example:
 
@@ -50,14 +50,14 @@ Example:
 
 ### `managedUltraSwap`
 
-Use this only for the legacy Ultra-specific managed swap surface.
+Use this only for the compatibility managed swap surface backed by Swap V2.
 
 Pass the same shape as `managedSwap`, but use it only when the user explicitly
-asks for Ultra or you are testing the legacy path.
+asks for Ultra or you are testing the compatibility path.
 
 ### `ultraSwap`
 
-This is the lower-level quote-and-execute Ultra flow. Prefer `managedSwap` for
+This is the lower-level Swap V2 order-and-execute flow under its saved Ultra name. Prefer `managedSwap` for
 real user requests unless you are working on adapter-level or compatibility
 testing.
 
@@ -142,7 +142,7 @@ provider by default.
 
 ### `scheduleManagedUltraSwap`
 
-Use this only for the legacy Ultra-only scheduling surface.
+Use this only for the compatibility scheduling surface backed by Swap V2.
 
 ### `submitTradingRoutine`
 
@@ -152,7 +152,7 @@ does not fit the simpler scheduling surface.
 ## Tool Selection Checklist
 
 - Immediate swap: `managedSwap`
-- Explicit legacy Ultra swap: `managedUltraSwap`
+- Compatibility managed swap: `managedUltraSwap`
 - Quote only: `ultraQuoteSwap`
 - Prepared swap execution: `ultraExecuteSwap`
 - Place trigger order: `managedTriggerOrder`

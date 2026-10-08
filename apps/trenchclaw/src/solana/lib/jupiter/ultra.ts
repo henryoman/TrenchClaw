@@ -66,6 +66,9 @@ const toQueryParams = (request: JupiterUltraOrderRequest): URLSearchParams => {
   }
 
   const swapMode = request.swapMode ?? request.mode;
+  if (swapMode === "ExactOut") {
+    throw new Error("Jupiter Swap V2 managed orders support ExactIn only.");
+  }
   if (swapMode) {
     params.set("swapMode", swapMode);
   }

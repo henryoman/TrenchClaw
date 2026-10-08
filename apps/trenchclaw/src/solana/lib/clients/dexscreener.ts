@@ -171,7 +171,9 @@ function assertDexscreenerPairResponse(payload: unknown, path: string): Dexscree
 
   return {
     schemaVersion: typeof payload.schemaVersion === "string" ? payload.schemaVersion : undefined,
-    pair: isRecord(payload.pair) ? (payload.pair as unknown as DexscreenerPairInfo) : null,
+    pair: Array.isArray(payload.pairs)
+      ? (isRecord(payload.pairs[0]) ? payload.pairs[0] as unknown as DexscreenerPairInfo : null)
+      : (isRecord(payload.pair) ? payload.pair as unknown as DexscreenerPairInfo : null),
   };
 }
 

@@ -9,6 +9,10 @@ last_updated: 2026-03-03
 
 Machine-readable index of all agent-focused documentation for the Helius Solana platform.
 
+## TrenchClaw Integration
+
+The runtime uses Solana Kit for RPC and calls the Enhanced Transactions REST endpoint directly for parsed swap history and trigger pricing. It does not install `helius-sdk`: SDK 3.2.0 declares Kit 6.9 peers while the runtime uses Kit 8.4.0. The parsed history service is documented as Enhanced Transactions (Legacy); replacing it with `getTransactionsForAddress` requires a separate parsing integration.
+
 ## Authentication
 
 All Helius API requests require an API key passed as a query parameter: `?api-key=YOUR_API_KEY`
@@ -75,7 +79,7 @@ https://www.helius.dev/docs/agents/skills/svm.md
 All-in-one Helius plugin bundle. Bundles the Helius MCP server (auto-starts `helius-mcp@latest`), DFlow MCP server (auto-starts `pond.dflow.net/mcp`), Build skill (`/helius:build`), Phantom skill (`/helius:phantom`), DFlow skill (`/helius:dflow`), and SVM skill (`/helius:svm`) with deep reference files.
 
 ### TypeScript SDK
-Overview of the Helius TypeScript SDK (`helius-sdk` v2.x). Installation, quick start, client options, namespaces, and programmatic Auth signup.
+Overview of the Helius TypeScript SDK (`helius-sdk`; check the current registry version and Solana peer requirements). Installation, quick start, client options, namespaces, and programmatic Auth signup.
 https://www.helius.dev/docs/agents/typescript-sdk.md
 
 ### TypeScript SDK Best Practices

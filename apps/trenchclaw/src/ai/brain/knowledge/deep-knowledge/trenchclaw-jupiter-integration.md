@@ -1,6 +1,6 @@
 # TrenchClaw Jupiter Integration Guide
 
-Last verified: 2026-03-23
+Last verified: 2026-10-08
 
 This document is the app-specific guide for how TrenchClaw uses Jupiter today,
 how the model should route swap and trigger requests, and where the important
@@ -9,22 +9,22 @@ implementation seams live.
 ## Current Architecture
 
 - Main swap path: `Jupiter Swap API V2` through `GET /swap/v2/order` and `POST /swap/v2/execute`.
-- Legacy compatibility path: `Ultra` surfaces remain in the codebase and tool names, but the recommended path for real swaps is now Swap API V2.
-- Trigger orders: stay on `Trigger V1` because this app intentionally does not adopt the JWT-based Trigger V2 flow.
+- Compatibility names: `Ultra` remains in saved providers and tool names; those paths also use Swap V2 order/execute. The `standard` provider uses Swap V2 `/build` and local RPC submission.
+- Trigger orders: stay on `Trigger V1` for the existing noncustodial workflow. V1 has no scheduled deprecation; V2 introduces custodial Privy vaults, JWT authentication, and USD-price triggers.
 - Managed wallets: filesystem-managed keypairs are loaded and transactions are signed locally.
 - Signing stack: use `@solana/kit` and related Solana kit/transactions packages, not `web3.js`.
 
 ## Important Files
 
-- Swap V2 adapter: `apps/trenchclaw/src/solana/lib/jupiter/swap.ts`
+- Swap V2 build adapter: `apps/trenchclaw/src/solana/lib/jupiter/swap.ts`
 - Trigger V1 adapter: `apps/trenchclaw/src/solana/lib/jupiter/trigger.ts`
-- Legacy Ultra adapter: `apps/trenchclaw/src/solana/lib/jupiter/ultra.ts`
-- Managed swap action: `apps/trenchclaw/src/solana/actions/wallet-based/swap/managedSwap.ts`
-- Managed Swap V2 execution path: `apps/trenchclaw/src/solana/actions/wallet-based/swap/rpc/executeSwap.ts`
-- Managed Swap V2 quote path: `apps/trenchclaw/src/solana/actions/wallet-based/swap/rpc/quoteSwap.ts`
-- Trigger order creation: `apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/createOrder.ts`
-- Trigger order reads: `apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/getOrders.ts`
-- Trigger order cancellation: `apps/trenchclaw/src/solana/actions/wallet-based/swap/trigger/cancelOrders.ts`
+- Managed order/execute adapter (saved Ultra name): `apps/trenchclaw/src/solana/lib/jupiter/ultra.ts`
+- Managed swap action: `apps/trenchclaw/src/tools/trading/managedSwap.ts`
+- Managed Swap V2 execution path: `apps/trenchclaw/src/tools/trading/rpc/executeSwap.ts`
+- Managed Swap V2 quote path: `apps/trenchclaw/src/tools/trading/rpc/quoteSwap.ts`
+- Trigger order creation: `apps/trenchclaw/src/tools/trading/trigger/createOrder.ts`
+- Trigger order reads: `apps/trenchclaw/src/tools/trading/trigger/getOrders.ts`
+- Trigger order cancellation: `apps/trenchclaw/src/tools/trading/trigger/cancelOrders.ts`
 - Managed wallet signer: `apps/trenchclaw/src/solana/lib/wallet/walletSigner.ts`
 - Base signer implementation: `apps/trenchclaw/src/solana/lib/jupiter/ultraSigner.ts`
 - Operator prompt guidance: `apps/trenchclaw/src/ai/gateway/operatorPrompt.ts`
@@ -37,7 +37,7 @@ implementation seams live.
 - Prefer `managedSwap` for normal user requests like "swap 0.2 SOL to JUP".
 - Let provider selection default to configured behavior unless the user explicitly asks for a specific provider surface.
 - Treat Swap API V2 as the primary path for immediate managed swaps.
-- Use the legacy `managedUltraSwap` surface only when the user explicitly wants the old Ultra-specific path or when testing compatibility.
+- Use the legacy `managedUltraSwap` surface only when the user explicitly wants the compatibility tool name or when testing compatibility.
 
 ### Trigger Orders
 
@@ -81,6 +81,8 @@ implementation seams live.
 - Partial signing matters for Jupiter-managed swap flows because a returned transaction may already contain or later require additional signatures from the routing side.
 - Do not rewrite the returned transaction before signing unless the product explicitly requires a custom transaction-building flow.
 
+Managed order/execute supports `ExactIn` only. Reject `ExactOut` before requesting an order.
+
 ## Error Handling Rules
 
 - If Jupiter returns `transaction: null` or an empty transaction with `errorCode` and `errorMessage`, surface the Jupiter message to the user or caller.
@@ -106,7 +108,7 @@ If you want the runtime even tighter, keep these product statements consistent:
 
 - Main managed swap path = `Jupiter Swap API V2`.
 - Trigger path = `Jupiter Trigger V1`.
-- Legacy Ultra names remain for compatibility, not because they are the preferred new integration target.
+- Ultra names remain for saved-tool compatibility and execute through Swap V2.
 - `managedSwap` is the normal user-facing swap mutation surface.
 - `scheduleManagedSwap` is the normal time-based automation surface.
 - `submitTradingRoutine` is the richer fallback only when needed.

@@ -29,7 +29,7 @@ const latestCryptoNewsInputSchema = z.object({
 
 const searchCryptoNewsInputSchema = z.object({
   query: nonEmptyStringSchema,
-  page: positiveIntSchema.default(1),
+  page: z.literal(1).default(1),
   perPage: positiveIntSchema.max(100).default(10),
   lang: nonEmptyStringSchema.optional(),
 });
@@ -237,7 +237,8 @@ export const getCryptoNewsLatestAction = createCryptoNewsAction({
   inputSchema: latestCryptoNewsInputSchema,
   buildRequestParams: (input) => ({
     page: input.page,
-    perPage: input.perPage,
+    per_page: input.perPage,
+    limit: input.perPage,
     ...(input.lang ? { lang: input.lang } : {}),
     ...(input.category ? { category: input.category } : {}),
   }),
@@ -250,8 +251,7 @@ export const searchCryptoNewsAction = createCryptoNewsAction({
   inputSchema: searchCryptoNewsInputSchema,
   buildRequestParams: (input) => ({
     q: input.query,
-    page: input.page,
-    perPage: input.perPage,
+    limit: input.perPage,
     ...(input.lang ? { lang: input.lang } : {}),
   }),
   execute: async (input) => searchCryptoNews(input),
@@ -259,7 +259,7 @@ export const searchCryptoNewsAction = createCryptoNewsAction({
 
 export const getCryptoAssetSentimentAction = createCryptoNewsAction({
   name: "getCryptoAssetSentiment",
-  endpoint: "/api/ai/sentiment",
+  endpoint: "/api/sentiment",
   inputSchema: cryptoAssetSentimentInputSchema,
   buildRequestParams: (input) => ({
     asset: input.asset,
@@ -269,7 +269,7 @@ export const getCryptoAssetSentimentAction = createCryptoNewsAction({
 
 export const getCryptoFearGreedIndexAction = createCryptoNewsAction({
   name: "getCryptoFearGreedIndex",
-  endpoint: "/api/market/fear-greed",
+  endpoint: "/api/fear-greed",
   inputSchema: emptyInputSchema,
   buildRequestParams: () => ({}),
   execute: async () => getCryptoFearGreedIndex(),

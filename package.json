@@ -1,6 +1,6 @@
 {
   "name": "@trenchclaw/monorepo",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "devDependencies": {
     "turbo": "^2.9.3"
   },

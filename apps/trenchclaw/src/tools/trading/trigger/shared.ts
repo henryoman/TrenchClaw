@@ -1,4 +1,4 @@
-import { createHelius } from "helius-sdk";
+import { getHeliusEnhancedTransactionsByAddress } from "../../../solana/lib/clients/heliusEnhanced";
 import { z } from "zod";
 
 import type { ActionContext } from "../../../ai/contracts/types/context";
@@ -434,8 +434,8 @@ const fetchRecentHeliusSwaps = async (walletAddress: string): Promise<HeliusEnha
     return [];
   }
 
-  const helius = createHelius({ apiKey });
-  const transactions = await helius.enhanced.getTransactionsByAddress({
+  const transactions = await getHeliusEnhancedTransactionsByAddress({
+    apiKey,
     address: walletAddress,
     limit: MAX_HELIUS_HISTORY,
     sortOrder: "desc",

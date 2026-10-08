@@ -1,6 +1,6 @@
 # Jupiter AI Docs + API Quick Ops
 
-Swap guidance verified: 2026-10-07
+Swap guidance verified: 2026-10-08
 
 Use this file when the task involves Jupiter docs discovery, AI-agent integration,
 or shell-first Jupiter API workflows. This is especially useful for `curl`/`jq`
@@ -19,9 +19,9 @@ flows because Jupiter exposes AI-friendly REST endpoints, raw markdown exports,
 Start with these before opening deeper docs:
 
 - Docs index: `https://developers.jup.ag/docs/llms.txt`
-- Full-context docs: `https://developers.jup.ag/llms-full.txt`
-- AI docs overview: `https://developers.jup.ag/ai/llms-txt`
-- Jupiter MCP endpoint: `https://developers.jup.ag/mcp`
+- Full-context docs: `https://developers.jup.ag/docs/llms-full.txt`
+- AI docs overview: `https://developers.jup.ag/docs/ai/llms-txt`
+- Jupiter MCP endpoint: `https://developers.jup.ag/docs/mcp`
 
 Use `llms.txt` for lightweight page discovery and routing.
 
@@ -57,7 +57,7 @@ confirming the endpoint returns JSON.
 Jupiter exposes a Mintlify-native MCP server:
 
 ```text
-https://developers.jup.ag/mcp
+https://developers.jup.ag/docs/mcp
 ```
 
 What MCP gives an agent:
@@ -73,7 +73,7 @@ For Cursor-style config:
 {
   "mcpServers": {
     "jupiter": {
-      "url": "https://developers.jup.ag/mcp"
+      "url": "https://developers.jup.ag/docs/mcp"
     }
   }
 }
@@ -93,13 +93,13 @@ with allowlisted network access and execution limits.
 Search for a token:
 
 ```bash
-curl -sS --fail "https://lite-api.jup.ag/tokens/v2/search?query=SOL"
+curl -sS --fail -H "x-api-key: YOUR_JUPITER_API_KEY" "https://api.jup.ag/tokens/v2/search?query=SOL"
 ```
 
 Get a price:
 
 ```bash
-curl -sS --fail "https://lite-api.jup.ag/price/v3?ids=So11111111111111111111111111111111111111112"
+curl -sS --fail -H "x-api-key: YOUR_JUPITER_API_KEY" "https://api.jup.ag/price/v3?ids=So11111111111111111111111111111111111111112"
 ```
 
 Get a swap quote/order:
@@ -130,6 +130,10 @@ Important:
 - Do not describe Jupiter as eliminating wallet signing; it eliminates the need
   for direct RPC handling in the basic documented flow.
 
+## Trigger Orders
+
+The runtime uses `/trigger/v1` for noncustodial create, execute, cancel, and order history. Jupiter still supports V1 with no scheduled deprecation. Trigger V2 is the newest service, but introduces Privy-managed custodial vaults, challenge/JWT authentication, and USD-price triggers. Integrate it as a separate product flow; changing the URL breaks the existing contract. See <https://developers.jup.ag/docs/trigger>.
+
 ## Shell Notes
 
 - Prefer `jq` for JSON extraction in scripts.
@@ -140,10 +144,10 @@ Important:
 ## Source Links
 
 - AI overview: <https://github.com/jup-ag/docs/blob/main/ai/index.mdx>
-- AI docs index: <https://developers.jup.ag/ai/llms-txt>
+- AI docs index: <https://developers.jup.ag/docs/ai/llms-txt>
 - Docs discovery index: <https://developers.jup.ag/docs/llms.txt>
-- Full docs context: <https://developers.jup.ag/llms-full.txt>
-- MCP docs: <https://developers.jup.ag/ai/mcp>
+- Full docs context: <https://developers.jup.ag/docs/llms-full.txt>
+- MCP docs: <https://developers.jup.ag/docs/ai/mcp>
 
 - Managed swap migration: <https://developers.jup.ag/docs/swap/migration/ultra-to-order>
 - Managed swap execution and fees: <https://developers.jup.ag/docs/swap/order-and-execute>
