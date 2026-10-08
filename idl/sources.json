@@ -99,17 +99,6 @@
       "format": "anchor",
       "programAddress": "CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C",
       "status": "current"
-    },
-    {
-      "file": "raydium-amm.json",
-      "repository": "raydium-io/raydium-idl",
-      "branch": "master",
-      "path": "raydium_amm/idl.json",
-      "revision": "6123104304ebcb42be175cc297a2c221ac96bb96",
-      "sha256": "95a95969042353634a7a5ba4d9b75dcd019aeccec2168b08281afc1f55420a09",
-      "format": "anchor-legacy",
-      "programAddress": "675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8",
-      "status": "archived"
     }
   ]
 }

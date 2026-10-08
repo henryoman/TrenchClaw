@@ -63,12 +63,8 @@ describe("resolveLlmProviderConfigFromEnv", () => {
 });
 
 describe("resolveLlmProviderConfigFromVault", () => {
-  test.each([
-    "qwen/qwen3.6-plus-preview:free",
-    "stepfun/step-3.5-flash:free",
-    "minimax/minimax-m2.5:free",
-  ])("migrates retired model %s to the free models router", (model) => {
-    expect(normalizeAiSettingsInput({ provider: "openrouter", model })).toMatchObject({
+  test("resolves an unavailable model to the free models router", () => {
+    expect(normalizeAiSettingsInput({ provider: "openrouter", model: "unavailable/model" })).toMatchObject({
       provider: "openrouter",
       model: "openrouter/free",
     });

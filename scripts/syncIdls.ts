@@ -15,9 +15,9 @@ const sourceSchema = z.object({
   path: z.string().min(1),
   revision: z.string().regex(/^[a-f0-9]{40}$/u),
   sha256: z.string().regex(/^[a-f0-9]{64}$/u),
-  format: z.enum(["anchor", "anchor-legacy", "codama"]),
+  format: z.enum(["anchor", "codama"]),
   programAddress: z.string().min(1),
-  status: z.enum(["current", "archived"]),
+  status: z.literal("current"),
 });
 const manifestSchema = z.object({ version: z.literal(1), sources: z.array(sourceSchema).min(1) });
 type IdlSource = z.infer<typeof sourceSchema>;
@@ -38,7 +38,7 @@ const validateIdl = (source: IdlSource, data: Uint8Array): void => {
     ? root.metadata as Record<string, unknown>
     : {};
   const declaredAddress = source.format === "codama" ? program.publicKey : root.address ?? metadata.address;
-  if (source.format !== "anchor-legacy" && declaredAddress !== source.programAddress) {
+  if (declaredAddress !== source.programAddress) {
     throw new Error(`IDL ${source.file} program address does not match ${source.programAddress}.`);
   }
   if (source.format === "anchor") {
@@ -87,12 +87,12 @@ const main = async (): Promise<void> => {
   const revisions = new Map<string, Promise<string>>();
   const updates = await Promise.all(manifest.sources.map(async (source) => {
     const key = `${source.repository}/${source.branch}`;
-    if (source.status === "current" && !revisions.has(key)) {
+    if (!revisions.has(key)) {
       revisions.set(key, fetchRequired(`https://api.github.com/repos/${source.repository}/commits/${encodeURIComponent(source.branch)}`)
         .then((response) => response.json())
         .then((payload) => z.object({ sha: z.string().regex(/^[a-f0-9]{40}$/u) }).parse(payload).sha));
     }
-    const revision = source.status === "archived" ? source.revision : await revisions.get(key)!;
+    const revision = await revisions.get(key)!;
     const response = await fetchRequired(`https://raw.githubusercontent.com/${source.repository}/${revision}/${source.path}`);
     const data = new Uint8Array(await response.arrayBuffer());
     validateIdl(source, data);
@@ -101,7 +101,7 @@ const main = async (): Promise<void> => {
   // Validate every download before replacing any catalog file.
   await Promise.all(updates.map(({ source, data }) => Bun.write(path.join(IDL_ROOT, source.file), data)));
   await Bun.write(MANIFEST_PATH, `${JSON.stringify({ ...manifest, sources: updates.map(({ source }) => source) }, null, 2)}\n`);
-  console.log(`Updated ${updates.length} IDLs from pinned official source revisions; archived sources remain pinned.`);
+  console.log(`Updated ${updates.length} IDLs from current official source revisions.`);
 };
 
 await main();

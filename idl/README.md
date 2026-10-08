@@ -17,6 +17,3 @@ The runtime uses Jupiter REST adapters and Solana Kit signing. It does not curre
 | `mpl-token-metadata.json` | `metaplex-foundation/mpl-token-metadata`, `trees/codama.json` | Codama |
 | `raydium-clmm.json` | `raydium-io/raydium-idl`, `raydium_clmm/raydium_clmm.json` | Anchor |
 | `raydium-cpmm.json` | `raydium-io/raydium-idl`, `raydium_cpmm/raydium_cp_swap.json` | Anchor |
-| `raydium-amm.json` | `raydium-io/raydium-idl`, `raydium_amm/idl.json` | Legacy Anchor, archived |
-
-Raydium removed the AMM V4 IDL in upstream revision `e7e0c96fe77bcf6a020b84a44c47a722aac8e359`. Its last published snapshot remains pinned to the previous revision and is never treated as a current upstream schema by the updater. CPMM is a separate program and does not replace AMM V4's program address or instruction layout.
